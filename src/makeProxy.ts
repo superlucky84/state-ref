@@ -1,15 +1,15 @@
 import { lens } from '@/lens';
 import type { Lens } from '@/lens';
 
-type Run = () => boolean | AbortSignal | void;
+type Run = null | (() => boolean | AbortSignal | void);
 
 export const makeProxy = <T extends object>(
   value: T,
-  storeRenderList: Set<Run>,
+  storeRenderList: Map<Run, [T, () => T][]>,
   needRunFirst: { value: boolean },
+  run: Run,
   rootValue: T = value,
-  lensValue: Lens<T, T> = lens<T>(),
-  depthList: string[] = []
+  lensValue: Lens<T, T> = lens<T>()
 ): T => {
   const result = new Proxy(value, {
     get(target: T, prop: string, receiver: any) {
@@ -19,24 +19,32 @@ export const makeProxy = <T extends object>(
         return lensValue.get()(rootValue);
       }
 
-      const propertyValue: unknown = Reflect.get(target, prop, receiver);
+      const propertyValue: any = Reflect.get(target, prop, receiver);
 
-      const lens = lensValue.k(prop as keyof T) as unknown as Lens<
-        object,
-        object
-      >;
-      depthList.push(prop);
+      const lens = lensValue.k(prop as keyof T) as unknown as Lens<T, T>;
 
-      console.log(depthList);
+      if (run && storeRenderList.size === 0) {
+        queueMicrotask(() => {
+          const runInfoItem = [propertyValue, () => lens.get()(rootValue)];
+
+          if (storeRenderList.has(run)) {
+            const runInfo = storeRenderList.get(run);
+            runInfo!.push([runInfoItem[0], runInfoItem[1]]);
+          } else {
+            storeRenderList.set(run, [[runInfoItem[0], runInfoItem[1]]]);
+          }
+          console.log('12312411111111111111111111', storeRenderList);
+        });
+      }
 
       if (typeof propertyValue === 'object' && propertyValue !== null) {
         return makeProxy(
           propertyValue,
           storeRenderList,
           needRunFirst,
+          run,
           rootValue,
-          lens,
-          depthList
+          lens
         );
       }
 
@@ -48,9 +56,13 @@ export const makeProxy = <T extends object>(
       }
 
       Reflect.set(target, prop, value);
+
+      console.log('ROOTVALUE', rootValue);
+
       lensValue.set(value)(rootValue);
 
       // renew 실행
+      console.log('RUN', storeRenderList);
       execDependentCallbacks(storeRenderList);
 
       return true;
@@ -60,25 +72,44 @@ export const makeProxy = <T extends object>(
   return result;
 };
 
-const execDependentCallbacks = (storeRenderList: Set<Run>) => {
+const execDependentCallbacks = <T>(
+  storeRenderList: Map<Run, [T, () => T][]>
+) => {
   const trashCollections: Run[] = [];
 
   trashCollections.push(...runWithtrashCollectUnit(storeRenderList));
-  removeTrashCollect(trashCollections, [...storeRenderList.values()]);
+  removeTrashCollect(trashCollections, storeRenderList);
 };
 
-const removeTrashCollect = (trashCollections: Run[], targetList: Run[]) => {
-  trashCollections.forEach(deleteTarget => {
-    targetList.splice(targetList.indexOf(deleteTarget), 1);
+const removeTrashCollect = <T>(
+  trashCollections: Run[],
+  storeRenderList: Map<Run, [T, () => T][]>
+) => {
+  trashCollections.forEach(run => {
+    storeRenderList.delete(run);
   });
 };
 
-const runWithtrashCollectUnit = (storeRenderList: Set<Run>) => {
+const runWithtrashCollectUnit = <T>(
+  storeRenderList: Map<Run, [T, () => T][]>
+) => {
   const trashes: Run[] = [];
-  storeRenderList.forEach(run => {
-    if (run() === false) {
-      trashes.push(run);
-    }
+  storeRenderList.forEach((values, run) => {
+    values.forEach(value => {
+      loopInner(trashes, value, run);
+    });
   });
   return trashes;
+};
+
+const loopInner = <T>(
+  trashes: Run[],
+  [target, lens]: [T, () => T],
+  run: Run
+) => {
+  if (target !== lens()) {
+    if (run && run() === false) {
+      trashes.push(run);
+    }
+  }
 };

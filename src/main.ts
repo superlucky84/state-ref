@@ -4,12 +4,12 @@ import { makeProxy } from '@/makeProxy';
  * DataStore
  */
 type Renew<T> = (store: T) => boolean | AbortSignal | void;
-type Run = () => boolean | AbortSignal | void;
+type Run = null | (() => boolean | AbortSignal | void);
 
 const DEFAULT_OPTION = { cache: true };
 
 export const store = <T extends object>(value: T) => {
-  const storeRenderList: Set<Run> = new Set();
+  const storeRenderList: Map<Run, [T, () => T][]> = new Map();
   const cacheMap = new WeakMap<Renew<T>, T>();
 
   return (renew?: Renew<T>, userOption?: { cache?: boolean }) => {
@@ -20,15 +20,16 @@ export const store = <T extends object>(value: T) => {
       return cacheMap.get(renew) as T;
     }
 
-    const proxy = { value: makeProxy<T>(value, storeRenderList, needRunFirst) };
-    let run: Run = () => {};
+    const proxy: { value: null | T } = {
+      value: null,
+    };
 
     if (renew) {
-      run = () => renew(proxy.value);
-      // 처음 실행시 디펜던시 추가
-      const renewResult = run();
+      const run = () => renew(proxy.value!);
+      (proxy.value = makeProxy<T>(value, storeRenderList, needRunFirst, run)),
+        // 처음 실행시 디펜던시 추가
+        run();
 
-      console.log(renewResult);
       cacheMap.set(renew, proxy.value);
     }
 
