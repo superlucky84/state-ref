@@ -1,5 +1,5 @@
 import { lens } from '@/lens';
-// import type { Lens } from '@/lens';
+import type { Lens } from '@/lens';
 
 type Run = () => boolean | AbortSignal | void;
 
@@ -8,7 +8,7 @@ export const makeProxy = <T extends object>(
   storeRenderList: Set<Run>,
   needRunFirst: { value: boolean },
   rootValue: T = value,
-  lensValue = lens<any>(),
+  lensValue: Lens<T, T> = lens<T>(),
   depth: number = 0
 ): T => {
   if (!depth) {
@@ -25,7 +25,10 @@ export const makeProxy = <T extends object>(
 
       const propertyValue: unknown = Reflect.get(target, prop, receiver);
 
-      const lens = lensValue.k(prop);
+      const lens = lensValue.k(prop as keyof T) as unknown as Lens<
+        object,
+        object
+      >;
 
       if (typeof propertyValue === 'object' && propertyValue !== null) {
         return makeProxy(
