@@ -1,6 +1,6 @@
 import { store } from '@/index';
 
-const subscribe = store<any>({
+const subscribe = store<{ a: { a1: { a2: number }; a12: number }; b: number }>({
   a: {
     a1: { a2: 3 },
     a12: 3,
@@ -14,6 +14,7 @@ const proxy = subscribe(state => {
 });
 // @ts-ignore
 window.p = proxy;
+
 console.log(proxy);
 console.log('------------');
 console.log(proxy.a);

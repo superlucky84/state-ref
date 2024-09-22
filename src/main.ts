@@ -17,7 +17,7 @@ export const store = <T extends object>(value: T) => {
     const needRunFirst = { value: true };
 
     if (cache && renew && cacheMap.has(renew)) {
-      return cacheMap.get(renew);
+      return cacheMap.get(renew) as T;
     }
 
     const proxy = makeProxy<T>(value, storeRenderList, needRunFirst);
