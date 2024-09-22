@@ -9,7 +9,7 @@ export const makeProxy = <T extends object>(
   needRunFirst: { value: boolean },
   rootValue: T = value,
   lensValue: Lens<T, T> = lens<T>(),
-  depth: number = 0
+  depthList: string[] = []
 ): T => {
   const result = new Proxy(value, {
     get(target: T, prop: string, receiver: any) {
@@ -25,6 +25,9 @@ export const makeProxy = <T extends object>(
         object,
         object
       >;
+      depthList.push(prop);
+
+      console.log(depthList);
 
       if (typeof propertyValue === 'object' && propertyValue !== null) {
         return makeProxy(
@@ -33,7 +36,7 @@ export const makeProxy = <T extends object>(
           needRunFirst,
           rootValue,
           lens,
-          depth + 1
+          depthList
         );
       }
 
