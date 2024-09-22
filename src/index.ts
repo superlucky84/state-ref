@@ -1,3 +1,1 @@
-export function index() {
-  console.log('a');
-}
+export { store } from '@/main';
