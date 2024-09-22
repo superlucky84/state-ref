@@ -1,4 +1,4 @@
-// import { lens } from '@/lens';
+import { lens } from '@/lens';
 // import type { Lens } from '@/lens';
 
 type Run = () => boolean | AbortSignal | void;
@@ -6,15 +6,36 @@ type Run = () => boolean | AbortSignal | void;
 export const makeProxy = <T extends object>(
   value: T,
   storeRenderList: Set<Run>,
-  needRunFirst: { value: boolean }
+  needRunFirst: { value: boolean },
+  rootValue: T = value,
+  lensValue = lens<any>(),
+  depth: number = 0
 ): T => {
+  if (!depth) {
+    rootValue = value;
+    console.log('ROOTVALUE', rootValue);
+  }
   const result = new Proxy(value, {
-    get(target: T, prop: string | symbol, receiver: any) {
+    get(target: T, prop: string, receiver: any) {
       console.log(prop);
       // (needRunFirst.value)
+      if (prop === 'value') {
+        return lensValue.get()(rootValue);
+      }
+
       const propertyValue: unknown = Reflect.get(target, prop, receiver);
+
+      const lens = lensValue.k(prop);
+
       if (typeof propertyValue === 'object' && propertyValue !== null) {
-        return makeProxy(propertyValue, storeRenderList, needRunFirst);
+        return makeProxy(
+          propertyValue,
+          storeRenderList,
+          needRunFirst,
+          rootValue,
+          lens,
+          depth + 1
+        );
       }
 
       return propertyValue;
@@ -25,6 +46,9 @@ export const makeProxy = <T extends object>(
       }
 
       Reflect.set(target, prop, value);
+      lensValue.set(value)(rootValue);
+
+      // renew 실행
       execDependentCallbacks(storeRenderList);
 
       return true;
