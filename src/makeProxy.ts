@@ -11,10 +11,6 @@ export const makeProxy = <T extends object>(
   lensValue: Lens<T, T> = lens<T>(),
   depth: number = 0
 ): T => {
-  if (!depth) {
-    rootValue = value;
-    console.log('ROOTVALUE', rootValue);
-  }
   const result = new Proxy(value, {
     get(target: T, prop: string, receiver: any) {
       console.log(prop);
@@ -60,29 +56,6 @@ export const makeProxy = <T extends object>(
 
   return result;
 };
-
-/*
-function immuChainable<T>(origObj: T, lensInit: Lens<T, T>) {
-  let lensIns = lensInit || lens();
-  return new Proxy(
-    {},
-    {
-      get(obj, prop) {
-        if (prop === 'copyOn') {
-          console.log('a', origObj);
-          return value => lensIns.set(value)(origObj);
-        }
-
-        console.log('b');
-        return immuChainable(origObj, lensIns.k(prop));
-      },
-      set(target, prop, value) {
-        return true;
-      },
-    }
-  );
-}
-*/
 
 const execDependentCallbacks = (storeRenderList: Set<Run>) => {
   const trashCollections: Run[] = [];

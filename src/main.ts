@@ -20,19 +20,19 @@ export const store = <T extends object>(value: T) => {
       return cacheMap.get(renew) as T;
     }
 
-    const proxy = makeProxy<T>(value, storeRenderList, needRunFirst);
+    const proxy = { value: makeProxy<T>(value, storeRenderList, needRunFirst) };
     let run: Run = () => {};
 
     if (renew) {
-      run = () => renew(proxy);
+      run = () => renew(proxy.value);
       // 처음 실행시 디펜던시 추가
       const renewResult = run();
 
       console.log(renewResult);
-      cacheMap.set(renew, proxy);
+      cacheMap.set(renew, proxy.value);
     }
 
-    return proxy;
+    return proxy.value;
   };
 };
 
