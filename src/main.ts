@@ -32,14 +32,10 @@ export const store = <V extends { [key: string | symbol]: unknown }>(
 
     if (renew) {
       const run = () => renew(proxy.value!.root);
-      (proxy.value = makeProxy<T, V>(
-        value,
-        storeRenderList,
-        needRunFirst,
-        run
-      )),
-        // 처음 실행시 디펜던시 추가
-        run();
+      proxy.value = makeProxy<T, V>(value, storeRenderList, needRunFirst, run);
+
+      // 처음 실행시 디펜던시 추가
+      run();
 
       cacheMap.set(renew, proxy.value!.root);
     }
