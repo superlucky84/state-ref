@@ -7,9 +7,7 @@ type RootedObject = { root: unknown } & { [key: string | symbol]: unknown };
 export const makeProxy = <T extends RootedObject, V>(
   value: T,
   storeRenderList: Map<Run, [V, () => V, number][]>,
-  needRunFirst: { value: boolean },
   run: Run,
-  rootProxy: { value: T | null },
   rootValue: T = value,
   lensValue: Lens<T, T> = lens<T>(),
   depth: number = 0
@@ -23,7 +21,11 @@ export const makeProxy = <T extends RootedObject, V>(
       const propertyValue: any = Reflect.get(target, prop, receiver);
       const lens = lensValue.k(prop);
 
-      if (run && storeRenderList.size === 0) {
+      // 랜더 콜백 리스트가 비어있고 콜스택 실행이 아직 안끝났으면 계속 수집 시도
+      if (
+        run &&
+        (!storeRenderList.has(run) || storeRenderList.get(run)!.length === 0)
+      ) {
         queueMicrotask(() => {
           const runInfoItem = [
             propertyValue,
@@ -46,9 +48,7 @@ export const makeProxy = <T extends RootedObject, V>(
         return makeProxy(
           propertyValue,
           storeRenderList,
-          needRunFirst,
           run,
-          rootProxy,
           rootValue,
           lens,
           depth + 1
@@ -79,6 +79,7 @@ export const makeProxy = <T extends RootedObject, V>(
             if (depth > 0 && target !== newTarget) {
               needRun = true;
             }
+            // 타겟 업데이트
             infoItem[0] = newTarget;
           });
 

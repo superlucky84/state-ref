@@ -11,12 +11,16 @@ const subscribe = store<{
   b: 2,
 });
 
+const abortController = new AbortController();
 const proxy = subscribe(state => {
   console.log('1', state.a.a1[0].a8);
   console.log('2', state.a.a12);
+  return abortController.signal;
 });
 // @ts-ignore
 window.p = proxy;
+// @ts-ignore
+window.abort = abortController;
 
 /*
 console.log(proxy);

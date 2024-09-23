@@ -20,7 +20,6 @@ export const store = <V extends { [key: string | symbol]: unknown }>(
 
   return (renew?: Renew<V>, userOption?: { cache?: boolean }) => {
     const { cache } = Object.assign({}, DEFAULT_OPTION, userOption || {});
-    const needRunFirst = { value: true };
 
     if (cache && renew && cacheMap.has(renew)) {
       return cacheMap.get(renew) as V;
@@ -32,16 +31,10 @@ export const store = <V extends { [key: string | symbol]: unknown }>(
 
     if (renew) {
       const run = () => renew(proxy.value!.root);
-      proxy.value = makeProxy<T, V>(
-        value,
-        storeRenderList,
-        needRunFirst,
-        run,
-        proxy
-      );
+      proxy.value = makeProxy<T, V>(value, storeRenderList, run);
 
-      // 처음 실행시 디펜던시 추가
-      run();
+      // 처음 실행시 abort 이벤트 리스너에 추가
+      runFirstEmit(run, storeRenderList);
 
       cacheMap.set(renew, proxy.value!.root);
     }
@@ -50,17 +43,17 @@ export const store = <V extends { [key: string | symbol]: unknown }>(
   };
 };
 
-/*
-const runFirstEmit = (
-  run: () => boolean | void | AbortSignal,
-  storeRenderList: Set<Run>
+const runFirstEmit = <V>(
+  run: Run,
+  storeRenderList: Map<Run, [V, () => V, number][]>
 ) => {
-  const renewResult = run();
+  const renewResult = run!();
 
   if (renewResult instanceof AbortSignal) {
+    // 구독 취소시 일부로 구독 수집기를 고장냄
     renewResult.addEventListener('abort', () => {
-      storeRenderList.delete(run);
+      const chatValue = {} as V;
+      storeRenderList.set(run, [[chatValue, () => chatValue, 0]]);
     });
   }
 };
-*/
