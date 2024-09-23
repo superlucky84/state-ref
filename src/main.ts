@@ -34,7 +34,7 @@ export const store = <V extends { [key: string | symbol]: unknown }>(
       proxy.value = makeProxy<T, V>(value, storeRenderList, run);
 
       // 처음 실행시 abort 이벤트 리스너에 추가
-      runFirstEmit(run, storeRenderList);
+      runFirstEmit(run, storeRenderList, cacheMap, renew);
 
       cacheMap.set(renew, proxy.value!.root);
     }
@@ -45,7 +45,9 @@ export const store = <V extends { [key: string | symbol]: unknown }>(
 
 const runFirstEmit = <V>(
   run: Run,
-  storeRenderList: Map<Run, [V, () => V, number][]>
+  storeRenderList: Map<Run, [V, () => V, number][]>,
+  cacheMap: WeakMap<Renew<V>, V>,
+  renew: Renew<V>
 ) => {
   const renewResult = run!();
 
@@ -53,6 +55,7 @@ const runFirstEmit = <V>(
     // 구독 취소시 일부로 구독 수집기를 고장냄
     renewResult.addEventListener('abort', () => {
       const chatValue = {} as V;
+      cacheMap.delete(renew);
       storeRenderList.set(run, [[chatValue, () => chatValue, 0]]);
     });
   }

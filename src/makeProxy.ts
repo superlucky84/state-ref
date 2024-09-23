@@ -13,15 +13,17 @@ export const makeProxy = <T extends RootedObject, V>(
   depth: number = 0
 ): T => {
   const result = new Proxy(value, {
-    get(target: T, prop: keyof T, receiver: any) {
+    get(_: T, prop: keyof T) {
       if (prop === 'value') {
         return lensValue.get()(rootValue);
       }
 
-      const propertyValue: any = Reflect.get(target, prop, receiver);
       const lens = lensValue.k(prop);
+      const propertyValue: any = lens.get()(rootValue);
 
       // 랜더 콜백 리스트가 비어있고 콜스택 실행이 아직 안끝났으면 계속 수집 시도
+      // Todo: target에 대해 중복 수집 막기
+      // Todo: 값이 객체 타입이 아닐경우 value 처리
       if (
         run &&
         (!storeRenderList.has(run) || storeRenderList.get(run)!.length === 0)
@@ -57,11 +59,7 @@ export const makeProxy = <T extends RootedObject, V>(
 
       return propertyValue;
     },
-    set(target, prop: string | symbol, value) {
-      if (target[prop] === value) {
-        return true;
-      }
-
+    set(_, prop: string | symbol, value) {
       if (lensValue.k(prop).get()(rootValue) !== value) {
         const newValue: T = lensValue.k(prop).set(value)(rootValue) as T;
 
