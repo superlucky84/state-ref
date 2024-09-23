@@ -6,36 +6,38 @@ type RootedObject = { root: unknown } & { [key: string | symbol]: unknown };
 
 export const makeProxy = <T extends RootedObject, V>(
   value: T,
-  storeRenderList: Map<Run, [V, () => V][]>,
+  storeRenderList: Map<Run, [V, () => V, number][]>,
   needRunFirst: { value: boolean },
   run: Run,
   rootProxy: { value: T | null },
   rootValue: T = value,
-  lensValue: Lens<T, T> = lens<T>()
+  lensValue: Lens<T, T> = lens<T>(),
+  depth: number = 0
 ): T => {
   const result = new Proxy(value, {
     get(target: T, prop: keyof T, receiver: any) {
-      console.log(prop);
-      // (needRunFirst.value)
       if (prop === 'value') {
         return lensValue.get()(rootValue);
       }
 
       const propertyValue: any = Reflect.get(target, prop, receiver);
-
       const lens = lensValue.k(prop);
-
-      console.log('1111', propertyValue, lens.get()(rootValue));
 
       if (run && storeRenderList.size === 0) {
         queueMicrotask(() => {
-          const runInfoItem = [propertyValue, () => lens.get()(rootValue)];
+          const runInfoItem = [
+            propertyValue,
+            () => lens.get()(rootValue),
+            depth,
+          ];
 
           if (storeRenderList.has(run)) {
             const runInfo = storeRenderList.get(run);
-            runInfo!.push([runInfoItem[0], runInfoItem[1]]);
+            runInfo!.push([runInfoItem[0], runInfoItem[1], runInfoItem[2]]);
           } else {
-            storeRenderList.set(run, [[runInfoItem[0], runInfoItem[1]]]);
+            storeRenderList.set(run, [
+              [runInfoItem[0], runInfoItem[1], runInfoItem[2]],
+            ]);
           }
         });
       }
@@ -48,7 +50,8 @@ export const makeProxy = <T extends RootedObject, V>(
           run,
           rootProxy,
           rootValue,
-          lens
+          lens,
+          depth + 1
         );
       }
 
@@ -63,55 +66,31 @@ export const makeProxy = <T extends RootedObject, V>(
         const newValue: T = lensValue.k(prop).set(value)(rootValue) as T;
 
         rootValue.root = newValue.root;
-      }
 
-      execDependentCallbacks(storeRenderList);
+        // 랜더리스트에서 해당 run 에 해당하는 정보를 가져옴
+        const info = storeRenderList.get(run);
+
+        if (info) {
+          let needRun = false;
+          info.forEach(infoItem => {
+            const [target, lens, depth] = infoItem;
+            const newTarget = lens();
+
+            if (depth > 0 && target !== newTarget) {
+              needRun = true;
+            }
+            infoItem[0] = newTarget;
+          });
+
+          if (needRun && run && run() === false) {
+            storeRenderList.delete(run);
+          }
+        }
+      }
 
       return true;
     },
   });
 
   return result;
-};
-
-const execDependentCallbacks = <T>(
-  storeRenderList: Map<Run, [T, () => T][]>
-) => {
-  const trashCollections: Run[] = [];
-
-  trashCollections.push(...runWithtrashCollectUnit(storeRenderList));
-  removeTrashCollect(trashCollections, storeRenderList);
-};
-
-const removeTrashCollect = <T>(
-  trashCollections: Run[],
-  storeRenderList: Map<Run, [T, () => T][]>
-) => {
-  trashCollections.forEach(run => {
-    storeRenderList.delete(run);
-  });
-};
-
-const runWithtrashCollectUnit = <T>(
-  storeRenderList: Map<Run, [T, () => T][]>
-) => {
-  const trashes: Run[] = [];
-  storeRenderList.forEach((values, run) => {
-    values.forEach(value => {
-      loopInner(trashes, value, run);
-    });
-  });
-  return trashes;
-};
-
-const loopInner = <T>(
-  trashes: Run[],
-  [target, lens]: [T, () => T],
-  run: Run
-) => {
-  if (target !== lens()) {
-    if (run && run() === false) {
-      trashes.push(run);
-    }
-  }
 };

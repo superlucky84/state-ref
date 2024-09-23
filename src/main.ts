@@ -15,7 +15,7 @@ export const store = <V extends { [key: string | symbol]: unknown }>(
   type T = StoreType<V>;
 
   const value: T = { root: initialValue } as T;
-  const storeRenderList: Map<Run, [V, () => V][]> = new Map();
+  const storeRenderList: Map<Run, [V, () => V, number][]> = new Map();
   const cacheMap = new WeakMap<Renew<V>, V>();
 
   return (renew?: Renew<V>, userOption?: { cache?: boolean }) => {
