@@ -55,7 +55,7 @@ export const makeProxy = <T extends { [key: string | symbol]: unknown }>(
         return true;
       }
 
-      Reflect.set(target, prop, value);
+      // Reflect.set(target, prop, value);
 
       console.log('ROOTVALUE', rootValue);
 

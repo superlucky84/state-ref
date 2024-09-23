@@ -5,12 +5,16 @@ import { makeProxy } from '@/makeProxy';
  */
 type Renew<T> = (store: T) => boolean | AbortSignal | void;
 type Run = null | (() => boolean | AbortSignal | void);
+type StoreType<V> = { root: V };
 
 const DEFAULT_OPTION = { cache: true };
 
-export const store = <T extends { [key: string | symbol]: unknown }>(
-  value: T
+export const store = <V extends { [key: string | symbol]: unknown }>(
+  initialValue: V
 ) => {
+  type T = StoreType<V>;
+
+  const value: T = { root: initialValue } as T;
   const storeRenderList: Map<Run, [T, () => T][]> = new Map();
   const cacheMap = new WeakMap<Renew<T>, T>();
 
@@ -34,6 +38,8 @@ export const store = <T extends { [key: string | symbol]: unknown }>(
 
       cacheMap.set(renew, proxy.value);
     }
+
+    console.log('PVALUE - ', proxy.value);
 
     return proxy.value;
   };
