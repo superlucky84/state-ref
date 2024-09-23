@@ -2,12 +2,14 @@ import { lens } from '@/lens';
 import type { Lens } from '@/lens';
 
 type Run = null | (() => boolean | AbortSignal | void);
+type RootedObject = { root: unknown } & { [key: string | symbol]: unknown };
 
-export const makeProxy = <T extends { [key: string | symbol]: unknown }, V>(
+export const makeProxy = <T extends RootedObject, V>(
   value: T,
   storeRenderList: Map<Run, [V, () => V][]>,
   needRunFirst: { value: boolean },
   run: Run,
+  rootProxy: { value: T | null },
   rootValue: T = value,
   lensValue: Lens<T, T> = lens<T>()
 ): T => {
@@ -22,6 +24,8 @@ export const makeProxy = <T extends { [key: string | symbol]: unknown }, V>(
       const propertyValue: any = Reflect.get(target, prop, receiver);
 
       const lens = lensValue.k(prop);
+
+      console.log('1111', propertyValue, lens.get()(rootValue));
 
       if (run && storeRenderList.size === 0) {
         queueMicrotask(() => {
@@ -42,6 +46,7 @@ export const makeProxy = <T extends { [key: string | symbol]: unknown }, V>(
           storeRenderList,
           needRunFirst,
           run,
+          rootProxy,
           rootValue,
           lens
         );
@@ -54,14 +59,12 @@ export const makeProxy = <T extends { [key: string | symbol]: unknown }, V>(
         return true;
       }
 
-      // Reflect.set(target, prop, value);
+      if (lensValue.k(prop).get()(rootValue) !== value) {
+        const newValue: T = lensValue.k(prop).set(value)(rootValue) as T;
 
-      console.log('ROOTVALUE', rootValue);
+        rootValue.root = newValue.root;
+      }
 
-      lensValue.set(value)(rootValue);
-
-      // renew 실행
-      console.log('RUN', storeRenderList);
       execDependentCallbacks(storeRenderList);
 
       return true;

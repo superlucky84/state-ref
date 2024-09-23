@@ -3,7 +3,7 @@ import { makeProxy } from '@/makeProxy';
 /**
  * DataStore
  */
-type Renew<T> = (store: T) => boolean | AbortSignal | void;
+type Renew<V> = (store: V) => boolean | AbortSignal | void;
 type Run = null | (() => boolean | AbortSignal | void);
 type StoreType<V> = { root: V };
 
@@ -32,7 +32,13 @@ export const store = <V extends { [key: string | symbol]: unknown }>(
 
     if (renew) {
       const run = () => renew(proxy.value!.root);
-      proxy.value = makeProxy<T, V>(value, storeRenderList, needRunFirst, run);
+      proxy.value = makeProxy<T, V>(
+        value,
+        storeRenderList,
+        needRunFirst,
+        run,
+        proxy
+      );
 
       // 처음 실행시 디펜던시 추가
       run();
