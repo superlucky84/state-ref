@@ -8,7 +8,9 @@ type Run = null | (() => boolean | AbortSignal | void);
 
 const DEFAULT_OPTION = { cache: true };
 
-export const store = <T extends object>(value: T) => {
+export const store = <T extends { [key: string | symbol]: unknown }>(
+  value: T
+) => {
   const storeRenderList: Map<Run, [T, () => T][]> = new Map();
   const cacheMap = new WeakMap<Renew<T>, T>();
 

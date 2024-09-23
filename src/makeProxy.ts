@@ -3,7 +3,7 @@ import type { Lens } from '@/lens';
 
 type Run = null | (() => boolean | AbortSignal | void);
 
-export const makeProxy = <T extends object>(
+export const makeProxy = <T extends { [key: string | symbol]: unknown }>(
   value: T,
   storeRenderList: Map<Run, [T, () => T][]>,
   needRunFirst: { value: boolean },
@@ -12,7 +12,7 @@ export const makeProxy = <T extends object>(
   lensValue: Lens<T, T> = lens<T>()
 ): T => {
   const result = new Proxy(value, {
-    get(target: T, prop: string, receiver: any) {
+    get(target: T, prop: keyof T, receiver: any) {
       console.log(prop);
       // (needRunFirst.value)
       if (prop === 'value') {
@@ -21,7 +21,7 @@ export const makeProxy = <T extends object>(
 
       const propertyValue: any = Reflect.get(target, prop, receiver);
 
-      const lens = lensValue.k(prop as keyof T) as unknown as Lens<T, T>;
+      const lens = lensValue.k(prop);
 
       if (run && storeRenderList.size === 0) {
         queueMicrotask(() => {
@@ -51,7 +51,7 @@ export const makeProxy = <T extends object>(
       return propertyValue;
     },
     set(target, prop: string | symbol, value) {
-      if (target[prop as keyof T] === value) {
+      if (target[prop] === value) {
         return true;
       }
 
