@@ -15,15 +15,15 @@ export const store = <V extends { [key: string | symbol]: unknown }>(
   type T = StoreType<V>;
 
   const value: T = { root: initialValue } as T;
-  const storeRenderList: Map<Run, [T, () => T][]> = new Map();
-  const cacheMap = new WeakMap<Renew<T>, T>();
+  const storeRenderList: Map<Run, [V, () => V][]> = new Map();
+  const cacheMap = new WeakMap<Renew<V>, V>();
 
-  return (renew?: Renew<T>, userOption?: { cache?: boolean }) => {
+  return (renew?: Renew<V>, userOption?: { cache?: boolean }) => {
     const { cache } = Object.assign({}, DEFAULT_OPTION, userOption || {});
     const needRunFirst = { value: true };
 
     if (cache && renew && cacheMap.has(renew)) {
-      return cacheMap.get(renew) as T;
+      return cacheMap.get(renew) as V;
     }
 
     const proxy: { value: null | T } = {
@@ -31,17 +31,20 @@ export const store = <V extends { [key: string | symbol]: unknown }>(
     };
 
     if (renew) {
-      const run = () => renew(proxy.value!);
-      (proxy.value = makeProxy<T>(value, storeRenderList, needRunFirst, run)),
+      const run = () => renew(proxy.value!.root);
+      (proxy.value = makeProxy<T, V>(
+        value,
+        storeRenderList,
+        needRunFirst,
+        run
+      )),
         // 처음 실행시 디펜던시 추가
         run();
 
-      cacheMap.set(renew, proxy.value);
+      cacheMap.set(renew, proxy.value!.root);
     }
 
-    console.log('PVALUE - ', proxy.value);
-
-    return proxy.value;
+    return proxy.value!.root;
   };
 };
 

@@ -3,9 +3,9 @@ import type { Lens } from '@/lens';
 
 type Run = null | (() => boolean | AbortSignal | void);
 
-export const makeProxy = <T extends { [key: string | symbol]: unknown }>(
+export const makeProxy = <T extends { [key: string | symbol]: unknown }, V>(
   value: T,
-  storeRenderList: Map<Run, [T, () => T][]>,
+  storeRenderList: Map<Run, [V, () => V][]>,
   needRunFirst: { value: boolean },
   run: Run,
   rootValue: T = value,
@@ -33,7 +33,6 @@ export const makeProxy = <T extends { [key: string | symbol]: unknown }>(
           } else {
             storeRenderList.set(run, [[runInfoItem[0], runInfoItem[1]]]);
           }
-          console.log('12312411111111111111111111', storeRenderList);
         });
       }
 
