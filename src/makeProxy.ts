@@ -1,10 +1,12 @@
 import { lens } from '@/lens';
 import type { Lens } from '@/lens';
+import { Shelf } from '@/helper';
 
 type Run = null | (() => boolean | AbortSignal | void);
-type RootedObject = { root: unknown } & { [key: string | symbol]: unknown };
 
-export const makeProxy = <S extends RootedObject, T extends RootedObject, V>(
+type RootedObject2 = { root: unknown } & { [key: string | symbol]: unknown };
+
+export const makeProxy = <S extends RootedObject2, T extends RootedObject2, V>(
   value: S,
   storeRenderList: Map<Run, [V, () => V, number][]>,
   run: Run,
@@ -12,7 +14,7 @@ export const makeProxy = <S extends RootedObject, T extends RootedObject, V>(
   lensValue: Lens<S, S> = lens<S>(),
   depth: number = 0
 ): T => {
-  const result = new Proxy({} as T, {
+  const result = new Proxy(new Shelf(value) as unknown as T, {
     get(_: T, prop: keyof T) {
       if (prop === 'value') {
         return lensValue.get()(rootValue);
@@ -32,14 +34,7 @@ export const makeProxy = <S extends RootedObject, T extends RootedObject, V>(
         );
       }
 
-      return {
-        get value() {
-          return propertyValue;
-        },
-        set value(_) {
-          throw new Error('value is a read-only property.');
-        },
-      };
+      return new Shelf(propertyValue);
       /*
       if (
         run &&
@@ -65,6 +60,9 @@ export const makeProxy = <S extends RootedObject, T extends RootedObject, V>(
       */
     },
     set(_, prop: string | symbol, value) {
+      if (prop === 'value') {
+        throw Error('value is a read-only property.');
+      }
       if (lensValue.k(prop).get()(rootValue) !== value) {
         const newValue = lensValue.k(prop).set(value)(rootValue);
 
