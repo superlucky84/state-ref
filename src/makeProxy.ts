@@ -1,6 +1,9 @@
 import { lens } from '@/lens';
 import type { Lens } from '@/lens';
 import { ShelfPrimitive } from '@/helper';
+import { addDependency } from '@/dependency';
+
+console.log(addDependency);
 
 type Run = null | (() => boolean | AbortSignal | void);
 
@@ -22,6 +25,7 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, V>(
       if (prop === 'value') {
         // 디펜던시 추가
         console.log('DEPTHLIST', depthList);
+        addDependency({ run, storeRenderList, depthList });
         return lensValue.get()(rootValue);
       }
 
@@ -38,6 +42,8 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, V>(
           newDepthList
         );
       }
+
+      addDependency({ run, storeRenderList, depthList });
 
       return new ShelfPrimitive(propertyValue, newDepthList);
       /*
