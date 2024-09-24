@@ -1,28 +1,32 @@
 import { lens } from '@/lens';
 import type { Lens } from '@/lens';
-import { Shelf } from '@/helper';
+import { ShelfPrimitive } from '@/helper';
 
 type Run = null | (() => boolean | AbortSignal | void);
 
-type RootedObject2 = { root: unknown } & { [key: string | symbol]: unknown };
+type WithRoot = { root: unknown } & { [key: string | symbol]: unknown };
 
-export const makeProxy = <S extends RootedObject2, T extends RootedObject2, V>(
+export const makeProxy = <S extends WithRoot, T extends WithRoot, V>(
   value: S,
   storeRenderList: Map<Run, [V, () => V, number][]>,
   run: Run,
   rootValue: S = value,
   lensValue: Lens<S, S> = lens<S>(),
-  depth: number = 0
+  depth: number = 0,
+  depthList: string[] = []
 ): T => {
-  const result = new Proxy(new Shelf(value) as unknown as T, {
+  const result = new Proxy(value as unknown as T, {
     get(_: T, prop: keyof T) {
+      const lens = lensValue.k(prop);
+
       if (prop === 'value') {
+        // 디펜던시 추가
+        console.log('DEPTHLIST', depthList);
         return lensValue.get()(rootValue);
       }
 
-      const lens = lensValue.k(prop);
+      const newDepthList = [...depthList, prop.toString()];
       const propertyValue: any = lens.get()(rootValue);
-
       if (typeof propertyValue === 'object' && propertyValue !== null) {
         return makeProxy(
           propertyValue,
@@ -30,11 +34,12 @@ export const makeProxy = <S extends RootedObject2, T extends RootedObject2, V>(
           run,
           rootValue,
           lens,
-          depth + 1
+          depth + 1,
+          newDepthList
         );
       }
 
-      return new Shelf(propertyValue);
+      return new ShelfPrimitive(propertyValue, newDepthList);
       /*
       if (
         run &&
