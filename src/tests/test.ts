@@ -19,7 +19,7 @@ const subscribe = store<{
 const abortController = new AbortController();
 // const abortController2 = new AbortController();
 const proxy = subscribe(state => {
-  console.log('1', state.a.a1[0].a8);
+  console.log('1', state.a.a1[0].a8.value);
   console.log('2', state.a.a12);
   return abortController.signal;
 });
