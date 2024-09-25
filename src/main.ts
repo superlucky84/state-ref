@@ -28,16 +28,21 @@ export const store = <O, V>(orignalValue: O) => {
     typeof orignalValue === 'object' &&
     orignalValue !== null;
 
-  // 객체 가 아닌 데이터면 shelfPrimitive로 만들어서 반환
-  if (!isObjectTypeValue) {
-    // addDependency({ run, storeRenderList, depthList });
-    return new ShelfPrimitive(orignalValue, []);
-  }
-
-  const initialValue = orignalValue;
-  const value: S = { root: initialValue } as S;
-
   return (renew?: Renew<G>, userOption?: { cache?: boolean }) => {
+    /**
+     * 객체 가 아닌 데이터면 shelfPrimitive로 만들어서 반환
+     */
+    if (!isObjectTypeValue) {
+      // addDependency({ run, storeRenderList, depthList });
+      return new ShelfPrimitive(orignalValue, []);
+    }
+
+    /**
+     * 객체일때는 프록시 만들어서 리턴
+     */
+    const initialValue = orignalValue;
+    const value: S = { root: initialValue } as S;
+
     const { cache } = Object.assign({}, DEFAULT_OPTION, userOption || {});
 
     if (cache && renew && cacheMap.has(renew)) {
