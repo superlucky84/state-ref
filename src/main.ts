@@ -1,4 +1,5 @@
 import { makeProxy } from '@/makeProxy';
+import { ShelfPrimitive } from '@/helper';
 
 /**
  * DataStore
@@ -12,16 +13,27 @@ type WrapWithValue<S> = S extends object
 
 const DEFAULT_OPTION = { cache: true };
 
-export const store = <V extends { [key: string | symbol]: unknown }>(
-  initialValue: V
-) => {
-  type S = StoreType<V>; // root를 달음
-  type G = WrapWithValue<V>; // 끝에 value를 달음 root 가 안달림
-  type T = WrapWithValue<S>; // 끝에 value를 달음
+// export const store = <V extends { [key: string | symbol]: unknown }>(
+export const store = <O, V>(orignalValue: O) => {
+  type S = StoreType<V>; // 처음 제공받는 값 타입 V에 root를 달음
+  type G = WrapWithValue<V>; // 끝에 root가 안달린 상태 끝에 value를 달음
+  type T = WrapWithValue<S>; // 끝에 root가 달린 상태 끝에 value를 달음
 
-  const value: S = { root: initialValue } as S;
   const storeRenderList: Map<Run, [V, () => V, number][]> = new Map();
   const cacheMap = new WeakMap<Renew<G>, G>();
+
+  const isObjectTypeValue =
+    !Array.isArray(orignalValue) &&
+    typeof orignalValue === 'object' &&
+    orignalValue !== null;
+
+  // 객체 가 아닌 데이터면 shelfPrimitive로 만들어서 반환
+  if (!isObjectTypeValue) {
+    return new ShelfPrimitive(orignalValue, []);
+  }
+
+  const initialValue = orignalValue;
+  const value: S = { root: initialValue } as S;
 
   return (renew?: Renew<G>, userOption?: { cache?: boolean }) => {
     const { cache } = Object.assign({}, DEFAULT_OPTION, userOption || {});
