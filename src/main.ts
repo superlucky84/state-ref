@@ -8,6 +8,7 @@ import type {
   WrapWithValue,
   Run,
   StoreRenderList,
+  RunInfo,
 } from '@/types';
 // import { addDependency } from '@/dependency';
 
@@ -35,9 +36,46 @@ export const store = <V>(orignalValue: V) => {
      * 객체 가 아닌 데이터면 shelfPrimitive로 만들어서 반환
      */
     if (isPrimitiveType(orignalValue)) {
-      const shelf = new ShelfPrimitive(orignalValue);
+      const proxy: { j: null | G } = { j: null };
 
-      return shelf;
+      proxy.j = new ShelfPrimitive(orignalValue, () => {
+        let newValue: V = orignalValue;
+        if (renew) {
+          const run = () => renew(proxy.j!);
+          console.log('RENEW');
+          const runInfo: RunInfo<typeof orignalValue> = {
+            value: orignalValue,
+            getNextValue: () => newValue as V & undefined,
+            key: 'root',
+          };
+
+          if (storeRenderList.has(run)) {
+            const subList = storeRenderList.get(run);
+            if (!subList!.has(runInfo.key)) {
+              subList!.set(runInfo.key, runInfo);
+            }
+          } else {
+            const subList = new Map<string, typeof runInfo>();
+            subList.set(runInfo.key, runInfo);
+            storeRenderList.set(run, subList);
+          }
+          console.log('PRIMITIVE', storeRenderList);
+        }
+
+        return (value: V) => {
+          newValue = value;
+        };
+      }) as unknown as G;
+
+      if (renew) {
+        const run = () => renew(proxy.j!);
+        // 처음 실행시 abort 이벤트 리스너에 추가
+        runFirstEmit(run, storeRenderList, cacheMap, renew);
+
+        cacheMap.set(renew, proxy.j!);
+      }
+
+      return proxy.j;
     }
 
     /**

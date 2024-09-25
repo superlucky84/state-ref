@@ -17,7 +17,7 @@ const subscribe = store<{
 });
 const subscribe2 = store<number>(3);
 const p2 = subscribe2(store => {
-  console.log('7777', store.value);
+  console.log('9999', store.value);
 });
 //@ts-ignore
 window.p2 = p2;
