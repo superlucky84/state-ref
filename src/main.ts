@@ -1,21 +1,9 @@
 import { makeProxy } from '@/makeProxy';
 import { ShelfPrimitive } from '@/shelf';
+import { isPrimitiveType } from '@/helper';
+
 import type { Renew, StoreType, WrapWithValue, Run } from '@/types';
 // import { addDependency } from '@/dependency';
-
-// type ObjectType = { [key: string | symbol]: unknown }; // 객체타입
-type PrivitiveType = string | number | symbol | null | undefined; // 기본타입
-
-/**
- * DataStore
- */
-
-function isPrimitiveType(orignalValue: unknown): orignalValue is PrivitiveType {
-  const isObjectTypeValue =
-    typeof orignalValue === 'object' && orignalValue !== null;
-
-  return !isObjectTypeValue;
-}
 
 const DEFAULT_OPTION = { cache: true };
 
@@ -35,48 +23,24 @@ export const store = <V>(orignalValue: V) => {
     const { cache } = Object.assign({}, DEFAULT_OPTION, userOption || {});
 
     if (cache && renew && cacheMap.has(renew)) {
-      return cacheMap.get(renew) as G;
+      return cacheMap.get(renew);
     }
 
     /**
      * 객체 가 아닌 데이터면 shelfPrimitive로 만들어서 반환
      */
     if (isPrimitiveType(orignalValue)) {
-      const shelf = new ShelfPrimitive(orignalValue) as unknown as G;
+      const shelf = new ShelfPrimitive(orignalValue);
 
       return shelf;
-
-      /*
-      const temp: { j: null | G } = { j: null };
-
-      if (renew) {
-        // const run = () => renew(temp.j!);
-      }
-
-      // const runAddDeps = addDependency({ run, storeRenderList, depthList: [] });
-      const shelf = new ShelfPrimitive(
-        orignalValue,
-        [],
-        lens(),
-        temp.j.root
-      ) as unknown as G;
-
-      const value: S = { root: shelf } as S;
-      temp.j = value.root as G;
-
-      return shelf;
-      */
     }
 
     /**
      * 객체일때는 프록시 만들어서 리턴
      */
-    const initialValue = orignalValue as V;
-    const value: S = { root: initialValue } as S;
-
-    const proxy: { j: null | T } = {
-      j: null,
-    };
+    const initialValue = orignalValue;
+    const value: S = { root: initialValue };
+    const proxy: { j: null | T } = { j: null };
 
     if (renew) {
       const run = () => renew(proxy.j!.root);

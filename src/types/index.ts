@@ -5,3 +5,12 @@ export type WithRoot = { root: unknown } & { [key: string | symbol]: unknown };
 export type WrapWithValue<S> = S extends object
   ? { [K in keyof S]: WrapWithValue<S[K]> }
   : { value: S };
+
+export type PrivitiveType =
+  | string
+  | number
+  | symbol
+  | null
+  | undefined
+  | boolean
+  | bigint;
