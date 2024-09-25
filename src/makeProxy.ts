@@ -42,7 +42,12 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, G>(
 
       addDependency({ run, storeRenderList, depthList });
 
-      return new ShelfPrimitive(propertyValue, newDepthList);
+      return new ShelfPrimitive(
+        propertyValue,
+        newDepthList,
+        lensValue,
+        rootValue
+      );
       /*
       if (
         run &&
@@ -68,11 +73,10 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, G>(
       */
     },
     set(_, prop: string | symbol, value) {
-      if (prop === 'value') {
-        console.log('PPP', prop, value, lensValue.k(prop).get()(rootValue));
-        throw Error('value is a read-only property.');
-      }
-      if (lensValue.k(prop).get()(rootValue) !== value) {
+      if (prop === 'value' && value !== lensValue.get()(rootValue)) {
+        const newTree = lensValue.set(value)(rootValue);
+        rootValue.root = newTree.root;
+      } else if (lensValue.k(prop).get()(rootValue) !== value) {
         const newValue = lensValue.k(prop).set(value)(rootValue);
 
         rootValue.root = newValue.root;
