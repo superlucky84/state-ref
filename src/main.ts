@@ -30,6 +30,15 @@ export const store = <O, V>(orignalValue: O) => {
 
   return (renew?: Renew<G>, userOption?: { cache?: boolean }) => {
     /**
+     * 캐시처리
+     */
+    const { cache } = Object.assign({}, DEFAULT_OPTION, userOption || {});
+
+    if (cache && renew && cacheMap.has(renew)) {
+      return cacheMap.get(renew) as G;
+    }
+
+    /**
      * 객체 가 아닌 데이터면 shelfPrimitive로 만들어서 반환
      */
     if (!isObjectTypeValue) {
@@ -42,12 +51,6 @@ export const store = <O, V>(orignalValue: O) => {
      */
     const initialValue = orignalValue;
     const value: S = { root: initialValue } as S;
-
-    const { cache } = Object.assign({}, DEFAULT_OPTION, userOption || {});
-
-    if (cache && renew && cacheMap.has(renew)) {
-      return cacheMap.get(renew) as G;
-    }
 
     const proxy: { j: null | T } = {
       j: null,
