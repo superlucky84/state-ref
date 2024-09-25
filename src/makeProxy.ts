@@ -1,6 +1,7 @@
 import { lens } from '@/lens';
 import type { Lens } from '@/lens';
 import { makeDisplayProxyValue } from '@/helper';
+import { collector } from '@/collector';
 import { Shelf } from '@/shelf';
 import type { Run, WithRoot, RunInfo, StoreRenderList } from '@/types';
 
@@ -17,21 +18,40 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, V>(
     makeDisplayProxyValue(depth, value) as unknown as T,
     {
       get(_: T, prop: keyof T) {
-        const lens = lensValue.k(prop);
+        const newDepthList = [...depthList, prop.toString()];
 
         /**
          * 프록시에서 value로 접근할때
          */
         if (prop === 'value') {
-          // 디펜던시 추가
-          // addDependency({ run, storeRenderList, depthList });
-          return lensValue.get()(rootValue);
+          const value = lensValue.get()(rootValue);
+          const runInfo: RunInfo<typeof propertyValue> = {
+            value,
+            getNextValue: () => lensValue.get()(rootValue),
+            key: newDepthList.join('.'),
+          };
+
+          if (run) {
+            if (storeRenderList.has(run)) {
+              const subList = storeRenderList.get(run);
+              if (!subList!.has(runInfo.key)) {
+                subList!.set(runInfo.key, runInfo);
+              }
+            } else {
+              const subList = new Map<string, typeof runInfo>();
+              subList.set(runInfo.key, runInfo);
+              storeRenderList.set(run, subList);
+            }
+          }
+
+          console.log('3333333333333333', storeRenderList);
+          return value;
         }
 
         /**
          * 프록시에서 하위 객체타입으로 접근할때
          */
-        const newDepthList = [...depthList, prop.toString()];
+        const lens = lensValue.k(prop);
         const propertyValue: any = lens.get()(rootValue);
         if (typeof propertyValue === 'object' && propertyValue !== null) {
           return makeProxy(
@@ -54,24 +74,14 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, V>(
           lensValue,
           rootValue,
           () => {
-            const runInfo: RunInfo<typeof propertyValue> = {
-              value: propertyValue,
-              getNextValue: () => lens.get()(rootValue),
-              key: newDepthList.join('.'),
-            };
-
-            if (run) {
-              if (storeRenderList.has(run)) {
-                const subList = storeRenderList.get(run);
-                if (!subList!.has(runInfo.key)) {
-                  subList!.set(runInfo.key, runInfo);
-                }
-              } else {
-                const subList = new Map<string, typeof runInfo>();
-                subList.set(runInfo.key, runInfo);
-                storeRenderList.set(run, subList);
-              }
-            }
+            collector(
+              propertyValue,
+              lens,
+              rootValue,
+              newDepthList,
+              run,
+              storeRenderList
+            );
           }
         );
       },

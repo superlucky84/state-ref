@@ -42,7 +42,6 @@ export const store = <V>(orignalValue: V) => {
         let newValue: V = orignalValue;
         if (renew) {
           const run = () => renew(proxy.j!);
-          console.log('RENEW');
           const runInfo: RunInfo<typeof orignalValue> = {
             value: orignalValue,
             getNextValue: () => newValue as V & undefined,
@@ -59,7 +58,6 @@ export const store = <V>(orignalValue: V) => {
             subList.set(runInfo.key, runInfo);
             storeRenderList.set(run, subList);
           }
-          console.log('PRIMITIVE', storeRenderList);
         }
 
         return (value: V) => {
