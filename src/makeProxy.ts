@@ -3,7 +3,7 @@ import type { Lens } from '@/lens';
 import { makeDisplayProxyValue } from '@/helper';
 import { collector } from '@/collector';
 import { Shelf } from '@/shelf';
-import type { Run, WithRoot, RunInfo, StoreRenderList } from '@/types';
+import type { Run, WithRoot, StoreRenderList } from '@/types';
 
 export const makeProxy = <S extends WithRoot, T extends WithRoot, V>(
   value: S,
@@ -24,27 +24,15 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, V>(
          * 프록시에서 value로 접근할때
          */
         if (prop === 'value') {
-          const value = lensValue.get()(rootValue);
-          const runInfo: RunInfo<typeof propertyValue> = {
+          const value: any = lensValue.get()(rootValue);
+          collector(
             value,
-            getNextValue: () => lensValue.get()(rootValue),
-            key: newDepthList.join('.'),
-          };
+            () => lensValue.get()(rootValue),
+            newDepthList,
+            run,
+            storeRenderList
+          );
 
-          if (run) {
-            if (storeRenderList.has(run)) {
-              const subList = storeRenderList.get(run);
-              if (!subList!.has(runInfo.key)) {
-                subList!.set(runInfo.key, runInfo);
-              }
-            } else {
-              const subList = new Map<string, typeof runInfo>();
-              subList.set(runInfo.key, runInfo);
-              storeRenderList.set(run, subList);
-            }
-          }
-
-          console.log('3333333333333333', storeRenderList);
           return value;
         }
 
@@ -76,8 +64,7 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, V>(
           () => {
             collector(
               propertyValue,
-              lens,
-              rootValue,
+              () => lens.get()(rootValue),
               newDepthList,
               run,
               storeRenderList

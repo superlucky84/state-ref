@@ -22,14 +22,14 @@ export const store = <V>(orignalValue: V) => {
   const storeRenderList: StoreRenderList<V> = new Map();
   const cacheMap = new WeakMap<Renew<G>, G>();
 
-  return (renew?: Renew<G>, userOption?: { cache?: boolean }) => {
+  return (renew?: Renew<G>, userOption?: { cache?: boolean }): G => {
     /**
      * 캐시처리
      */
     const { cache } = Object.assign({}, DEFAULT_OPTION, userOption || {});
 
     if (cache && renew && cacheMap.has(renew)) {
-      return cacheMap.get(renew);
+      return cacheMap.get(renew)!;
     }
 
     /**
@@ -73,7 +73,7 @@ export const store = <V>(orignalValue: V) => {
         cacheMap.set(renew, proxy.j!);
       }
 
-      return proxy.j;
+      return proxy.j! as G;
     }
 
     /**

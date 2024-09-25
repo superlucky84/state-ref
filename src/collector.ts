@@ -1,18 +1,15 @@
-import type { Lens } from '@/lens';
+import type { Run, RunInfo, StoreRenderList } from '@/types';
 
-import type { Run, RunInfo, StoreType, StoreRenderList } from '@/types';
-
-export function collector<V, S extends StoreType<V>>(
+export function collector<V>(
   value: V,
-  lens: Lens<S, V>,
-  rootValue: S,
+  getNextValue: () => V,
   newDepthList: string[],
   run: Run,
   storeRenderList: StoreRenderList<V>
 ) {
   const runInfo: RunInfo<typeof value> = {
     value,
-    getNextValue: () => lens.get()(rootValue),
+    getNextValue,
     key: newDepthList.join('.'),
   };
 
