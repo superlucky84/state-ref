@@ -1,7 +1,7 @@
 import { lens } from '@/lens';
 import type { Lens } from '@/lens';
-import { Shelf } from '@/shelf';
 import { makeDisplayProxyValue } from '@/helper';
+import { Shelf } from '@/shelf';
 import { addDependency } from '@/dependency';
 import type { Run, WithRoot } from '@/types';
 
@@ -43,7 +43,7 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, G>(
         addDependency({ run, storeRenderList, depthList });
 
         return new Shelf(propertyValue, newDepthList, lensValue, rootValue);
-        /*
+        /* 디펜던시 추가
       if (
         run &&
         (!storeRenderList.has(run) || storeRenderList.get(run)!.length === 0)
@@ -76,9 +76,9 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, G>(
 
           rootValue.root = newValue.root;
 
+          /*
           // 랜더리스트에서 해당 run 에 해당하는 정보를 가져옴
           const info = storeRenderList.get(run);
-
           if (info) {
             let needRun = false;
             info.forEach(infoItem => {
@@ -96,8 +96,8 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, G>(
               storeRenderList.delete(run);
             }
           }
+        */
         }
-
         return true;
       },
     }
