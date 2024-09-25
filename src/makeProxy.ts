@@ -2,12 +2,9 @@ import { lens } from '@/lens';
 import type { Lens } from '@/lens';
 import { ShelfPrimitive } from '@/helper';
 import { addDependency } from '@/dependency';
+import type { Run, WithRoot } from '@/types';
 
 console.log(addDependency);
-
-type Run = null | (() => boolean | AbortSignal | void);
-
-type WithRoot = { root: unknown } & { [key: string | symbol]: unknown };
 
 export const makeProxy = <S extends WithRoot, T extends WithRoot, V, P>(
   value: S,

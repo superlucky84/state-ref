@@ -1,16 +1,11 @@
 import { makeProxy } from '@/makeProxy';
 import { ShelfPrimitive } from '@/helper';
+import type { Renew, StoreType, WrapWithValue, Run } from '@/types';
 import { addDependency } from '@/dependency';
 
 /**
  * DataStore
  */
-type Renew<T> = (store: T) => boolean | AbortSignal | void;
-type Run = null | (() => boolean | AbortSignal | void);
-type StoreType<V> = { root: V };
-type WrapWithValue<S> = S extends object
-  ? { [K in keyof S]: WrapWithValue<S[K]> }
-  : { value: S };
 
 function isPrimitive<P, V>(orignalValue: P | V): orignalValue is P {
   const isObjectTypeValue =
