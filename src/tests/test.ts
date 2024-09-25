@@ -4,14 +4,14 @@ const subscribe = store<{
   a: {
     a1: [{ a8: number }, { a2: number }];
     a2: { a3: number; a4: number };
-    a12: number;
+    a12: string;
   };
   b: number;
 }>({
   a: {
     a1: [{ a8: 3 }, { a2: 3 }],
     a2: { a3: 3, a4: 3 },
-    a12: 3,
+    a12: '3',
   },
   b: 3,
 });
