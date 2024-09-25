@@ -26,7 +26,7 @@ const DEFAULT_OPTION = { cache: true };
 // export const store = <V extends { [key: string | symbol]: unknown }>(
 export const store = <P, V>(orignalValue: P | V) => {
   type S = StoreType<V>; // 처음 제공받는 값 타입 V에 root를 달음
-  type G = WrapWithValue<V> | WrapWithValue<P>; // 끝에 root가 안달린 상태 끝에 value를 달음
+  type G = WrapWithValue<V> | ShelfPrimitive<P>; // 끝에 root가 안달린 상태 끝에 value를 달음
   type T = WrapWithValue<S>; // 끝에 root가 달린 상태 끝에 value를 달음
 
   const storeRenderList: Map<Run, [P | V, () => P | V, number][]> = new Map();
