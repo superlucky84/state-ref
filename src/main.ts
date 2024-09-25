@@ -12,21 +12,26 @@ type WrapWithValue<S> = S extends object
   ? { [K in keyof S]: WrapWithValue<S[K]> }
   : { value: S };
 
-const DEFAULT_OPTION = { cache: true };
-
-// export const store = <V extends { [key: string | symbol]: unknown }>(
-export const store = <O, V>(orignalValue: O) => {
-  type S = StoreType<V>; // 처음 제공받는 값 타입 V에 root를 달음
-  type G = WrapWithValue<V>; // 끝에 root가 안달린 상태 끝에 value를 달음
-  type T = WrapWithValue<S>; // 끝에 root가 달린 상태 끝에 value를 달음
-
-  const storeRenderList: Map<Run, [V, () => V, number][]> = new Map();
-  const cacheMap = new WeakMap<Renew<G>, G>();
-
+function isPrimitive<P, V>(orignalValue: P | V): orignalValue is P {
   const isObjectTypeValue =
     !Array.isArray(orignalValue) &&
     typeof orignalValue === 'object' &&
     orignalValue !== null;
+
+  return !isObjectTypeValue;
+}
+
+const DEFAULT_OPTION = { cache: true };
+
+// export const store = <V extends { [key: string | symbol]: unknown }>(
+export const store = <P, V>(orignalValue: P | V) => {
+  type S = StoreType<V>; // 처음 제공받는 값 타입 V에 root를 달음
+  type G = WrapWithValue<V>; // 끝에 root가 안달린 상태 끝에 value를 달음
+  type M = WrapWithValue<ShelfPrimitive<P>>; // 끝에 root가 안달린 상태 끝에 value를 달음
+  type T = WrapWithValue<S>; // 끝에 root가 달린 상태 끝에 value를 달음
+
+  const storeRenderList: Map<Run, [P | V, () => P | V, number][]> = new Map();
+  const cacheMap = new WeakMap<Renew<G>, G>();
 
   return (renew?: Renew<G>, userOption?: { cache?: boolean }) => {
     /**
@@ -41,16 +46,21 @@ export const store = <O, V>(orignalValue: O) => {
     /**
      * 객체 가 아닌 데이터면 shelfPrimitive로 만들어서 반환
      */
-    if (!isObjectTypeValue) {
+    if (isPrimitive<P, V>(orignalValue)) {
+      const temp: { j: null | M } = { j: null };
+      // const value: S = { root: orignalValue } as S;
       // const run = () => renew(proxy.j!.root);
+
       // const runAddDeps = addDependency({ run, storeRenderList, depthList: [] });
-      return new ShelfPrimitive(orignalValue, []);
+      temp.j = new ShelfPrimitive<P>(orignalValue, []) as M;
+
+      return temp.j;
     }
 
     /**
      * 객체일때는 프록시 만들어서 리턴
      */
-    const initialValue = orignalValue;
+    const initialValue = orignalValue as V;
     const value: S = { root: initialValue } as S;
 
     const proxy: { j: null | T } = {

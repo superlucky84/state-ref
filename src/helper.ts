@@ -11,9 +11,9 @@ export class Shelf<T> {
   }
 }
 
-export class ShelfPrimitive<T> extends Shelf<T> {
+export class ShelfPrimitive<P> extends Shelf<P> {
   private _depth: string[];
-  constructor(propertyValue: T, depthList: string[]) {
+  constructor(propertyValue: P, depthList: string[]) {
     super(propertyValue);
     this._depth = depthList;
   }
