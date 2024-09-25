@@ -1,10 +1,9 @@
 import { lens } from '@/lens';
 import type { Lens } from '@/lens';
-import { ShelfPrimitive } from '@/helper';
+import { Shelf } from '@/shelf';
+import { makeDisplayProxyValue } from '@/helper';
 import { addDependency } from '@/dependency';
 import type { Run, WithRoot } from '@/types';
-
-console.log(addDependency);
 
 export const makeProxy = <S extends WithRoot, T extends WithRoot, G>(
   value: S,
@@ -15,40 +14,36 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, G>(
   depth: number = 0,
   depthList: string[] = []
 ): T => {
-  const result = new Proxy(value as unknown as T, {
-    get(_: T, prop: keyof T) {
-      const lens = lensValue.k(prop);
+  const result = new Proxy(
+    makeDisplayProxyValue(depth, value) as unknown as T,
+    {
+      get(_: T, prop: keyof T) {
+        const lens = lensValue.k(prop);
 
-      if (prop === 'value') {
-        // 디펜던시 추가
-        console.log('DEPTHLIST', depthList);
+        if (prop === 'value') {
+          // 디펜던시 추가
+          addDependency({ run, storeRenderList, depthList });
+          return lensValue.get()(rootValue);
+        }
+
+        const newDepthList = [...depthList, prop.toString()];
+        const propertyValue: any = lens.get()(rootValue);
+        if (typeof propertyValue === 'object' && propertyValue !== null) {
+          return makeProxy(
+            propertyValue,
+            storeRenderList,
+            run,
+            rootValue,
+            lens,
+            depth + 1,
+            newDepthList
+          );
+        }
+
         addDependency({ run, storeRenderList, depthList });
-        return lensValue.get()(rootValue);
-      }
 
-      const newDepthList = [...depthList, prop.toString()];
-      const propertyValue: any = lens.get()(rootValue);
-      if (typeof propertyValue === 'object' && propertyValue !== null) {
-        return makeProxy(
-          propertyValue,
-          storeRenderList,
-          run,
-          rootValue,
-          lens,
-          depth + 1,
-          newDepthList
-        );
-      }
-
-      addDependency({ run, storeRenderList, depthList });
-
-      return new ShelfPrimitive(
-        propertyValue,
-        newDepthList,
-        lensValue,
-        rootValue
-      );
-      /*
+        return new Shelf(propertyValue, newDepthList, lensValue, rootValue);
+        /*
       if (
         run &&
         (!storeRenderList.has(run) || storeRenderList.get(run)!.length === 0)
@@ -71,44 +66,42 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, G>(
         });
       }
       */
-    },
-    set(_, prop: string | symbol, value) {
-      if (prop === 'value' && value !== lensValue.get()(rootValue)) {
-        const newTree = lensValue.set(value)(rootValue);
-        rootValue.root = newTree.root;
-      } else if (lensValue.k(prop).get()(rootValue) !== value) {
-        const newValue = lensValue.k(prop).set(value)(rootValue);
+      },
+      set(_, prop: string | symbol, value) {
+        if (prop === 'value' && value !== lensValue.get()(rootValue)) {
+          const newTree = lensValue.set(value)(rootValue);
+          rootValue.root = newTree.root;
+        } else if (lensValue.k(prop).get()(rootValue) !== value) {
+          const newValue = lensValue.k(prop).set(value)(rootValue);
 
-        rootValue.root = newValue.root;
+          rootValue.root = newValue.root;
 
-        // 랜더리스트에서 해당 run 에 해당하는 정보를 가져옴
-        const info = storeRenderList.get(run);
+          // 랜더리스트에서 해당 run 에 해당하는 정보를 가져옴
+          const info = storeRenderList.get(run);
 
-        if (info) {
-          let needRun = false;
-          info.forEach(infoItem => {
-            const [target, lens, depth] = infoItem;
-            const newTarget = lens();
+          if (info) {
+            let needRun = false;
+            info.forEach(infoItem => {
+              const [target, lens, depth] = infoItem;
+              const newTarget = lens();
 
-            if (depth > 0 && target !== newTarget) {
-              console.log(depth, target, newTarget);
-              needRun = true;
+              if (depth > 0 && target !== newTarget) {
+                needRun = true;
+              }
+              // 타겟 업데이트
+              infoItem[0] = newTarget;
+            });
+
+            if (needRun && run && run() === false) {
+              storeRenderList.delete(run);
             }
-            // 타겟 업데이트
-            infoItem[0] = newTarget;
-          });
-
-          console.log('NNEED', needRun);
-
-          if (needRun && run && run() === false) {
-            storeRenderList.delete(run);
           }
         }
-      }
 
-      return true;
-    },
-  });
+        return true;
+      },
+    }
+  );
 
   return result;
 };

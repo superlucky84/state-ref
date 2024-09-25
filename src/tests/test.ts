@@ -22,6 +22,14 @@ const p2 = subscribe2(store => {
 //@ts-ignore
 window.p2 = p2;
 
+const subscribe3 = store<number[]>([1, 2, 3]);
+const p3 = subscribe3(store => {
+  console.log('7777', store);
+});
+
+//@ts-ignore
+window.p3 = p3;
+
 const abortController = new AbortController();
 // const abortController2 = new AbortController();
 const proxy = subscribe(state => {

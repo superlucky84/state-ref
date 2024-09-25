@@ -1,5 +1,5 @@
 import { makeProxy } from '@/makeProxy';
-// import { ShelfPrimitive } from '@/helper';
+import { ShelfPrimitive } from '@/shelf';
 import type { Renew, StoreType, WrapWithValue, Run } from '@/types';
 // import { addDependency } from '@/dependency';
 
@@ -42,6 +42,10 @@ export const store = <V>(orignalValue: V) => {
      * 객체 가 아닌 데이터면 shelfPrimitive로 만들어서 반환
      */
     if (isPrimitiveType(orignalValue)) {
+      const shelf = new ShelfPrimitive(orignalValue) as unknown as G;
+
+      return shelf;
+
       /*
       const temp: { j: null | G } = { j: null };
 
@@ -50,9 +54,11 @@ export const store = <V>(orignalValue: V) => {
       }
 
       // const runAddDeps = addDependency({ run, storeRenderList, depthList: [] });
-      const shelf = new ShelfPrimitive<PrivitiveType>(
+      const shelf = new ShelfPrimitive(
         orignalValue,
-        []
+        [],
+        lens(),
+        temp.j.root
       ) as unknown as G;
 
       const value: S = { root: shelf } as S;
