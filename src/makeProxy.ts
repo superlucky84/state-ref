@@ -9,9 +9,9 @@ type Run = null | (() => boolean | AbortSignal | void);
 
 type WithRoot = { root: unknown } & { [key: string | symbol]: unknown };
 
-export const makeProxy = <S extends WithRoot, T extends WithRoot, V>(
+export const makeProxy = <S extends WithRoot, T extends WithRoot, V, P>(
   value: S,
-  storeRenderList: Map<Run, [V, () => V, number][]>,
+  storeRenderList: Map<Run, [P | V, () => P | V, number][]>,
   run: Run,
   rootValue: S = value,
   lensValue: Lens<S, S> = lens<S>(),

@@ -26,8 +26,7 @@ const DEFAULT_OPTION = { cache: true };
 // export const store = <V extends { [key: string | symbol]: unknown }>(
 export const store = <P, V>(orignalValue: P | V) => {
   type S = StoreType<V>; // 처음 제공받는 값 타입 V에 root를 달음
-  type G = WrapWithValue<V>; // 끝에 root가 안달린 상태 끝에 value를 달음
-  type M = WrapWithValue<ShelfPrimitive<P>>; // 끝에 root가 안달린 상태 끝에 value를 달음
+  type G = WrapWithValue<V> | WrapWithValue<P>; // 끝에 root가 안달린 상태 끝에 value를 달음
   type T = WrapWithValue<S>; // 끝에 root가 달린 상태 끝에 value를 달음
 
   const storeRenderList: Map<Run, [P | V, () => P | V, number][]> = new Map();
@@ -47,12 +46,14 @@ export const store = <P, V>(orignalValue: P | V) => {
      * 객체 가 아닌 데이터면 shelfPrimitive로 만들어서 반환
      */
     if (isPrimitive<P, V>(orignalValue)) {
-      const temp: { j: null | M } = { j: null };
+      const temp: { j: null | ShelfPrimitive<P> } = { j: null };
       // const value: S = { root: orignalValue } as S;
-      // const run = () => renew(proxy.j!.root);
+      if (renew) {
+        const run = () => renew(temp.j!);
+      }
 
       // const runAddDeps = addDependency({ run, storeRenderList, depthList: [] });
-      temp.j = new ShelfPrimitive<P>(orignalValue, []) as M;
+      temp.j = new ShelfPrimitive<P>(orignalValue, []);
 
       return temp.j;
     }
@@ -69,7 +70,7 @@ export const store = <P, V>(orignalValue: P | V) => {
 
     if (renew) {
       const run = () => renew(proxy.j!.root);
-      proxy.j = makeProxy<S, T, V>(value, storeRenderList, run);
+      proxy.j = makeProxy<S, T, V, P>(value, storeRenderList, run);
 
       // 처음 실행시 abort 이벤트 리스너에 추가
       runFirstEmit(run, storeRenderList, cacheMap, renew);
@@ -81,9 +82,9 @@ export const store = <P, V>(orignalValue: P | V) => {
   };
 };
 
-const runFirstEmit = <V, G>(
+const runFirstEmit = <P, V, G>(
   run: Run,
-  storeRenderList: Map<Run, [V, () => V, number][]>,
+  storeRenderList: Map<Run, [P | V, () => P | V, number][]>,
   cacheMap: WeakMap<Renew<G>, G>,
   renew: Renew<G>
 ) => {
