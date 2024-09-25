@@ -6,9 +6,9 @@ import type { Run, WithRoot } from '@/types';
 
 console.log(addDependency);
 
-export const makeProxy = <S extends WithRoot, T extends WithRoot, V, P>(
+export const makeProxy = <S extends WithRoot, T extends WithRoot, G>(
   value: S,
-  storeRenderList: Map<Run, [P | V, () => P | V, number][]>,
+  storeRenderList: Map<Run, [G, () => G, number][]>,
   run: Run,
   rootValue: S = value,
   lensValue: Lens<S, S> = lens<S>(),
@@ -69,6 +69,7 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, V, P>(
     },
     set(_, prop: string | symbol, value) {
       if (prop === 'value') {
+        console.log('PPP', prop, value, lensValue.k(prop).get()(rootValue));
         throw Error('value is a read-only property.');
       }
       if (lensValue.k(prop).get()(rootValue) !== value) {

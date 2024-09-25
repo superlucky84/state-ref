@@ -1,7 +1,7 @@
-export class ShelfPrimitive<P> {
-  protected _v: P;
+export class ShelfPrimitive<V> {
+  protected _v: V;
   private _depth: string[];
-  constructor(propertyValue: P, depthList: string[]) {
+  constructor(propertyValue: V, depthList: string[]) {
     this._v = propertyValue;
     this._depth = depthList;
   }

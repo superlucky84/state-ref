@@ -15,6 +15,12 @@ const subscribe = store<{
   },
   b: 3,
 });
+const subscribe2 = store<number>(3);
+const p2 = subscribe2(store => {
+  console.log('7777', store.value);
+});
+//@ts-ignore
+window.p2 = p2;
 
 const abortController = new AbortController();
 // const abortController2 = new AbortController();
