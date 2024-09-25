@@ -2,6 +2,9 @@ import { lens } from '@/lens';
 import type { Lens } from '@/lens';
 import type { StoreType } from '@/types';
 
+/**
+ * 프록시에서 하위 프리미티브 타입으로 접근했을때 선반 만들기
+ */
 export class Shelf<V, S extends StoreType<V>> {
   protected v: V;
   private depth: string[];
@@ -37,6 +40,9 @@ export class Shelf<V, S extends StoreType<V>> {
   }
 }
 
+/**
+ * ROOT에서 프리미티브 타입으로 선언하여 접근할때
+ */
 export class ShelfPrimitive<V> {
   protected v: V;
 

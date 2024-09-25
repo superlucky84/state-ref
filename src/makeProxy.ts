@@ -20,12 +20,18 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, G>(
       get(_: T, prop: keyof T) {
         const lens = lensValue.k(prop);
 
+        /**
+         * 프록시에서 value로 접근할때
+         */
         if (prop === 'value') {
           // 디펜던시 추가
           addDependency({ run, storeRenderList, depthList });
           return lensValue.get()(rootValue);
         }
 
+        /**
+         * 프록시에서 하위 객체타입으로 접근할때
+         */
         const newDepthList = [...depthList, prop.toString()];
         const propertyValue: any = lens.get()(rootValue);
         if (typeof propertyValue === 'object' && propertyValue !== null) {
@@ -40,6 +46,9 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, G>(
           );
         }
 
+        /**
+         * 프록시에서 하위 프리미티브 타입으로 접근할때
+         */
         addDependency({ run, storeRenderList, depthList });
 
         return new Shelf(propertyValue, newDepthList, lensValue, rootValue);
