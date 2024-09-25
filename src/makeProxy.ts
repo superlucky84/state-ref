@@ -2,12 +2,11 @@ import { lens } from '@/lens';
 import type { Lens } from '@/lens';
 import { makeDisplayProxyValue } from '@/helper';
 import { Shelf } from '@/shelf';
-import { addDependency } from '@/dependency';
-import type { Run, WithRoot } from '@/types';
+import type { Run, WithRoot, RunInfo, StoreRenderList } from '@/types';
 
-export const makeProxy = <S extends WithRoot, T extends WithRoot, G>(
+export const makeProxy = <S extends WithRoot, T extends WithRoot, V>(
   value: S,
-  storeRenderList: Map<Run, [G, () => G, number][]>,
+  storeRenderList: StoreRenderList<V>,
   run: Run,
   rootValue: S = value,
   lensValue: Lens<S, S> = lens<S>(),
@@ -25,7 +24,7 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, G>(
          */
         if (prop === 'value') {
           // 디펜던시 추가
-          addDependency({ run, storeRenderList, depthList });
+          // addDependency({ run, storeRenderList, depthList });
           return lensValue.get()(rootValue);
         }
 
@@ -49,32 +48,32 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, G>(
         /**
          * 프록시에서 하위 프리미티브 타입으로 접근할때
          */
-        addDependency({ run, storeRenderList, depthList });
+        return new Shelf(
+          propertyValue,
+          newDepthList,
+          lensValue,
+          rootValue,
+          () => {
+            const runInfo: RunInfo<typeof propertyValue> = {
+              value: propertyValue,
+              getNextValue: () => lens.get()(rootValue),
+              key: newDepthList.join('.'),
+            };
 
-        return new Shelf(propertyValue, newDepthList, lensValue, rootValue);
-        /* 디펜던시 추가
-      if (
-        run &&
-        (!storeRenderList.has(run) || storeRenderList.get(run)!.length === 0)
-      ) {
-        queueMicrotask(() => {
-          const runInfoItem = [
-            propertyValue,
-            () => lens.get()(rootValue),
-            depth,
-          ];
-
-          if (storeRenderList.has(run)) {
-            const runInfo = storeRenderList.get(run);
-            runInfo!.push([runInfoItem[0], runInfoItem[1], runInfoItem[2]]);
-          } else {
-            storeRenderList.set(run, [
-              [runInfoItem[0], runInfoItem[1], runInfoItem[2]],
-            ]);
+            if (run) {
+              if (storeRenderList.has(run)) {
+                const subList = storeRenderList.get(run);
+                if (!subList!.has(runInfo.key)) {
+                  subList!.set(runInfo.key, runInfo);
+                }
+              } else {
+                const subList = new Map<string, typeof runInfo>();
+                subList.set(runInfo.key, runInfo);
+                storeRenderList.set(run, subList);
+              }
+            }
           }
-        });
-      }
-      */
+        );
       },
       set(_, prop: string | symbol, value) {
         if (prop === 'value' && value !== lensValue.get()(rootValue)) {

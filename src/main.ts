@@ -2,7 +2,13 @@ import { makeProxy } from '@/makeProxy';
 import { ShelfPrimitive } from '@/shelf';
 import { isPrimitiveType } from '@/helper';
 
-import type { Renew, StoreType, WrapWithValue, Run } from '@/types';
+import type {
+  Renew,
+  StoreType,
+  WrapWithValue,
+  Run,
+  StoreRenderList,
+} from '@/types';
 // import { addDependency } from '@/dependency';
 
 const DEFAULT_OPTION = { cache: true };
@@ -12,7 +18,7 @@ export const store = <V>(orignalValue: V) => {
   type G = WrapWithValue<V>; // 끝에 root가 안달린 상태 끝에 value를 달음
   type T = WrapWithValue<S>; // 끝에 root가 달린 상태 끝에 value를 달음
 
-  const storeRenderList: Map<Run, [G, () => G, number][]> = new Map();
+  const storeRenderList: StoreRenderList<V> = new Map();
   const cacheMap = new WeakMap<Renew<G>, G>();
 
   return (renew?: Renew<G>, userOption?: { cache?: boolean }) => {
@@ -43,7 +49,7 @@ export const store = <V>(orignalValue: V) => {
 
     if (renew) {
       const run = () => renew(proxy.j!.root);
-      proxy.j = makeProxy<S, T, G>(value, storeRenderList, run);
+      proxy.j = makeProxy<S, T, V>(value, storeRenderList, run);
 
       // 처음 실행시 abort 이벤트 리스너에 추가
       runFirstEmit(run, storeRenderList, cacheMap, renew);
@@ -55,20 +61,18 @@ export const store = <V>(orignalValue: V) => {
   };
 };
 
-const runFirstEmit = <P, V, G>(
+const runFirstEmit = <V, G>(
   run: Run,
-  storeRenderList: Map<Run, [P | V, () => P | V, number][]>,
+  storeRenderList: StoreRenderList<V>,
   cacheMap: WeakMap<Renew<G>, G>,
   renew: Renew<G>
 ) => {
   const renewResult = run!();
 
   if (renewResult instanceof AbortSignal) {
-    // 구독 취소시 일부로 구독 수집기를 고장냄
     renewResult.addEventListener('abort', () => {
-      const chatValue = {} as V;
       cacheMap.delete(renew);
-      storeRenderList.set(run, [[chatValue, () => chatValue, 0]]);
+      storeRenderList.delete(run);
     });
   }
 };

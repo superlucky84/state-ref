@@ -10,20 +10,25 @@ export class Shelf<V, S extends StoreType<V>> {
   private depth: string[];
   private lensValue: Lens<S, S>;
   private rootValue: S;
+  private runCollector: () => void;
 
   constructor(
     propertyValue: V,
     depthList: string[],
     lensValue: Lens<S, S> = lens<S>(),
-    rootValue: S
+    rootValue: S,
+    runCollector: () => void
   ) {
     this.v = propertyValue;
     this.depth = depthList;
     this.lensValue = lensValue;
     this.rootValue = rootValue;
+    this.runCollector = runCollector;
   }
 
   get value() {
+    this.runCollector();
+
     return this.v;
   }
 

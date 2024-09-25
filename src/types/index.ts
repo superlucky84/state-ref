@@ -14,3 +14,13 @@ export type PrivitiveType =
   | undefined
   | boolean
   | bigint;
+
+export type RunInfo<A> = {
+  value: A;
+  getNextValue: () => A;
+  key: string;
+};
+
+export type RenderListSub<A> = Map<string, RunInfo<A>>;
+
+export type StoreRenderList<A> = Map<Run, RenderListSub<A>>;
