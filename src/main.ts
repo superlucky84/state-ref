@@ -1,5 +1,6 @@
 import { makeProxy } from '@/makeProxy';
 import { ShelfPrimitive } from '@/helper';
+import { addDependency } from '@/dependency';
 
 /**
  * DataStore
@@ -29,6 +30,7 @@ export const store = <O, V>(orignalValue: O) => {
 
   // 객체 가 아닌 데이터면 shelfPrimitive로 만들어서 반환
   if (!isObjectTypeValue) {
+    // addDependency({ run, storeRenderList, depthList });
     return new ShelfPrimitive(orignalValue, []);
   }
 
