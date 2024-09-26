@@ -1,6 +1,7 @@
 import { makeProxy } from '@/makeProxy';
 import { ShelfPrimitive } from '@/shelf';
 import { isPrimitiveType } from '@/helper';
+import { collector } from '@/collector';
 
 import type {
   Renew,
@@ -8,9 +9,7 @@ import type {
   WrapWithValue,
   Run,
   StoreRenderList,
-  RunInfo,
 } from '@/types';
-// import { addDependency } from '@/dependency';
 
 const DEFAULT_OPTION = { cache: true };
 
@@ -42,22 +41,13 @@ export const store = <V>(orignalValue: V) => {
         let newValue: V = orignalValue;
         if (renew) {
           const run = () => renew(ref.current!);
-          const runInfo: RunInfo<typeof orignalValue> = {
-            value: orignalValue,
-            getNextValue: () => newValue as V & undefined,
-            key: 'root',
-          };
-
-          if (storeRenderList.has(run)) {
-            const subList = storeRenderList.get(run);
-            if (!subList!.has(runInfo.key)) {
-              subList!.set(runInfo.key, runInfo);
-            }
-          } else {
-            const subList = new Map<string, typeof runInfo>();
-            subList.set(runInfo.key, runInfo);
-            storeRenderList.set(run, subList);
-          }
+          collector(
+            orignalValue,
+            () => newValue as V & undefined,
+            ['root'],
+            run,
+            storeRenderList
+          );
         }
 
         return (value: V) => {

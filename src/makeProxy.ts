@@ -28,7 +28,7 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, V>(
           collector(
             value,
             () => lensValue.get()(rootValue),
-            newDepthList,
+            [...depthList],
             run,
             storeRenderList
           );
