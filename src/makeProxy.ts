@@ -76,10 +76,6 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, V>(
         if (prop === 'value' && value !== lensValue.get()(rootValue)) {
           const newTree = lensValue.set(value)(rootValue);
           rootValue.root = newTree.root;
-        } else if (lensValue.k(prop).get()(rootValue) !== value) {
-          const newValue = lensValue.k(prop).set(value)(rootValue);
-
-          rootValue.root = newValue.root;
 
           /*
           // 랜더리스트에서 해당 run 에 해당하는 정보를 가져옴
@@ -102,7 +98,10 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, V>(
             }
           }
         */
+        } else if (lensValue.k(prop).get()(rootValue) !== value) {
+          throw new Error('Can only be assigned to a "value".');
         }
+
         return true;
       },
     }

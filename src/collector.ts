@@ -12,7 +12,6 @@ export function collector<V>(
     getNextValue,
     key: newDepthList.join('.'),
   };
-  console.log('COLECT', runInfo);
 
   if (run) {
     if (storeRenderList.has(run)) {
