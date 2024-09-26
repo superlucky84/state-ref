@@ -2,6 +2,7 @@ import { makeProxy } from '@/makeProxy';
 import { ShelfPrimitive } from '@/shelf';
 import { isPrimitiveType } from '@/helper';
 import { collector } from '@/collector';
+import { runner } from '@/runner';
 
 import type {
   Renew,
@@ -37,23 +38,29 @@ export const store = <V>(orignalValue: V) => {
     if (isPrimitiveType(orignalValue)) {
       const ref: { current: null | G } = { current: null };
 
-      ref.current = new ShelfPrimitive(orignalValue, () => {
-        let newValue: V = orignalValue;
-        if (renew) {
-          const run = () => renew(ref.current!);
-          collector(
-            orignalValue,
-            () => newValue as V & undefined,
-            ['root'],
-            run,
-            storeRenderList
-          );
-        }
+      ref.current = new ShelfPrimitive(
+        orignalValue,
+        () => {
+          let newValue: V = orignalValue;
+          if (renew) {
+            const run = () => renew(ref.current!);
+            collector(
+              orignalValue,
+              () => newValue as V & undefined,
+              ['root'],
+              run,
+              storeRenderList
+            );
+          }
 
-        return (value: V) => {
-          newValue = value;
-        };
-      }) as unknown as G;
+          return (value: V) => {
+            newValue = value;
+          };
+        },
+        () => {
+          runner(storeRenderList);
+        }
+      ) as unknown as G;
 
       if (renew) {
         const run = () => renew(ref.current!);

@@ -24,7 +24,7 @@ window.p2 = p2;
 
 const subscribe3 = store<number[]>([1, 2, 3]);
 const p3 = subscribe3(store => {
-  console.log('7777', store);
+  console.log('7777', store.value);
 });
 
 //@ts-ignore
@@ -33,6 +33,7 @@ window.p3 = p3;
 const abortController = new AbortController();
 // const abortController2 = new AbortController();
 const proxy = subscribe(state => {
+  // state.value
   console.log('1', state.a.a1.value);
   console.log('2', state.a.a12.value);
   return abortController.signal;

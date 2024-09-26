@@ -2,6 +2,7 @@ import { lens } from '@/lens';
 import type { Lens } from '@/lens';
 import { makeDisplayProxyValue } from '@/helper';
 import { collector } from '@/collector';
+import { runner } from '@/runner';
 import { Shelf } from '@/shelf';
 import type { Run, WithRoot, StoreRenderList } from '@/types';
 
@@ -41,6 +42,7 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, V>(
          */
         const lens = lensValue.k(prop);
         const propertyValue: any = lens.get()(rootValue);
+
         if (typeof propertyValue === 'object' && propertyValue !== null) {
           return makeProxy(
             propertyValue,
@@ -69,35 +71,23 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, V>(
               run,
               storeRenderList
             );
+          },
+          () => {
+            runner(storeRenderList);
           }
         );
       },
       set(_, prop: string | symbol, value) {
         if (prop === 'value' && value !== lensValue.get()(rootValue)) {
           const newTree = lensValue.set(value)(rootValue);
+          console.log('2333', value, newTree);
+          console.log('rootValue', rootValue);
           rootValue.root = newTree.root;
 
-          /*
-          // 랜더리스트에서 해당 run 에 해당하는 정보를 가져옴
-          const info = storeRenderList.get(run);
-          if (info) {
-            let needRun = false;
-            info.forEach(infoItem => {
-              const [target, lens, depth] = infoItem;
-              const newTarget = lens();
-
-              if (depth > 0 && target !== newTarget) {
-                needRun = true;
-              }
-              // 타겟 업데이트
-              infoItem[0] = newTarget;
-            });
-
-            if (needRun && run && run() === false) {
-              storeRenderList.delete(run);
-            }
-          }
-        */
+          /**
+           * 디팬던시 run 실행
+           */
+          runner(storeRenderList);
         } else if (lensValue.k(prop).get()(rootValue) !== value) {
           throw new Error('Can only be assigned to a "value".');
         }

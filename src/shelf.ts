@@ -11,19 +11,22 @@ export class Shelf<V, S extends StoreType<V>> {
   private lensValue: Lens<S, S>;
   private rootValue: S;
   private runCollector: () => void;
+  private runner: () => void;
 
   constructor(
     propertyValue: V,
     depthList: string[],
     lensValue: Lens<S, S> = lens<S>(),
     rootValue: S,
-    runCollector: () => void
+    runCollector: () => void,
+    runner: () => void
   ) {
     this.v = propertyValue;
     this.depth = depthList;
     this.lensValue = lensValue;
     this.rootValue = rootValue;
     this.runCollector = runCollector;
+    this.runner = runner;
   }
 
   get value() {
@@ -41,6 +44,7 @@ export class Shelf<V, S extends StoreType<V>> {
         .set(newValue as S[keyof S])(this.rootValue);
 
       this.rootValue.root = newTree.root;
+      this.runner();
     }
   }
 }
@@ -52,15 +56,20 @@ export class ShelfPrimitive<V> {
   private v: V;
   private runCollector: () => (value: V) => void;
   private newValueSetter: ((value: V) => void) | null;
+  private runner: () => void;
 
-  constructor(propertyValue: V, runCollector: () => (value: V) => void) {
+  constructor(
+    propertyValue: V,
+    runCollector: () => (value: V) => void,
+    runner: () => void
+  ) {
     this.v = propertyValue;
     this.runCollector = runCollector;
     this.newValueSetter = () => this.v;
+    this.runner = runner;
   }
 
   get value() {
-    console.log('GET');
     this.newValueSetter = this.runCollector();
 
     return this.v;
@@ -69,6 +78,10 @@ export class ShelfPrimitive<V> {
     if (this.newValueSetter) {
       this.newValueSetter(newValue);
     }
-    this.v = newValue;
+
+    if (this.v !== newValue) {
+      this.v = newValue;
+      this.runner();
+    }
   }
 }
