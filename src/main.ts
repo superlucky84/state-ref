@@ -36,12 +36,12 @@ export const store = <V>(orignalValue: V) => {
      * 객체 가 아닌 데이터면 shelfPrimitive로 만들어서 반환
      */
     if (isPrimitiveType(orignalValue)) {
-      const proxy: { j: null | G } = { j: null };
+      const ref: { current: null | G } = { current: null };
 
-      proxy.j = new ShelfPrimitive(orignalValue, () => {
+      ref.current = new ShelfPrimitive(orignalValue, () => {
         let newValue: V = orignalValue;
         if (renew) {
-          const run = () => renew(proxy.j!);
+          const run = () => renew(ref.current!);
           const runInfo: RunInfo<typeof orignalValue> = {
             value: orignalValue,
             getNextValue: () => newValue as V & undefined,
@@ -66,14 +66,14 @@ export const store = <V>(orignalValue: V) => {
       }) as unknown as G;
 
       if (renew) {
-        const run = () => renew(proxy.j!);
+        const run = () => renew(ref.current!);
         // 처음 실행시 abort 이벤트 리스너에 추가
         runFirstEmit(run, storeRenderList, cacheMap, renew);
 
-        cacheMap.set(renew, proxy.j!);
+        cacheMap.set(renew, ref.current!);
       }
 
-      return proxy.j! as G;
+      return ref.current! as G;
     }
 
     /**
@@ -81,19 +81,19 @@ export const store = <V>(orignalValue: V) => {
      */
     const initialValue = orignalValue;
     const value: S = { root: initialValue };
-    const proxy: { j: null | T } = { j: null };
+    const ref: { current: null | T } = { current: null };
 
     if (renew) {
-      const run = () => renew(proxy.j!.root);
-      proxy.j = makeProxy<S, T, V>(value, storeRenderList, run);
+      const run = () => renew(ref.current!.root);
+      ref.current = makeProxy<S, T, V>(value, storeRenderList, run);
 
       // 처음 실행시 abort 이벤트 리스너에 추가
       runFirstEmit(run, storeRenderList, cacheMap, renew);
 
-      cacheMap.set(renew, proxy.j!.root);
+      cacheMap.set(renew, ref.current!.root);
     }
 
-    return proxy.j!.root;
+    return ref.current!.root;
   };
 };
 
