@@ -34,7 +34,7 @@ const abortController = new AbortController();
 // const abortController2 = new AbortController();
 const proxy = subscribe(state => {
   // state.value
-  console.log('1', state.a.a1.value);
+  console.log('1', state.value);
   console.log('2', state.a.a12.value);
   return abortController.signal;
 });

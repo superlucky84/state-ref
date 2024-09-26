@@ -80,8 +80,6 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, V>(
       set(_, prop: string | symbol, value) {
         if (prop === 'value' && value !== lensValue.get()(rootValue)) {
           const newTree = lensValue.set(value)(rootValue);
-          console.log('2333', value, newTree);
-          console.log('rootValue', rootValue);
           rootValue.root = newTree.root;
 
           /**
