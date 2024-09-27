@@ -5,7 +5,7 @@ import type { StoreType } from '@/types';
  * value로 값에 접근하고, value로 값을 수정할수 있는 객체로 감싸서 리턴한다.
  */
 export class ShelfRoot<V> {
-  private v: V;
+  private _value: V;
   private rootValue: StoreType<V>;
   private runCollector: () => void;
   private runner: () => void;
@@ -16,7 +16,7 @@ export class ShelfRoot<V> {
     runCollector: () => void,
     runner: () => void
   ) {
-    this.v = propertyValue;
+    this._value = propertyValue;
     this.rootValue = rootValue;
     this.runCollector = runCollector;
     this.runner = runner;
@@ -25,18 +25,18 @@ export class ShelfRoot<V> {
   get value() {
     this.runCollector();
 
-    return this.v;
+    return this._value;
   }
 
   set value(newValue: V) {
-    if (this.v !== newValue) {
-      this.v = newValue;
+    if (this._value !== newValue) {
+      this._value = newValue;
       this.rootValue.root = newValue;
       this.runner();
     }
   }
 
   setValue(newValue: V) {
-    this.v = newValue;
+    this._value = newValue;
   }
 }

@@ -7,7 +7,7 @@ import type { StoreType } from '@/types';
  * value로 값에 접근하고, value로 값을 수정할수 있는 객체로 감싸서 리턴한다.
  */
 export class ShelfTail<V, S extends StoreType<V>> {
-  private v: V;
+  private _value: V;
   private depth: string[];
   private lensValue: Lens<S, S>;
   private rootValue: S;
@@ -22,7 +22,7 @@ export class ShelfTail<V, S extends StoreType<V>> {
     runCollector: () => void,
     runner: () => void
   ) {
-    this.v = propertyValue;
+    this._value = propertyValue;
     this.depth = depthList;
     this.lensValue = lensValue;
     this.rootValue = rootValue;
@@ -33,7 +33,7 @@ export class ShelfTail<V, S extends StoreType<V>> {
   get value() {
     this.runCollector();
 
-    return this.v;
+    return this._value;
   }
 
   set value(newValue: V) {
