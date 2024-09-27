@@ -1,7 +1,7 @@
 /**
- * StoreType<V>; // 처음 제공받는 값 타입 V에 root를 달음
- * WrapWithValue<V>; // 끝에 root가 안달린 상태 끝에 value를 달음
- * WrapWithValue<StoreType<V>>; // 끝에 root가 달린 상태 끝에 value를 달음
+ * S StoreType<V>; // 처음 제공받는 값 타입 V에 root를 달음
+ * G WrapWithValue<V>; // 끝에 root가 안달린 상태 끝에 value를 달음
+ * T WrapWithValue<StoreType<V>>; // 끝에 root가 달린 상태 끝에 value를 달음
  */
 export type Renew<T> = (store: T) => boolean | AbortSignal | void;
 export type Run = null | (() => boolean | AbortSignal | void);

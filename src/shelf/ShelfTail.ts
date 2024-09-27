@@ -3,7 +3,8 @@ import type { Lens } from '@/lens';
 import type { StoreType } from '@/types';
 
 /**
- * 프록시에서 하위 프리미티브 타입으로 접근했을때 선반 만들기
+ * 프록시에서 하위 프리미티브 타입으로 접근했을때
+ * value로 값에 접근하고, value로 값을 수정할수 있는 객체로 감싸서 리턴한다.
  */
 export class ShelfTail<V, S extends StoreType<V>> {
   private v: V;

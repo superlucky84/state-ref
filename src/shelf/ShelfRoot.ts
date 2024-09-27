@@ -1,7 +1,8 @@
 import type { StoreType } from '@/types';
 
 /**
- * ROOT에서 프리미티브 타입으로 선언하여 접근할때
+ * ROOT 에서 프리미티브 타입으로 선언하여 접근할때
+ * value로 값에 접근하고, value로 값을 수정할수 있는 객체로 감싸서 리턴한다.
  */
 export class ShelfRoot<V> {
   private v: V;
