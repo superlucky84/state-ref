@@ -1,8 +1,8 @@
-type Renew<T> = (store: T) => boolean | AbortSignal | void;
-type Run = null | (() => boolean | AbortSignal | void);
-type StoreType<V> = { root: V };
-type WithRoot = { root: unknown } & { [key: string | symbol]: unknown };
-type WrapWithValue<S> = S extends object
+export type Renew<T> = (store: T) => boolean | AbortSignal | void;
+export type Run = null | (() => boolean | AbortSignal | void);
+export type StoreType<V> = { root: V };
+export type WithRoot = { root: unknown } & { [key: string | symbol]: unknown };
+export type WrapWithValue<S> = S extends object
   ? {
       [K in keyof S]: WrapWithValue<S[K]> & { value: WrapWithValue<S[K]> };
     } & {
@@ -10,7 +10,7 @@ type WrapWithValue<S> = S extends object
     }
   : { value: S };
 
-type PrivitiveType =
+export type PrivitiveType =
   | string
   | number
   | symbol
@@ -19,26 +19,29 @@ type PrivitiveType =
   | boolean
   | bigint;
 
-type RunInfo<A> = {
+export type RunInfo<A> = {
   value: A;
   getNextValue: () => A;
   key: string;
+  primitiveSetter?: (newValue: A) => void;
 };
 
-type RenderListSub<A> = Map<string, RunInfo<A>>;
+export type RenderListSub<A> = Map<string, RunInfo<A>>;
+export type StoreRenderList<A> = Map<Run, RenderListSub<A>>;
 
-type StoreRenderList<A> = Map<Run, RenderListSub<A>>;
 export function collector<V>(
   value: V,
   getNextValue: () => V,
   newDepthList: string[],
   run: Run,
-  storeRenderList: StoreRenderList<V>
+  storeRenderList: StoreRenderList<V>,
+  primitiveSetter?: (newValue: V) => void
 ) {
   const runInfo: RunInfo<typeof value> = {
     value,
     getNextValue,
     key: newDepthList.join('.'),
+    primitiveSetter,
   };
 
   if (run) {
@@ -49,17 +52,17 @@ export function collector<V>(
       }
     } else {
       const subList = new Map<string, typeof runInfo>();
-      subList.set(runInfo.key, runInfo);
-      storeRenderList.set(run, subList);
+      if (!subList!.has(runInfo.key)) {
+        subList.set(runInfo.key, runInfo);
+        storeRenderList.set(run, subList);
+      }
     }
   }
 }
 
 export const makeDisplayProxyValue = <T>(depty: number, value: object) => {
   if (depty === 1) {
-    return (
-      Array.isArray(value) ? value.map(() => '..') : { value: '..' }
-    ) as T;
+    return (Array.isArray(value) ? ['value'] : { value: '..' }) as T;
   }
 
   return value;
@@ -74,10 +77,10 @@ export function isPrimitiveType(
   return !isObjectTypeValue;
 }
 
-type Lens<T, U> = LensImpl<T, U> & LensProxy<T, U>;
-type LensProxy<T, U> = { readonly [K in keyof U]: Lens<T, U[K]> };
+export type Lens<T, U> = LensImpl<T, U> & LensProxy<T, U>;
+export type LensProxy<T, U> = { readonly [K in keyof U]: Lens<T, U[K]> };
 
-class LensImpl<T, U> {
+export class LensImpl<T, U> {
   constructor(
     private _get: Getter<T, U>,
     private _set: (value: U) => Setter<T>
@@ -219,34 +222,35 @@ export class Shelf<V, S extends StoreType<V>> {
  * ROOT에서 프리미티브 타입으로 선언하여 접근할때
  */
 export class ShelfPrimitive<V> {
-  private v: V;
+  public v: V;
+  private rootValue: StoreType<V>;
   private runCollector: () => (value: V) => void;
-  private newValueSetter: ((value: V) => void) | null;
   private runner: () => void;
 
   constructor(
     propertyValue: V,
+    rootValue: StoreType<V>,
     runCollector: () => (value: V) => void,
     runner: () => void
   ) {
     this.v = propertyValue;
+    this.rootValue = rootValue;
     this.runCollector = runCollector;
-    this.newValueSetter = () => this.v;
     this.runner = runner;
   }
 
   get value() {
-    this.newValueSetter = this.runCollector();
+    this.runCollector();
 
     return this.v;
   }
+  setValue(newValue: V) {
+    this.v = newValue;
+  }
   set value(newValue: V) {
-    if (this.newValueSetter) {
-      this.newValueSetter(newValue);
-    }
-
     if (this.v !== newValue) {
       this.v = newValue;
+      this.rootValue.root = newValue;
       this.runner();
     }
   }
@@ -254,18 +258,30 @@ export class ShelfPrimitive<V> {
 
 export const runner = <V>(storeRenderList: StoreRenderList<V>) => {
   const runableRenewList: Set<Run> = new Set();
-  storeRenderList.forEach((defs, renew) => {
+
+  storeRenderList.forEach((defs, run) => {
     defs.forEach((item, key) => {
-      const { value, getNextValue } = item;
+      const { value, getNextValue, primitiveSetter } = item;
       try {
         const nextValue = getNextValue();
 
         if (value !== nextValue) {
-          runableRenewList.add(renew);
+          runableRenewList.add(run);
           item.value = nextValue;
+
+          if (primitiveSetter) {
+            primitiveSetter(nextValue);
+          }
         }
       } catch {
         defs.delete(key);
+
+        /**
+         * 나중에 라도 def가 들어올수 있으니 run map 은 남겨놔야 함
+         * if (!defs.size) {
+         *   storeRenderList.delete(run);
+         * }
+         */
       }
     });
   });
@@ -372,15 +388,16 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, V>(
 
 const DEFAULT_OPTION = { cache: true };
 
-export const store = <V>(orignalValue: V) => {
+export default function lenshelf<V>(orignalValue: V) {
   type S = StoreType<V>; // 처음 제공받는 값 타입 V에 root를 달음
   type G = WrapWithValue<V>; // 끝에 root가 안달린 상태 끝에 value를 달음
   type T = WrapWithValue<S>; // 끝에 root가 달린 상태 끝에 value를 달음
 
   const storeRenderList: StoreRenderList<V> = new Map();
   const cacheMap = new WeakMap<Renew<G>, G>();
+  const rootValue: S = { root: orignalValue };
 
-  return (renew?: Renew<G>, userOption?: { cache?: boolean }): G => {
+  return (renew: Renew<G> = () => {}, userOption?: { cache?: boolean }): G => {
     /**
      * 캐시처리
      */
@@ -395,24 +412,23 @@ export const store = <V>(orignalValue: V) => {
      */
     if (isPrimitiveType(orignalValue)) {
       const ref: { current: null | G } = { current: null };
+      const run = () => renew(ref.current!);
 
       ref.current = new ShelfPrimitive(
         orignalValue,
+        rootValue,
         () => {
-          let newValue: V = orignalValue;
-          if (renew) {
-            const run = () => renew(ref.current!);
-            collector(
-              orignalValue,
-              () => newValue as V & undefined,
-              ['root'],
-              run,
-              storeRenderList
-            );
-          }
+          collector(
+            orignalValue,
+            () => rootValue.root as V,
+            ['root'],
+            run,
+            storeRenderList
+          );
 
           return (value: V) => {
-            newValue = value;
+            (ref.current as ShelfPrimitive<V>).setValue(value);
+            (rootValue as S).root = value;
           };
         },
         () => {
@@ -420,13 +436,10 @@ export const store = <V>(orignalValue: V) => {
         }
       ) as unknown as G;
 
-      if (renew) {
-        const run = () => renew(ref.current!);
-        // 처음 실행시 abort 이벤트 리스너에 추가
-        runFirstEmit(run, storeRenderList, cacheMap, renew);
+      // 처음 실행시 abort 이벤트 리스너에 추가
+      runFirstEmit(run, storeRenderList, cacheMap, renew);
 
-        cacheMap.set(renew, ref.current!);
-      }
+      cacheMap.set(renew, ref.current!);
 
       return ref.current! as G;
     }
@@ -434,23 +447,19 @@ export const store = <V>(orignalValue: V) => {
     /**
      * 객체일때는 프록시 만들어서 리턴
      */
-    const initialValue = orignalValue;
-    const value: S = { root: initialValue };
     const ref: { current: null | T } = { current: null };
 
-    if (renew) {
-      const run = () => renew(ref.current!.root);
-      ref.current = makeProxy<S, T, V>(value, storeRenderList, run);
+    const run = () => renew(ref.current!.root);
+    ref.current = makeProxy<S, T, V>(rootValue as S, storeRenderList, run);
 
-      // 처음 실행시 abort 이벤트 리스너에 추가
-      runFirstEmit(run, storeRenderList, cacheMap, renew);
+    // 처음 실행시 abort 이벤트 리스너에 추가
+    runFirstEmit(run, storeRenderList, cacheMap, renew);
 
-      cacheMap.set(renew, ref.current!.root);
-    }
+    cacheMap.set(renew, ref.current!.root);
 
     return ref.current!.root;
   };
-};
+}
 
 const runFirstEmit = <V, G>(
   run: Run,
