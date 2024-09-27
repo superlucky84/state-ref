@@ -4,7 +4,11 @@ import { makeObject } from '@/core/object';
 
 import type { Renew, StoreType, WrapWithValue, StoreRenderList } from '@/types';
 
-export const lenshelf = <V>(orignalValue: V) => {
+/**
+ * shelf 스토어를 만들어 준다
+ * 인자는 초기값
+ */
+export const makeLenshelf = <V>(orignalValue: V) => {
   const storeRenderList: StoreRenderList<V> = new Map();
   const cacheMap = new WeakMap<Renew<WrapWithValue<V>>, WrapWithValue<V>>();
   const rootValue: StoreType<V> = { root: orignalValue };

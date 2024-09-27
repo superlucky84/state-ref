@@ -7,7 +7,7 @@ export default defineConfig({
     checker({
       typescript: true,
       eslint: {
-        lintCommand: 'eslint "./src/**/*.{ts,tsx}"', // for example, lint .ts & .tsx
+        lintCommand: 'eslint "./src/**/*.{ts,tsx}"',
       },
     }),
     dts({
@@ -22,6 +22,7 @@ export default defineConfig({
   build: {
     emptyOutDir: false,
     sourcemap: true,
+    minify: false,
     lib: {
       entry: resolve(__dirname, 'src'),
       name: 'lenshelf',
