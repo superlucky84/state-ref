@@ -1,21 +1,18 @@
-import { makeProxy } from '@/proxy';
-import { ShelfRoot } from '@/shelf/ShelfRoot';
 import { isPrimitiveType, DEFAULT_OPTION } from '@/helper';
-import { collector } from '@/connectors/collector';
-import { firstRunner, runner } from '@/connectors/runner';
+import { makePrimitive } from '@/core/primitive';
+import { makeObject } from '@/core/object';
 
 import type { Renew, StoreType, WrapWithValue, StoreRenderList } from '@/types';
 
 export const lenshelf = <V>(orignalValue: V) => {
-  type S = StoreType<V>; // 처음 제공받는 값 타입 V에 root를 달음
-  type G = WrapWithValue<V>; // 끝에 root가 안달린 상태 끝에 value를 달음
-  type T = WrapWithValue<S>; // 끝에 root가 달린 상태 끝에 value를 달음
-
   const storeRenderList: StoreRenderList<V> = new Map();
-  const cacheMap = new WeakMap<Renew<G>, G>();
-  const rootValue: S = { root: orignalValue };
+  const cacheMap = new WeakMap<Renew<WrapWithValue<V>>, WrapWithValue<V>>();
+  const rootValue: StoreType<V> = { root: orignalValue };
 
-  return (renew: Renew<G> = () => {}, userOption?: { cache?: boolean }): G => {
+  return (
+    renew: Renew<WrapWithValue<V>> = () => {},
+    userOption?: { cache?: boolean }
+  ): WrapWithValue<V> => {
     /**
      * 캐시처리
      */
@@ -29,50 +26,18 @@ export const lenshelf = <V>(orignalValue: V) => {
      * 객체 가 아닌 데이터면 shelfPrimitive로 만들어서 반환
      */
     if (isPrimitiveType(orignalValue)) {
-      const ref: { current: null | G } = { current: null };
-      const run = () => renew(ref.current!);
-
-      ref.current = new ShelfRoot(
+      return makePrimitive<V>({
+        renew,
         orignalValue,
         rootValue,
-        () => {
-          collector(
-            orignalValue,
-            () => rootValue.root,
-            ['root'],
-            run,
-            storeRenderList,
-            newValue => {
-              (ref.current as ShelfRoot<V>).setValue(newValue);
-            }
-          );
-        },
-        () => {
-          runner(storeRenderList);
-        }
-      ) as unknown as G;
-
-      // 처음 실행시 abort 이벤트 리스너에 추가
-      firstRunner(run, storeRenderList, cacheMap, renew);
-
-      cacheMap.set(renew, ref.current!);
-
-      return ref.current! as G;
+        storeRenderList,
+        cacheMap,
+      });
     }
 
     /**
      * 객체일때는 프록시 만들어서 리턴
      */
-    const ref: { current: null | T } = { current: null };
-
-    const run = () => renew(ref.current!.root);
-    ref.current = makeProxy<S, T, V>(rootValue as S, storeRenderList, run);
-
-    // 처음 실행시 abort 이벤트 리스너에 추가
-    firstRunner(run, storeRenderList, cacheMap, renew);
-
-    cacheMap.set(renew, ref.current!.root);
-
-    return ref.current!.root;
+    return makeObject({ renew, rootValue, storeRenderList, cacheMap });
   };
 };
