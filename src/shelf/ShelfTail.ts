@@ -6,7 +6,7 @@ import type { StoreType } from '@/types';
  * 프록시에서 하위 프리미티브 타입으로 접근했을때 선반 만들기
  */
 export class ShelfTail<V, S extends StoreType<V>> {
-  protected v: V;
+  private v: V;
   private depth: string[];
   private lensValue: Lens<S, S>;
   private rootValue: S;

@@ -4,7 +4,7 @@ import type { StoreType } from '@/types';
  * ROOT에서 프리미티브 타입으로 선언하여 접근할때
  */
 export class ShelfRoot<V> {
-  public v: V;
+  private v: V;
   private rootValue: StoreType<V>;
   private runCollector: () => void;
   private runner: () => void;
