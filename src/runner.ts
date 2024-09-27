@@ -2,6 +2,7 @@ import type { Run, StoreRenderList } from '@/types';
 
 export const runner = <V>(storeRenderList: StoreRenderList<V>) => {
   const runableRenewList: Set<Run> = new Set();
+
   storeRenderList.forEach((defs, run) => {
     defs.forEach((item, key) => {
       const { value, getNextValue, primitiveSetter } = item;
@@ -18,6 +19,13 @@ export const runner = <V>(storeRenderList: StoreRenderList<V>) => {
         }
       } catch {
         defs.delete(key);
+
+        /**
+         * 나중에 라도 def가 들어올수 있으니 run map 은 남겨놔야 함
+         * if (!defs.size) {
+         *   storeRenderList.delete(run);
+         * }
+         */
       }
     });
   });
