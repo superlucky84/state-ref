@@ -21,9 +21,9 @@ export default defineConfig({
     sourcemap: true,
     lib: {
       entry: resolve(__dirname, 'src'),
-      name: 'stateshelf',
+      name: 'lenshelf',
       fileName: format => {
-        return format === 'umd' ? 'stateshelf.umd.js' : 'stateshelf.mjs';
+        return format === 'umd' ? 'lenshelf.umd.js' : 'lenshelf.mjs';
       },
     },
   },
