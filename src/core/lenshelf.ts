@@ -7,8 +7,9 @@ import type { Renew, StoreType, WrapWithValue, StoreRenderList } from '@/types';
 /**
  * shelf 스토어를 만들어 준다
  * 인자는 초기값
+ * const subscribe = makeLenshelf({ name: 'brown', age: 38 })
  */
-export const makeLenshelf = <V>(orignalValue: V) => {
+export function makeLenshelf<V>(orignalValue: V) {
   const storeRenderList: StoreRenderList<V> = new Map();
   const cacheMap = new WeakMap<Renew<WrapWithValue<V>>, WrapWithValue<V>>();
   const rootValue: StoreType<V> = { root: orignalValue };
@@ -44,4 +45,4 @@ export const makeLenshelf = <V>(orignalValue: V) => {
      */
     return makeObject({ renew, rootValue, storeRenderList, cacheMap });
   };
-};
+}

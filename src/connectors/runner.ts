@@ -1,6 +1,6 @@
 import type { Run, Renew, StoreRenderList } from '@/types';
 
-export const runner = <V>(storeRenderList: StoreRenderList<V>) => {
+export function runner<V>(storeRenderList: StoreRenderList<V>) {
   const runableRenewList: Set<Run> = new Set();
 
   storeRenderList.forEach((defs, run) => {
@@ -36,14 +36,14 @@ export const runner = <V>(storeRenderList: StoreRenderList<V>) => {
     }
   });
   runableRenewList.clear();
-};
+}
 
-export const firstRunner = <V, G>(
+export function firstRunner<V, G>(
   run: Run,
   storeRenderList: StoreRenderList<V>,
   cacheMap: WeakMap<Renew<G>, G>,
   renew: Renew<G>
-) => {
+) {
   const renewResult = run!();
 
   if (renewResult instanceof AbortSignal) {
@@ -52,4 +52,4 @@ export const firstRunner = <V, G>(
       storeRenderList.delete(run);
     });
   }
-};
+}

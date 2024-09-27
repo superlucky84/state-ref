@@ -26,14 +26,16 @@ export class ShelfRoot<V> {
 
     return this.v;
   }
-  setValue(newValue: V) {
-    this.v = newValue;
-  }
+
   set value(newValue: V) {
     if (this.v !== newValue) {
       this.v = newValue;
       this.rootValue.root = newValue;
       this.runner();
     }
+  }
+
+  setValue(newValue: V) {
+    this.v = newValue;
   }
 }

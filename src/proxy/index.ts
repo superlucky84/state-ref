@@ -6,7 +6,7 @@ import { runner } from '@/connectors/runner';
 import { ShelfTail } from '@/shelf/ShelfTail';
 import type { Run, WithRoot, StoreRenderList } from '@/types';
 
-export const makeProxy = <S extends WithRoot, T extends WithRoot, V>(
+export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
   value: S,
   storeRenderList: StoreRenderList<V>,
   run: Run,
@@ -14,7 +14,7 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, V>(
   lensValue: Lens<S, S> = lens<S>(),
   depth: number = 0,
   depthList: string[] = []
-): T => {
+): T {
   const result = new Proxy(makeDisplayProxyValue(depth, value) as T, {
     get(_: T, prop: keyof T) {
       const newDepthList = [...depthList, prop.toString()];
@@ -93,4 +93,4 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, V>(
   });
 
   return result;
-};
+}
