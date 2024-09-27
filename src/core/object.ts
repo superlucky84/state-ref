@@ -20,7 +20,7 @@ export function makeObject<V>({
   const run = () => renew(ref.current!.root);
 
   ref.current = makeProxy<StoreType<V>, WrapWithValue<StoreType<V>>, V>(
-    rootValue as StoreType<V>,
+    rootValue,
     storeRenderList,
     run
   );

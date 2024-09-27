@@ -8,7 +8,7 @@ export function collector<V>(
   storeRenderList: StoreRenderList<V>,
   primitiveSetter?: (newValue: V) => void
 ) {
-  const runInfo: RunInfo<typeof value> = {
+  const runInfo: RunInfo<V> = {
     value,
     getNextValue,
     key: newDepthList.join('.'),
