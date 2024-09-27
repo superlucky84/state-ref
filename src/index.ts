@@ -1,3 +1,3 @@
-import { lenshelf } from '@/lenshelf';
+import { lenshelf } from '@/core/lenshelf';
 
 export default lenshelf;

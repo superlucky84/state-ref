@@ -1,12 +1,15 @@
 import { resolve } from 'path';
 import { defineConfig } from 'vite';
 import checker from 'vite-plugin-checker';
-import eslint from 'vite-plugin-eslint';
 import dts from 'vite-plugin-dts';
 export default defineConfig({
   plugins: [
-    checker({ typescript: true }),
-    eslint(),
+    checker({
+      typescript: true,
+      eslint: {
+        lintCommand: 'eslint "./src/**/*.{ts,tsx}"', // for example, lint .ts & .tsx
+      },
+    }),
     dts({
       outputDir: ['dist'],
     }),

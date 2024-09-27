@@ -12,7 +12,9 @@
     "test:core": "vitest run --reporter verbose",
     "test:dev": "vitest",
     "coverage": "vitest run --coverage",
-    "clean": "pnpm clean:dist && pnpm clean:module"
+    "clean": "pnpm clean:dist && pnpm clean:module",
+    "clean:dist": "rm -rf dist",
+    "clean:module": "rm -rf node_modules"
   },
   "exports": {
     ".": {
@@ -52,7 +54,6 @@
     "vite": "^5.2.0",
     "vite-plugin-checker": "^0.6.1",
     "vite-plugin-dts": "^2.3.0",
-    "vite-plugin-eslint": "^1.8.1",
     "vitest": "^1.6.0"
   },
   "volta": {
