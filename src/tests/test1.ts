@@ -1,6 +1,6 @@
-import { store } from '@/index';
+import lenshelf from '@/main';
 
-const subscribe = store<{
+const subscribe = lenshelf<{
   a: {
     a1: number;
     a2: number;
@@ -15,9 +15,7 @@ const subscribe = store<{
 });
 
 // @ts-ignore
-window.p = subscribe(store => {
-  console.log('sub1', store.a.a1.value);
-});
+window.p = subscribe();
 
 subscribe(store => {
   console.log('sub2', store.a.a1.value);

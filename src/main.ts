@@ -14,16 +14,16 @@ import type {
 
 const DEFAULT_OPTION = { cache: true };
 
-export const store = <V>(orignalValue: V) => {
+export default function lenshelf<V>(orignalValue: V) {
   type S = StoreType<V>; // 처음 제공받는 값 타입 V에 root를 달음
   type G = WrapWithValue<V>; // 끝에 root가 안달린 상태 끝에 value를 달음
   type T = WrapWithValue<S>; // 끝에 root가 달린 상태 끝에 value를 달음
 
   const storeRenderList: StoreRenderList<V> = new Map();
   const cacheMap = new WeakMap<Renew<G>, G>();
-  const rootValue: S | { root: null } = { root: null };
+  const rootValue: S = { root: orignalValue };
 
-  return (renew?: Renew<G>, userOption?: { cache?: boolean }): G => {
+  return (renew: Renew<G> = () => {}, userOption?: { cache?: boolean }): G => {
     /**
      * 캐시처리
      */
@@ -38,40 +38,34 @@ export const store = <V>(orignalValue: V) => {
      */
     if (isPrimitiveType(orignalValue)) {
       const ref: { current: null | G } = { current: null };
-      if (rootValue.root === null) {
-        (rootValue as S).root = orignalValue;
-      }
-      if (renew) {
-        const run = () => renew(ref.current!);
+      const run = () => renew(ref.current!);
 
-        ref.current = new ShelfPrimitive(
-          orignalValue,
-          () => {
-            collector(
-              orignalValue,
-              () => rootValue.root as V,
-              ['root'],
-              run,
-              storeRenderList,
-              newValue => {
-                (ref.current as ShelfPrimitive<V>).setValue(newValue);
-              }
-            );
+      ref.current = new ShelfPrimitive(
+        orignalValue,
+        rootValue,
+        () => {
+          collector(
+            orignalValue,
+            () => rootValue.root as V,
+            ['root'],
+            run,
+            storeRenderList
+          );
 
-            return (value: V) => {
-              (rootValue as S).root = value;
-            };
-          },
-          () => {
-            runner(storeRenderList);
-          }
-        ) as unknown as G;
+          return (value: V) => {
+            (ref.current as ShelfPrimitive<V>).setValue(value);
+            (rootValue as S).root = value;
+          };
+        },
+        () => {
+          runner(storeRenderList);
+        }
+      ) as unknown as G;
 
-        // 처음 실행시 abort 이벤트 리스너에 추가
-        runFirstEmit(run, storeRenderList, cacheMap, renew);
+      // 처음 실행시 abort 이벤트 리스너에 추가
+      runFirstEmit(run, storeRenderList, cacheMap, renew);
 
-        cacheMap.set(renew, ref.current!);
-      }
+      cacheMap.set(renew, ref.current!);
 
       return ref.current! as G;
     }
@@ -79,25 +73,19 @@ export const store = <V>(orignalValue: V) => {
     /**
      * 객체일때는 프록시 만들어서 리턴
      */
-    const initialValue = orignalValue;
-    if (rootValue.root === null) {
-      (rootValue as S).root = initialValue;
-    }
     const ref: { current: null | T } = { current: null };
 
-    if (renew) {
-      const run = () => renew(ref.current!.root);
-      ref.current = makeProxy<S, T, V>(rootValue as S, storeRenderList, run);
+    const run = () => renew(ref.current!.root);
+    ref.current = makeProxy<S, T, V>(rootValue as S, storeRenderList, run);
 
-      // 처음 실행시 abort 이벤트 리스너에 추가
-      runFirstEmit(run, storeRenderList, cacheMap, renew);
+    // 처음 실행시 abort 이벤트 리스너에 추가
+    runFirstEmit(run, storeRenderList, cacheMap, renew);
 
-      cacheMap.set(renew, ref.current!.root);
-    }
+    cacheMap.set(renew, ref.current!.root);
 
     return ref.current!.root;
   };
-};
+}
 
 const runFirstEmit = <V, G>(
   run: Run,

@@ -1,1 +1,3 @@
-export { store } from '@/main';
+import lenshelf from '@/main';
+
+export default lenshelf;

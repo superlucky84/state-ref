@@ -11,6 +11,7 @@ export const runner = <V>(storeRenderList: StoreRenderList<V>) => {
         if (value !== nextValue) {
           runableRenewList.add(run);
           item.value = nextValue;
+
           if (primitiveSetter) {
             primitiveSetter(nextValue);
           }
@@ -26,5 +27,5 @@ export const runner = <V>(storeRenderList: StoreRenderList<V>) => {
       storeRenderList.delete(run);
     }
   });
-  // runableRenewList.clear();
+  runableRenewList.clear();
 };

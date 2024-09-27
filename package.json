@@ -1,11 +1,11 @@
 {
   "type": "module",
-  "name": "state-shelves",
+  "name": "lenshelf",
   "version": "0.0.1",
   "description": "X UI Library Universal State Management Library",
   "packageManager": "pnpm@7.6.0",
-  "main": "./dist/state-shelves.umd.js",
-  "module": "./dist/state-shelves.mjs",
+  "main": "./dist/lenshelf.umd.js",
+  "module": "./dist/lenshelf.mjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -17,8 +17,8 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/state-shelves.mjs",
-      "require": "./dist/state-shelves.umd.js"
+      "import": "./dist/lenshelf.mjs",
+      "require": "./dist/lenshelf.umd.js"
     }
   },
   "types": "./dist/index.d.ts",
@@ -29,13 +29,13 @@
   "author": "superlucky84",
   "repository": {
     "type": "git",
-    "url": "https://github.com/superlucky84/state-shelves.git"
+    "url": "https://github.com/superlucky84/lenshelf.git"
     
   },
-  "homepage": "https://github.com/superlucky84/state-shelves",
+  "homepage": "https://github.com/superlucky84/lenshelf",
   "license": "MIT",
   "keywords": [
-    "state-shelves"
+    "lenshelf"
   ],
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^5.60.0",
