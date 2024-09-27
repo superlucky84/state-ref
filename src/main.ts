@@ -21,6 +21,7 @@ export const store = <V>(orignalValue: V) => {
 
   const storeRenderList: StoreRenderList<V> = new Map();
   const cacheMap = new WeakMap<Renew<G>, G>();
+  const rootValue: S | { root: null } = { root: null };
 
   return (renew?: Renew<G>, userOption?: { cache?: boolean }): G => {
     /**
@@ -77,12 +78,12 @@ export const store = <V>(orignalValue: V) => {
      * 객체일때는 프록시 만들어서 리턴
      */
     const initialValue = orignalValue;
-    const value: S = { root: initialValue };
+    (rootValue as S).root = initialValue;
     const ref: { current: null | T } = { current: null };
 
     if (renew) {
       const run = () => renew(ref.current!.root);
-      ref.current = makeProxy<S, T, V>(value, storeRenderList, run);
+      ref.current = makeProxy<S, T, V>(rootValue as S, storeRenderList, run);
 
       // 처음 실행시 abort 이벤트 리스너에 추가
       runFirstEmit(run, storeRenderList, cacheMap, renew);
