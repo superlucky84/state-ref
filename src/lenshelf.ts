@@ -1,18 +1,10 @@
-import { makeProxy } from '@/makeProxy';
-import { ShelfPrimitive } from '@/shelf';
-import { isPrimitiveType } from '@/helper';
-import { collector } from '@/collector';
-import { runner } from '@/runner';
+import { makeProxy } from '@/proxy';
+import { ShelfRoot } from '@/shelf/ShelfRoot';
+import { isPrimitiveType, DEFAULT_OPTION } from '@/helper';
+import { collector } from '@/connectors/collector';
+import { firstRunner, runner } from '@/connectors/runner';
 
-import type {
-  Renew,
-  StoreType,
-  WrapWithValue,
-  Run,
-  StoreRenderList,
-} from '@/types';
-
-const DEFAULT_OPTION = { cache: true };
+import type { Renew, StoreType, WrapWithValue, StoreRenderList } from '@/types';
 
 export const lenshelf = <V>(orignalValue: V) => {
   type S = StoreType<V>; // 처음 제공받는 값 타입 V에 root를 달음
@@ -40,7 +32,7 @@ export const lenshelf = <V>(orignalValue: V) => {
       const ref: { current: null | G } = { current: null };
       const run = () => renew(ref.current!);
 
-      ref.current = new ShelfPrimitive(
+      ref.current = new ShelfRoot(
         orignalValue,
         rootValue,
         () => {
@@ -51,7 +43,7 @@ export const lenshelf = <V>(orignalValue: V) => {
             run,
             storeRenderList,
             newValue => {
-              (ref.current as ShelfPrimitive<V>).setValue(newValue);
+              (ref.current as ShelfRoot<V>).setValue(newValue);
             }
           );
         },
@@ -61,7 +53,7 @@ export const lenshelf = <V>(orignalValue: V) => {
       ) as unknown as G;
 
       // 처음 실행시 abort 이벤트 리스너에 추가
-      runFirstEmit(run, storeRenderList, cacheMap, renew);
+      firstRunner(run, storeRenderList, cacheMap, renew);
 
       cacheMap.set(renew, ref.current!);
 
@@ -77,26 +69,10 @@ export const lenshelf = <V>(orignalValue: V) => {
     ref.current = makeProxy<S, T, V>(rootValue as S, storeRenderList, run);
 
     // 처음 실행시 abort 이벤트 리스너에 추가
-    runFirstEmit(run, storeRenderList, cacheMap, renew);
+    firstRunner(run, storeRenderList, cacheMap, renew);
 
     cacheMap.set(renew, ref.current!.root);
 
     return ref.current!.root;
   };
-};
-
-const runFirstEmit = <V, G>(
-  run: Run,
-  storeRenderList: StoreRenderList<V>,
-  cacheMap: WeakMap<Renew<G>, G>,
-  renew: Renew<G>
-) => {
-  const renewResult = run!();
-
-  if (renewResult instanceof AbortSignal) {
-    renewResult.addEventListener('abort', () => {
-      cacheMap.delete(renew);
-      storeRenderList.delete(run);
-    });
-  }
 };

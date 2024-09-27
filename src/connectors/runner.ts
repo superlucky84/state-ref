@@ -1,4 +1,4 @@
-import type { Run, StoreRenderList } from '@/types';
+import type { Run, Renew, StoreRenderList } from '@/types';
 
 export const runner = <V>(storeRenderList: StoreRenderList<V>) => {
   const runableRenewList: Set<Run> = new Set();
@@ -36,4 +36,20 @@ export const runner = <V>(storeRenderList: StoreRenderList<V>) => {
     }
   });
   runableRenewList.clear();
+};
+
+export const firstRunner = <V, G>(
+  run: Run,
+  storeRenderList: StoreRenderList<V>,
+  cacheMap: WeakMap<Renew<G>, G>,
+  renew: Renew<G>
+) => {
+  const renewResult = run!();
+
+  if (renewResult instanceof AbortSignal) {
+    renewResult.addEventListener('abort', () => {
+      cacheMap.delete(renew);
+      storeRenderList.delete(run);
+    });
+  }
 };

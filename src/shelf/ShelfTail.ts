@@ -5,7 +5,7 @@ import type { StoreType } from '@/types';
 /**
  * 프록시에서 하위 프리미티브 타입으로 접근했을때 선반 만들기
  */
-export class Shelf<V, S extends StoreType<V>> {
+export class ShelfTail<V, S extends StoreType<V>> {
   protected v: V;
   private depth: string[];
   private lensValue: Lens<S, S>;
@@ -44,44 +44,6 @@ export class Shelf<V, S extends StoreType<V>> {
         .set(newValue as S[keyof S])(this.rootValue);
 
       this.rootValue.root = newTree.root;
-      this.runner();
-    }
-  }
-}
-
-/**
- * ROOT에서 프리미티브 타입으로 선언하여 접근할때
- */
-export class ShelfPrimitive<V> {
-  public v: V;
-  private rootValue: StoreType<V>;
-  private runCollector: () => void;
-  private runner: () => void;
-
-  constructor(
-    propertyValue: V,
-    rootValue: StoreType<V>,
-    runCollector: () => void,
-    runner: () => void
-  ) {
-    this.v = propertyValue;
-    this.rootValue = rootValue;
-    this.runCollector = runCollector;
-    this.runner = runner;
-  }
-
-  get value() {
-    this.runCollector();
-
-    return this.v;
-  }
-  setValue(newValue: V) {
-    this.v = newValue;
-  }
-  set value(newValue: V) {
-    if (this.v !== newValue) {
-      this.v = newValue;
-      this.rootValue.root = newValue;
       this.runner();
     }
   }

@@ -1,9 +1,9 @@
 import { lens } from '@/lens';
 import type { Lens } from '@/lens';
 import { makeDisplayProxyValue } from '@/helper';
-import { collector } from '@/collector';
-import { runner } from '@/runner';
-import { Shelf } from '@/shelf';
+import { collector } from '@/connectors/collector';
+import { runner } from '@/connectors/runner';
+import { ShelfTail } from '@/shelf/ShelfTail';
 import type { Run, WithRoot, StoreRenderList } from '@/types';
 
 export const makeProxy = <S extends WithRoot, T extends WithRoot, V>(
@@ -58,7 +58,7 @@ export const makeProxy = <S extends WithRoot, T extends WithRoot, V>(
         /**
          * 프록시에서 하위 프리미티브 타입으로 접근할때
          */
-        return new Shelf(
+        return new ShelfTail(
           propertyValue,
           newDepthList,
           lensValue,

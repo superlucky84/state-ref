@@ -1,5 +1,7 @@
 import type { PrivitiveType } from '@/types';
 
+export const DEFAULT_OPTION = { cache: true };
+
 export const makeDisplayProxyValue = <T>(depty: number, value: object) => {
   if (depty === 1) {
     return (Array.isArray(value) ? ['value'] : { value: '..' }) as T;
