@@ -46,16 +46,14 @@ export default function lenshelf<V>(orignalValue: V) {
         () => {
           collector(
             orignalValue,
-            () => rootValue.root as V,
+            () => rootValue.root,
             ['root'],
             run,
-            storeRenderList
+            storeRenderList,
+            newValue => {
+              (ref.current as ShelfPrimitive<V>).setValue(newValue);
+            }
           );
-
-          return (value: V) => {
-            (ref.current as ShelfPrimitive<V>).setValue(value);
-            (rootValue as S).root = value;
-          };
         },
         () => {
           runner(storeRenderList);

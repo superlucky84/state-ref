@@ -55,13 +55,13 @@ export class Shelf<V, S extends StoreType<V>> {
 export class ShelfPrimitive<V> {
   public v: V;
   private rootValue: StoreType<V>;
-  private runCollector: () => (value: V) => void;
+  private runCollector: () => void;
   private runner: () => void;
 
   constructor(
     propertyValue: V,
     rootValue: StoreType<V>,
-    runCollector: () => (value: V) => void,
+    runCollector: () => void,
     runner: () => void
   ) {
     this.v = propertyValue;
