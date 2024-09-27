@@ -53,7 +53,7 @@ export class Shelf<V, S extends StoreType<V>> {
  * ROOT에서 프리미티브 타입으로 선언하여 접근할때
  */
 export class ShelfPrimitive<V> {
-  private v: V;
+  public v: V;
   private runCollector: () => (value: V) => void;
   private newValueSetter: ((value: V) => void) | null;
   private runner: () => void;
@@ -73,6 +73,9 @@ export class ShelfPrimitive<V> {
     this.newValueSetter = this.runCollector();
 
     return this.v;
+  }
+  setValue(newValue: V) {
+    this.v = newValue;
   }
   set value(newValue: V) {
     if (this.newValueSetter) {

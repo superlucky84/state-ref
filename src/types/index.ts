@@ -23,6 +23,7 @@ export type RunInfo<A> = {
   value: A;
   getNextValue: () => A;
   key: string;
+  primitiveSetter?: (newValue: A) => void;
 };
 
 export type RenderListSub<A> = Map<string, RunInfo<A>>;

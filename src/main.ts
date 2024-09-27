@@ -38,33 +38,35 @@ export const store = <V>(orignalValue: V) => {
      */
     if (isPrimitiveType(orignalValue)) {
       const ref: { current: null | G } = { current: null };
-
-      ref.current = new ShelfPrimitive(
-        orignalValue,
-        () => {
-          let newValue: V = orignalValue;
-          if (renew) {
-            const run = () => renew(ref.current!);
-            collector(
-              orignalValue,
-              () => newValue as V & undefined,
-              ['root'],
-              run,
-              storeRenderList
-            );
-          }
-
-          return (value: V) => {
-            newValue = value;
-          };
-        },
-        () => {
-          runner(storeRenderList);
-        }
-      ) as unknown as G;
-
+      if (rootValue.root === null) {
+        (rootValue as S).root = orignalValue;
+      }
       if (renew) {
         const run = () => renew(ref.current!);
+
+        ref.current = new ShelfPrimitive(
+          orignalValue,
+          () => {
+            collector(
+              orignalValue,
+              () => rootValue.root as V,
+              ['root'],
+              run,
+              storeRenderList,
+              newValue => {
+                (ref.current as ShelfPrimitive<V>).setValue(newValue);
+              }
+            );
+
+            return (value: V) => {
+              (rootValue as S).root = value;
+            };
+          },
+          () => {
+            runner(storeRenderList);
+          }
+        ) as unknown as G;
+
         // 처음 실행시 abort 이벤트 리스너에 추가
         runFirstEmit(run, storeRenderList, cacheMap, renew);
 
@@ -78,7 +80,9 @@ export const store = <V>(orignalValue: V) => {
      * 객체일때는 프록시 만들어서 리턴
      */
     const initialValue = orignalValue;
-    (rootValue as S).root = initialValue;
+    if (rootValue.root === null) {
+      (rootValue as S).root = initialValue;
+    }
     const ref: { current: null | T } = { current: null };
 
     if (renew) {

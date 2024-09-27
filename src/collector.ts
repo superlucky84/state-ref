@@ -5,12 +5,14 @@ export function collector<V>(
   getNextValue: () => V,
   newDepthList: string[],
   run: Run,
-  storeRenderList: StoreRenderList<V>
+  storeRenderList: StoreRenderList<V>,
+  primitiveSetter?: (newValue: V) => void
 ) {
   const runInfo: RunInfo<typeof value> = {
     value,
     getNextValue,
     key: newDepthList.join('.'),
+    primitiveSetter,
   };
 
   if (run) {
@@ -21,8 +23,10 @@ export function collector<V>(
       }
     } else {
       const subList = new Map<string, typeof runInfo>();
-      subList.set(runInfo.key, runInfo);
-      storeRenderList.set(run, subList);
+      if (!subList!.has(runInfo.key)) {
+        subList.set(runInfo.key, runInfo);
+        storeRenderList.set(run, subList);
+      }
     }
   }
 }
