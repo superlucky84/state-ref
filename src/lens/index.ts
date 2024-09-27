@@ -1,5 +1,7 @@
 export type Lens<T, U> = LensImpl<T, U> & LensProxy<T, U>;
 export type LensProxy<T, U> = { readonly [K in keyof U]: Lens<T, U[K]> };
+export type Getter<T, V> = (target: T) => V;
+export type Setter<T> = (target: T) => T;
 
 export class LensImpl<T, U> {
   constructor(
@@ -48,9 +50,6 @@ export class LensImpl<T, U> {
     }
   }
 }
-
-export type Getter<T, V> = (target: T) => V;
-export type Setter<T> = (target: T) => T;
 
 function copy<T>(x: T): T {
   if (Array.isArray(x)) {
