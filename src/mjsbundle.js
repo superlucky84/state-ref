@@ -90,7 +90,7 @@ function runner(storeRenderList) {
   runableRenewList.clear();
 }
 function firstRunner(run, storeRenderList, cacheMap, renew) {
-  const renewResult = run();
+  const renewResult = run(true);
   if (renewResult instanceof AbortSignal) {
     renewResult.addEventListener("abort", () => {
       cacheMap.delete(renew);
@@ -106,7 +106,7 @@ function makePrimitive({
   cacheMap
 }) {
   const ref = { current: null };
-  const run = () => renew(ref.current);
+  const run = (isFirst) => renew(ref.current, isFirst ?? false);
   ref.current = new ShelfRoot(
     orignalValue,
     rootValue,
@@ -224,9 +224,13 @@ class ShelfTail {
     const prop = this.depth.at(-1);
     if (newValue !== this.lensValue.get()(this.rootValue)) {
       const newTree = this.lensValue.k(prop).set(newValue)(this.rootValue);
+      this._value = newValue;
       this.rootValue.root = newTree.root;
       this.runner();
     }
+  }
+  setValue(newValue) {
+    this._value = newValue;
   }
 }
 function makeProxy(value, storeRenderList, run, rootValue = value, lensValue = lens(), depth = 0, depthList = []) {
@@ -266,7 +270,7 @@ function makeProxy(value, storeRenderList, run, rootValue = value, lensValue = l
           newDepthList
         );
       }
-      return new ShelfTail(
+      const shelfTail = new ShelfTail(
         propertyValue,
         newDepthList,
         lensValue,
@@ -277,13 +281,17 @@ function makeProxy(value, storeRenderList, run, rootValue = value, lensValue = l
             () => lens2.get()(rootValue),
             newDepthList,
             run,
-            storeRenderList
+            storeRenderList,
+            (newValue) => {
+              shelfTail.setValue(newValue);
+            }
           );
         },
         () => {
           runner(storeRenderList);
         }
       );
+      return shelfTail;
     },
     /**
      * value에 값을 할당할때는 copyOnWrite를 해준다.
@@ -313,7 +321,7 @@ function makeObject({
   const ref = {
     current: null
   };
-  const run = () => renew(ref.current.root);
+  const run = (isFirst) => renew(ref.current.root, isFirst ?? false);
   ref.current = makeProxy(
     rootValue,
     storeRenderList,
@@ -348,3 +356,4 @@ function makeLenshelf(orignalValue) {
 export {
   makeLenshelf as default
 };
+//# sourceMappingURL=lenshelf.mjs.map
