@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watchEffect, onMounted } from 'vue';
+import { ref, watchEffect, onMounted, onUnmounted } from 'vue';
 import lenshelf from '@/index';
 
 const subscribe = lenshelf({
@@ -10,45 +10,33 @@ const subscribe = lenshelf({
 // @ts-ignore
 window.p = subscribe();
 
-function useForceUpdate() {
-  const update = ref(0);
+// reactive state
+const name = ref('');
+const age = ref('');
 
-  const forceUpdate = (state, isFirst) => {
-    console.log('jjj', isFirst);
-    update.value += 1;
-  };
 
-  return [update, forceUpdate];
-}
+const useShelf = (callback) => {
+  const abortController = new AbortController();
 
-const useNumberShelf = () => {
-  const [update, forceUpdate] = useForceUpdate();
-  const shelf = subscribe(forceUpdate);
-  
-  // watchEffect로 상태 변화를 감지하여 업데이트합니다.
-  watchEffect(() => {
-    console.log('Shelf name or age changed:', shelf.name.value, shelf.age.value);
-    forceUpdate();
+  subscribe(shelf => {
+    callback(shelf);
+
+    return abortController.signal;
   });
 
-  return [shelf, update];
+  onUnmounted(() => {
+    abortController.abort();
+  });
 };
-const [shelf, update] = useNumberShelf();
 
-// reactive state
-const count = ref(0);
-
-// functions that mutate state and trigger updates
-function increment() {
-  count.value++;
-}
-
-// lifecycle hooks
-onMounted(() => {
-  console.log(`The initial count is ${count.value}.`);
+useShelf(({ name: n, age: a }) => {
+  name.value = n.value;
+  age.value = a.value;
 });
+
+
 </script>
 
 <template>
-  <button @click="increment">Count is: {{ count }} = {{ shelf.name.value }}</button>
+  <button @click="increment">Count is: {{ name }} {{ age }}</button>
 </template>
