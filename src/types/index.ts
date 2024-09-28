@@ -5,7 +5,7 @@
  */
 export type Renew<G> = (
   store: G,
-  isFirst?: boolean
+  isFirst: boolean
 ) => boolean | AbortSignal | void;
 export type Run = null | ((isFirst?: boolean) => boolean | AbortSignal | void);
 export type StoreType<V> = { root: V };
@@ -17,6 +17,8 @@ export type WrapWithValue<S> = S extends object
       value: { [K in keyof S]: WrapWithValue<S[K]> } & { value: S };
     }
   : { value: S };
+
+export type ShelfStore<V> = WrapWithValue<V>;
 
 export type PrivitiveType =
   | string
