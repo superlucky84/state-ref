@@ -17,7 +17,7 @@ export function makeObject<V>({
   const ref: { current: null | WrapWithValue<StoreType<V>> } = {
     current: null,
   };
-  const run = () => renew(ref.current!.root);
+  const run = (isFirst?: boolean) => renew(ref.current!.root, isFirst ?? false);
 
   ref.current = makeProxy<StoreType<V>, WrapWithValue<StoreType<V>>, V>(
     rootValue,

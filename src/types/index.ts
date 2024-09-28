@@ -3,8 +3,11 @@
  * G WrapWithValue<V>; // 끝에 root가 안달린 상태 끝에 value를 달음
  * T WrapWithValue<StoreType<V>>; // 끝에 root가 달린 상태 끝에 value를 달음
  */
-export type Renew<T> = (store: T) => boolean | AbortSignal | void;
-export type Run = null | (() => boolean | AbortSignal | void);
+export type Renew<G> = (
+  store: G,
+  isFirst?: boolean
+) => boolean | AbortSignal | void;
+export type Run = null | ((isFirst?: boolean) => boolean | AbortSignal | void);
 export type StoreType<V> = { root: V };
 export type WithRoot = { root: unknown } & { [key: string | symbol]: unknown };
 export type WrapWithValue<S> = S extends object

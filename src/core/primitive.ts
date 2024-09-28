@@ -18,7 +18,7 @@ export function makePrimitive<V>({
   cacheMap: WeakMap<Renew<WrapWithValue<V>>, WrapWithValue<V>>;
 }) {
   const ref: { current: null | WrapWithValue<V> } = { current: null };
-  const run = () => renew(ref.current!);
+  const run = (isFirst?: boolean) => renew(ref.current!, isFirst ?? false);
 
   ref.current = new ShelfRoot(
     orignalValue,
