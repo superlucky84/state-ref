@@ -10,29 +10,32 @@ const subscribe = lenshelf({
 // @ts-ignore
 window.p = subscribe();
 
-// reactive state
-const name = ref('');
-const age = ref('');
 
-
-const useShelf = (callback) => {
+const useShelf = (callback, watcher) => {
   const abortController = new AbortController();
-
-  subscribe(shelf => {
-    callback(shelf);
-
-    return abortController.signal;
-  });
 
   onUnmounted(() => {
     abortController.abort();
   });
+
+  return subscribe(shelf => {
+    callback(shelf);
+
+    return abortController.signal;
+  });
 };
 
-useShelf(({ name: n, age: a }) => {
+const name = ref('');
+const age = ref('');
+
+const { name: n, age: a } = useShelf(({ name: n, age: a }) => {
   name.value = n.value;
   age.value = a.value;
 });
+
+const increment = () => {
+  a.value += 1;
+};
 
 
 </script>

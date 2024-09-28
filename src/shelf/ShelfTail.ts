@@ -44,8 +44,13 @@ export class ShelfTail<V, S extends StoreType<V>> {
         .k(prop as keyof S)
         .set(newValue as S[keyof S])(this.rootValue);
 
+      this._value = newValue;
       this.rootValue.root = newTree.root;
       this.runner();
     }
+  }
+
+  setValue(newValue: V) {
+    this._value = newValue;
   }
 }

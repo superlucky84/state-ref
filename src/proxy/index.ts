@@ -68,7 +68,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
       /**
        * 프록시에서 하위 프리미티브 타입으로 접근할때
        */
-      return new ShelfTail(
+      const shelfTail = new ShelfTail(
         propertyValue,
         newDepthList,
         lensValue,
@@ -79,13 +79,17 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
             () => lens.get()(rootValue),
             newDepthList,
             run,
-            storeRenderList
+            storeRenderList,
+            newValue => {
+              shelfTail.setValue(newValue);
+            }
           );
         },
         () => {
           runner(storeRenderList);
         }
       );
+      return shelfTail;
     },
     /**
      * value에 값을 할당할때는 copyOnWrite를 해준다.
