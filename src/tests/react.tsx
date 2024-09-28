@@ -1,5 +1,5 @@
-import { h, render } from 'preact';
-import { useState, useRef, useEffect } from 'preact/hooks';
+import { createElement as h, useState, useRef, useEffect } from 'react';
+import { createRoot } from 'react-dom/client';
 
 import lenshelf from '@/index';
 import type { ShelfStore } from '@/index';
@@ -9,9 +9,8 @@ function useForceUpdate<T>() {
   const [, setDummy] = useState(0);
   const abortController = useRef(new AbortController());
   const forceUpdateRef = useRef((_: ShelfStore<T>, isFirst: Boolean) => {
-    console.log('ISFIRST', isFirst);
     if (!isFirst) {
-      setDummy(prev => (prev < 100 ? prev + 1 : 0));
+      setDummy((prev: any) => (prev < 100 ? prev + 1 : 0));
     }
 
     return abortController.current.signal;
@@ -48,5 +47,5 @@ function Age() {
   return <div>bb = {shelf.name.value}</div>;
 }
 
-render(<Age />, document.getElementById('root') as HTMLElement);
-render(<Name />, document.getElementById('root2') as HTMLElement);
+createRoot(document.getElementById('root') as HTMLElement).render(<Age />);
+createRoot(document.getElementById('root2') as HTMLElement).render(<Name />);
