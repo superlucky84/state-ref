@@ -1,4 +1,4 @@
-import type { Run, Renew, WrapWithValue, StoreRenderList } from '@/types';
+import type { Run, Renew, ShelfStore, StoreRenderList } from '@/types';
 
 export function runner<V>(storeRenderList: StoreRenderList<V>) {
   const runableRenewList: Set<Run> = new Set();
@@ -41,8 +41,8 @@ export function runner<V>(storeRenderList: StoreRenderList<V>) {
 export function firstRunner<V>(
   run: Run,
   storeRenderList: StoreRenderList<V>,
-  cacheMap: WeakMap<Renew<WrapWithValue<V>>, WrapWithValue<V>>,
-  renew: Renew<WrapWithValue<V>>
+  cacheMap: WeakMap<Renew<ShelfStore<V>>, ShelfStore<V>>,
+  renew: Renew<ShelfStore<V>>
 ) {
   const renewResult = run!(true);
 

@@ -2,7 +2,7 @@ import { isPrimitiveType, DEFAULT_OPTION } from '@/helper';
 import { makePrimitive } from '@/core/primitive';
 import { makeObject } from '@/core/object';
 
-import type { Renew, StoreType, WrapWithValue, StoreRenderList } from '@/types';
+import type { Renew, StoreType, ShelfStore, StoreRenderList } from '@/types';
 
 /**
  * shelf 스토어를 만들어 준다
@@ -11,13 +11,13 @@ import type { Renew, StoreType, WrapWithValue, StoreRenderList } from '@/types';
  */
 export function makeLenshelf<V>(orignalValue: V) {
   const storeRenderList: StoreRenderList<V> = new Map();
-  const cacheMap = new WeakMap<Renew<WrapWithValue<V>>, WrapWithValue<V>>();
+  const cacheMap = new WeakMap<Renew<ShelfStore<V>>, ShelfStore<V>>();
   const rootValue: StoreType<V> = { root: orignalValue };
 
   return (
-    renew: Renew<WrapWithValue<V>> = () => {},
+    renew: Renew<ShelfStore<V>> = () => {},
     userOption?: { cache?: boolean }
-  ): WrapWithValue<V> => {
+  ): ShelfStore<V> => {
     /**
      * 캐시처리
      */

@@ -1,4 +1,6 @@
+// @ts-ignore
 import { createElement as h, useState, useRef, useEffect } from 'react';
+// @ts-ignore
 import { createRoot } from 'react-dom/client';
 
 import lenshelf from '@/index';

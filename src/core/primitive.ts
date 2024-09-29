@@ -2,7 +2,7 @@ import { ShelfRoot } from '@/shelf/ShelfRoot';
 import { collector } from '@/connectors/collector';
 import { firstRunner, runner } from '@/connectors/runner';
 
-import type { Renew, StoreType, WrapWithValue, StoreRenderList } from '@/types';
+import type { Renew, StoreType, ShelfStore, StoreRenderList } from '@/types';
 
 export function makePrimitive<V>({
   renew,
@@ -11,13 +11,13 @@ export function makePrimitive<V>({
   storeRenderList,
   cacheMap,
 }: {
-  renew: Renew<WrapWithValue<V>>;
+  renew: Renew<ShelfStore<V>>;
   orignalValue: V;
   rootValue: StoreType<V>;
   storeRenderList: StoreRenderList<V>;
-  cacheMap: WeakMap<Renew<WrapWithValue<V>>, WrapWithValue<V>>;
+  cacheMap: WeakMap<Renew<ShelfStore<V>>, ShelfStore<V>>;
 }) {
-  const ref: { current: null | WrapWithValue<V> } = { current: null };
+  const ref: { current: null | ShelfStore<V> } = { current: null };
   const run = (isFirst?: boolean) => renew(ref.current!, isFirst ?? false);
 
   ref.current = new ShelfRoot(
@@ -38,12 +38,12 @@ export function makePrimitive<V>({
     () => {
       runner(storeRenderList);
     }
-  ) as unknown as WrapWithValue<V>;
+  ) as unknown as ShelfStore<V>;
 
   // 처음 실행시 abort 이벤트 리스너에 추가
   firstRunner(run, storeRenderList, cacheMap, renew);
 
   cacheMap.set(renew, ref.current!);
 
-  return ref.current! as WrapWithValue<V>;
+  return ref.current! as ShelfStore<V>;
 }
