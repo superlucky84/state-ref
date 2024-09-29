@@ -14,6 +14,11 @@ const subscribe = lenshelf<{ name: string; age: number }>({
   age: 13,
 });
 
+const sss = subscribe(store => {
+  console.log(store.age.value);
+});
+console.log(sss.age.value);
+
 const p = subscribe();
 
 //@ts-ignore

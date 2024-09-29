@@ -38,7 +38,7 @@ const proxy = subscribe(state => {
   console.log('2', state.a.a12.value);
   return abortController.signal;
 });
-console.log(proxy.a.value);
+console.log(proxy.a.a12.value);
 
 /*
 const proxy2 = subscribe(state => {
