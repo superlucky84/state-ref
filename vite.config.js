@@ -3,6 +3,7 @@ import { defineConfig } from 'vite';
 import checker from 'vite-plugin-checker';
 import dts from 'vite-plugin-dts';
 import vue from '@vitejs/plugin-vue';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
 
 export default defineConfig({
   plugins: [
@@ -16,6 +17,7 @@ export default defineConfig({
       outputDir: ['dist'],
     }),
     vue(),
+    svelte(),
   ],
   resolve: {
     alias: {

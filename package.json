@@ -24,10 +24,7 @@
     }
   },
   "types": "./dist/index.d.ts",
-  "files": [
-    "src",
-    "dist"
-  ],
+  "files": ["src", "dist"],
   "author": "superlucky84",
   "repository": {
     "type": "git",
@@ -35,9 +32,7 @@
   },
   "homepage": "https://github.com/superlucky84/lenshelf",
   "license": "MIT",
-  "keywords": [
-    "lenshelf"
-  ],
+  "keywords": ["lenshelf"],
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^5.60.0",
     "@typescript-eslint/parser": "^5.60.0",
@@ -54,6 +49,8 @@
     "prettier": "^2.8.8",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "@sveltejs/vite-plugin-svelte": "^3.1.2",
+    "svelte": "^4.2.19",
     "terser": "^5.18.1",
     "typescript": "^4.9.5",
     "vite": "^5.2.0",

@@ -18,7 +18,7 @@ function createVueShelfHook<T>(subscribe: Subscribe<T>) {
       if (vueRefs.length) {
         vueRefs.forEach((refItem, index) => {
           if (refItem.value !== shelves[index].value) {
-            refItem.value !== shelves[index].value;
+            refItem.value = shelves[index].value;
           }
         });
       }
