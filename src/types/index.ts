@@ -19,6 +19,10 @@ export type WrapWithValue<S> = S extends object
   : { value: S };
 
 export type ShelfStore<V> = WrapWithValue<V>;
+export type Subscribe<V> = (
+  renew: Renew<ShelfStore<V>>,
+  userOption?: { cache?: boolean }
+) => ShelfStore<V>;
 
 export type PrivitiveType =
   | string
