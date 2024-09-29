@@ -2,13 +2,19 @@ import lenshelf from '@/index';
 
 const subscribe = lenshelf<{
   a: {
-    a1: number;
+    a1: {
+      a: string[];
+      b: number;
+    };
     a2: number;
     a3: number;
   };
 }>({
   a: {
-    a1: 1,
+    a1: {
+      a: ['k', 'j', 'w'],
+      b: 2,
+    },
     a2: 2,
     a3: 3,
   },

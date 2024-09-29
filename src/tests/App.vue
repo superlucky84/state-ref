@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watchEffect, onMounted, onUnmounted } from 'vue';
+import { ref, watchEffect, watch, onMounted, onUnmounted } from 'vue';
 import lenshelf from '@/index';
 
 const subscribe = lenshelf({
@@ -10,34 +10,54 @@ const subscribe = lenshelf({
 // @ts-ignore
 window.p = subscribe();
 
-
-const useShelf = (callback, watcher) => {
+const useShelf = callback => {
   const abortController = new AbortController();
+  const vueRefs = [];
+  let shelves = [];
 
   onUnmounted(() => {
     abortController.abort();
   });
 
-  return subscribe(shelf => {
-    callback(shelf);
+  subscribe(shelf => {
+    shelves = callback(shelf);
+    if (vueRefs.length) {
+      vueRefs.forEach((refItem, index) => {
+        if (refItem.value !== shelves[index].value) {
+          refItem.value !== shelves[index].value;
+        }
+      });
+    }
 
     return abortController.signal;
   });
+
+  vueRefs.push(
+    ...shelves.map(shelfItem => {
+      return ref(shelfItem.value);
+    })
+  );
+
+  watch(vueRefs, (newValues) => {
+    newValues.forEach((newValueItem, index) => {
+      if (shelves[index].value !== newValueItem) {
+        shelves[index].value = newValueItem;
+      }
+    });
+  });
+
+  return [...vueRefs];
 };
 
-const name = ref('');
-const age = ref('');
-
-const { name: n, age: a } = useShelf(({ name: n, age: a }) => {
-  name.value = n.value;
-  age.value = a.value;
+const [name, age] = useShelf(({ name, age }) => {
+  return [name, age];
 });
 
+console.log(name, age);
+
 const increment = () => {
-  a.value += 1;
+  age.value += 1;
 };
-
-
 </script>
 
 <template>
