@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'preact/hooks';
 import lenshelf from '@/index';
 import type { ShelfStore, Subscribe } from '@/index';
 
-function createPreactShelfHook<T>(subscribe: Subscribe<T>) {
+function connectShelfWithPreact<T>(subscribe: Subscribe<T>) {
   // 커스텀 훅을 정의하여 forceUpdate 기능과 abort를 제공합니다.
   const useForceUpdate = () => {
     const [, setDummy] = useState(0);
@@ -31,7 +31,7 @@ const subscribe = lenshelf<{ name: string; age: number }>({
   age: 13,
 });
 
-const usePofileStore = createPreactShelfHook(subscribe);
+const usePofileStore = connectShelfWithPreact(subscribe);
 
 const p = subscribe();
 

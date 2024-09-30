@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client';
 import lenshelf from '@/index';
 import type { ShelfStore, Subscribe } from '@/index';
 
-function createReactShelfHook<T>(subscribe: Subscribe<T>) {
+function connectShelfWithReact<T>(subscribe: Subscribe<T>) {
   // 커스텀 훅을 정의하여 forceUpdate 기능과 abort를 제공합니다.
   const useForceUpdate = () => {
     const [, setDummy] = useState(0);
@@ -33,7 +33,7 @@ const subscribe = lenshelf<{ name: string; age: number }>({
   age: 13,
 });
 
-const usePofileStore = createReactShelfHook(subscribe);
+const usePofileStore = connectShelfWithReact(subscribe);
 
 const p = subscribe();
 

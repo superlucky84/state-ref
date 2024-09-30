@@ -1,28 +1,18 @@
 import { h, mount, render } from 'lithent';
 import lenshelf from '@/index';
-/*
-    "@types/react": "^18.3.10",
-    "@types/react-dom": "^18.3.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
- */
-
-// 커스텀 훅을 정의하여 forceUpdate 기능과 abort를 제공합니다.
 
 const subscribe = lenshelf<{ name: string; age: number }>({
   name: 'brown',
   age: 13,
 });
 
-const sss = subscribe(store => {
+const store = subscribe(store => {
   console.log(store.age.value);
 });
-console.log(sss.age.value);
-
-const p = subscribe();
+console.log(store.age.value);
 
 //@ts-ignore
-window.p = p;
+window.p = store;
 
 const Name = mount(renew => {
   const shelf = subscribe(renew);
@@ -30,11 +20,11 @@ const Name = mount(renew => {
   return () => <div>aa = {shelf.name.value}</div>;
 });
 
-const Age = mount<{ a: number }>(renew => {
+const Age = mount(renew => {
   const shelf = subscribe(renew);
 
   return () => <div>aa = {shelf.age.value}</div>;
 });
 
-render(<Age a={3} />, document.getElementById('root') as HTMLElement);
+render(<Age />, document.getElementById('root') as HTMLElement);
 render(<Name />, document.getElementById('root2') as HTMLElement);
