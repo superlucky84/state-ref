@@ -3,7 +3,7 @@ import { ref, Ref, watch, onUnmounted } from 'vue';
 import lenshelf from '@/index';
 import type { ShelfStore, Subscribe } from '@/index';
 
-function createVueShelfHook<T>(subscribe: Subscribe<T>) {
+function connectShelfWithVue<T>(subscribe: Subscribe<T>) {
   const useShelf = <V>(
     callback: (store: ShelfStore<T>) => ShelfStore<V>
   ): Ref<V> => {
@@ -42,7 +42,7 @@ const subscribe = lenshelf<{ name: string; age: number }>({
   name: 'brown',
   age: 13,
 });
-const useProfileShelf = createVueShelfHook(subscribe);
+const useProfileShelf = connectShelfWithVue(subscribe);
 
 // @ts-ignore
 window.p = subscribe();
