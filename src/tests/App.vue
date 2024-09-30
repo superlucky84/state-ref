@@ -1,42 +1,34 @@
 <script setup lang="ts">
-import { ref, watch, onUnmounted } from 'vue';
+import { ref, Ref, watch, onUnmounted } from 'vue';
 import lenshelf from '@/index';
 import type { ShelfStore, Subscribe } from '@/index';
 
 function createVueShelfHook<T>(subscribe: Subscribe<T>) {
-  const useShelf = (callback: (store: ShelfStore<T>) => ShelfStore<T>[]) => {
+  const useShelf = (callback: (store: ShelfStore<T>) => ShelfStore<T>) => {
     const abortController = new AbortController();
-    const vueRefs: ShelfStore<T>[] = [];
-    let shelves: ShelfStore<T>[] = [];
+    let vueRefs: Ref<T> = {} as Ref<T>;
+    let shelf: ShelfStore<T> = {} as ShelfStore<T>;
 
     onUnmounted(() => {
       abortController.abort();
     });
 
     subscribe(shelf => {
-      shelves = callback(shelf);
-      if (vueRefs.length) {
-        vueRefs.forEach((refItem, index) => {
-          if (refItem.value !== shelves[index].value) {
-            refItem.value = shelves[index].value;
-          }
-        });
+      shelf = callback(shelf);
+      if (vueRefs) {
+        vueRefs.value = shelf.value as T;
       }
 
       return abortController.signal;
     });
 
-    vueRefs.push(...shelves.map(shelfItem => ref(shelfItem.value)));
+    vueRefs.value = shelf.value as T;
 
     watch(vueRefs, newValues => {
-      newValues.forEach((newValueItem, index) => {
-        if (shelves[index].value !== newValueItem) {
-          shelves[index].value = newValueItem;
-        }
-      });
+      shelf.value = newValues;
     });
 
-    return [...vueRefs];
+    return vueRefs;
   };
 
   return useShelf;
@@ -51,8 +43,8 @@ const useProfileShelf = createVueShelfHook(subscribe);
 // @ts-ignore
 window.p = subscribe();
 
-const [name, age] = useProfileShelf(({ name, age }) => {
-  return [name, age];
+const age = useProfileShelf(store => {
+  return store.age;
 });
 
 const increment = () => {
@@ -61,5 +53,5 @@ const increment = () => {
 </script>
 
 <template>
-  <button @click="increment">Count is: {{ name }} {{ age }}</button>
+  <button @click="increment">Count is: {{ age }}</button>
 </template>
