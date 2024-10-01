@@ -1,5 +1,5 @@
-import { lenshelf } from '@/index';
-import { connectShelfWithSolid } from '@/connectSnippetExamples/solid/solid-v1';
+import { lenshelf, copyable } from '@/index';
+import { connectShelfWithSolid } from '@/connectSnippetExamples/solid/solid-latest';
 
 const subscribe = lenshelf({
   name: 'brown',
@@ -9,7 +9,7 @@ const subscribe = lenshelf({
 const useProfileShelf = connectShelfWithSolid(subscribe);
 
 function App() {
-  const [age, setAge] = useProfileShelf<{ name: string; age: number }>(
+  const [profile, setProfile] = useProfileShelf<{ name: string; age: number }>(
     store => store
   );
   const [name] = useProfileShelf<string>(store => store.name);
@@ -23,11 +23,16 @@ function App() {
       <div className="card">
         <button
           onClick={() => {
-            setAge(age => ({ ...age, age: age.age + 1 }));
+            // setAge(age => ({ ...age, age: age.age + 1 }));
+            setProfile(profile =>
+              copyable(profile).age.writeCopy<{ name: string; age: number }>(
+                profile.age + 1
+              )
+            );
           }}
         >
           name is {name()}
-          age is {age().age}
+          age is {profile().age}
         </button>
         <p>
           Edit <code>src/App.tsx</code> and save to test HMR

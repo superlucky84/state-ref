@@ -4,7 +4,7 @@ import { createElement as h } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { lenshelf } from '@/index';
-import { connectShelfWithReact } from '@/connectSnippetExamples/react/react-v18';
+import { connectShelfWithReact } from '@/connectSnippetExamples/react/react-latest';
 
 const subscribe = lenshelf<{ name: string; age: number }>({
   name: 'brown',

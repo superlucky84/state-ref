@@ -1,12 +1,16 @@
-import { createSignal, onCleanup, createEffect } from 'solid-js';
-import type { Signal } from 'solid-js';
+import { onDestroy } from 'svelte';
+import { writable } from 'svelte/store';
+import type { Writable } from 'svelte/store';
 import type { ShelfStore, Subscribe } from '@/index';
 // import type { ShelfStore, Subscribe } from 'lenshelf';
 
-export function connectShelfWithSolid<T>(subscribe: Subscribe<T>) {
-  return <V>(callback: (store: ShelfStore<T>) => ShelfStore<V>): Signal<V> => {
+/**
+ * Svelte V4
+ */
+export function connectShelfWithSvelte<T>(subscribe: Subscribe<T>) {
+  return <V>(callback: (store: ShelfStore<T>) => ShelfStore<V>) => {
     const abortController = new AbortController();
-    let signalValue!: Signal<V>;
+    let signalValue!: Writable<V>;
     let shelf!: ShelfStore<V>;
     let changing = false;
     const change = (cb: () => void) => {
@@ -15,7 +19,7 @@ export function connectShelfWithSolid<T>(subscribe: Subscribe<T>) {
       changing = false;
     };
 
-    onCleanup(() => {
+    onDestroy(() => {
       abortController.abort();
     });
 
@@ -24,21 +28,18 @@ export function connectShelfWithSolid<T>(subscribe: Subscribe<T>) {
 
       if (!changing) {
         if (signalValue) {
-          signalValue[1](() => shelf.value as V);
+          signalValue.set(shelf.value as V);
         } else {
-          signalValue = createSignal<V>(shelf.value as V);
+          signalValue = writable(shelf.value as V);
         }
       }
 
       return abortController.signal;
     });
 
-    createEffect(() => {
-      const newValue = signalValue[0]();
-
+    signalValue.subscribe(newValue => {
       if (shelf.value !== newValue && !changing) {
         change(() => {
-          console.log('b');
           shelf.value = newValue;
         });
       }

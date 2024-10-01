@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { lenshelf } from '@/index';
-import { connectShelfWithVue } from '@/connectSnippetExamples/vue/vue-v3';
+import { connectShelfWithVue } from '@/connectSnippetExamples/vue/vue-latest';
 
-type Profile = { name: string; age: number };
+type Profile = { name: { a: string; b: string }; age: number };
 const subscribe = lenshelf<Profile>({
-  name: 'brown',
+  name: { a: 'brown', b: 'jain' },
   age: 13,
 });
 const useProfileShelf = connectShelfWithVue(subscribe);
@@ -23,6 +23,6 @@ const incrementFromProfile = () => {
 
 <template>
   <button @click="incrementFromProfile">
-    {{ profile.value.name }} Count is: {{ profile.value.age }}
+    {{ profile.value.name.a }} Count is: {{ profile.value.age }}
   </button>
 </template>

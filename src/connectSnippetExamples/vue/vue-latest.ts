@@ -1,8 +1,13 @@
 import { reactive, watch, onUnmounted } from 'vue';
 import type { Reactive, UnwrapRef } from 'vue';
+import { cloneDeep } from '@/index';
 import type { ShelfStore, Subscribe } from '@/index';
+// import { cloneDeep } from 'lenshelf';
 // import type { ShelfStore, Subscribe } from 'lenshelf';
 
+/**
+ * Vue V3
+ */
 export function connectShelfWithVue<T>(subscribe: Subscribe<T>) {
   return <V>(
     callback: (store: ShelfStore<T>) => ShelfStore<V>
@@ -41,7 +46,7 @@ export function connectShelfWithVue<T>(subscribe: Subscribe<T>) {
       if (shelf.value !== newValues.value && !changing) {
         const newV =
           typeof newValues.value === 'object'
-            ? structuredClone({ ...(newValues.value as object) })
+            ? cloneDeep(newValues.value)
             : newValues.value;
 
         change(() => {

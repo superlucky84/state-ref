@@ -1,14 +1,17 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'preact/hooks';
 import type { ShelfStore, Subscribe } from '@/index';
 // import type { ShelfStore, Subscribe } from 'lenshelf';
 
-export function connectShelfWithReact<T>(subscribe: Subscribe<T>) {
+/**
+ * Preact V10
+ */
+export function connectShelfWithPreact<T>(subscribe: Subscribe<T>) {
   const useForceUpdate = () => {
-    const [dummy, setDummy] = useState(0);
+    const [, setDummy] = useState(0);
     const abortController = useRef(new AbortController());
     const forceUpdateRef = useRef((_: ShelfStore<T>, isFirst: Boolean) => {
       if (!isFirst) {
-        setDummy(dummy < 100 ? dummy + 1 : 0);
+        setDummy(prev => (prev < 100 ? prev + 1 : 0));
       }
 
       return abortController.current.signal;

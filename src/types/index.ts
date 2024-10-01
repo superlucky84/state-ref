@@ -7,6 +7,7 @@ export type Renew<G> = (
   store: G,
   isFirst: boolean
 ) => boolean | AbortSignal | void;
+
 export type Run = null | ((isFirst?: boolean) => boolean | AbortSignal | void);
 export type StoreType<V> = { root: V };
 export type WithRoot = { root: unknown } & { [key: string | symbol]: unknown };
@@ -42,3 +43,9 @@ export type RunInfo<A> = {
 export type RenderListSub<A> = Map<string, RunInfo<A>>;
 
 export type StoreRenderList<A> = Map<Run, RenderListSub<A>>;
+
+export type Copyable<T> = {
+  [K in keyof T]: Copyable<T[K]>;
+} & {
+  writeCopy: <J>(v?: T) => J; // lensIns.set의 반환 타입을 사용
+};

@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { lenshelf } from '@/index';
-  import { connectShelfWithSvelte } from '@/connectSnippetExamples/svelte/svelte-v4';
+  import { lenshelf, copyable } from '@/index';
+  import { connectShelfWithSvelte } from '@/connectSnippetExamples/svelte/svelte-latest';
 
   const subscribe = lenshelf({
     name: 'brown',
@@ -12,7 +12,8 @@
   const profile = useProfileShelf(store => store);
 
   function handleClick() {
-    profile.update(n => ({ ...n, age: n.age + 1 }));
+    // profile.update(n => ({ ...n, age: n.age + 1 }));
+    profile.update(n => copyable(n).age.writeCopy(n.age + 1));
   }
 </script>
 

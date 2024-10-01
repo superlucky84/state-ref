@@ -1,6 +1,6 @@
 import { h, render } from 'preact';
 import { lenshelf } from '@/index';
-import { connectShelfWithPreact } from '@/connectSnippetExamples/preact/preact-v10';
+import { connectShelfWithPreact } from '@/connectSnippetExamples/preact/preact-latest';
 
 const subscribe = lenshelf<{ name: string; age: number }>({
   name: 'brown',
