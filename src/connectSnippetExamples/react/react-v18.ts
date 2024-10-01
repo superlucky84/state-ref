@@ -1,4 +1,3 @@
-// @ts-ignore
 import { useState, useRef, useEffect } from 'react';
 import type { ShelfStore, Subscribe } from '@/index';
 // import type { ShelfStore, Subscribe } from 'lenshelf';
