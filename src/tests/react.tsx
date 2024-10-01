@@ -9,11 +9,11 @@ import type { ShelfStore, Subscribe } from '@/index';
 function connectShelfWithReact<T>(subscribe: Subscribe<T>) {
   // 커스텀 훅을 정의하여 forceUpdate 기능과 abort를 제공합니다.
   const useForceUpdate = () => {
-    const [, setDummy] = useState(0);
+    const [dummy, setDummy] = useState(0);
     const abortController = useRef(new AbortController());
     const forceUpdateRef = useRef((_: ShelfStore<T>, isFirst: Boolean) => {
       if (!isFirst) {
-        setDummy((prev: any) => (prev < 100 ? prev + 1 : 0));
+        setDummy(dummy < 100 ? dummy + 1 : 0);
       }
 
       return abortController.current.signal;

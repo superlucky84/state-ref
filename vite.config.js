@@ -4,7 +4,7 @@ import checker from 'vite-plugin-checker';
 import dts from 'vite-plugin-dts';
 import vue from '@vitejs/plugin-vue';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
-import solid from 'vite-plugin-solid';
+// import solid from 'vite-plugin-solid';
 
 export default defineConfig({
   plugins: [
@@ -19,7 +19,7 @@ export default defineConfig({
     }),
     vue(),
     svelte(),
-    solid(),
+    // solid(),
   ],
   resolve: {
     alias: {

@@ -1,8 +1,8 @@
 import { createSignal, onCleanup, createEffect } from 'solid-js';
+import h from 'solid-js/h';
 import type { Signal } from 'solid-js';
 import type { ShelfStore, Subscribe } from '@/index';
 import lenshelf from '@/index';
-// import type { ShelfStore, Subscribe } from '@/index';
 
 function connectShelfWithSolid<T>(subscribe: Subscribe<T>) {
   return <V,>(callback: (store: ShelfStore<T>) => ShelfStore<V>): Signal<V> => {
@@ -48,9 +48,9 @@ function App() {
   const [age, setAge] = useProfileShelf<number>(store => store.age);
 
   return (
-    <>
+    <div>
       <h1>Vite + Solid</h1>
-      <div class="card">
+      <div className="card">
         <button
           onClick={() => {
             setCount(count => count + 1);
@@ -64,10 +64,10 @@ function App() {
           Edit <code>src/App.tsx</code> and save to test HMR
         </p>
       </div>
-      <p class="read-the-docs">
+      <p className="read-the-docs">
         Click on the Vite and Solid logos to learn more
       </p>
-    </>
+    </div>
   );
 }
 
