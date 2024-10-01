@@ -9,6 +9,12 @@ export function connectShelfWithSvelte<T>(subscribe: Subscribe<T>) {
     const abortController = new AbortController();
     let signalValue!: Writable<V>;
     let shelf!: ShelfStore<V>;
+    let changing = false;
+    const change = (cb: () => void) => {
+      changing = true;
+      cb();
+      changing = false;
+    };
 
     onDestroy(() => {
       abortController.abort();
@@ -16,17 +22,25 @@ export function connectShelfWithSvelte<T>(subscribe: Subscribe<T>) {
 
     subscribe(shelfStore => {
       shelf = callback(shelfStore);
-      if (signalValue) {
-        signalValue.set(shelf.value as V);
-      } else {
-        signalValue = writable(shelf.value as V);
+
+      if (!changing) {
+        if (signalValue) {
+          signalValue.set(shelf.value as V);
+        } else {
+          signalValue = writable(shelf.value as V);
+        }
       }
 
       return abortController.signal;
     });
 
     signalValue.subscribe(newValue => {
-      shelf.value = newValue;
+      if (shelf.value !== newValue && !changing) {
+        change(() => {
+          console.log('b');
+          shelf.value = newValue;
+        });
+      }
     });
 
     return signalValue;

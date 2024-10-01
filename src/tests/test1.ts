@@ -1,4 +1,4 @@
-import lenshelf from '@/index';
+import { lenshelf } from '@/index';
 
 const subscribe = lenshelf<{
   a: {

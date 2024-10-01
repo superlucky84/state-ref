@@ -8,24 +8,40 @@ export function connectShelfWithSolid<T>(subscribe: Subscribe<T>) {
     const abortController = new AbortController();
     let signalValue!: Signal<V>;
     let shelf!: ShelfStore<V>;
+    let changing = false;
+    const change = (cb: () => void) => {
+      changing = true;
+      cb();
+      changing = false;
+    };
 
     onCleanup(() => {
       abortController.abort();
     });
 
-    createEffect(() => {
-      shelf.value = signalValue[0]();
-    });
-
     subscribe(shelfStore => {
       shelf = callback(shelfStore);
-      if (signalValue) {
-        signalValue[1](() => shelf.value as V);
-      } else {
-        signalValue = createSignal<V>(shelf.value as V);
+
+      if (!changing) {
+        if (signalValue) {
+          signalValue[1](() => shelf.value as V);
+        } else {
+          signalValue = createSignal<V>(shelf.value as V);
+        }
       }
 
       return abortController.signal;
+    });
+
+    createEffect(() => {
+      const newValue = signalValue[0]();
+
+      if (shelf.value !== newValue && !changing) {
+        change(() => {
+          console.log('b');
+          shelf.value = newValue;
+        });
+      }
     });
 
     return signalValue;

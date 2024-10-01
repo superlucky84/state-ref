@@ -3,7 +3,7 @@ import { createElement as h } from 'react';
 // @ts-ignore
 import { createRoot } from 'react-dom/client';
 
-import lenshelf from '@/index';
+import { lenshelf } from '@/index';
 import { connectShelfWithReact } from '@/connectSnippetExamples/react/react-v18';
 
 const subscribe = lenshelf<{ name: string; age: number }>({

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import lenshelf from '@/index';
+import { lenshelf } from '@/index';
 import { connectShelfWithVue } from '@/connectSnippetExamples/vue/vue-v3';
 
-const subscribe = lenshelf<{ name: string; age: number }>({
+type Profile = { name: string; age: number };
+const subscribe = lenshelf<Profile>({
   name: 'brown',
   age: 13,
 });
@@ -11,14 +12,17 @@ const useProfileShelf = connectShelfWithVue(subscribe);
 // @ts-ignore
 window.p = subscribe();
 
-const age = useProfileShelf<number>(store => store.age);
-const name = useProfileShelf<string>(store => store.name);
+const profile = useProfileShelf(store => store);
 
-const increment = () => {
-  age.value += 1;
+console.log('PROFILE', profile.value);
+
+const incrementFromProfile = () => {
+  profile.value.age += 1;
 };
 </script>
 
 <template>
-  <button @click="increment">{{ name }} Count is: {{ age }}</button>
+  <button @click="incrementFromProfile">
+    {{ profile.value.name }} Count is: {{ profile.value.age }}
+  </button>
 </template>

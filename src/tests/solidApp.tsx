@@ -1,4 +1,4 @@
-import lenshelf from '@/index';
+import { lenshelf } from '@/index';
 import { connectShelfWithSolid } from '@/connectSnippetExamples/solid/solid-v1';
 
 const subscribe = lenshelf({
@@ -9,8 +9,13 @@ const subscribe = lenshelf({
 const useProfileShelf = connectShelfWithSolid(subscribe);
 
 function App() {
-  const [age, setAge] = useProfileShelf<number>(store => store.age);
+  const [age, setAge] = useProfileShelf<{ name: string; age: number }>(
+    store => store
+  );
   const [name] = useProfileShelf<string>(store => store.name);
+
+  //@ts-ignore
+  window.p = subscribe();
 
   return (
     <div>
@@ -18,11 +23,11 @@ function App() {
       <div className="card">
         <button
           onClick={() => {
-            setAge(age => age + 1);
+            setAge(age => ({ ...age, age: age.age + 1 }));
           }}
         >
           name is {name()}
-          age is {age()}
+          age is {age().age}
         </button>
         <p>
           Edit <code>src/App.tsx</code> and save to test HMR

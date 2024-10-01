@@ -1,5 +1,5 @@
 import { h, mount, render } from 'lithent';
-import lenshelf from '@/index';
+import { lenshelf } from '@/index';
 
 const subscribe = lenshelf<{ name: string; age: number }>({
   name: 'brown',

@@ -9,7 +9,7 @@ import type { Renew, StoreType, ShelfStore, StoreRenderList } from '@/types';
  * 인자는 초기값
  * const subscribe = makeLenshelf({ name: 'brown', age: 38 })
  */
-export function makeLenshelf<V>(orignalValue: V) {
+export function lenshelf<V>(orignalValue: V) {
   const storeRenderList: StoreRenderList<V> = new Map();
   const cacheMap = new WeakMap<Renew<ShelfStore<V>>, ShelfStore<V>>();
   const rootValue: StoreType<V> = { root: orignalValue };

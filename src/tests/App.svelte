@@ -1,22 +1,22 @@
 <script lang="ts">
-  import lenshelf from '@/index';
+  import { lenshelf } from '@/index';
   import { connectShelfWithSvelte } from '@/connectSnippetExamples/svelte/svelte-v4';
 
   const subscribe = lenshelf({
     name: 'brown',
     age: 13,
   });
+  window.p = subscribe();
 
   const useProfileShelf = connectShelfWithSvelte(subscribe);
-  const age = useProfileShelf(store => store.age);
-  const name = useProfileShelf(store => store.name);
+  const profile = useProfileShelf(store => store);
 
   function handleClick() {
-    age.update((v) => v + 1);
+    profile.update(n => ({ ...n, age: n.age + 1 }));
   }
 </script>
 
-<div>{$name}</div>
+<div>{$profile.name}</div>
 <button on:click={handleClick}>
-  Clicked  = {$age}
+  Clicked  = {$profile.age}
 </button>

@@ -1,5 +1,3 @@
-import { makeLenshelf } from '@/core/lenshelf';
-
+export { lenshelf } from '@/core/lenshelf';
+export { lens } from '@/lens';
 export type { ShelfStore, Renew, Subscribe } from '@/types';
-
-export default makeLenshelf;
