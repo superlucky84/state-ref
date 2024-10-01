@@ -1,32 +1,10 @@
 // @ts-ignore
-import { createElement as h, useState, useRef, useEffect } from 'react';
+import { createElement as h } from 'react';
 // @ts-ignore
 import { createRoot } from 'react-dom/client';
 
 import lenshelf from '@/index';
-import type { ShelfStore, Subscribe } from '@/index';
-
-function connectShelfWithReact<T>(subscribe: Subscribe<T>) {
-  // 커스텀 훅을 정의하여 forceUpdate 기능과 abort를 제공합니다.
-  const useForceUpdate = () => {
-    const [dummy, setDummy] = useState(0);
-    const abortController = useRef(new AbortController());
-    const forceUpdateRef = useRef((_: ShelfStore<T>, isFirst: Boolean) => {
-      if (!isFirst) {
-        setDummy(dummy < 100 ? dummy + 1 : 0);
-      }
-
-      return abortController.current.signal;
-    });
-
-    // 컴포넌트가 언마운트될 때 abort 작업 수행
-    useEffect(() => () => abortController.current.abort(), []);
-
-    return forceUpdateRef.current;
-  };
-
-  return () => subscribe(useForceUpdate());
-}
+import { connectShelfWithReact } from '@/connectSnippetExamples/react/react-v18';
 
 const subscribe = lenshelf<{ name: string; age: number }>({
   name: 'brown',
