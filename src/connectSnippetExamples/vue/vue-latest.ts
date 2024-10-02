@@ -14,7 +14,7 @@ export function connectShelfWithVue<T>(subscribe: Subscribe<T>) {
   ): Reactive<{ value: V }> => {
     type J = Reactive<{ value: V }>;
     const abortController = new AbortController();
-    let vueRefs!: J;
+    let reactiveValue!: J;
     let shelf!: ShelfStore<V>;
     let changing = false;
     const change = (cb: () => void) => {
@@ -29,12 +29,12 @@ export function connectShelfWithVue<T>(subscribe: Subscribe<T>) {
 
     subscribe(shelfStore => {
       shelf = callback(shelfStore);
-      if (vueRefs?.value !== shelf.value && !changing) {
+      if (reactiveValue?.value !== shelf.value && !changing) {
         change(() => {
-          if (vueRefs?.value) {
-            vueRefs.value = shelf.value as UnwrapRef<V>;
+          if (reactiveValue?.value) {
+            reactiveValue.value = shelf.value as UnwrapRef<V>;
           } else {
-            vueRefs = reactive({ value: shelf.value }) as J;
+            reactiveValue = reactive({ value: shelf.value }) as J;
           }
         });
       }
@@ -42,7 +42,7 @@ export function connectShelfWithVue<T>(subscribe: Subscribe<T>) {
       return abortController.signal;
     });
 
-    watch(vueRefs, newValues => {
+    watch(reactiveValue, newValues => {
       if (shelf.value !== newValues.value && !changing) {
         const newV =
           typeof newValues.value === 'object'
@@ -55,6 +55,6 @@ export function connectShelfWithVue<T>(subscribe: Subscribe<T>) {
       }
     });
 
-    return vueRefs;
+    return reactiveValue;
   };
 }
