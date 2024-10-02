@@ -11,7 +11,7 @@ export function connectShelfWithPreact<T>(subscribe: Subscribe<T>) {
     const abortController = useRef(new AbortController());
     const forceUpdateRef = useRef((_: ShelfStore<T>, isFirst: Boolean) => {
       if (!isFirst) {
-        setDummy(prev => (prev < 100 ? prev + 1 : 0));
+        setDummy(prev => prev + 1);
       }
 
       return abortController.current.signal;

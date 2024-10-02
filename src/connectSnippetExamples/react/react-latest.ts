@@ -11,7 +11,7 @@ export function connectShelfWithReact<T>(subscribe: Subscribe<T>) {
     const abortController = useRef(new AbortController());
     const forceUpdateRef = useRef((_: ShelfStore<T>, isFirst: Boolean) => {
       if (!isFirst) {
-        setDummy(dummy < 100 ? dummy + 1 : 0);
+        setDummy(dummy + 1);
       }
 
       return abortController.current.signal;
