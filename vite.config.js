@@ -40,7 +40,9 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
-    includeSource: ['src/tests/*.{js,ts,jsx,tsx}'],
+    includeSource: ['src/tests/**/*.{js,ts,jsx,tsx}'],
+    setupFiles: './test/setup.ts',
+    globals: true,
   },
   server: {
     open: '/html/test.html',

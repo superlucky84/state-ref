@@ -9,8 +9,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test:core": "vitest run --reporter verbose",
-    "test:dev": "vitest",
+    "test:all": "vitest run --reporter verbose",
+    "test": "vitest",
     "clean": "pnpm clean:dist && pnpm clean:module",
     "clean:dist": "rm -rf dist",
     "clean:module": "rm -rf node_modules"
