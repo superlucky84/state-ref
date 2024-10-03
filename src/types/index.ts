@@ -15,9 +15,10 @@ export type ShelfStore<S> = S extends object
   ? {
       [K in keyof S]: ShelfStore<S[K]> & { value: S[K] };
     } & {
-      value: { [K in keyof S]: ShelfStore<S[K]> } & { value: S };
+      value: S;
     }
   : { value: S };
+// value: { [K in keyof S]: ShelfStore<S[K]> } & { value: S };
 
 export type Subscribe<V> = (
   renew: Renew<ShelfStore<V>>,
