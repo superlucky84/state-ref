@@ -1,4 +1,4 @@
-import { render as trender } from '@testing-library/preact';
+import { render as trender, screen } from '@testing-library/preact';
 import { h, render } from 'preact';
 import { lenshelf } from '@/index';
 import { connectShelfWithPreact } from '@/connectSnippetExamples/preact/preact-latest';
@@ -35,12 +35,12 @@ if (!import.meta.vitest) {
 if (import.meta.vitest) {
   const { describe, it, expect } = import.meta.vitest;
 
-  const { getByText } = trender(<Age />);
+  trender(<Age />);
   trender(<Name />);
 
   describe('Hello Component', () => {
     it('renders the name passed as prop', () => {
-      expect(getByText('aa = 13')).toBeInTheDocument();
+      expect(screen.getByText('aa = 13')).toBeInTheDocument();
     });
   });
 }
