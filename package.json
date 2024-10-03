@@ -11,7 +11,6 @@
     "build": "vite build",
     "test:core": "vitest run --reporter verbose",
     "test:dev": "vitest",
-    "coverage": "vitest run --coverage",
     "clean": "pnpm clean:dist && pnpm clean:module",
     "clean:dist": "rm -rf dist",
     "clean:module": "rm -rf node_modules"
@@ -24,7 +23,10 @@
     }
   },
   "types": "./dist/index.d.ts",
-  "files": ["src", "dist"],
+  "files": [
+    "src",
+    "dist"
+  ],
   "author": "superlucky84",
   "repository": {
     "type": "git",
@@ -32,12 +34,16 @@
   },
   "homepage": "https://github.com/superlucky84/lenshelf",
   "license": "MIT",
-  "keywords": ["lenshelf"],
+  "keywords": [
+    "lenshelf"
+  ],
   "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^3.1.2",
+    "@testing-library/jest-dom": "^6.5.0",
+    "@testing-library/preact": "^3.2.4",
     "@typescript-eslint/eslint-plugin": "^5.60.0",
     "@typescript-eslint/parser": "^5.60.0",
     "@vitejs/plugin-vue": "^5.1.4",
-    "@vitest/coverage-v8": "^1.6.0",
     "@vue/compiler-sfc": "^3.5.10",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.8.0",
@@ -49,16 +55,15 @@
     "prettier": "^2.8.8",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "@sveltejs/vite-plugin-svelte": "^3.1.2",
-    "svelte": "^4.2.19",
     "solid-js": "^1.9.1",
-    "vite-plugin-solid": "^2.10.2",
+    "svelte": "^4.2.19",
     "terser": "^5.18.1",
     "typescript": "^4.9.5",
     "vite": "^5.4.8",
     "vite-plugin-checker": "^0.6.1",
     "vite-plugin-dts": "^2.3.0",
-    "vitest": "^1.6.0",
+    "vite-plugin-solid": "^2.10.2",
+    "vitest": "^2.1.2",
     "vue": "^3.5.10"
   },
   "volta": {
