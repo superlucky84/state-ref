@@ -8,16 +8,12 @@ type DataType = {
 const defaultValue = { a: { b: { c: null }, b1: { c2: 8 } }, a1: 9 };
 
 const take = lenshelf<DataType>(defaultValue);
-let newValue!: DataType;
+// let newValue!: DataType;
 const shelf = take((store: ShelfStore<DataType>) => {
-  newValue = store.value;
+  console.log(store);
 });
 
 shelf.a.b.c.value = 21;
-
-console.log('DEFAULTVALUE', defaultValue);
-console.log('NEWVALUE', newValue);
-console.log(defaultValue.a.b1 === newValue.a.b1);
 
 /**
  * 브라우저로 수동 테스트
