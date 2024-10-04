@@ -292,6 +292,21 @@ function makeProxy(value, storeRenderList, run, rootValue = value, lensValue = l
           );
           return value2;
         }
+        if (prop === Symbol.iterator) {
+          return function* () {
+            for (const [index, value2] of lensValue.get()(rootValue).entries()) {
+              yield makeProxy(
+                value2,
+                storeRenderList,
+                run,
+                rootValue,
+                lensValue.k(index),
+                depth + 1,
+                [...depthList, String(index)]
+              );
+            }
+          };
+        }
         const lens2 = lensValue.k(prop);
         const propertyValue = lens2.get()(rootValue);
         if (typeof propertyValue === "object" && propertyValue !== null) {
