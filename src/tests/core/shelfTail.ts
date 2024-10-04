@@ -114,17 +114,21 @@ if (import.meta.vitest) {
       expect(defaultValue.a1).toBe(newValue.a1);
     });
 
-    it.skip('undefined 데이터가 undefined 아닌 데이터로 변경되면 구독함수가 변경을 잘 감지해야한다.', () => {
-      const defaultValue = undefined;
-      const changeValue = 4;
-      const take = lenshelf<number | undefined>(defaultValue);
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const shelf = take(store => console.log('value', store.value));
+    it('undefined 데이터가 undefined 아닌 데이터로 copyOnWrite가 잘 이루어진 데이터로 갱신되어야 한다', () => {
+      const defaultValue = { a: { b: { c: undefined }, b1: { c2: 8 } }, a1: 9 };
+      const take = lenshelf<DataType>(defaultValue);
+      let newValue!: DataType;
+      const shelf = take((store: ShelfStore<DataType>) => {
+        newValue = store.value;
+      });
 
-      shelf.value = changeValue;
-      expect(logSpy).toHaveBeenCalledWith('value', changeValue);
-
-      logSpy.mockRestore();
+      shelf.a.b.c.value = 21;
+      expect(newValue.a.b.c).toBe(21);
+      expect(defaultValue).not.toBe(newValue);
+      expect(defaultValue.a).not.toBe(newValue.a);
+      expect(defaultValue.a.b).not.toBe(newValue.a.b);
+      expect(defaultValue.a.b1).toBe(newValue.a.b1);
+      expect(defaultValue.a1).toBe(newValue.a1);
     });
 
     it.skip('undefined 아닌 데이터가 undefined 데이터로 변경되면 구독함수가 변경을 잘 감지해야한다.', () => {
