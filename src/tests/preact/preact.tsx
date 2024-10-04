@@ -38,8 +38,26 @@ if (import.meta.vitest) {
   trender(<Age />);
   trender(<Name />);
 
-  describe('Hello Component', () => {
-    it('renders the name passed as prop', () => {
+  describe('Connect Preact', () => {
+    it('프리미티브 타입의 값 하나에 대해 변경이 잘 반영되어야 한다.', () => {
+      expect(screen.getByText('aa = 13')).toBeInTheDocument();
+    });
+    it('프리미티브 널타입으로 변경될때도 잘 반영되어야한다.', () => {
+      expect(screen.getByText('aa = 13')).toBeInTheDocument();
+    });
+    it('구조분해 할당하여 꺼내온 shelf 값에 대해서도 잘 동작해야 한다.', () => {
+      expect(screen.getByText('aa = 13')).toBeInTheDocument();
+    });
+    it('여러개의 컴포넌트중 value로 꺼내어 값을 구독중인 컴포넌트에 변경만 동작해야한다.', () => {
+      expect(screen.getByText('aa = 13')).toBeInTheDocument();
+    });
+    it('언마운트된 컴포넌트에 구독함수 호출은 일어나지 않아야 한다.', () => {
+      expect(screen.getByText('aa = 13')).toBeInTheDocument();
+    });
+    it('여러개의 컴포넌트가 하나의 값을 구독중일때 언마운트된 컴포넌트 외에 다른 컴포넌트들은 정상 동작해야 한다.', () => {
+      expect(screen.getByText('aa = 13')).toBeInTheDocument();
+    });
+    it('서로 다른 render함수로 부터의 다른 뿌리를 가진 컴포넌트 들도 값을 공유할수 있어야 한다.', () => {
       expect(screen.getByText('aa = 13')).toBeInTheDocument();
     });
   });
