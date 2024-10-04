@@ -215,5 +215,78 @@ if (import.meta.vitest) {
       expect(defaultValue.john.house[1]).toBe(newValue.john.house[1]);
       expect(defaultValue.brown).toBe(newValue.brown);
     });
+
+    it('특정 값의 부모에 해당하는 뿌리를 구독하고 있다면, 특정 값의 데이터가 변경되었을때 반응해야 한다.', () => {
+      const defaultValue = makeDefaultValue();
+      const take = lenshelf<People>(defaultValue);
+      const mockFn1 = vi.fn();
+
+      const shelf = take(({ john: { value: johnValue } }) => {
+        mockFn1(johnValue);
+      });
+
+      shelf.john.house[1].floor.value = 7;
+      expect(mockFn1).toHaveBeenCalledTimes(2);
+    });
+
+    it('어떤 부모에 자식노드에 해당하는 특정값을 구독하고 있다면, 부모노드가 변경되었을때 반응해야 한다.', () => {
+      const defaultValue = makeDefaultValue();
+      const take = lenshelf<People>(defaultValue);
+      const mockFn1 = vi.fn();
+
+      const shelf = take(
+        ({
+          john: {
+            house: [
+              ,
+              {
+                floor: { value: floorData },
+              },
+            ],
+          },
+        }) => {
+          mockFn1(floorData);
+        }
+      );
+
+      shelf.john.value = {
+        age: 40,
+        house: [
+          { color: 'red', floor: 5 },
+          { color: 'red', floor: 7 },
+        ],
+      };
+      expect(mockFn1).toHaveBeenCalledTimes(2);
+    });
+
+    it('어떤 부모에 자식노드에 해당하는 특정값을 구독하고 있고 부모노드가 변경되었어도 값의 참조가 변하지 않았다면 구독함수는 반응하지 말아야 한다.', () => {
+      const defaultValue = makeDefaultValue();
+      const take = lenshelf<People>(defaultValue);
+      const mockFn1 = vi.fn();
+
+      const shelf = take(
+        ({
+          john: {
+            house: [
+              ,
+              {
+                floor: { value: floorData },
+              },
+            ],
+          },
+        }) => {
+          mockFn1(floorData);
+        }
+      );
+
+      shelf.john.value = {
+        age: 40,
+        house: [
+          { color: 'red', floor: 2 },
+          { color: 'red', floor: 5 },
+        ],
+      };
+      expect(mockFn1).toHaveBeenCalledTimes(1);
+    });
   });
 }

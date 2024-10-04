@@ -50,6 +50,27 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
         }
 
         /**
+         * 프록시에서 이터레이터로 접근할때
+         */
+        if (prop === Symbol.iterator) {
+          return function* () {
+            for (const [index, value] of (
+              lensValue.get()(rootValue) as any
+            ).entries()) {
+              yield makeProxy(
+                value,
+                storeRenderList,
+                run,
+                rootValue,
+                lensValue.k(index),
+                depth + 1,
+                [...depthList, String(index)]
+              );
+            }
+          };
+        }
+
+        /**
          * 프록시에서 하위 객체타입으로 접근할때
          */
         const lens = lensValue.k(prop);
