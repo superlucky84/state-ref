@@ -5,15 +5,23 @@ type DataType = {
   a1: number;
 };
 
-const defaultValue = { a: { b: { c: null }, b1: { c2: 8 } }, a1: 9 };
-
+const defaultValue = { a: { b: { c: 7 }, b1: { c2: 8 } }, a1: 9 };
 const take = lenshelf<DataType>(defaultValue);
-// let newValue!: DataType;
-const shelf = take((store: ShelfStore<DataType>) => {
-  console.log(store);
+
+const shelf = take();
+take(store => {
+  console.log('a', store.a.b1.c2.value);
+});
+take(store => {
+  console.log('b', store.a.b.c.value);
+});
+take(store => {
+  console.log('c', store.a1.value);
 });
 
-shelf.a.b.c.value = 21;
+//@ts-ignore
+window.p = shelf;
+shelf.a.b1.c2.value = 100;
 
 /**
  * 브라우저로 수동 테스트
