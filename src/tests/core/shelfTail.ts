@@ -31,7 +31,7 @@ if (!import.meta.vitest) {
 if (import.meta.vitest) {
   const { describe, it, expect, vi } = import.meta.vitest;
 
-  describe('Shelf Tail - 구독하려는 데이터가 객체 끝에 달린 primitive 타입 단독일때.', () => {
+  describe('Shelf Tail - 구독하려는 데이터가 객체 끝에 달린 primitive 타입일때.', () => {
     it('구독즉시 한번 구독함수가 실행되어야 한다..', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const defaultValue = { a: { b: { c: 4 }, b1: { c2: 8 } }, a1: 9 };
