@@ -25,7 +25,7 @@ if (!import.meta.vitest) {
 if (import.meta.vitest) {
   const { describe, it, expect, vi } = import.meta.vitest;
 
-  describe('Shelf Root - 구독하려는 데이터의 root가 primitive 타입일때.', () => {
+  describe('Shelf Root - 구독하려는 데이터의 root가 primitive 타입일때는 ShelfRoot에서 처리', () => {
     it('숫자형 데이터에서 구독즉시 한번 구독함수가 실행되어야 한다..', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const defaultNumber = 3;
