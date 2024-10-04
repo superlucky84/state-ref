@@ -1,12 +1,12 @@
 import { createSignal, onCleanup, createEffect } from 'solid-js';
 import type { Signal } from 'solid-js';
-import type { ShelfStore, Subscribe } from '@/index';
-// import type { ShelfStore, Subscribe } from 'lenshelf';
+import type { ShelfStore, Take } from '@/index';
+// import type { ShelfStore, Take } from 'lenshelf';
 
 /**
  * Solid-js V1
  */
-export function connectShelfWithSolid<T>(subscribe: Subscribe<T>) {
+export function connectShelfWithSolid<T>(take: Take<T>) {
   return <V>(callback: (store: ShelfStore<T>) => ShelfStore<V>): Signal<V> => {
     const abortController = new AbortController();
     let signalValue!: Signal<V>;
@@ -22,7 +22,7 @@ export function connectShelfWithSolid<T>(subscribe: Subscribe<T>) {
       abortController.abort();
     });
 
-    subscribe(shelfStore => {
+    take(shelfStore => {
       shelf = callback(shelfStore);
 
       if (!changing) {

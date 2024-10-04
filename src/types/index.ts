@@ -20,7 +20,7 @@ export type ShelfStore<S> = S extends object
   : { value: S };
 // value: { [K in keyof S]: ShelfStore<S[K]> } & { value: S };
 
-export type Subscribe<V> = (
+export type Take<V> = (
   renew: Renew<ShelfStore<V>>,
   userOption?: { cache?: boolean }
 ) => ShelfStore<V>;

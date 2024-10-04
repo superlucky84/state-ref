@@ -1,14 +1,14 @@
 import { reactive, watch, onUnmounted } from 'vue';
 import type { Reactive, UnwrapRef } from 'vue';
 import { cloneDeep } from '@/index';
-import type { ShelfStore, Subscribe } from '@/index';
+import type { ShelfStore, Take } from '@/index';
 // import { cloneDeep } from 'lenshelf';
-// import type { ShelfStore, Subscribe } from 'lenshelf';
+// import type { ShelfStore, Take } from 'lenshelf';
 
 /**
  * Vue V3
  */
-export function connectShelfWithVue<T>(subscribe: Subscribe<T>) {
+export function connectShelfWithVue<T>(take: Take<T>) {
   return <V>(
     callback: (store: ShelfStore<T>) => ShelfStore<V>
   ): Reactive<{ value: V }> => {
@@ -27,7 +27,7 @@ export function connectShelfWithVue<T>(subscribe: Subscribe<T>) {
       abortController.abort();
     });
 
-    subscribe(shelfStore => {
+    take(shelfStore => {
       shelf = callback(shelfStore);
       if (reactiveValue?.value !== shelf.value && !changing) {
         change(() => {

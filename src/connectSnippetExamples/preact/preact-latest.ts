@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
-import type { ShelfStore, Subscribe } from '@/index';
-// import type { ShelfStore, Subscribe } from 'lenshelf';
+import type { ShelfStore, Take } from '@/index';
+// import type { ShelfStore, Take } from 'lenshelf';
 
 /**
  * Preact V10
  */
-export function connectShelfWithPreact<T>(subscribe: Subscribe<T>) {
+export function connectShelfWithPreact<T>(take: Take<T>) {
   const useForceUpdate = () => {
     const [, setDummy] = useState(0);
     const abortController = useRef(new AbortController());
@@ -23,5 +23,5 @@ export function connectShelfWithPreact<T>(subscribe: Subscribe<T>) {
     return forceUpdateRef.current;
   };
 
-  return () => subscribe(useForceUpdate());
+  return () => take(useForceUpdate());
 }

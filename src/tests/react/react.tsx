@@ -6,14 +6,14 @@ import { createRoot } from 'react-dom/client';
 import { lenshelf } from '@/index';
 import { connectShelfWithReact } from '@/connectSnippetExamples/react/react-latest';
 
-const subscribe = lenshelf<{ name: string; age: number }>({
+const take = lenshelf<{ name: string; age: number }>({
   name: 'brown',
   age: 13,
 });
 
-const usePofileStore = connectShelfWithReact(subscribe);
+const usePofileStore = connectShelfWithReact(take);
 
-const p = subscribe();
+const p = take();
 
 //@ts-ignore
 window.p = p;

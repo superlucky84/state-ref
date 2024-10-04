@@ -3,14 +3,14 @@ import { h, render } from 'preact';
 import { lenshelf } from '@/index';
 import { connectShelfWithPreact } from '@/connectSnippetExamples/preact/preact-latest';
 
-const subscribe = lenshelf<{ name: string; age: number }>({
+const take = lenshelf<{ name: string; age: number }>({
   name: 'brown',
   age: 13,
 });
 
-const usePofileStore = connectShelfWithPreact(subscribe);
+const usePofileStore = connectShelfWithPreact(take);
 
-const p = subscribe();
+const p = take();
 
 //@ts-ignore
 window.p = p;

@@ -2,13 +2,13 @@
   import { lenshelf, copyable } from '@/index';
   import { connectShelfWithSvelte } from '@/connectSnippetExamples/svelte/svelte-latest';
 
-  const subscribe = lenshelf({
+  const take = lenshelf({
     name: 'brown',
     age: 13,
   });
-  window.p = subscribe();
+  window.p = take();
 
-  const useProfileShelf = connectShelfWithSvelte(subscribe);
+  const useProfileShelf = connectShelfWithSvelte(take);
   const profile = useProfileShelf(store => store);
 
   function handleClick() {

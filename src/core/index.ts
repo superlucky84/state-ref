@@ -7,7 +7,7 @@ import type { Renew, StoreType, ShelfStore, StoreRenderList } from '@/types';
 /**
  * shelf 스토어를 만들어 준다
  * 인자는 초기값
- * const subscribe = makeLenshelf({ name: 'brown', age: 38 })
+ * const take = makeLenshelf({ name: 'brown', age: 38 })
  */
 export function lenshelf<V>(orignalValue: V) {
   const storeRenderList: StoreRenderList<V> = new Map();

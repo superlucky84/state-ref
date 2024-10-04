@@ -1,4 +1,4 @@
-import { lenshelf, ShelfStore } from '@/index';
+import { lenshelf } from '@/index';
 type Info = {
   age: number;
   house: {
@@ -21,13 +21,19 @@ const makeDefaultValue = () => ({
   sara: { age: 26, house: [{ color: 'red', floor: 5 }] },
 });
 
-const take = lenshelf<People>(makeDefaultValue());
-// let newValue!: DataType;
-const shelf = take((store: ShelfStore<People>) => {
-  console.log(store);
+// let newValue!: People;
+
+const defaultValue = makeDefaultValue();
+const take = lenshelf<People>(defaultValue);
+take(shelf => {
+  console.log(shelf.brown.house[0].color.value);
 });
 
-shelf.john.house[0].color.value = 'blue';
+/*
+shelf.brown.house[0].color.value = 'blue';
+expect(defaultValue.brown.age).toBe(newValue.brown.age);
+expect(defaultValue.brown.house).toBe(newValue.brown.house);
+*/
 
 /**
  * 브라우저로 수동 테스트
@@ -110,10 +116,57 @@ if (import.meta.vitest) {
       expect(mockFn3).toHaveBeenCalledTimes(1);
     });
 
+    it('abortController 를 통해 지정된 구독 함수만 취소할수 있어야 한다.', () => {
+      const defaultValue = makeDefaultValue();
+      const take = lenshelf<People>(defaultValue);
+      const abortController = new AbortController();
+
+      const mockFn1 = vi.fn();
+      const mockFn2 = vi.fn();
+      const mockFn3 = vi.fn();
+
+      const shelf = take();
+      take(shelf => {
+        console.log(shelf.john.house[0].color.value);
+        mockFn1();
+
+        return abortController.signal;
+      });
+      take(shelf => {
+        console.log(shelf.brown.house[0].color.value);
+        mockFn2();
+      });
+      take(shelf => {
+        console.log(shelf.sara.house[0].color.value);
+        mockFn3();
+      });
+
+      shelf.john.house[0].color.value = 'blue';
+      expect(mockFn1).toHaveBeenCalledTimes(2);
+      expect(mockFn2).toHaveBeenCalledTimes(1);
+      expect(mockFn3).toHaveBeenCalledTimes(1);
+
+      abortController.abort();
+
+      shelf.john.house[0].color.value = 'green';
+      expect(mockFn1).toHaveBeenCalledTimes(2);
+      expect(mockFn2).toHaveBeenCalledTimes(1);
+      expect(mockFn3).toHaveBeenCalledTimes(1);
+
+      shelf.brown.house[0].color.value = 'yellow';
+      expect(mockFn1).toHaveBeenCalledTimes(2);
+      expect(mockFn2).toHaveBeenCalledTimes(2);
+      expect(mockFn3).toHaveBeenCalledTimes(1);
+
+      shelf.sara.house[0].color.value = 'yellow';
+      expect(mockFn1).toHaveBeenCalledTimes(2);
+      expect(mockFn2).toHaveBeenCalledTimes(2);
+      expect(mockFn3).toHaveBeenCalledTimes(2);
+    });
+
     it('구독하자마자 처음 한번은 구독함수가 실행되어야 한다.', () => {
       const defaultValue = makeDefaultValue();
       const take = lenshelf<People>(defaultValue);
-
       const mockFn1 = vi.fn();
 
       take(() => {
@@ -121,6 +174,46 @@ if (import.meta.vitest) {
       });
 
       expect(mockFn1).toHaveBeenCalledTimes(1);
+    });
+
+    it('구독하자마자 처음 한번은 두번째 인자로 true 값을 받아야 한다.', () => {
+      const defaultValue = makeDefaultValue();
+      const take = lenshelf<People>(defaultValue);
+
+      const mockFn1 = vi.fn();
+
+      const shelf = take((shelf, isFirst) => {
+        console.log(shelf.brown.house[0].color.value);
+        mockFn1(isFirst);
+      });
+
+      expect(mockFn1).toHaveBeenCalledWith(true);
+      shelf.brown.house[0].color.value = 'blue';
+      expect(mockFn1).toHaveBeenCalledWith(false);
+    });
+
+    it('변경한 값에 대해서 copyOnWrite가 정확히 적용되어야 한다.', () => {
+      const defaultValue = makeDefaultValue();
+      const take = lenshelf<People>(defaultValue);
+
+      let newValue!: People;
+      const shelf = take(shelf => {
+        newValue = shelf.value;
+        console.log(shelf.brown.house[0].color.value);
+      });
+
+      shelf.john.house[0].color.value = 'blue';
+      expect(defaultValue.john.age).toBe(newValue.john.age);
+      expect(defaultValue.john.house).not.toBe(newValue.john.house);
+      expect(defaultValue.john.house[0]).not.toBe(newValue.john.house[0]);
+      expect(defaultValue.john.house[0].color).not.toBe(
+        newValue.john.house[0].color
+      );
+      expect(defaultValue.john.house[0].floor).toBe(
+        newValue.john.house[0].floor
+      );
+      expect(defaultValue.john.house[1]).toBe(newValue.john.house[1]);
+      expect(defaultValue.brown).toBe(newValue.brown);
     });
   });
 }

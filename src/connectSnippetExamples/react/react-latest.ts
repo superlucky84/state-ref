@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import type { ShelfStore, Subscribe } from '@/index';
-// import type { ShelfStore, Subscribe } from 'lenshelf';
+import type { ShelfStore, Take } from '@/index';
+// import type { ShelfStore, Take } from 'lenshelf';
 
 /**
  * React V18
  */
-export function connectShelfWithReact<T>(subscribe: Subscribe<T>) {
+export function connectShelfWithReact<T>(take: Take<T>) {
   const useForceUpdate = () => {
     const [dummy, setDummy] = useState(0);
     const abortController = useRef(new AbortController());
@@ -23,5 +23,5 @@ export function connectShelfWithReact<T>(subscribe: Subscribe<T>) {
     return forceUpdateRef.current;
   };
 
-  return () => subscribe(useForceUpdate());
+  return () => take(useForceUpdate());
 }

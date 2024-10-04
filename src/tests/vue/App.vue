@@ -3,14 +3,14 @@ import { lenshelf } from '@/index';
 import { connectShelfWithVue } from '@/connectSnippetExamples/vue/vue-latest';
 
 type Profile = { name: { a: string; b: string }; age: number };
-const subscribe = lenshelf<Profile>({
+const take = lenshelf<Profile>({
   name: { a: 'brown', b: 'jain' },
   age: 13,
 });
-const useProfileShelf = connectShelfWithVue(subscribe);
+const useProfileShelf = connectShelfWithVue(take);
 
 // @ts-ignore
-window.p = subscribe();
+window.p = take();
 
 const profile = useProfileShelf(store => store);
 

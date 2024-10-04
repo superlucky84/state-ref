@@ -1,12 +1,12 @@
 import { h, mount, render } from 'lithent';
 import { lenshelf } from '@/index';
 
-const subscribe = lenshelf<{ name: string; age: number }>({
+const take = lenshelf<{ name: string; age: number }>({
   name: 'brown',
   age: 13,
 });
 
-const store = subscribe(store => {
+const store = take(store => {
   console.log(store.age.value);
 });
 console.log(store.age.value);
@@ -15,13 +15,13 @@ console.log(store.age.value);
 window.p = store;
 
 const Name = mount(renew => {
-  const shelf = subscribe(renew);
+  const shelf = take(renew);
 
   return () => <div>aa = {shelf.name.value}</div>;
 });
 
 const Age = mount(renew => {
-  const shelf = subscribe(renew);
+  const shelf = take(renew);
 
   return () => <div>aa = {shelf.age.value}</div>;
 });

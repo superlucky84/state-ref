@@ -1,12 +1,12 @@
 import { lenshelf, copyable } from '@/index';
 import { connectShelfWithSolid } from '@/connectSnippetExamples/solid/solid-latest';
 
-const subscribe = lenshelf({
+const take = lenshelf({
   name: 'brown',
   age: 13,
 });
 
-const useProfileShelf = connectShelfWithSolid(subscribe);
+const useProfileShelf = connectShelfWithSolid(take);
 
 function App() {
   const [profile, setProfile] = useProfileShelf<{ name: string; age: number }>(
@@ -15,7 +15,7 @@ function App() {
   const [name] = useProfileShelf<string>(store => store.name);
 
   //@ts-ignore
-  window.p = subscribe();
+  window.p = take();
 
   return (
     <div>
