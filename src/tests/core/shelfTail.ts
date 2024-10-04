@@ -1,7 +1,7 @@
 import { lenshelf, ShelfStore } from '@/index';
 
 type DataType = {
-  a: { b: { c: number | undefined | null }; b1: { c2: number } };
+  a: { b: { c: number | undefined | null | string }; b1: { c2: number } };
   a1: number;
 };
 
@@ -136,35 +136,38 @@ if (import.meta.vitest) {
       assertCopyOnRight(defaultValue, newValue);
     });
 
-    it.skip('연속으로 변경되어도 구독함수가 변경을 잘 감지해야한다.', () => {
-      const defaultNumber = 3;
-      const changeNumber = 4;
-      const changeNumber2 = 5;
-      const take = lenshelf<number>(defaultNumber);
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const shelf = take(store => console.log('number', store.value));
+    it('연속으로 변경되어도 구독함수 함수에서 copyOnWrite가 잘 이루어진 데이터로 확인되어야 한다.', () => {
+      const defaultValue = { a: { b: { c: 7 }, b1: { c2: 8 } }, a1: 9 };
+      const take = lenshelf<DataType>(defaultValue);
+      let newValue!: DataType;
+      const shelf = take((store: ShelfStore<DataType>) => {
+        newValue = store.value;
+      });
 
-      shelf.value = changeNumber;
-      expect(logSpy).toHaveBeenCalledWith('number', changeNumber);
-      logSpy.mockRestore();
+      shelf.a.b.c.value = 7;
+      expect(newValue.a.b.c).toBe(7);
+      assertCopyOnRight(defaultValue, newValue);
 
-      const logSpy2 = vi.spyOn(console, 'log').mockImplementation(() => {});
-      shelf.value = changeNumber2;
-      expect(logSpy2).toHaveBeenCalledWith('number', changeNumber2);
-      logSpy.mockRestore();
+      shelf.a.b.c.value = 8;
+      expect(newValue.a.b.c).toBe(8);
+      assertCopyOnRight(defaultValue, newValue);
+
+      shelf.a.b.c.value = 9;
+      expect(newValue.a.b.c).toBe(9);
+      assertCopyOnRight(defaultValue, newValue);
     });
 
-    it.skip('문자형 데이터가 변경되면 구독함수가 변경을 잘 감지해야한다.', () => {
-      const defaultString = 'john';
-      const changeString = 'james';
-      const take = lenshelf<string>(defaultString);
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const shelf = take(store => console.log('string', store.value));
+    it('문자형 데이터가 변경되면 구독함수에서 copyOnWrite가 잘 이루어진 데이터로 확인되어야 한다.', () => {
+      const defaultValue = { a: { b: { c: 'john' }, b1: { c2: 8 } }, a1: 9 };
+      const take = lenshelf<DataType>(defaultValue);
+      let newValue!: DataType;
+      const shelf = take((store: ShelfStore<DataType>) => {
+        newValue = store.value;
+      });
 
-      shelf.value = changeString;
-      expect(logSpy).toHaveBeenCalledWith('string', changeString);
-
-      logSpy.mockRestore();
+      shelf.a.b.c.value = 'sara';
+      expect(newValue.a.b.c).toBe('sara');
+      assertCopyOnRight(defaultValue, newValue);
     });
 
     it.skip('abortController 를 통해 구독을 취소할수 있어야 한다.', () => {
