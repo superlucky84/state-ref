@@ -13,11 +13,12 @@ export type StoreType<V> = { root: V };
 export type WithRoot = { root: unknown } & { [key: string | symbol]: unknown };
 export type ShelfStore<S> = S extends object
   ? {
-      [K in keyof S]: ShelfStore<S[K]> & { value: S[K] };
+      [K in keyof S]: ShelfStore<S[K]>;
     } & {
       value: S;
     }
   : { value: S };
+// [K in keyof S]: ShelfStore<S[K]> & { value: S[K] };
 // value: { [K in keyof S]: ShelfStore<S[K]> } & { value: S };
 
 export type Take<V> = (
