@@ -137,7 +137,10 @@ if (import.meta.vitest) {
     });
 
     it('연속으로 변경되어도 구독함수 함수에서 copyOnWrite가 잘 이루어진 데이터로 확인되어야 한다.', () => {
-      const defaultValue = { a: { b: { c: 7 }, b1: { c2: 8 } }, a1: 9 };
+      let defaultValue: DataType = {
+        a: { b: { c: 'john' }, b1: { c2: 8 } },
+        a1: 9,
+      };
       const take = lenshelf<DataType>(defaultValue);
       let newValue!: DataType;
       const shelf = take((store: ShelfStore<DataType>) => {
@@ -147,10 +150,12 @@ if (import.meta.vitest) {
       shelf.a.b.c.value = 7;
       expect(newValue.a.b.c).toBe(7);
       assertCopyOnRight(defaultValue, newValue);
+      defaultValue = newValue;
 
       shelf.a.b.c.value = 8;
       expect(newValue.a.b.c).toBe(8);
       assertCopyOnRight(defaultValue, newValue);
+      defaultValue = newValue;
 
       shelf.a.b.c.value = 9;
       expect(newValue.a.b.c).toBe(9);
@@ -170,59 +175,77 @@ if (import.meta.vitest) {
       assertCopyOnRight(defaultValue, newValue);
     });
 
-    it.skip('abortController 를 통해 구독을 취소할수 있어야 한다.', () => {
-      const defaultNumber = 3;
-      const changeNumber = 4;
-      const take = lenshelf<number>(defaultNumber);
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    it('abortController 를 통해 구독을 취소할수 있어야 한다.', () => {
       const abortController = new AbortController();
-      const shelf = take(store => {
-        console.log('number', store.value);
+      let defaultValue: DataType = {
+        a: { b: { c: 'john' }, b1: { c2: 8 } },
+        a1: 9,
+      };
+      const take = lenshelf<DataType>(defaultValue);
+      let newValue!: DataType;
+      const shelf = take((store: ShelfStore<DataType>) => {
+        newValue = store.value;
 
         return abortController.signal;
       });
 
-      shelf.value = changeNumber;
-      expect(logSpy).toHaveBeenCalledWith('number', changeNumber);
-      logSpy.mockRestore();
+      shelf.a.b.c.value = 'sara';
+      expect(newValue.a.b.c).toBe('sara');
+      assertCopyOnRight(defaultValue, newValue);
 
-      const abortLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      defaultValue = newValue;
       abortController.abort();
-      shelf.value = defaultNumber;
 
-      expect(abortLogSpy).not.toHaveBeenCalled();
-
-      logSpy.mockRestore();
+      shelf.a.b.c.value = 'james';
+      expect(newValue.a.b.c).toBe('sara');
+      assertNotCopyOnRight(defaultValue, newValue);
     });
 
-    it.skip('콜백함수가 리턴 false 를 하면 단 한번의 변경만 알림을 받고 구독 취소 되어야 한다.', () => {
-      const defaultNumber = 3;
-      const changeNumber = 4;
-      const take = lenshelf<number>(defaultNumber);
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const shelf = take(store => {
-        console.log('number', store.value);
+    it('콜백함수가 리턴 false 를 하면 단 한번의 변경만 알림을 받고 구독 취소 되어야 한다.', () => {
+      let defaultValue: DataType = {
+        a: { b: { c: 'john' }, b1: { c2: 8 } },
+        a1: 9,
+      };
+      const take = lenshelf<DataType>(defaultValue);
+      let newValue!: DataType;
+      const shelf = take((store: ShelfStore<DataType>) => {
+        newValue = store.value;
 
         return false;
       });
 
-      shelf.value = changeNumber;
-      expect(logSpy).toHaveBeenCalledWith('number', changeNumber);
-      logSpy.mockRestore();
+      shelf.a.b.c.value = 'sara';
+      expect(newValue.a.b.c).toBe('sara');
+      assertCopyOnRight(defaultValue, newValue);
+      defaultValue = newValue;
 
-      const abortLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      shelf.value = defaultNumber;
-
-      expect(abortLogSpy).not.toHaveBeenCalled();
-
-      logSpy.mockRestore();
+      shelf.a.b.c.value = 'james';
+      expect(newValue.a.b.c).toBe('sara');
+      assertNotCopyOnRight(defaultValue, newValue);
     });
   });
 
+  /**
+   *해당 테스트 그룹에서 카피온 라이트가 잘 일어났는지 assert
+   */
   function assertCopyOnRight<T extends DataType>(defaultValue: T, newValue: T) {
     expect(defaultValue).not.toBe(newValue);
     expect(defaultValue.a).not.toBe(newValue.a);
     expect(defaultValue.a.b).not.toBe(newValue.a.b);
+    expect(defaultValue.a.b1).toBe(newValue.a.b1);
+    expect(defaultValue.a1).toBe(newValue.a1);
+  }
+
+  /**
+   *해당 테스트 그룹에서 카피온 라이트가 일어나지 않았는지 assert
+   */
+  function assertNotCopyOnRight<T extends DataType>(
+    defaultValue: T,
+    newValue: T
+  ) {
+    expect(defaultValue).toBe(newValue);
+    expect(defaultValue.a).toBe(newValue.a);
+    expect(defaultValue.a.b).toBe(newValue.a.b);
     expect(defaultValue.a.b1).toBe(newValue.a.b1);
     expect(defaultValue.a1).toBe(newValue.a1);
   }
