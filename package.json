@@ -8,11 +8,13 @@
   "scripts": {
     "dev:core": "pnpm --filter state-ref dev",
     "build:core": "pnpm --filter state-ref build",
+    "watch:core": "vite build --watch",
     "test:core": "pnpm --filter state-ref test",
     "test:all:core": "pnpm --filter state-ref test:all",
     "clean": "pnpm clean:dist && pnpm clean:module",
     "clean:dist": "pnpm -r exec rm -rf dist && rm -rf dist",
-    "clean:module": "pnpm -r exec rm -rf dist node_modules && rm -rf node_modules"
+    "clean:module": "pnpm -r exec rm -rf dist node_modules && rm -rf node_modules",
+    "dev:preact": "pnpm watch:core & pnpm --filter @state-ref/preact dev"
   },
   "author": "superlucky84",
   "repository": {
@@ -27,7 +29,6 @@
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^3.1.2",
     "@testing-library/jest-dom": "^6.5.0",
-    "@testing-library/preact": "^3.2.4",
     "@typescript-eslint/eslint-plugin": "^5.60.0",
     "@typescript-eslint/parser": "^5.60.0",
     "@vitejs/plugin-vue": "^5.1.4",
@@ -38,7 +39,6 @@
     "happy-dom": "^9.20.3",
     "jsdom": "^22.1.0",
     "lithent": "^1.13.1",
-    "preact": "^10.24.1",
     "prettier": "^2.8.8",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

@@ -1,7 +1,9 @@
 import { render as trender, screen } from '@testing-library/preact';
 import { h, render } from 'preact';
-import { fromState } from '@/index';
-import { connectWithPreactA } from '@/connectSnippetExamples/preact/preact-latest';
+import { fromState } from 'state-ref';
+import { connectWithPreactA } from '@/index';
+
+console.log(fromState);
 
 const capture = fromState<{ name: string; age: number }>({
   name: 'brown',

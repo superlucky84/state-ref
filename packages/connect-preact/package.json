@@ -1,23 +1,22 @@
 {
   "type": "module",
-  "name": "state-ref",
+  "name": "@state-ref/preact",
   "version": "1.0.0",
-  "description": "X UI Library Universal State Management Library",
+  "description": "vue connector for state-ref",
   "packageManager": "pnpm@7.6.0",
-  "main": "./dist/state-ref.umd.js",
-  "module": "./dist/state-ref.mjs",
+  "main": "./dist/preact-state-ref.umd.js",
+  "module": "./dist/preact-state-ref.mjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "watch": "vite build --watch",
     "test:all": "vitest run --reporter verbose",
     "test": "vitest"
   },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/state-ref.mjs",
-      "require": "./dist/state-ref.umd.js"
+      "import": "./dist/preact-state-ref.mjs",
+      "require": "./dist/preact-state-ref.umd.js"
     }
   },
   "types": "./dist/index.d.ts",
@@ -35,6 +34,15 @@
   "keywords": [
     "state-ref"
   ],
+  "peerDependencies": {
+    "state-ref": "^1.0.0",
+    "preact": "^10.24.1"
+  },
+  "devDependencies": {
+    "state-ref": "workspace:*",
+    "preact": "^10.24.1",
+    "@testing-library/preact": "^3.2.4"
+  },
   "volta": {
     "node": "20.3.0"
   }

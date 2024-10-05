@@ -1,17 +1,16 @@
-import { useState, useRef, useEffect } from 'react';
-import type { StateRefStore, Capture } from '@/index';
-// import type { StateRefStore, Capture } from 'state-ref';
+import { useState, useRef, useEffect } from 'preact/hooks';
+import type { StateRefStore, Capture } from 'state-ref';
 
 /**
- * React V18
+ * Preact V10 type A
  */
-export function connectWithReactA<T>(capture: Capture<T>) {
+export function connectWithPreactA<T>(capture: Capture<T>) {
   const useForceUpdate = () => {
-    const [dummy, setDummy] = useState(0);
+    const [, setDummy] = useState(0);
     const abortController = useRef(new AbortController());
     const forceUpdateRef = useRef((_: StateRefStore<T>, isFirst: boolean) => {
       if (!isFirst) {
-        setDummy(dummy + 1);
+        setDummy(prev => prev + 1);
       }
 
       return abortController.current.signal;

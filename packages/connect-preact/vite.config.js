@@ -12,7 +12,7 @@ export default defineConfig({
       },
     }),
     dts({
-      outputDir: 'dist',
+      outputDir: ['dist'],
     }),
   ],
   resolve: {
@@ -23,12 +23,22 @@ export default defineConfig({
   build: {
     emptyOutDir: false,
     sourcemap: true,
-    minify: true,
+    minify: false,
     lib: {
       entry: resolve(__dirname, 'src'),
       name: 'state-ref',
       fileName: format => {
-        return format === 'umd' ? 'state-ref.umd.js' : 'state-ref.mjs';
+        return format === 'umd'
+          ? 'preact-state-ref.umd.js'
+          : 'preact-state-ref.mjs';
+      },
+    },
+    rollupOptions: {
+      external: ['state-ref'],
+      output: {
+        globals: {
+          lithent: 'state-ref',
+        },
       },
     },
   },
@@ -39,6 +49,6 @@ export default defineConfig({
     globals: true,
   },
   server: {
-    open: './html/test.html',
+    open: './html/preact/default.html',
   },
 });

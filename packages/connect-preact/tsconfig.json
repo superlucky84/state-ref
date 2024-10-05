@@ -21,7 +21,7 @@
     "jsxFactory": "h",
     "jsxFragmentFactory": "Fragment",
     "baseUrl": "./",
-    "types": ["vitest/globals", "vitest/importMeta"],
+    "types": ["vitest/globals", "vitest/importMeta", "@testing-library/jest-dom"],
     "paths": {
       "@/*": ["src/*"]
     }
