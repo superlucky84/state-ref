@@ -1,0 +1,40 @@
+{
+  "type": "module",
+  "name": "state-ref",
+  "version": "1.0.0",
+  "description": "X UI Library Universal State Management Library",
+  "packageManager": "pnpm@7.6.0",
+  "main": "./dist/state-ref.umd.js",
+  "module": "./dist/state-ref.mjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test:all": "vitest run --reporter verbose",
+    "test": "vitest"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/state-ref.mjs",
+      "require": "./dist/state-ref.umd.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "src",
+    "dist"
+  ],
+  "author": "superlucky84",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/superlucky84/state-ref.git"
+  },
+  "homepage": "https://github.com/superlucky84/state-ref",
+  "license": "MIT",
+  "keywords": [
+    "state-ref"
+  ],
+  "volta": {
+    "node": "20.3.0"
+  }
+}

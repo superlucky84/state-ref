@@ -8,7 +8,6 @@ type Info = {
 };
 
 type People = { john: Info; brown: Info; sara: Info };
-
 const makeDefaultValue = () => ({
   john: {
     age: 20,
