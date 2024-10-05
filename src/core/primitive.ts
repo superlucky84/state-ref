@@ -31,7 +31,7 @@ export function makePrimitive<V>({
         run,
         storeRenderList,
         newValue => {
-          (ref.current as Root<V>).setValue(newValue);
+          (ref.current as Root<V>).setCurrent(newValue);
         }
       );
     },

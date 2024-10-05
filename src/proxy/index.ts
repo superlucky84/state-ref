@@ -130,7 +130,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
            */
           runner(storeRenderList);
         } else if (lensValue.k(prop).get()(rootValue) !== value) {
-          throw new Error('Can only be assigned to a "value".');
+          throw new Error('Can only be assigned to a "current".');
         }
 
         return true;
