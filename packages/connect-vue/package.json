@@ -1,0 +1,50 @@
+{
+  "type": "module",
+  "name": "@state-ref/vue",
+  "version": "1.0.0",
+  "description": "vue connector for state-ref",
+  "packageManager": "pnpm@7.6.0",
+  "main": "./dist/vue-state-ref.umd.js",
+  "module": "./dist/vue-state-ref.mjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test:all": "vitest run --reporter verbose",
+    "test": "vitest"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/vue-state-ref.mjs",
+      "require": "./dist/vue-state-ref.umd.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "src",
+    "dist"
+  ],
+  "author": "superlucky84",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/superlucky84/state-ref.git"
+  },
+  "homepage": "https://github.com/superlucky84/state-ref",
+  "license": "MIT",
+  "keywords": [
+    "state-ref"
+  ],
+  "peerDependencies": {
+    "vue": "^3.5.10",
+    "state-ref": "^1.0.0"
+  },
+  "devDependencies": {
+    "state-ref": "workspace:*",
+    "@vitejs/plugin-vue": "^5.1.4",
+    "@vue/compiler-sfc": "^3.5.10",
+    "vue": "^3.5.10"
+  },
+  "volta": {
+    "node": "20.3.0"
+  }
+}

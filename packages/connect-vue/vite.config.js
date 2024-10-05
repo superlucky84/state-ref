@@ -2,6 +2,7 @@ import { resolve } from 'path';
 import { defineConfig } from 'vite';
 import checker from 'vite-plugin-checker';
 import dts from 'vite-plugin-dts';
+import vue from '@vitejs/plugin-vue';
 
 export default defineConfig({
   plugins: [
@@ -14,6 +15,7 @@ export default defineConfig({
     dts({
       outputDir: ['dist'],
     }),
+    vue(),
   ],
   resolve: {
     alias: {
@@ -26,19 +28,17 @@ export default defineConfig({
     minify: false,
     lib: {
       entry: resolve(__dirname, 'src'),
-      name: 'preact-state-ref',
+      name: 'vue-state-ref',
       fileName: format => {
-        return format === 'umd'
-          ? 'preact-state-ref.umd.js'
-          : 'preact-state-ref.mjs';
+        return format === 'umd' ? 'vue-state-ref.umd.js' : 'vue-state-ref.mjs';
       },
     },
     rollupOptions: {
-      external: ['state-ref', 'preact'],
+      external: ['state-ref', 'vue'],
       output: {
         globals: {
           'state-ref': 'state-ref',
-          preact: 'preact',
+          vue: 'vue',
         },
       },
     },
@@ -50,6 +50,6 @@ export default defineConfig({
     globals: true,
   },
   server: {
-    open: './html/preact/default.html',
+    open: './html/vue/default.html',
   },
 });

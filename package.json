@@ -14,7 +14,9 @@
     "clean": "pnpm clean:dist && pnpm clean:module",
     "clean:dist": "pnpm -r exec rm -rf dist && rm -rf dist",
     "clean:module": "pnpm -r exec rm -rf dist node_modules && rm -rf node_modules",
-    "dev:preact": "pnpm watch:core & pnpm --filter @state-ref/preact dev"
+    "dev:preact": "pnpm watch:core & pnpm --filter @state-ref/preact dev",
+    "dev:react": "pnpm watch:core & pnpm --filter @state-ref/react dev",
+    "dev:vue": "pnpm watch:core & pnpm --filter @state-ref/vue dev"
   },
   "author": "superlucky84",
   "repository": {
@@ -31,8 +33,6 @@
     "@testing-library/jest-dom": "^6.5.0",
     "@typescript-eslint/eslint-plugin": "^5.60.0",
     "@typescript-eslint/parser": "^5.60.0",
-    "@vitejs/plugin-vue": "^5.1.4",
-    "@vue/compiler-sfc": "^3.5.10",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.8.0",
     "eslint-plugin-prettier": "^4.2.1",
@@ -40,8 +40,6 @@
     "jsdom": "^22.1.0",
     "lithent": "^1.13.1",
     "prettier": "^2.8.8",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
     "solid-js": "^1.9.1",
     "svelte": "^4.2.19",
     "terser": "^5.18.1",
@@ -50,8 +48,7 @@
     "vite-plugin-checker": "^0.6.1",
     "vite-plugin-dts": "^2.3.0",
     "vite-plugin-solid": "^2.10.2",
-    "vitest": "^2.1.2",
-    "vue": "^3.5.10"
+    "vitest": "^2.1.2"
   },
   "volta": {
     "node": "20.3.0"

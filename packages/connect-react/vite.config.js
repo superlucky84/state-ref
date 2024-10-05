@@ -26,19 +26,20 @@ export default defineConfig({
     minify: false,
     lib: {
       entry: resolve(__dirname, 'src'),
-      name: 'preact-state-ref',
+      name: 'react-state-ref',
       fileName: format => {
         return format === 'umd'
-          ? 'preact-state-ref.umd.js'
-          : 'preact-state-ref.mjs';
+          ? 'react-state-ref.umd.js'
+          : 'react-state-ref.mjs';
       },
     },
     rollupOptions: {
-      external: ['state-ref', 'preact'],
+      external: ['state-ref', 'react', 'react-dom'],
       output: {
         globals: {
           'state-ref': 'state-ref',
-          preact: 'preact',
+          react: 'React',
+          'react-dom': 'ReactDOM',
         },
       },
     },
@@ -50,6 +51,6 @@ export default defineConfig({
     globals: true,
   },
   server: {
-    open: './html/preact/default.html',
+    open: './html/react/default.html',
   },
 });
