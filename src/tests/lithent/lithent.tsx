@@ -7,9 +7,9 @@ const capture = fromState<{ name: string; age: number }>({
 });
 
 const store = capture(store => {
-  console.log(store.age.value);
+  console.log(store.age.current);
 });
-console.log(store.age.value);
+console.log(store.age.current);
 
 //@ts-ignore
 window.p = store;
@@ -17,13 +17,13 @@ window.p = store;
 const Name = mount(renew => {
   const stateRef = capture(renew);
 
-  return () => <div>aa = {stateRef.name.value}</div>;
+  return () => <div>aa = {stateRef.name.current}</div>;
 });
 
 const Age = mount(renew => {
   const stateRef = capture(renew);
 
-  return () => <div>aa = {stateRef.age.value}</div>;
+  return () => <div>aa = {stateRef.age.current}</div>;
 });
 
 render(<Age />, document.getElementById('root') as HTMLElement);

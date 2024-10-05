@@ -4,10 +4,10 @@ import type { StoreType } from '@/types';
 
 /**
  * 프록시에서 하위 프리미티브 타입으로 접근했을때
- * value로 값에 접근하고, value로 값을 수정할수 있는 객체로 감싸서 리턴한다.
+ * current로 값에 접근하고, current로 값을 수정할수 있는 객체로 감싸서 리턴한다.
  */
 export class Tail<V, S extends StoreType<V>> {
-  private _value: V;
+  private _current: V;
   private depth: string[];
   private lensValue: Lens<S, S>;
   private rootValue: S;
@@ -22,7 +22,7 @@ export class Tail<V, S extends StoreType<V>> {
     runCollector: () => void,
     runner: () => void
   ) {
-    this._value = propertyValue;
+    this._current = propertyValue;
     this.depth = depthList;
     this.lensValue = lensValue;
     this.rootValue = rootValue;
@@ -30,13 +30,13 @@ export class Tail<V, S extends StoreType<V>> {
     this.runner = runner;
   }
 
-  get value() {
+  get current() {
     this.runCollector();
 
-    return this._value;
+    return this._current;
   }
 
-  set value(newValue: V) {
+  set current(newValue: V) {
     const prop = this.depth.at(-1);
 
     if ((newValue as S[keyof S]) !== this.lensValue.get()(this.rootValue)) {
@@ -44,13 +44,13 @@ export class Tail<V, S extends StoreType<V>> {
         .k(prop as keyof S)
         .set(newValue as S[keyof S])(this.rootValue);
 
-      this._value = newValue;
+      this._current = newValue;
       this.rootValue.root = newTree.root;
       this.runner();
     }
   }
 
-  setValue(newValue: V) {
-    this._value = newValue;
+  setCurrent(newValue: V) {
+    this._current = newValue;
   }
 }

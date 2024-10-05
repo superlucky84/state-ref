@@ -10,18 +10,18 @@ const capture = fromState<DataType>(defaultValue);
 
 const ref = capture();
 capture(store => {
-  console.log('a', store.a.b1.c2.value);
+  console.log('a', store.a.b1.c2.current);
 });
 capture(store => {
-  console.log('b', store.a.b.c.value);
+  console.log('b', store.a.b.c.current);
 });
 capture(store => {
-  console.log('c', store.a1.value);
+  console.log('c', store.a1.current);
 });
 
 //@ts-ignore
 window.p = ref;
-ref.a.b1.c2.value = 100;
+ref.a.b1.c2.current = 100;
 
 /**
  * 브라우저로 수동 테스트
@@ -45,7 +45,7 @@ if (import.meta.vitest) {
       const defaultValue = { a: { b: { c: 4 }, b1: { c2: 8 } }, a1: 9 };
       const capture = fromState<DataType>(defaultValue);
 
-      capture(store => console.log(store.value));
+      capture(store => console.log(store.current));
       expect(logSpy).toHaveBeenCalledWith(defaultValue);
 
       logSpy.mockRestore();
@@ -56,10 +56,10 @@ if (import.meta.vitest) {
       const capture = fromState<DataType>(defaultValue);
       let newValue!: DataType;
       const stateRef = capture((store: StateRefStore<DataType>) => {
-        newValue = store.value;
+        newValue = store.current;
       });
 
-      stateRef.a.b.c.value = 10;
+      stateRef.a.b.c.current = 10;
       expect(newValue.a.b.c).toBe(10);
       expect(defaultValue).not.toBe(newValue);
       expect(defaultValue.a).not.toBe(newValue.a);
@@ -73,7 +73,7 @@ if (import.meta.vitest) {
       const defaultValue = { a: { b: { c: 4 }, b1: { c2: 8 } }, a1: 9 };
       const capture = fromState<DataType>(defaultValue);
 
-      capture(store => console.log(store.value));
+      capture(store => console.log(store.current));
       expect(logSpy).toHaveBeenCalledWith(defaultValue);
 
       logSpy.mockRestore();
@@ -84,7 +84,7 @@ if (import.meta.vitest) {
       const defaultValue = { a: { b: { c: undefined }, b1: { c2: 8 } }, a1: 9 };
       const capture = fromState<DataType>(defaultValue);
 
-      capture(store => console.log(store.value));
+      capture(store => console.log(store.current));
       expect(logSpy).toHaveBeenCalledWith(defaultValue);
 
       logSpy.mockRestore();
@@ -95,7 +95,7 @@ if (import.meta.vitest) {
       const defaultValue = { a: { b: { c: null }, b1: { c2: 8 } }, a1: 9 };
       const capture = fromState<DataType>(defaultValue);
 
-      capture(store => console.log('undefined', store.value));
+      capture(store => console.log('undefined', store.current));
       expect(logSpy).toHaveBeenCalledWith('undefined', defaultValue);
 
       logSpy.mockRestore();
@@ -106,10 +106,10 @@ if (import.meta.vitest) {
       const capture = fromState<DataType>(defaultValue);
       let newValue!: DataType;
       const stateRef = capture((store: StateRefStore<DataType>) => {
-        newValue = store.value;
+        newValue = store.current;
       });
 
-      stateRef.a.b.c.value = 21;
+      stateRef.a.b.c.current = 21;
       expect(newValue.a.b.c).toBe(21);
       assertCopyOnRight(defaultValue, newValue);
     });
@@ -119,10 +119,10 @@ if (import.meta.vitest) {
       const capture = fromState<DataType>(defaultValue);
       let newValue!: DataType;
       const stateRef = capture((store: StateRefStore<DataType>) => {
-        newValue = store.value;
+        newValue = store.current;
       });
 
-      stateRef.a.b.c.value = 21;
+      stateRef.a.b.c.current = 21;
       expect(newValue.a.b.c).toBe(21);
       assertCopyOnRight(defaultValue, newValue);
     });
@@ -132,10 +132,10 @@ if (import.meta.vitest) {
       const capture = fromState<DataType>(defaultValue);
       let newValue!: DataType;
       const stateRef = capture((store: StateRefStore<DataType>) => {
-        newValue = store.value;
+        newValue = store.current;
       });
 
-      stateRef.a.b.c.value = undefined;
+      stateRef.a.b.c.current = undefined;
       expect(newValue.a.b.c).toBe(undefined);
       assertCopyOnRight(defaultValue, newValue);
     });
@@ -148,20 +148,20 @@ if (import.meta.vitest) {
       const capture = fromState<DataType>(defaultValue);
       let newValue!: DataType;
       const stateRef = capture((store: StateRefStore<DataType>) => {
-        newValue = store.value;
+        newValue = store.current;
       });
 
-      stateRef.a.b.c.value = 7;
+      stateRef.a.b.c.current = 7;
       expect(newValue.a.b.c).toBe(7);
       assertCopyOnRight(defaultValue, newValue);
       defaultValue = newValue;
 
-      stateRef.a.b.c.value = 8;
+      stateRef.a.b.c.current = 8;
       expect(newValue.a.b.c).toBe(8);
       assertCopyOnRight(defaultValue, newValue);
       defaultValue = newValue;
 
-      stateRef.a.b.c.value = 9;
+      stateRef.a.b.c.current = 9;
       expect(newValue.a.b.c).toBe(9);
       assertCopyOnRight(defaultValue, newValue);
     });
@@ -171,10 +171,10 @@ if (import.meta.vitest) {
       const capture = fromState<DataType>(defaultValue);
       let newValue!: DataType;
       const stateRef = capture((store: StateRefStore<DataType>) => {
-        newValue = store.value;
+        newValue = store.current;
       });
 
-      stateRef.a.b.c.value = 'sara';
+      stateRef.a.b.c.current = 'sara';
       expect(newValue.a.b.c).toBe('sara');
       assertCopyOnRight(defaultValue, newValue);
     });
@@ -188,19 +188,19 @@ if (import.meta.vitest) {
       const capture = fromState<DataType>(defaultValue);
       let newValue!: DataType;
       const stateRef = capture((store: StateRefStore<DataType>) => {
-        newValue = store.value;
+        newValue = store.current;
 
         return abortController.signal;
       });
 
-      stateRef.a.b.c.value = 'sara';
+      stateRef.a.b.c.current = 'sara';
       expect(newValue.a.b.c).toBe('sara');
       assertCopyOnRight(defaultValue, newValue);
 
       defaultValue = newValue;
       abortController.abort();
 
-      stateRef.a.b.c.value = 'james';
+      stateRef.a.b.c.current = 'james';
       expect(newValue.a.b.c).toBe('sara');
       assertNotCopyOnRight(defaultValue, newValue);
     });
@@ -213,17 +213,17 @@ if (import.meta.vitest) {
       const capture = fromState<DataType>(defaultValue);
       let newValue!: DataType;
       const stateRef = capture((store: StateRefStore<DataType>) => {
-        newValue = store.value;
+        newValue = store.current;
 
         return false;
       });
 
-      stateRef.a.b.c.value = 'sara';
+      stateRef.a.b.c.current = 'sara';
       expect(newValue.a.b.c).toBe('sara');
       assertCopyOnRight(defaultValue, newValue);
       defaultValue = newValue;
 
-      stateRef.a.b.c.value = 'james';
+      stateRef.a.b.c.current = 'james';
       expect(newValue.a.b.c).toBe('sara');
       assertNotCopyOnRight(defaultValue, newValue);
     });

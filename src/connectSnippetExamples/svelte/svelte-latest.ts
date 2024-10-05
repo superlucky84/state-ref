@@ -28,9 +28,9 @@ export function connectWithSvelteA<T>(capture: Capture<T>) {
 
       if (!changing) {
         if (signalValue) {
-          signalValue.set(stateRef.value as V);
+          signalValue.set(stateRef.current as V);
         } else {
-          signalValue = writable(stateRef.value as V);
+          signalValue = writable(stateRef.current as V);
         }
       }
 
@@ -38,9 +38,9 @@ export function connectWithSvelteA<T>(capture: Capture<T>) {
     });
 
     signalValue.subscribe(newValue => {
-      if (stateRef.value !== newValue && !changing) {
+      if (stateRef.current !== newValue && !changing) {
         change(() => {
-          stateRef.value = newValue;
+          stateRef.current = newValue;
         });
       }
     });

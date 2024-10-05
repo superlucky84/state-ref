@@ -29,9 +29,9 @@ export function connectWithSolidA<T>(capture: Capture<T>) {
 
       if (!changing) {
         if (signalValue) {
-          signalValue[1](() => stateRef.value as V);
+          signalValue[1](() => stateRef.current as V);
         } else {
-          signalValue = createSignal<V>(stateRef.value as V);
+          signalValue = createSignal<V>(stateRef.current as V);
         }
       }
 
@@ -41,9 +41,9 @@ export function connectWithSolidA<T>(capture: Capture<T>) {
     createEffect(() => {
       const newValue = signalValue[0]();
 
-      if (stateRef.value !== newValue && !changing) {
+      if (stateRef.current !== newValue && !changing) {
         change(() => {
-          stateRef.value = newValue;
+          stateRef.current = newValue;
         });
       }
     });

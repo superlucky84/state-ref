@@ -11,8 +11,8 @@ import type { StateRefStore, Capture } from '@/index';
 export function connectWithVueA<T>(capture: Capture<T>) {
   return <V>(
     callback: (store: StateRefStore<T>) => StateRefStore<V>
-  ): Reactive<{ value: V }> => {
-    type J = Reactive<{ value: V }>;
+  ): Reactive<{ current: V }> => {
+    type J = Reactive<{ current: V }>;
     const abortController = new AbortController();
     let reactiveValue!: J;
     let stateRef!: StateRefStore<V>;
@@ -29,12 +29,12 @@ export function connectWithVueA<T>(capture: Capture<T>) {
 
     capture(stateInnerRef => {
       stateRef = callback(stateInnerRef);
-      if (reactiveValue?.value !== stateRef.value && !changing) {
+      if (reactiveValue?.current !== stateRef.current && !changing) {
         change(() => {
-          if (reactiveValue?.value) {
-            reactiveValue.value = stateRef.value as UnwrapRef<V>;
+          if (reactiveValue?.current) {
+            reactiveValue.current = stateRef.current as UnwrapRef<V>;
           } else {
-            reactiveValue = reactive({ value: stateRef.value }) as J;
+            reactiveValue = reactive({ current: stateRef.current }) as J;
           }
         });
       }
@@ -43,14 +43,14 @@ export function connectWithVueA<T>(capture: Capture<T>) {
     });
 
     watch(reactiveValue, newValues => {
-      if (stateRef.value !== newValues.value && !changing) {
+      if (stateRef.current !== newValues.current && !changing) {
         const newV =
-          typeof newValues.value === 'object'
-            ? cloneDeep(newValues.value)
-            : newValues.value;
+          typeof newValues.current === 'object'
+            ? cloneDeep(newValues.current)
+            : newValues.current;
 
         change(() => {
-          stateRef.value = newV as V;
+          stateRef.current = newV as V;
         });
       }
     });

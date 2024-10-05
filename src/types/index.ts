@@ -1,7 +1,7 @@
 /**
  * S StoreType<V>; // 처음 제공받는 값 타입 V에 root를 달음
- * G StateRefStore<V>; // 끝에 root가 안달린 상태 끝에 value를 달음
- * T StateRefStore<StoreType<V>>; // 끝에 root가 달린 상태 끝에 value를 달음
+ * G StateRefStore<V>; // 끝에 root가 안달린 상태 끝에 current를 달음
+ * T StateRefStore<StoreType<V>>; // 끝에 root가 달린 상태 끝에 current를 달음
  */
 export type Renew<G> = (
   store: G,
@@ -15,11 +15,11 @@ export type StateRefStore<S> = S extends object
   ? {
       [K in keyof S]: StateRefStore<S[K]>;
     } & {
-      value: S;
+      current: S;
     }
-  : { value: S };
-// [K in keyof S]: StateRefStore<S[K]> & { value: S[K] };
-// value: { [K in keyof S]: StateRefStore<S[K]> } & { value: S };
+  : { current: S };
+// [K in keyof S]: StateRefStore<S[K]> & { current: S[K] };
+// current: { [K in keyof S]: StateRefStore<S[K]> } & { current: S };
 
 export type Capture<V> = (
   renew: Renew<StateRefStore<V>>,

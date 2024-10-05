@@ -36,7 +36,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
         /**
          * 프록시에서 value로 접근할때
          */
-        if (prop === 'value') {
+        if (prop === 'current') {
           const value: any = lensValue.get()(rootValue);
           collector(
             value,
@@ -104,7 +104,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
               run,
               storeRenderList,
               newValue => {
-                tail.setValue(newValue);
+                tail.setCurrent(newValue);
               }
             );
           },
@@ -115,13 +115,13 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
         return tail;
       },
       /**
-       * value에 값을 할당할때는 copyOnWrite를 해준다.
-       * value 가 아닌데 값을 할당할 경우 에러를 던진다.
+       * current에 값을 할당할때는 copyOnWrite를 해준다.
+       * current 가 아닌데 값을 할당할 경우 에러를 던진다.
        * ex) ref.a.b = 'newValue'; // Error
-       * ex) ref.a.b.value = 'newValue'; // Success
+       * ex) ref.a.b.current = 'newValue'; // Success
        */
       set(_, prop: string | symbol, value) {
-        if (prop === 'value' && value !== lensValue.get()(rootValue)) {
+        if (prop === 'current' && value !== lensValue.get()(rootValue)) {
           const newTree = lensValue.set(value)(rootValue);
           rootValue.root = newTree.root;
 
