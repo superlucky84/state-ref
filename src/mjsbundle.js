@@ -77,7 +77,7 @@ function makeDisplayProxyValue(depthList, value) {
   return {
     _navi: depthList.join("."),
     _type: Array.isArray(value) ? "Array" : "Object",
-    _value: ".."
+    _current: ".."
   };
 }
 function isPrimitiveType(orignalValue) {
@@ -119,30 +119,30 @@ function cloneDeep(value) {
   }
   return result;
 }
-class ShelfRoot {
+class Root {
   constructor(propertyValue, rootValue, runCollector, runner2) {
-    __publicField(this, "_value");
+    __publicField(this, "_current");
     __publicField(this, "rootValue");
     __publicField(this, "runCollector");
     __publicField(this, "runner");
-    this._value = propertyValue;
+    this._current = propertyValue;
     this.rootValue = rootValue;
     this.runCollector = runCollector;
     this.runner = runner2;
   }
-  get value() {
+  get current() {
     this.runCollector();
-    return this._value;
+    return this._current;
   }
-  set value(newValue) {
-    if (this._value !== newValue) {
-      this._value = newValue;
+  set current(newValue) {
+    if (this._current !== newValue) {
+      this._current = newValue;
       this.rootValue.root = newValue;
       this.runner();
     }
   }
-  setValue(newValue) {
-    this._value = newValue;
+  setCurrent(newValue) {
+    this._current = newValue;
   }
 }
 function collector(value, getNextValue, newDepthList, run, storeRenderList, primitiveSetter) {
@@ -211,7 +211,7 @@ function makePrimitive({
 }) {
   const ref = { current: null };
   const run = (isFirst) => renew(ref.current, isFirst ?? false);
-  ref.current = new ShelfRoot(
+  ref.current = new Root(
     orignalValue,
     rootValue,
     () => {
@@ -222,7 +222,7 @@ function makePrimitive({
         run,
         storeRenderList,
         (newValue) => {
-          ref.current.setValue(newValue);
+          ref.current.setCurrent(newValue);
         }
       );
     },
@@ -234,36 +234,36 @@ function makePrimitive({
   cacheMap.set(renew, ref.current);
   return ref.current;
 }
-class ShelfTail {
+class Tail {
   constructor(propertyValue, depthList, lensValue = lens(), rootValue, runCollector, runner2) {
-    __publicField(this, "_value");
+    __publicField(this, "_current");
     __publicField(this, "depth");
     __publicField(this, "lensValue");
     __publicField(this, "rootValue");
     __publicField(this, "runCollector");
     __publicField(this, "runner");
-    this._value = propertyValue;
+    this._current = propertyValue;
     this.depth = depthList;
     this.lensValue = lensValue;
     this.rootValue = rootValue;
     this.runCollector = runCollector;
     this.runner = runner2;
   }
-  get value() {
+  get current() {
     this.runCollector();
-    return this._value;
+    return this._current;
   }
-  set value(newValue) {
+  set current(newValue) {
     const prop = this.depth.at(-1);
     if (newValue !== this.lensValue.get()(this.rootValue)) {
       const newTree = this.lensValue.k(prop).set(newValue)(this.rootValue);
-      this._value = newValue;
+      this._current = newValue;
       this.rootValue.root = newTree.root;
       this.runner();
     }
   }
-  setValue(newValue) {
-    this._value = newValue;
+  setCurrent(newValue) {
+    this._current = newValue;
   }
 }
 function makeProxy(value, storeRenderList, run, rootValue = value, lensValue = lens(), depth = 0, depthList = []) {
@@ -281,7 +281,7 @@ function makeProxy(value, storeRenderList, run, rootValue = value, lensValue = l
        */
       get(_, prop) {
         const newDepthList = [...depthList, prop.toString()];
-        if (prop === "value") {
+        if (prop === "current") {
           const value2 = lensValue.get()(rootValue);
           collector(
             value2,
@@ -320,7 +320,7 @@ function makeProxy(value, storeRenderList, run, rootValue = value, lensValue = l
             newDepthList
           );
         }
-        const shelfTail = new ShelfTail(
+        const tail = new Tail(
           propertyValue,
           newDepthList,
           lensValue,
@@ -333,7 +333,7 @@ function makeProxy(value, storeRenderList, run, rootValue = value, lensValue = l
               run,
               storeRenderList,
               (newValue) => {
-                shelfTail.setValue(newValue);
+                tail.setCurrent(newValue);
               }
             );
           },
@@ -341,21 +341,21 @@ function makeProxy(value, storeRenderList, run, rootValue = value, lensValue = l
             runner(storeRenderList);
           }
         );
-        return shelfTail;
+        return tail;
       },
       /**
-       * value에 값을 할당할때는 copyOnWrite를 해준다.
-       * value 가 아닌데 값을 할당할 경우 에러를 던진다.
-       * ex) shelf.a.b = 'newValue'; // Error
-       * ex) shelf.a.b.value = 'newValue'; // Success
+       * current에 값을 할당할때는 copyOnWrite를 해준다.
+       * current 가 아닌데 값을 할당할 경우 에러를 던진다.
+       * ex) ref.a.b = 'newValue'; // Error
+       * ex) ref.a.b.current = 'newValue'; // Success
        */
       set(_, prop, value2) {
-        if (prop === "value" && value2 !== lensValue.get()(rootValue)) {
+        if (prop === "current" && value2 !== lensValue.get()(rootValue)) {
           const newTree = lensValue.set(value2)(rootValue);
           rootValue.root = newTree.root;
           runner(storeRenderList);
         } else if (lensValue.k(prop).get()(rootValue) !== value2) {
-          throw new Error('Can only be assigned to a "value".');
+          throw new Error('Can only be assigned to a "current".');
         }
         return true;
       }
@@ -382,7 +382,7 @@ function makeObject({
   cacheMap.set(renew, ref.current.root);
   return ref.current.root;
 }
-function lenshelf(orignalValue) {
+function fromState(orignalValue) {
   const storeRenderList = /* @__PURE__ */ new Map();
   const cacheMap = /* @__PURE__ */ new WeakMap();
   const rootValue = { root: orignalValue };
@@ -407,7 +407,7 @@ function lenshelf(orignalValue) {
 export {
   cloneDeep,
   copyable,
-  lens,
-  lenshelf
+  fromState,
+  lens
 };
-//# sourceMappingURL=lenshelf.mjs.map
+//# sourceMappingURL=state-ref.mjs.map

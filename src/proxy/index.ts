@@ -3,7 +3,7 @@ import type { Lens } from '@/lens';
 import { makeDisplayProxyValue } from '@/helper';
 import { collector } from '@/connectors/collector';
 import { runner } from '@/connectors/runner';
-import { Tail } from '@/proxy/Tail';
+import { Tail } from '@/proxy/tail';
 import type { Run, WithRoot, StoreRenderList } from '@/types';
 
 /**

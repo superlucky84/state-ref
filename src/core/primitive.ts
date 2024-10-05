@@ -1,4 +1,4 @@
-import { Root } from '@/proxy/Root';
+import { Root } from '@/proxy/root';
 import { collector } from '@/connectors/collector';
 import { firstRunner, runner } from '@/connectors/runner';
 
