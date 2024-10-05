@@ -32,9 +32,9 @@ export default defineConfig({
     minify: false,
     lib: {
       entry: resolve(__dirname, 'src'),
-      name: 'lenshelf',
+      name: 'state-ref',
       fileName: format => {
-        return format === 'umd' ? 'lenshelf.umd.js' : 'lenshelf.mjs';
+        return format === 'umd' ? 'state-ref.umd.js' : 'state-ref.mjs';
       },
     },
   },

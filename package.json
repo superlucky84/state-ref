@@ -18,8 +18,8 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/lenshelf.mjs",
-      "require": "./dist/lenshelf.umd.js"
+      "import": "./dist/state-ref.mjs",
+      "require": "./dist/state-ref.umd.js"
     }
   },
   "types": "./dist/index.d.ts",

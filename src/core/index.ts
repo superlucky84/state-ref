@@ -2,22 +2,25 @@ import { isPrimitiveType, DEFAULT_OPTION } from '@/helper';
 import { makePrimitive } from '@/core/primitive';
 import { makeObject } from '@/core/object';
 
-import type { Renew, StoreType, ShelfStore, StoreRenderList } from '@/types';
+import type { Renew, StoreType, StateRefStore, StoreRenderList } from '@/types';
 
 /**
- * shelf 스토어를 만들어 준다
+ * fromState 스토어를 만들어 준다
  * 인자는 초기값
- * const take = makeLenshelf({ name: 'brown', age: 38 })
+ * const capture = fromState({ name: 'brown', age: 38 })
+ * const stateRef = capture(stateRef => {
+ *   console.log(stateRef.current));
+ * });
  */
-export function lenshelf<V>(orignalValue: V) {
+export function fromState<V>(orignalValue: V) {
   const storeRenderList: StoreRenderList<V> = new Map();
-  const cacheMap = new WeakMap<Renew<ShelfStore<V>>, ShelfStore<V>>();
+  const cacheMap = new WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>();
   const rootValue: StoreType<V> = { root: orignalValue };
 
   return (
-    renew: Renew<ShelfStore<V>> = () => {},
+    renew: Renew<StateRefStore<V>> = () => {},
     userOption?: { cache?: boolean }
-  ): ShelfStore<V> => {
+  ): StateRefStore<V> => {
     /**
      * 캐시처리
      */
@@ -28,7 +31,7 @@ export function lenshelf<V>(orignalValue: V) {
     }
 
     /**
-     * 객체 가 아닌 데이터면 shelfPrimitive로 만들어서 반환
+     * 객체 가 아닌 데이터면 Root로 만들어서 반환
      */
     if (isPrimitiveType(orignalValue)) {
       return makePrimitive<V>({

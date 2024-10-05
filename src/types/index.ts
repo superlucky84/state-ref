@@ -1,7 +1,7 @@
 /**
  * S StoreType<V>; // 처음 제공받는 값 타입 V에 root를 달음
- * G ShelfStore<V>; // 끝에 root가 안달린 상태 끝에 value를 달음
- * T ShelfStore<StoreType<V>>; // 끝에 root가 달린 상태 끝에 value를 달음
+ * G StateRefStore<V>; // 끝에 root가 안달린 상태 끝에 value를 달음
+ * T StateRefStore<StoreType<V>>; // 끝에 root가 달린 상태 끝에 value를 달음
  */
 export type Renew<G> = (
   store: G,
@@ -11,20 +11,20 @@ export type Renew<G> = (
 export type Run = null | ((isFirst?: boolean) => boolean | AbortSignal | void);
 export type StoreType<V> = { root: V };
 export type WithRoot = { root: unknown } & { [key: string | symbol]: unknown };
-export type ShelfStore<S> = S extends object
+export type StateRefStore<S> = S extends object
   ? {
-      [K in keyof S]: ShelfStore<S[K]>;
+      [K in keyof S]: StateRefStore<S[K]>;
     } & {
       value: S;
     }
   : { value: S };
-// [K in keyof S]: ShelfStore<S[K]> & { value: S[K] };
-// value: { [K in keyof S]: ShelfStore<S[K]> } & { value: S };
+// [K in keyof S]: StateRefStore<S[K]> & { value: S[K] };
+// value: { [K in keyof S]: StateRefStore<S[K]> } & { value: S };
 
-export type Take<V> = (
-  renew: Renew<ShelfStore<V>>,
+export type Capture<V> = (
+  renew: Renew<StateRefStore<V>>,
   userOption?: { cache?: boolean }
-) => ShelfStore<V>;
+) => StateRefStore<V>;
 
 export type PrivitiveType =
   | string

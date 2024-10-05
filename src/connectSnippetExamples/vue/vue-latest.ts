@@ -1,21 +1,21 @@
 import { reactive, watch, onUnmounted } from 'vue';
 import type { Reactive, UnwrapRef } from 'vue';
 import { cloneDeep } from '@/index';
-import type { ShelfStore, Take } from '@/index';
-// import { cloneDeep } from 'lenshelf';
-// import type { ShelfStore, Take } from 'lenshelf';
+import type { StateRefStore, Capture } from '@/index';
+// import { cloneDeep } from 'state-ref';
+// import type { StateRefStore, Capture } from 'state-ref';
 
 /**
  * Vue V3
  */
-export function connectShelfWithVue<T>(take: Take<T>) {
+export function connectWithVueA<T>(capture: Capture<T>) {
   return <V>(
-    callback: (store: ShelfStore<T>) => ShelfStore<V>
+    callback: (store: StateRefStore<T>) => StateRefStore<V>
   ): Reactive<{ value: V }> => {
     type J = Reactive<{ value: V }>;
     const abortController = new AbortController();
     let reactiveValue!: J;
-    let shelf!: ShelfStore<V>;
+    let stateRef!: StateRefStore<V>;
     let changing = false;
     const change = (cb: () => void) => {
       changing = true;
@@ -27,14 +27,14 @@ export function connectShelfWithVue<T>(take: Take<T>) {
       abortController.abort();
     });
 
-    take(shelfStore => {
-      shelf = callback(shelfStore);
-      if (reactiveValue?.value !== shelf.value && !changing) {
+    capture(stateInnerRef => {
+      stateRef = callback(stateInnerRef);
+      if (reactiveValue?.value !== stateRef.value && !changing) {
         change(() => {
           if (reactiveValue?.value) {
-            reactiveValue.value = shelf.value as UnwrapRef<V>;
+            reactiveValue.value = stateRef.value as UnwrapRef<V>;
           } else {
-            reactiveValue = reactive({ value: shelf.value }) as J;
+            reactiveValue = reactive({ value: stateRef.value }) as J;
           }
         });
       }
@@ -43,14 +43,14 @@ export function connectShelfWithVue<T>(take: Take<T>) {
     });
 
     watch(reactiveValue, newValues => {
-      if (shelf.value !== newValues.value && !changing) {
+      if (stateRef.value !== newValues.value && !changing) {
         const newV =
           typeof newValues.value === 'object'
             ? cloneDeep(newValues.value)
             : newValues.value;
 
         change(() => {
-          shelf.value = newV as V;
+          stateRef.value = newV as V;
         });
       }
     });

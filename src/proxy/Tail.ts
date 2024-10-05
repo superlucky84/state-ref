@@ -1,22 +1,30 @@
+import { lens } from '@/lens';
+import type { Lens } from '@/lens';
 import type { StoreType } from '@/types';
 
 /**
- * ROOT 에서 프리미티브 타입으로 선언하여 접근할때
+ * 프록시에서 하위 프리미티브 타입으로 접근했을때
  * value로 값에 접근하고, value로 값을 수정할수 있는 객체로 감싸서 리턴한다.
  */
-export class ShelfRoot<V> {
+export class Tail<V, S extends StoreType<V>> {
   private _value: V;
-  private rootValue: StoreType<V>;
+  private depth: string[];
+  private lensValue: Lens<S, S>;
+  private rootValue: S;
   private runCollector: () => void;
   private runner: () => void;
 
   constructor(
     propertyValue: V,
-    rootValue: StoreType<V>,
+    depthList: string[],
+    lensValue: Lens<S, S> = lens<S>(),
+    rootValue: S,
     runCollector: () => void,
     runner: () => void
   ) {
     this._value = propertyValue;
+    this.depth = depthList;
+    this.lensValue = lensValue;
     this.rootValue = rootValue;
     this.runCollector = runCollector;
     this.runner = runner;
@@ -29,9 +37,15 @@ export class ShelfRoot<V> {
   }
 
   set value(newValue: V) {
-    if (this._value !== newValue) {
+    const prop = this.depth.at(-1);
+
+    if ((newValue as S[keyof S]) !== this.lensValue.get()(this.rootValue)) {
+      const newTree = this.lensValue
+        .k(prop as keyof S)
+        .set(newValue as S[keyof S])(this.rootValue);
+
       this._value = newValue;
-      this.rootValue.root = newValue;
+      this.rootValue.root = newTree.root;
       this.runner();
     }
   }

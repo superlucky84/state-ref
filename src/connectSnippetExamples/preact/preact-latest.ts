@@ -1,15 +1,15 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
-import type { ShelfStore, Take } from '@/index';
-// import type { ShelfStore, Take } from 'lenshelf';
+import type { StateRefStore, Capture } from '@/index';
+// import type { StateRefStore, Capture } from 'state-ref';
 
 /**
  * Preact V10
  */
-export function connectShelfWithPreact<T>(take: Take<T>) {
+export function connectWithPreactA<T>(capture: Capture<T>) {
   const useForceUpdate = () => {
     const [, setDummy] = useState(0);
     const abortController = useRef(new AbortController());
-    const forceUpdateRef = useRef((_: ShelfStore<T>, isFirst: boolean) => {
+    const forceUpdateRef = useRef((_: StateRefStore<T>, isFirst: boolean) => {
       if (!isFirst) {
         setDummy(prev => prev + 1);
       }
@@ -23,5 +23,5 @@ export function connectShelfWithPreact<T>(take: Take<T>) {
     return forceUpdateRef.current;
   };
 
-  return () => take(useForceUpdate());
+  return () => capture(useForceUpdate());
 }

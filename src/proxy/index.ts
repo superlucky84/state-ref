@@ -3,7 +3,7 @@ import type { Lens } from '@/lens';
 import { makeDisplayProxyValue } from '@/helper';
 import { collector } from '@/connectors/collector';
 import { runner } from '@/connectors/runner';
-import { ShelfTail } from '@/shelf/ShelfTail';
+import { Tail } from '@/proxy/Tail';
 import type { Run, WithRoot, StoreRenderList } from '@/types';
 
 /**
@@ -91,7 +91,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
         /**
          * 프록시에서 하위 프리미티브 타입으로 접근할때
          */
-        const shelfTail = new ShelfTail(
+        const tail = new Tail(
           propertyValue,
           newDepthList,
           lensValue,
@@ -104,7 +104,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
               run,
               storeRenderList,
               newValue => {
-                shelfTail.setValue(newValue);
+                tail.setValue(newValue);
               }
             );
           },
@@ -112,13 +112,13 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
             runner(storeRenderList);
           }
         );
-        return shelfTail;
+        return tail;
       },
       /**
        * value에 값을 할당할때는 copyOnWrite를 해준다.
        * value 가 아닌데 값을 할당할 경우 에러를 던진다.
-       * ex) shelf.a.b = 'newValue'; // Error
-       * ex) shelf.a.b.value = 'newValue'; // Success
+       * ex) ref.a.b = 'newValue'; // Error
+       * ex) ref.a.b.value = 'newValue'; // Success
        */
       set(_, prop: string | symbol, value) {
         if (prop === 'value' && value !== lensValue.get()(rootValue)) {

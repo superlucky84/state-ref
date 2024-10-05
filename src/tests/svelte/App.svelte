@@ -1,14 +1,14 @@
 <script lang="ts">
-  import { lenshelf, copyable } from '@/index';
-  import { connectShelfWithSvelte } from '@/connectSnippetExamples/svelte/svelte-latest';
+  import { fromState, copyable } from '@/index';
+  import { connectWithSvelteA } from '@/connectSnippetExamples/svelte/svelte-latest';
 
-  const take = lenshelf({
+  const capture = fromState({
     name: 'brown',
     age: 13,
   });
-  window.p = take();
+  window.p = capture();
 
-  const useProfileShelf = connectShelfWithSvelte(take);
+  const useProfileShelf = connectShelfWithSvelte(capture);
   const profile = useProfileShelf(store => store);
 
   function handleClick() {

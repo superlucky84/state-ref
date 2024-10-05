@@ -1,12 +1,12 @@
 import { h, mount, render } from 'lithent';
-import { lenshelf } from '@/index';
+import { fromState } from '@/index';
 
-const take = lenshelf<{ name: string; age: number }>({
+const capture = fromState<{ name: string; age: number }>({
   name: 'brown',
   age: 13,
 });
 
-const store = take(store => {
+const store = capture(store => {
   console.log(store.age.value);
 });
 console.log(store.age.value);
@@ -15,15 +15,15 @@ console.log(store.age.value);
 window.p = store;
 
 const Name = mount(renew => {
-  const shelf = take(renew);
+  const stateRef = capture(renew);
 
-  return () => <div>aa = {shelf.name.value}</div>;
+  return () => <div>aa = {stateRef.name.value}</div>;
 });
 
 const Age = mount(renew => {
-  const shelf = take(renew);
+  const stateRef = capture(renew);
 
-  return () => <div>aa = {shelf.age.value}</div>;
+  return () => <div>aa = {stateRef.age.value}</div>;
 });
 
 render(<Age />, document.getElementById('root') as HTMLElement);

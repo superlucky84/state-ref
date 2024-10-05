@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import { lenshelf } from '@/index';
-import { connectShelfWithVue } from '@/connectSnippetExamples/vue/vue-latest';
+import { fromState } from '@/index';
+import { connectWithVueA } from '@/connectSnippetExamples/vue/vue-latest';
 
 type Profile = { name: { a: string; b: string }; age: number };
-const take = lenshelf<Profile>({
+const capture = fromState<Profile>({
   name: { a: 'brown', b: 'jain' },
   age: 13,
 });
-const useProfileShelf = connectShelfWithVue(take);
+const useProfileRef = connectWithVueA(capture);
 
 // @ts-ignore
-window.p = take();
+window.p = capture();
 
-const profile = useProfileShelf(store => store);
+const profile = useProfileRef<Profile>(store => store);
 
 console.log('PROFILE', profile.value);
 

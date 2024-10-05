@@ -1,16 +1,18 @@
 import { createSignal, onCleanup, createEffect } from 'solid-js';
 import type { Signal } from 'solid-js';
-import type { ShelfStore, Take } from '@/index';
-// import type { ShelfStore, Take } from 'lenshelf';
+import type { StateRefStore, Capture } from '@/index';
+// import type { StateRefStore, Capture } from 'state-ref';
 
 /**
  * Solid-js V1
  */
-export function connectShelfWithSolid<T>(take: Take<T>) {
-  return <V>(callback: (store: ShelfStore<T>) => ShelfStore<V>): Signal<V> => {
+export function connectWithSolidA<T>(capture: Capture<T>) {
+  return <V>(
+    callback: (store: StateRefStore<T>) => StateRefStore<V>
+  ): Signal<V> => {
     const abortController = new AbortController();
     let signalValue!: Signal<V>;
-    let shelf!: ShelfStore<V>;
+    let stateRef!: StateRefStore<V>;
     let changing = false;
     const change = (cb: () => void) => {
       changing = true;
@@ -22,14 +24,14 @@ export function connectShelfWithSolid<T>(take: Take<T>) {
       abortController.abort();
     });
 
-    take(shelfStore => {
-      shelf = callback(shelfStore);
+    capture(stateInnerRef => {
+      stateRef = callback(stateInnerRef);
 
       if (!changing) {
         if (signalValue) {
-          signalValue[1](() => shelf.value as V);
+          signalValue[1](() => stateRef.value as V);
         } else {
-          signalValue = createSignal<V>(shelf.value as V);
+          signalValue = createSignal<V>(stateRef.value as V);
         }
       }
 
@@ -39,9 +41,9 @@ export function connectShelfWithSolid<T>(take: Take<T>) {
     createEffect(() => {
       const newValue = signalValue[0]();
 
-      if (shelf.value !== newValue && !changing) {
+      if (stateRef.value !== newValue && !changing) {
         change(() => {
-          shelf.value = newValue;
+          stateRef.value = newValue;
         });
       }
     });

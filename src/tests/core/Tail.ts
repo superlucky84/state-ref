@@ -1,4 +1,4 @@
-import { lenshelf, ShelfStore } from '@/index';
+import { fromState, StateRefStore } from '@/index';
 
 type DataType = {
   a: { b: { c: number | undefined | null | string }; b1: { c2: number } };
@@ -6,31 +6,31 @@ type DataType = {
 };
 
 const defaultValue = { a: { b: { c: 7 }, b1: { c2: 8 } }, a1: 9 };
-const take = lenshelf<DataType>(defaultValue);
+const capture = fromState<DataType>(defaultValue);
 
-const shelf = take();
-take(store => {
+const ref = capture();
+capture(store => {
   console.log('a', store.a.b1.c2.value);
 });
-take(store => {
+capture(store => {
   console.log('b', store.a.b.c.value);
 });
-take(store => {
+capture(store => {
   console.log('c', store.a1.value);
 });
 
 //@ts-ignore
-window.p = shelf;
-shelf.a.b1.c2.value = 100;
+window.p = ref;
+ref.a.b1.c2.value = 100;
 
 /**
  * 브라우저로 수동 테스트
  */
 if (!import.meta.vitest) {
-  const shelf = take();
+  const stateRef = capture();
 
   // @ts-ignore
-  window.p = shelf;
+  window.p = stateRef;
 }
 
 /**
@@ -39,13 +39,13 @@ if (!import.meta.vitest) {
 if (import.meta.vitest) {
   const { describe, it, expect, vi } = import.meta.vitest;
 
-  describe('Shelf Tail - 구독하려는 데이터가 객체 끝에 달린 primitive 타입일때는 ShelfTail에서 처리.', () => {
+  describe('Tail - 구독하려는 데이터가 객체 끝에 달린 primitive 타입일때는 Tail에서 처리.', () => {
     it('구독즉시 한번 구독함수가 실행되어야 한다..', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const defaultValue = { a: { b: { c: 4 }, b1: { c2: 8 } }, a1: 9 };
-      const take = lenshelf<DataType>(defaultValue);
+      const capture = fromState<DataType>(defaultValue);
 
-      take(store => console.log(store.value));
+      capture(store => console.log(store.value));
       expect(logSpy).toHaveBeenCalledWith(defaultValue);
 
       logSpy.mockRestore();
@@ -53,13 +53,13 @@ if (import.meta.vitest) {
 
     it('데이터가 변경되면 copyOnWrite가 잘 이루어진 데이터로 갱신되어야 한다.', () => {
       const defaultValue = { a: { b: { c: 4 }, b1: { c2: 8 } }, a1: 9 };
-      const take = lenshelf<DataType>(defaultValue);
+      const capture = fromState<DataType>(defaultValue);
       let newValue!: DataType;
-      const shelf = take((store: ShelfStore<DataType>) => {
+      const stateRef = capture((store: StateRefStore<DataType>) => {
         newValue = store.value;
       });
 
-      shelf.a.b.c.value = 10;
+      stateRef.a.b.c.value = 10;
       expect(newValue.a.b.c).toBe(10);
       expect(defaultValue).not.toBe(newValue);
       expect(defaultValue.a).not.toBe(newValue.a);
@@ -71,9 +71,9 @@ if (import.meta.vitest) {
     it('문자열 데이터에서 구독즉시 한번 구독함수가 실행되어야 한다..', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const defaultValue = { a: { b: { c: 4 }, b1: { c2: 8 } }, a1: 9 };
-      const take = lenshelf<DataType>(defaultValue);
+      const capture = fromState<DataType>(defaultValue);
 
-      take(store => console.log(store.value));
+      capture(store => console.log(store.value));
       expect(logSpy).toHaveBeenCalledWith(defaultValue);
 
       logSpy.mockRestore();
@@ -82,9 +82,9 @@ if (import.meta.vitest) {
     it('undefined 데이터에서 구독즉시 한번 구독함수가 실행되어야 한다..', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const defaultValue = { a: { b: { c: undefined }, b1: { c2: 8 } }, a1: 9 };
-      const take = lenshelf<DataType>(defaultValue);
+      const capture = fromState<DataType>(defaultValue);
 
-      take(store => console.log(store.value));
+      capture(store => console.log(store.value));
       expect(logSpy).toHaveBeenCalledWith(defaultValue);
 
       logSpy.mockRestore();
@@ -93,9 +93,9 @@ if (import.meta.vitest) {
     it('null 데이터에서 구독즉시 한번 구독함수가 실행되어야 한다..', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const defaultValue = { a: { b: { c: null }, b1: { c2: 8 } }, a1: 9 };
-      const take = lenshelf<DataType>(defaultValue);
+      const capture = fromState<DataType>(defaultValue);
 
-      take(store => console.log('undefined', store.value));
+      capture(store => console.log('undefined', store.value));
       expect(logSpy).toHaveBeenCalledWith('undefined', defaultValue);
 
       logSpy.mockRestore();
@@ -103,39 +103,39 @@ if (import.meta.vitest) {
 
     it('null 데이터가 널이 아닌 데이터로 변경되면 copyOnWrite가 잘 이루어진 데이터로 갱신되어야 한다', () => {
       const defaultValue = { a: { b: { c: null }, b1: { c2: 8 } }, a1: 9 };
-      const take = lenshelf<DataType>(defaultValue);
+      const capture = fromState<DataType>(defaultValue);
       let newValue!: DataType;
-      const shelf = take((store: ShelfStore<DataType>) => {
+      const stateRef = capture((store: StateRefStore<DataType>) => {
         newValue = store.value;
       });
 
-      shelf.a.b.c.value = 21;
+      stateRef.a.b.c.value = 21;
       expect(newValue.a.b.c).toBe(21);
       assertCopyOnRight(defaultValue, newValue);
     });
 
     it('undefined 데이터가 undefined 아닌 데이터로 copyOnWrite가 잘 이루어진 데이터로 갱신되어야 한다', () => {
       const defaultValue = { a: { b: { c: undefined }, b1: { c2: 8 } }, a1: 9 };
-      const take = lenshelf<DataType>(defaultValue);
+      const capture = fromState<DataType>(defaultValue);
       let newValue!: DataType;
-      const shelf = take((store: ShelfStore<DataType>) => {
+      const stateRef = capture((store: StateRefStore<DataType>) => {
         newValue = store.value;
       });
 
-      shelf.a.b.c.value = 21;
+      stateRef.a.b.c.value = 21;
       expect(newValue.a.b.c).toBe(21);
       assertCopyOnRight(defaultValue, newValue);
     });
 
     it('undefined 아닌 데이터가 undefined 데이터로 변경되면 copyOnWrite가 잘 이루어진 데이터로 갱신되어야 한다.', () => {
       const defaultValue = { a: { b: { c: 7 }, b1: { c2: 8 } }, a1: 9 };
-      const take = lenshelf<DataType>(defaultValue);
+      const capture = fromState<DataType>(defaultValue);
       let newValue!: DataType;
-      const shelf = take((store: ShelfStore<DataType>) => {
+      const stateRef = capture((store: StateRefStore<DataType>) => {
         newValue = store.value;
       });
 
-      shelf.a.b.c.value = undefined;
+      stateRef.a.b.c.value = undefined;
       expect(newValue.a.b.c).toBe(undefined);
       assertCopyOnRight(defaultValue, newValue);
     });
@@ -145,36 +145,36 @@ if (import.meta.vitest) {
         a: { b: { c: 'john' }, b1: { c2: 8 } },
         a1: 9,
       };
-      const take = lenshelf<DataType>(defaultValue);
+      const capture = fromState<DataType>(defaultValue);
       let newValue!: DataType;
-      const shelf = take((store: ShelfStore<DataType>) => {
+      const stateRef = capture((store: StateRefStore<DataType>) => {
         newValue = store.value;
       });
 
-      shelf.a.b.c.value = 7;
+      stateRef.a.b.c.value = 7;
       expect(newValue.a.b.c).toBe(7);
       assertCopyOnRight(defaultValue, newValue);
       defaultValue = newValue;
 
-      shelf.a.b.c.value = 8;
+      stateRef.a.b.c.value = 8;
       expect(newValue.a.b.c).toBe(8);
       assertCopyOnRight(defaultValue, newValue);
       defaultValue = newValue;
 
-      shelf.a.b.c.value = 9;
+      stateRef.a.b.c.value = 9;
       expect(newValue.a.b.c).toBe(9);
       assertCopyOnRight(defaultValue, newValue);
     });
 
     it('문자형 데이터가 변경되면 구독함수에서 copyOnWrite가 잘 이루어진 데이터로 확인되어야 한다.', () => {
       const defaultValue = { a: { b: { c: 'john' }, b1: { c2: 8 } }, a1: 9 };
-      const take = lenshelf<DataType>(defaultValue);
+      const capture = fromState<DataType>(defaultValue);
       let newValue!: DataType;
-      const shelf = take((store: ShelfStore<DataType>) => {
+      const stateRef = capture((store: StateRefStore<DataType>) => {
         newValue = store.value;
       });
 
-      shelf.a.b.c.value = 'sara';
+      stateRef.a.b.c.value = 'sara';
       expect(newValue.a.b.c).toBe('sara');
       assertCopyOnRight(defaultValue, newValue);
     });
@@ -185,22 +185,22 @@ if (import.meta.vitest) {
         a: { b: { c: 'john' }, b1: { c2: 8 } },
         a1: 9,
       };
-      const take = lenshelf<DataType>(defaultValue);
+      const capture = fromState<DataType>(defaultValue);
       let newValue!: DataType;
-      const shelf = take((store: ShelfStore<DataType>) => {
+      const stateRef = capture((store: StateRefStore<DataType>) => {
         newValue = store.value;
 
         return abortController.signal;
       });
 
-      shelf.a.b.c.value = 'sara';
+      stateRef.a.b.c.value = 'sara';
       expect(newValue.a.b.c).toBe('sara');
       assertCopyOnRight(defaultValue, newValue);
 
       defaultValue = newValue;
       abortController.abort();
 
-      shelf.a.b.c.value = 'james';
+      stateRef.a.b.c.value = 'james';
       expect(newValue.a.b.c).toBe('sara');
       assertNotCopyOnRight(defaultValue, newValue);
     });
@@ -210,20 +210,20 @@ if (import.meta.vitest) {
         a: { b: { c: 'john' }, b1: { c2: 8 } },
         a1: 9,
       };
-      const take = lenshelf<DataType>(defaultValue);
+      const capture = fromState<DataType>(defaultValue);
       let newValue!: DataType;
-      const shelf = take((store: ShelfStore<DataType>) => {
+      const stateRef = capture((store: StateRefStore<DataType>) => {
         newValue = store.value;
 
         return false;
       });
 
-      shelf.a.b.c.value = 'sara';
+      stateRef.a.b.c.value = 'sara';
       expect(newValue.a.b.c).toBe('sara');
       assertCopyOnRight(defaultValue, newValue);
       defaultValue = newValue;
 
-      shelf.a.b.c.value = 'james';
+      stateRef.a.b.c.value = 'james';
       expect(newValue.a.b.c).toBe('sara');
       assertNotCopyOnRight(defaultValue, newValue);
     });

@@ -1,7 +1,7 @@
 import { makeProxy } from '@/proxy';
 import { firstRunner } from '@/connectors/runner';
 
-import type { Renew, StoreType, ShelfStore, StoreRenderList } from '@/types';
+import type { Renew, StoreType, StateRefStore, StoreRenderList } from '@/types';
 
 export function makeObject<V>({
   renew,
@@ -9,17 +9,17 @@ export function makeObject<V>({
   storeRenderList,
   cacheMap,
 }: {
-  renew: Renew<ShelfStore<V>>;
+  renew: Renew<StateRefStore<V>>;
   rootValue: StoreType<V>;
   storeRenderList: StoreRenderList<V>;
-  cacheMap: WeakMap<Renew<ShelfStore<V>>, ShelfStore<V>>;
+  cacheMap: WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>;
 }) {
-  const ref: { current: null | ShelfStore<StoreType<V>> } = {
+  const ref: { current: null | StateRefStore<StoreType<V>> } = {
     current: null,
   };
   const run = (isFirst?: boolean) => renew(ref.current!.root, isFirst ?? false);
 
-  ref.current = makeProxy<StoreType<V>, ShelfStore<StoreType<V>>, V>(
+  ref.current = makeProxy<StoreType<V>, StateRefStore<StoreType<V>>, V>(
     rootValue,
     storeRenderList,
     run

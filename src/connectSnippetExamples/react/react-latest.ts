@@ -1,15 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
-import type { ShelfStore, Take } from '@/index';
-// import type { ShelfStore, Take } from 'lenshelf';
+import type { StateRefStore, Capture } from '@/index';
+// import type { StateRefStore, Capture } from 'state-ref';
 
 /**
  * React V18
  */
-export function connectShelfWithReact<T>(take: Take<T>) {
+export function connectWithReactA<T>(capture: Capture<T>) {
   const useForceUpdate = () => {
     const [dummy, setDummy] = useState(0);
     const abortController = useRef(new AbortController());
-    const forceUpdateRef = useRef((_: ShelfStore<T>, isFirst: boolean) => {
+    const forceUpdateRef = useRef((_: StateRefStore<T>, isFirst: boolean) => {
       if (!isFirst) {
         setDummy(dummy + 1);
       }
@@ -23,5 +23,5 @@ export function connectShelfWithReact<T>(take: Take<T>) {
     return forceUpdateRef.current;
   };
 
-  return () => take(useForceUpdate());
+  return () => capture(useForceUpdate());
 }

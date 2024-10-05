@@ -3,31 +3,31 @@ import { createElement as h } from 'react';
 // @ts-ignore
 import { createRoot } from 'react-dom/client';
 
-import { lenshelf } from '@/index';
-import { connectShelfWithReact } from '@/connectSnippetExamples/react/react-latest';
+import { fromState } from '@/index';
+import { connectWithReactA } from '@/connectSnippetExamples/react/react-latest';
 
-const take = lenshelf<{ name: string; age: number }>({
+const capture = fromState<{ name: string; age: number }>({
   name: 'brown',
   age: 13,
 });
 
-const usePofileStore = connectShelfWithReact(take);
+const usePofileStore = connectWithReactA(capture);
 
-const p = take();
+const p = capture();
 
 //@ts-ignore
 window.p = p;
 
 function Name() {
-  const shelf = usePofileStore();
+  const stateRef = usePofileStore();
 
-  return <div>aa = {shelf.age.value}</div>;
+  return <div>aa = {stateRef.age.value}</div>;
 }
 
 function Age() {
-  const shelf = usePofileStore();
+  const stateRef = usePofileStore();
 
-  return <div>bb = {shelf.name.value}</div>;
+  return <div>bb = {stateRef.name.value}</div>;
 }
 
 createRoot(document.getElementById('root') as HTMLElement).render(<Age />);

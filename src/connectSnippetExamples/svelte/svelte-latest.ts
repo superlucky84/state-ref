@@ -1,17 +1,17 @@
 import { onDestroy } from 'svelte';
 import { writable } from 'svelte/store';
 import type { Writable } from 'svelte/store';
-import type { ShelfStore, Take } from '@/index';
-// import type { ShelfStore, Take } from 'lenshelf';
+import type { StateRefStore, Capture } from '@/index';
+// import type { StateRefStore, Capture } from 'state-ref';
 
 /**
  * Svelte V4
  */
-export function connectShelfWithSvelte<T>(take: Take<T>) {
-  return <V>(callback: (store: ShelfStore<T>) => ShelfStore<V>) => {
+export function connectWithSvelteA<T>(capture: Capture<T>) {
+  return <V>(callback: (store: StateRefStore<T>) => StateRefStore<V>) => {
     const abortController = new AbortController();
     let signalValue!: Writable<V>;
-    let shelf!: ShelfStore<V>;
+    let stateRef!: StateRefStore<V>;
     let changing = false;
     const change = (cb: () => void) => {
       changing = true;
@@ -23,14 +23,14 @@ export function connectShelfWithSvelte<T>(take: Take<T>) {
       abortController.abort();
     });
 
-    take(shelfStore => {
-      shelf = callback(shelfStore);
+    capture(stateInnerRef => {
+      stateRef = callback(stateInnerRef);
 
       if (!changing) {
         if (signalValue) {
-          signalValue.set(shelf.value as V);
+          signalValue.set(stateRef.value as V);
         } else {
-          signalValue = writable(shelf.value as V);
+          signalValue = writable(stateRef.value as V);
         }
       }
 
@@ -38,9 +38,9 @@ export function connectShelfWithSvelte<T>(take: Take<T>) {
     });
 
     signalValue.subscribe(newValue => {
-      if (shelf.value !== newValue && !changing) {
+      if (stateRef.value !== newValue && !changing) {
         change(() => {
-          shelf.value = newValue;
+          stateRef.value = newValue;
         });
       }
     });
