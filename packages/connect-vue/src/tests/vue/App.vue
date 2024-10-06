@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { fromState } from 'state-ref';
+import { createStore } from 'state-ref';
 import { connectWithVueA } from '@/index';
 
 type Profile = { name: { a: string; b: string }; age: number };
-const capture = fromState<Profile>({
+const capture = createStore<Profile>({
   name: { a: 'brown', b: 'jain' },
   age: 13,
 });

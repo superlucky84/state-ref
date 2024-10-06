@@ -3,10 +3,10 @@ import { createElement as h } from 'react';
 // @ts-ignore
 import { createRoot } from 'react-dom/client';
 
-import { fromState } from 'state-ref';
+import { createStore } from 'state-ref';
 import { connectWithReactA } from '@/index';
 
-const capture = fromState<{ name: string; age: number }>({
+const capture = createStore<{ name: string; age: number }>({
   name: 'brown',
   age: 13,
 });

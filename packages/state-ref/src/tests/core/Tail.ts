@@ -1,4 +1,4 @@
-import { fromState, StateRefStore } from '@/index';
+import { createStore, StateRefStore } from '@/index';
 
 type DataType = {
   a: { b: { c: number | undefined | null | string }; b1: { c2: number } };
@@ -6,7 +6,7 @@ type DataType = {
 };
 
 const defaultValue = { a: { b: { c: 7 }, b1: { c2: 8 } }, a1: 9 };
-const capture = fromState<DataType>(defaultValue);
+const capture = createStore<DataType>(defaultValue);
 
 const ref = capture();
 capture(store => {
@@ -43,7 +43,7 @@ if (import.meta.vitest) {
     it('구독즉시 한번 구독함수가 실행되어야 한다..', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const defaultValue = { a: { b: { c: 4 }, b1: { c2: 8 } }, a1: 9 };
-      const capture = fromState<DataType>(defaultValue);
+      const capture = createStore<DataType>(defaultValue);
 
       capture(store => console.log(store.current));
       expect(logSpy).toHaveBeenCalledWith(defaultValue);
@@ -53,7 +53,7 @@ if (import.meta.vitest) {
 
     it('데이터가 변경되면 copyOnWrite가 잘 이루어진 데이터로 갱신되어야 한다.', () => {
       const defaultValue = { a: { b: { c: 4 }, b1: { c2: 8 } }, a1: 9 };
-      const capture = fromState<DataType>(defaultValue);
+      const capture = createStore<DataType>(defaultValue);
       let newValue!: DataType;
       const stateRef = capture((store: StateRefStore<DataType>) => {
         newValue = store.current;
@@ -71,7 +71,7 @@ if (import.meta.vitest) {
     it('문자열 데이터에서 구독즉시 한번 구독함수가 실행되어야 한다..', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const defaultValue = { a: { b: { c: 4 }, b1: { c2: 8 } }, a1: 9 };
-      const capture = fromState<DataType>(defaultValue);
+      const capture = createStore<DataType>(defaultValue);
 
       capture(store => console.log(store.current));
       expect(logSpy).toHaveBeenCalledWith(defaultValue);
@@ -82,7 +82,7 @@ if (import.meta.vitest) {
     it('undefined 데이터에서 구독즉시 한번 구독함수가 실행되어야 한다..', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const defaultValue = { a: { b: { c: undefined }, b1: { c2: 8 } }, a1: 9 };
-      const capture = fromState<DataType>(defaultValue);
+      const capture = createStore<DataType>(defaultValue);
 
       capture(store => console.log(store.current));
       expect(logSpy).toHaveBeenCalledWith(defaultValue);
@@ -93,7 +93,7 @@ if (import.meta.vitest) {
     it('null 데이터에서 구독즉시 한번 구독함수가 실행되어야 한다..', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const defaultValue = { a: { b: { c: null }, b1: { c2: 8 } }, a1: 9 };
-      const capture = fromState<DataType>(defaultValue);
+      const capture = createStore<DataType>(defaultValue);
 
       capture(store => console.log('undefined', store.current));
       expect(logSpy).toHaveBeenCalledWith('undefined', defaultValue);
@@ -103,7 +103,7 @@ if (import.meta.vitest) {
 
     it('null 데이터가 널이 아닌 데이터로 변경되면 copyOnWrite가 잘 이루어진 데이터로 갱신되어야 한다', () => {
       const defaultValue = { a: { b: { c: null }, b1: { c2: 8 } }, a1: 9 };
-      const capture = fromState<DataType>(defaultValue);
+      const capture = createStore<DataType>(defaultValue);
       let newValue!: DataType;
       const stateRef = capture((store: StateRefStore<DataType>) => {
         newValue = store.current;
@@ -116,7 +116,7 @@ if (import.meta.vitest) {
 
     it('undefined 데이터가 undefined 아닌 데이터로 copyOnWrite가 잘 이루어진 데이터로 갱신되어야 한다', () => {
       const defaultValue = { a: { b: { c: undefined }, b1: { c2: 8 } }, a1: 9 };
-      const capture = fromState<DataType>(defaultValue);
+      const capture = createStore<DataType>(defaultValue);
       let newValue!: DataType;
       const stateRef = capture((store: StateRefStore<DataType>) => {
         newValue = store.current;
@@ -129,7 +129,7 @@ if (import.meta.vitest) {
 
     it('undefined 아닌 데이터가 undefined 데이터로 변경되면 copyOnWrite가 잘 이루어진 데이터로 갱신되어야 한다.', () => {
       const defaultValue = { a: { b: { c: 7 }, b1: { c2: 8 } }, a1: 9 };
-      const capture = fromState<DataType>(defaultValue);
+      const capture = createStore<DataType>(defaultValue);
       let newValue!: DataType;
       const stateRef = capture((store: StateRefStore<DataType>) => {
         newValue = store.current;
@@ -145,7 +145,7 @@ if (import.meta.vitest) {
         a: { b: { c: 'john' }, b1: { c2: 8 } },
         a1: 9,
       };
-      const capture = fromState<DataType>(defaultValue);
+      const capture = createStore<DataType>(defaultValue);
       let newValue!: DataType;
       const stateRef = capture((store: StateRefStore<DataType>) => {
         newValue = store.current;
@@ -168,7 +168,7 @@ if (import.meta.vitest) {
 
     it('문자형 데이터가 변경되면 구독함수에서 copyOnWrite가 잘 이루어진 데이터로 확인되어야 한다.', () => {
       const defaultValue = { a: { b: { c: 'john' }, b1: { c2: 8 } }, a1: 9 };
-      const capture = fromState<DataType>(defaultValue);
+      const capture = createStore<DataType>(defaultValue);
       let newValue!: DataType;
       const stateRef = capture((store: StateRefStore<DataType>) => {
         newValue = store.current;
@@ -185,7 +185,7 @@ if (import.meta.vitest) {
         a: { b: { c: 'john' }, b1: { c2: 8 } },
         a1: 9,
       };
-      const capture = fromState<DataType>(defaultValue);
+      const capture = createStore<DataType>(defaultValue);
       let newValue!: DataType;
       const stateRef = capture((store: StateRefStore<DataType>) => {
         newValue = store.current;
@@ -210,7 +210,7 @@ if (import.meta.vitest) {
         a: { b: { c: 'john' }, b1: { c2: 8 } },
         a1: 9,
       };
-      const capture = fromState<DataType>(defaultValue);
+      const capture = createStore<DataType>(defaultValue);
       let newValue!: DataType;
       const stateRef = capture((store: StateRefStore<DataType>) => {
         newValue = store.current;

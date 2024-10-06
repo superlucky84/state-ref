@@ -1,11 +1,11 @@
 import { render as trender, screen } from '@testing-library/preact';
 import { h, render } from 'preact';
-import { fromState } from 'state-ref';
+import { createStore } from 'state-ref';
 import { connectWithPreactA } from '@/index';
 
-console.log(fromState);
+console.log(createStore);
 
-const capture = fromState<{ name: string; age: number }>({
+const capture = createStore<{ name: string; age: number }>({
   name: 'brown',
   age: 13,
 });

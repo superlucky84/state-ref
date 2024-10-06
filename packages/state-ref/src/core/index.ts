@@ -5,14 +5,14 @@ import { makeObject } from '@/core/object';
 import type { Renew, StoreType, StateRefStore, StoreRenderList } from '@/types';
 
 /**
- * fromState 스토어를 만들어 준다
+ * createStore 스토어를 만들어 준다
  * 인자는 초기값
- * const capture = fromState({ name: 'brown', age: 38 })
+ * const capture = createStore({ name: 'brown', age: 38 })
  * const stateRef = capture(stateRef => {
  *   console.log(stateRef.current));
  * });
  */
-export function fromState<V>(orignalValue: V) {
+export function createStore<V>(orignalValue: V) {
   const storeRenderList: StoreRenderList<V> = new Map();
   const cacheMap = new WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>();
   const rootValue: StoreType<V> = { root: orignalValue };
