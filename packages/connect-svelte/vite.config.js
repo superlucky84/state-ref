@@ -2,6 +2,7 @@ import { resolve } from 'path';
 import { defineConfig } from 'vite';
 import checker from 'vite-plugin-checker';
 import dts from 'vite-plugin-dts';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
 
 export default defineConfig({
   plugins: [
@@ -14,6 +15,7 @@ export default defineConfig({
     dts({
       outputDir: ['dist'],
     }),
+    svelte(),
   ],
   resolve: {
     alias: {
@@ -26,19 +28,19 @@ export default defineConfig({
     minify: false,
     lib: {
       entry: resolve(__dirname, 'src'),
-      name: 'preact-state-ref',
+      name: 'svelte-state-ref',
       fileName: format => {
         return format === 'umd'
-          ? 'preact-state-ref.umd.js'
-          : 'preact-state-ref.mjs';
+          ? 'svelte-state-ref.umd.js'
+          : 'svelte-state-ref.mjs';
       },
     },
     rollupOptions: {
-      external: ['state-ref', 'preact'],
+      external: ['state-ref', 'svelte'],
       output: {
         globals: {
           'state-ref': 'stateRef',
-          preact: 'preact',
+          svelte: 'svelte',
         },
       },
     },
@@ -50,6 +52,6 @@ export default defineConfig({
     globals: true,
   },
   server: {
-    open: './html/preact/default.html',
+    open: './html/svelte/default.html',
   },
 });

@@ -2,6 +2,7 @@ import { resolve } from 'path';
 import { defineConfig } from 'vite';
 import checker from 'vite-plugin-checker';
 import dts from 'vite-plugin-dts';
+import solid from 'vite-plugin-solid';
 
 export default defineConfig({
   plugins: [
@@ -14,6 +15,7 @@ export default defineConfig({
     dts({
       outputDir: ['dist'],
     }),
+    solid(),
   ],
   resolve: {
     alias: {
@@ -26,19 +28,19 @@ export default defineConfig({
     minify: false,
     lib: {
       entry: resolve(__dirname, 'src'),
-      name: 'preact-state-ref',
+      name: 'solid-state-ref',
       fileName: format => {
         return format === 'umd'
-          ? 'preact-state-ref.umd.js'
-          : 'preact-state-ref.mjs';
+          ? 'solid-state-ref.umd.js'
+          : 'solid-state-ref.mjs';
       },
     },
     rollupOptions: {
-      external: ['state-ref', 'preact'],
+      external: ['state-ref', 'solid-js'],
       output: {
         globals: {
           'state-ref': 'stateRef',
-          preact: 'preact',
+          'solid-js': 'solid',
         },
       },
     },
@@ -50,6 +52,6 @@ export default defineConfig({
     globals: true,
   },
   server: {
-    open: './html/preact/default.html',
+    open: './html/solid/default.html',
   },
 });

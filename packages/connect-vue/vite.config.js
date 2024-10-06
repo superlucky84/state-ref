@@ -37,7 +37,7 @@ export default defineConfig({
       external: ['state-ref', 'vue'],
       output: {
         globals: {
-          'state-ref': 'state-ref',
+          'state-ref': 'stateRef',
           vue: 'vue',
         },
       },

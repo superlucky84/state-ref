@@ -37,7 +37,7 @@ export default defineConfig({
       external: ['state-ref', 'react', 'react-dom'],
       output: {
         globals: {
-          'state-ref': 'state-ref',
+          'state-ref': 'stateRef',
           react: 'React',
           'react-dom': 'ReactDOM',
         },

@@ -26,7 +26,7 @@ export default defineConfig({
     minify: true,
     lib: {
       entry: resolve(__dirname, 'src'),
-      name: 'state-ref',
+      name: 'stateRef',
       fileName: format => {
         return format === 'umd' ? 'state-ref.umd.js' : 'state-ref.mjs';
       },
