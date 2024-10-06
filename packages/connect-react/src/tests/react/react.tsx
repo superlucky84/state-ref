@@ -21,13 +21,13 @@ window.p = p;
 function Name() {
   const stateRef = usePofileStore();
 
-  return <div>aa = {stateRef.age.current}</div>;
+  return <div>aa = {stateRef.age.value}</div>;
 }
 
 function Age() {
   const stateRef = usePofileStore();
 
-  return <div>bb = {stateRef.name.current}</div>;
+  return <div>bb = {stateRef.name.value}</div>;
 }
 
 createRoot(document.getElementById('root') as HTMLElement).render(<Age />);

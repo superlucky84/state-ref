@@ -8,7 +8,7 @@ export function makeDisplayProxyValue(depthList: string[], value: object) {
   return {
     _navi: depthList.join('.'),
     _type: Array.isArray(value) ? 'Array' : 'Object',
-    _current: '..',
+    _value: '..',
   };
 }
 

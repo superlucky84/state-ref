@@ -25,7 +25,7 @@ const makeDefaultValue = () => ({
 const defaultValue = makeDefaultValue();
 const watch = createStore<People>(defaultValue);
 watch(stateRef => {
-  console.log(stateRef.brown.house[0].color.current);
+  console.log(stateRef.brown.house[0].color.value);
 });
 
 /**
@@ -45,7 +45,7 @@ if (import.meta.vitest) {
   const { describe, it, expect, vi } = import.meta.vitest;
 
   describe('Proxy - 구독하려는 데이터가 객체일때는 프록시에서 처리.', () => {
-    it('구독함수로 부터 전달받은 stateRef 에서 current로 꺼낸 값에 대해서 구독 알림을 받아야 한다.', () => {
+    it('구독함수로 부터 전달받은 stateRef 에서 value로 꺼낸 값에 대해서 구독 알림을 받아야 한다.', () => {
       const defaultValue = makeDefaultValue();
       const watch = createStore<People>(defaultValue);
 
@@ -55,29 +55,29 @@ if (import.meta.vitest) {
 
       const stateRef = watch();
       watch(stateRef => {
-        console.log(stateRef.john.house[0].color.current);
+        console.log(stateRef.john.house[0].color.value);
         mockFn1();
       });
       watch(stateRef => {
-        console.log(stateRef.brown.house[0].color.current);
+        console.log(stateRef.brown.house[0].color.value);
         mockFn2();
       });
       watch(stateRef => {
-        console.log(stateRef.sara.house[0].color.current);
+        console.log(stateRef.sara.house[0].color.value);
         mockFn3();
       });
 
-      stateRef.john.house[0].color.current = 'blue';
+      stateRef.john.house[0].color.value = 'blue';
       expect(mockFn1).toHaveBeenCalledTimes(2);
       expect(mockFn2).toHaveBeenCalledTimes(1);
       expect(mockFn3).toHaveBeenCalledTimes(1);
 
-      stateRef.brown.house[0].color.current = 'blue';
+      stateRef.brown.house[0].color.value = 'blue';
       expect(mockFn1).toHaveBeenCalledTimes(2);
       expect(mockFn2).toHaveBeenCalledTimes(2);
       expect(mockFn3).toHaveBeenCalledTimes(1);
 
-      stateRef.john.house[0].color.current = 'green';
+      stateRef.john.house[0].color.value = 'green';
       expect(mockFn1).toHaveBeenCalledTimes(3);
       expect(mockFn2).toHaveBeenCalledTimes(2);
       expect(mockFn3).toHaveBeenCalledTimes(1);
@@ -101,8 +101,8 @@ if (import.meta.vitest) {
         mockFn3();
       });
 
-      console.log(stateRef.brown.house[0].color.current);
-      stateRef.brown.house[0].color.current = 'blue';
+      console.log(stateRef.brown.house[0].color.value);
+      stateRef.brown.house[0].color.value = 'blue';
 
       expect(mockFn1).toHaveBeenCalledTimes(1);
       expect(mockFn2).toHaveBeenCalledTimes(2);
@@ -120,38 +120,38 @@ if (import.meta.vitest) {
 
       const stateRef = watch();
       watch(stateRef => {
-        console.log(stateRef.john.house[0].color.current);
+        console.log(stateRef.john.house[0].color.value);
         mockFn1();
 
         return abortController.signal;
       });
       watch(stateRef => {
-        console.log(stateRef.brown.house[0].color.current);
+        console.log(stateRef.brown.house[0].color.value);
         mockFn2();
       });
       watch(stateRef => {
-        console.log(stateRef.sara.house[0].color.current);
+        console.log(stateRef.sara.house[0].color.value);
         mockFn3();
       });
 
-      stateRef.john.house[0].color.current = 'blue';
+      stateRef.john.house[0].color.value = 'blue';
       expect(mockFn1).toHaveBeenCalledTimes(2);
       expect(mockFn2).toHaveBeenCalledTimes(1);
       expect(mockFn3).toHaveBeenCalledTimes(1);
 
       abortController.abort();
 
-      stateRef.john.house[0].color.current = 'green';
+      stateRef.john.house[0].color.value = 'green';
       expect(mockFn1).toHaveBeenCalledTimes(2);
       expect(mockFn2).toHaveBeenCalledTimes(1);
       expect(mockFn3).toHaveBeenCalledTimes(1);
 
-      stateRef.brown.house[0].color.current = 'yellow';
+      stateRef.brown.house[0].color.value = 'yellow';
       expect(mockFn1).toHaveBeenCalledTimes(2);
       expect(mockFn2).toHaveBeenCalledTimes(2);
       expect(mockFn3).toHaveBeenCalledTimes(1);
 
-      stateRef.sara.house[0].color.current = 'yellow';
+      stateRef.sara.house[0].color.value = 'yellow';
       expect(mockFn1).toHaveBeenCalledTimes(2);
       expect(mockFn2).toHaveBeenCalledTimes(2);
       expect(mockFn3).toHaveBeenCalledTimes(2);
@@ -176,12 +176,12 @@ if (import.meta.vitest) {
       const mockFn1 = vi.fn();
 
       const stateRef = watch((stateRef, isFirst) => {
-        console.log(stateRef.brown.house[0].color.current);
+        console.log(stateRef.brown.house[0].color.value);
         mockFn1(isFirst);
       });
 
       expect(mockFn1).toHaveBeenCalledWith(true);
-      stateRef.brown.house[0].color.current = 'blue';
+      stateRef.brown.house[0].color.value = 'blue';
       expect(mockFn1).toHaveBeenCalledWith(false);
     });
 
@@ -191,11 +191,11 @@ if (import.meta.vitest) {
 
       let newValue!: People;
       const stateRef = watch(stateRef => {
-        newValue = stateRef.current;
-        console.log(stateRef.brown.house[0].color.current);
+        newValue = stateRef.value;
+        console.log(stateRef.brown.house[0].color.value);
       });
 
-      stateRef.john.house[0].color.current = 'blue';
+      stateRef.john.house[0].color.value = 'blue';
       expect(defaultValue.john.age).toBe(newValue.john.age);
       expect(defaultValue.john.house).not.toBe(newValue.john.house);
       expect(defaultValue.john.house[0]).not.toBe(newValue.john.house[0]);
@@ -214,11 +214,11 @@ if (import.meta.vitest) {
       const watch = createStore<People>(defaultValue);
       const mockFn1 = vi.fn();
 
-      const stateRef = watch(({ john: { current: johnValue } }) => {
+      const stateRef = watch(({ john: { value: johnValue } }) => {
         mockFn1(johnValue);
       });
 
-      stateRef.john.house[1].floor.current = 7;
+      stateRef.john.house[1].floor.value = 7;
       expect(mockFn1).toHaveBeenCalledTimes(2);
     });
 
@@ -233,7 +233,7 @@ if (import.meta.vitest) {
             house: [
               ,
               {
-                floor: { current: floorData },
+                floor: { value: floorData },
               },
             ],
           },
@@ -242,7 +242,7 @@ if (import.meta.vitest) {
         }
       );
 
-      stateRef.john.current = {
+      stateRef.john.value = {
         age: 40,
         house: [
           { color: 'red', floor: 5 },
@@ -263,7 +263,7 @@ if (import.meta.vitest) {
             house: [
               ,
               {
-                floor: { current: floorData },
+                floor: { value: floorData },
               },
             ],
           },
@@ -272,7 +272,7 @@ if (import.meta.vitest) {
         }
       );
 
-      stateRef.john.current = {
+      stateRef.john.value = {
         age: 40,
         house: [
           { color: 'red', floor: 2 },

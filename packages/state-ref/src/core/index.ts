@@ -9,7 +9,7 @@ import type { Renew, StoreType, StateRefStore, StoreRenderList } from '@/types';
  * 인자는 초기값
  * const watch = createStore({ name: 'brown', age: 38 })
  * const stateRef = watch(stateRef => {
- *   console.log(stateRef.current));
+ *   console.log(stateRef.value));
  * });
  */
 export function createStore<V>(orignalValue: V) {

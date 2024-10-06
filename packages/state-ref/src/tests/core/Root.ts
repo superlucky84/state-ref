@@ -3,7 +3,7 @@ import { createStore } from '@/index';
 const watch = createStore<number>(3);
 
 watch(store => {
-  console.log('numberChange', store.current);
+  console.log('numberChange', store.value);
 });
 
 /**
@@ -12,8 +12,8 @@ watch(store => {
 if (!import.meta.vitest) {
   const stateRef = watch();
 
-  stateRef.current = 4;
-  stateRef.current = 5;
+  stateRef.value = 4;
+  stateRef.value = 5;
 
   // @ts-ignore
   window.p = stateRef;
@@ -31,7 +31,7 @@ if (import.meta.vitest) {
       const defaultNumber = 3;
       const watch = createStore<number>(defaultNumber);
 
-      watch(store => console.log('number', store.current));
+      watch(store => console.log('number', store.value));
       expect(logSpy).toHaveBeenCalledWith('number', defaultNumber);
 
       logSpy.mockRestore();
@@ -42,7 +42,7 @@ if (import.meta.vitest) {
       const defaultString = 'john';
       const watch = createStore<string>(defaultString);
 
-      watch(store => console.log('string', store.current));
+      watch(store => console.log('string', store.value));
       expect(logSpy).toHaveBeenCalledWith('string', defaultString);
 
       logSpy.mockRestore();
@@ -53,7 +53,7 @@ if (import.meta.vitest) {
       const defaultUndefined = undefined;
       const watch = createStore<undefined>(defaultUndefined);
 
-      watch(store => console.log('undefined', store.current));
+      watch(store => console.log('undefined', store.value));
       expect(logSpy).toHaveBeenCalledWith('undefined', defaultUndefined);
 
       logSpy.mockRestore();
@@ -64,7 +64,7 @@ if (import.meta.vitest) {
       const defaultNull = null;
       const watch = createStore<null>(defaultNull);
 
-      watch(store => console.log('undefined', store.current));
+      watch(store => console.log('undefined', store.value));
       expect(logSpy).toHaveBeenCalledWith('undefined', defaultNull);
 
       logSpy.mockRestore();
@@ -75,9 +75,9 @@ if (import.meta.vitest) {
       const changeNumber = 4;
       const watch = createStore<number>(defaultNumber);
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const stateRef = watch(store => console.log('number', store.current));
+      const stateRef = watch(store => console.log('number', store.value));
 
-      stateRef.current = changeNumber;
+      stateRef.value = changeNumber;
       expect(logSpy).toHaveBeenCalledWith('number', changeNumber);
 
       logSpy.mockRestore();
@@ -88,10 +88,10 @@ if (import.meta.vitest) {
       const changeValue = 4;
       const watch = createStore<number | null>(defaultValue);
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const stateRef = watch(store => console.log('current', store.current));
+      const stateRef = watch(store => console.log('value', store.value));
 
-      stateRef.current = changeValue;
-      expect(logSpy).toHaveBeenCalledWith('current', changeValue);
+      stateRef.value = changeValue;
+      expect(logSpy).toHaveBeenCalledWith('value', changeValue);
 
       logSpy.mockRestore();
     });
@@ -101,10 +101,10 @@ if (import.meta.vitest) {
       const changeValue = 4;
       const watch = createStore<number | undefined>(defaultValue);
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const stateRef = watch(store => console.log('current', store.current));
+      const stateRef = watch(store => console.log('value', store.value));
 
-      stateRef.current = changeValue;
-      expect(logSpy).toHaveBeenCalledWith('current', changeValue);
+      stateRef.value = changeValue;
+      expect(logSpy).toHaveBeenCalledWith('value', changeValue);
 
       logSpy.mockRestore();
     });
@@ -114,10 +114,10 @@ if (import.meta.vitest) {
       const changeValue = undefined;
       const watch = createStore<number | undefined>(defaultValue);
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const stateRef = watch(store => console.log('current', store.current));
+      const stateRef = watch(store => console.log('value', store.value));
 
-      stateRef.current = changeValue;
-      expect(logSpy).toHaveBeenCalledWith('current', changeValue);
+      stateRef.value = changeValue;
+      expect(logSpy).toHaveBeenCalledWith('value', changeValue);
 
       logSpy.mockRestore();
     });
@@ -128,14 +128,14 @@ if (import.meta.vitest) {
       const changeNumber2 = 5;
       const watch = createStore<number>(defaultNumber);
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const stateRef = watch(store => console.log('number', store.current));
+      const stateRef = watch(store => console.log('number', store.value));
 
-      stateRef.current = changeNumber;
+      stateRef.value = changeNumber;
       expect(logSpy).toHaveBeenCalledWith('number', changeNumber);
       logSpy.mockRestore();
 
       const logSpy2 = vi.spyOn(console, 'log').mockImplementation(() => {});
-      stateRef.current = changeNumber2;
+      stateRef.value = changeNumber2;
       expect(logSpy2).toHaveBeenCalledWith('number', changeNumber2);
       logSpy.mockRestore();
     });
@@ -145,9 +145,9 @@ if (import.meta.vitest) {
       const changeString = 'james';
       const watch = createStore<string>(defaultString);
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const stateRef = watch(store => console.log('string', store.current));
+      const stateRef = watch(store => console.log('string', store.value));
 
-      stateRef.current = changeString;
+      stateRef.value = changeString;
       expect(logSpy).toHaveBeenCalledWith('string', changeString);
 
       logSpy.mockRestore();
@@ -160,18 +160,18 @@ if (import.meta.vitest) {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const abortController = new AbortController();
       const stateRef = watch(store => {
-        console.log('number', store.current);
+        console.log('number', store.value);
 
         return abortController.signal;
       });
 
-      stateRef.current = changeNumber;
+      stateRef.value = changeNumber;
       expect(logSpy).toHaveBeenCalledWith('number', changeNumber);
       logSpy.mockRestore();
 
       const abortLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       abortController.abort();
-      stateRef.current = defaultNumber;
+      stateRef.value = defaultNumber;
 
       expect(abortLogSpy).not.toHaveBeenCalled();
 
@@ -184,17 +184,17 @@ if (import.meta.vitest) {
       const watch = createStore<number>(defaultNumber);
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const stateRef = watch(store => {
-        console.log('number', store.current);
+        console.log('number', store.value);
 
         return false;
       });
 
-      stateRef.current = changeNumber;
+      stateRef.value = changeNumber;
       expect(logSpy).toHaveBeenCalledWith('number', changeNumber);
       logSpy.mockRestore();
 
       const abortLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      stateRef.current = defaultNumber;
+      stateRef.value = defaultNumber;
 
       expect(abortLogSpy).not.toHaveBeenCalled();
 

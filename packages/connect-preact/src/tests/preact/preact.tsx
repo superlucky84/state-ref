@@ -20,13 +20,13 @@ window.p = p;
 function Name() {
   const stateRef = usePofileStore();
 
-  return <div>aa = {stateRef.age.current}</div>;
+  return <div>aa = {stateRef.age.value}</div>;
 }
 
 function Age() {
   const stateRef = usePofileStore();
 
-  return <div>bb = {stateRef.name.current}</div>;
+  return <div>bb = {stateRef.name.value}</div>;
 }
 
 if (!import.meta.vitest) {
@@ -51,7 +51,7 @@ if (import.meta.vitest) {
     it('구조분해 할당하여 꺼내온 stateRef 값에 대해서도 잘 동작해야 한다.', () => {
       expect(screen.getByText('aa = 13')).toBeInTheDocument();
     });
-    it('여러개의 컴포넌트중 current로 꺼내어 값을 구독중인 컴포넌트에 변경만 동작해야한다.', () => {
+    it('여러개의 컴포넌트중 value로 꺼내어 값을 구독중인 컴포넌트에 변경만 동작해야한다.', () => {
       expect(screen.getByText('aa = 13')).toBeInTheDocument();
     });
     it('언마운트된 컴포넌트에 구독함수 호출은 일어나지 않아야 한다.', () => {

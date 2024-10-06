@@ -14,15 +14,15 @@ window.p = watch();
 
 const profile = useProfileRef<Profile>(store => store);
 
-console.log('PROFILE', profile.current);
+console.log('PROFILE', profile.value);
 
 const incrementFromProfile = () => {
-  profile.current.age += 1;
+  profile.value.age += 1;
 };
 </script>
 
 <template>
   <button @click="incrementFromProfile">
-    {{ profile.current.name.a }} Count is: {{ profile.current.age }}
+    {{ profile.value.name.a }} Count is: {{ profile.value.age }}
   </button>
 </template>

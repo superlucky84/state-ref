@@ -14,12 +14,12 @@ export function makeObject<V>({
   storeRenderList: StoreRenderList<V>;
   cacheMap: WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>;
 }) {
-  const ref: { current: null | StateRefStore<StoreType<V>> } = {
-    current: null,
+  const ref: { value: null | StateRefStore<StoreType<V>> } = {
+    value: null,
   };
-  const run = (isFirst?: boolean) => renew(ref.current!.root, isFirst ?? false);
+  const run = (isFirst?: boolean) => renew(ref.value!.root, isFirst ?? false);
 
-  ref.current = makeProxy<StoreType<V>, StateRefStore<StoreType<V>>, V>(
+  ref.value = makeProxy<StoreType<V>, StateRefStore<StoreType<V>>, V>(
     rootValue,
     storeRenderList,
     run
@@ -28,7 +28,7 @@ export function makeObject<V>({
   // 처음 실행시 abort 이벤트 리스너에 추가
   firstRunner(run, storeRenderList, cacheMap, renew);
 
-  cacheMap.set(renew, ref.current!.root);
+  cacheMap.set(renew, ref.value!.root);
 
-  return ref.current!.root;
+  return ref.value!.root;
 }

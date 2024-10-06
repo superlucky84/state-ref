@@ -17,10 +17,10 @@ export function makePrimitive<V>({
   storeRenderList: StoreRenderList<V>;
   cacheMap: WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>;
 }) {
-  const ref: { current: null | StateRefStore<V> } = { current: null };
-  const run = (isFirst?: boolean) => renew(ref.current!, isFirst ?? false);
+  const ref: { value: null | StateRefStore<V> } = { value: null };
+  const run = (isFirst?: boolean) => renew(ref.value!, isFirst ?? false);
 
-  ref.current = new Root(
+  ref.value = new Root(
     orignalValue,
     rootValue,
     () => {
@@ -31,7 +31,7 @@ export function makePrimitive<V>({
         run,
         storeRenderList,
         newValue => {
-          (ref.current as Root<V>).setCurrent(newValue);
+          (ref.value as Root<V>).setValue(newValue);
         }
       );
     },
@@ -43,7 +43,7 @@ export function makePrimitive<V>({
   // 처음 실행시 abort 이벤트 리스너에 추가
   firstRunner(run, storeRenderList, cacheMap, renew);
 
-  cacheMap.set(renew, ref.current!);
+  cacheMap.set(renew, ref.value!);
 
-  return ref.current! as StateRefStore<V>;
+  return ref.value! as StateRefStore<V>;
 }
