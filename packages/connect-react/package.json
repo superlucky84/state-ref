@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@state-ref/react",
-  "version": "1.0.0",
+  "version": "18.0.0",
   "description": "vue connector for state-ref",
   "packageManager": "pnpm@7.6.0",
   "main": "./dist/react-state-ref.umd.js",

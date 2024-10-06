@@ -23,10 +23,10 @@ export default defineConfig({
   build: {
     emptyOutDir: false,
     sourcemap: true,
-    minify: false,
+    minify: true,
     lib: {
       entry: resolve(__dirname, 'src'),
-      name: 'react-state-ref',
+      name: 'reactStateRef',
       fileName: format => {
         return format === 'umd'
           ? 'react-state-ref.umd.js'

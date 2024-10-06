@@ -25,10 +25,10 @@ export default defineConfig({
   build: {
     emptyOutDir: false,
     sourcemap: true,
-    minify: false,
+    minify: true,
     lib: {
       entry: resolve(__dirname, 'src'),
-      name: 'vue-state-ref',
+      name: 'vueStateRef',
       fileName: format => {
         return format === 'umd' ? 'vue-state-ref.umd.js' : 'vue-state-ref.mjs';
       },

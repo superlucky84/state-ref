@@ -7,7 +7,6 @@
   "packageManager": "pnpm@7.6.0",
   "scripts": {
     "dev:core": "pnpm --filter state-ref dev",
-    "build:core": "pnpm --filter state-ref build",
     "watch:core": "vite build --watch",
     "test:core": "pnpm --filter state-ref test",
     "test:all:core": "pnpm --filter state-ref test:all",
@@ -18,7 +17,15 @@
     "dev:react": "pnpm watch:core & pnpm --filter @state-ref/react dev",
     "dev:vue": "pnpm watch:core & pnpm --filter @state-ref/vue dev",
     "dev:svelte": "pnpm watch:core & pnpm --filter @state-ref/svelte dev",
-    "dev:solid": "pnpm watch:core & pnpm --filter @state-ref/solid dev"
+    "dev:solid": "pnpm watch:core & pnpm --filter @state-ref/solid dev",
+    "build:core": "pnpm --filter state-ref build",
+    "build:!core": "pnpm --filter '!state-ref' build",
+    "build:preact": "pnpm --filter @state-ref/preact build",
+    "build:react": "pnpm --filter @state-ref/react build",
+    "build:vue": "pnpm --filter @state-ref/vue build",
+    "build:svelte": "pnpm --filter @state-ref/svelte build",
+    "build:solid": "pnpm --filter @state-ref/solid build",
+    "build": "pnpm build:core && pnpm build:!core"
   },
   "author": "superlucky84",
   "repository": {

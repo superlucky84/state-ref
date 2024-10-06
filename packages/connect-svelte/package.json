@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@state-ref/svelte",
-  "version": "1.0.0",
+  "version": "4.0.0",
   "description": "svelte connector for state-ref",
   "packageManager": "pnpm@7.6.0",
   "main": "./dist/svelte-state-ref.umd.js",
@@ -35,7 +35,7 @@
     "state-ref"
   ],
   "peerDependencies": {
-    "svelte": "^4.2.19",
+    "svelte": "^4.0.0",
     "state-ref": "^1.0.0"
   },
   "devDependencies": {

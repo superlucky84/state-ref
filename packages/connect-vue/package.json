@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@state-ref/vue",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "description": "vue connector for state-ref",
   "packageManager": "pnpm@7.6.0",
   "main": "./dist/vue-state-ref.umd.js",
@@ -35,7 +35,7 @@
     "state-ref"
   ],
   "peerDependencies": {
-    "vue": "^3.5.10",
+    "vue": "^3.0.0",
     "state-ref": "^1.0.0"
   },
   "devDependencies": {

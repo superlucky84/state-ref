@@ -25,10 +25,10 @@ export default defineConfig({
   build: {
     emptyOutDir: false,
     sourcemap: true,
-    minify: false,
+    minify: true,
     lib: {
       entry: resolve(__dirname, 'src'),
-      name: 'svelte-state-ref',
+      name: 'svelteStateRef',
       fileName: format => {
         return format === 'umd'
           ? 'svelte-state-ref.umd.js'

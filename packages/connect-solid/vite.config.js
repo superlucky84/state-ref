@@ -25,10 +25,10 @@ export default defineConfig({
   build: {
     emptyOutDir: false,
     sourcemap: true,
-    minify: false,
+    minify: true,
     lib: {
       entry: resolve(__dirname, 'src'),
-      name: 'solid-state-ref',
+      name: 'solidStateRef',
       fileName: format => {
         return format === 'umd'
           ? 'solid-state-ref.umd.js'

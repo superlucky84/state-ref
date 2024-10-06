@@ -23,10 +23,10 @@ export default defineConfig({
   build: {
     emptyOutDir: false,
     sourcemap: true,
-    minify: false,
+    minify: true,
     lib: {
       entry: resolve(__dirname, 'src'),
-      name: 'preact-state-ref',
+      name: 'preactStateRef',
       fileName: format => {
         return format === 'umd'
           ? 'preact-state-ref.umd.js'

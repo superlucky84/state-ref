@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@state-ref/preact",
-  "version": "1.0.0",
+  "version": "10.0.0",
   "description": "vue connector for state-ref",
   "packageManager": "pnpm@7.6.0",
   "main": "./dist/preact-state-ref.umd.js",
@@ -36,7 +36,7 @@
   ],
   "peerDependencies": {
     "state-ref": "^1.0.0",
-    "preact": "^10.24.1"
+    "preact": "^10.0.0"
   },
   "devDependencies": {
     "state-ref": "workspace:*",
