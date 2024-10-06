@@ -5,14 +5,14 @@ import { connectWithPreactA } from '@/index';
 
 console.log(createStore);
 
-const capture = createStore<{ name: string; age: number }>({
+const watch = createStore<{ name: string; age: number }>({
   name: 'brown',
   age: 13,
 });
 
-const usePofileStore = connectWithPreactA(capture);
+const usePofileStore = connectWithPreactA(watch);
 
-const p = capture();
+const p = watch();
 
 //@ts-ignore
 window.p = p;

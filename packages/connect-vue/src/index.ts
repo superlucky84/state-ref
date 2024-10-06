@@ -1,14 +1,14 @@
 import { reactive, watch, onUnmounted } from 'vue';
 import type { Reactive, UnwrapRef } from 'vue';
 import { cloneDeep } from 'state-ref';
-import type { StateRefStore, Capture } from 'state-ref';
+import type { StateRefStore, Watch } from 'state-ref';
 // import { cloneDeep } from 'state-ref';
-// import type { StateRefStore, Capture } from 'state-ref';
+// import type { StateRefStore, Watch } from 'state-ref';
 
 /**
  * Vue V3
  */
-export function connectWithVueA<T>(capture: Capture<T>) {
+export function connectWithVueA<T>(refWatch: Watch<T>) {
   return <V>(
     callback: (store: StateRefStore<T>) => StateRefStore<V>
   ): Reactive<{ current: V }> => {
@@ -27,7 +27,7 @@ export function connectWithVueA<T>(capture: Capture<T>) {
       abortController.abort();
     });
 
-    capture(stateInnerRef => {
+    refWatch(stateInnerRef => {
       stateRef = callback(stateInnerRef);
       if (reactiveValue?.current !== stateRef.current && !changing) {
         change(() => {

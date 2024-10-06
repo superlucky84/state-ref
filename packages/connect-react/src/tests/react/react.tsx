@@ -6,14 +6,14 @@ import { createRoot } from 'react-dom/client';
 import { createStore } from 'state-ref';
 import { connectWithReactA } from '@/index';
 
-const capture = createStore<{ name: string; age: number }>({
+const watch = createStore<{ name: string; age: number }>({
   name: 'brown',
   age: 13,
 });
 
-const usePofileStore = connectWithReactA(capture);
+const usePofileStore = connectWithReactA(watch);
 
-const p = capture();
+const p = watch();
 
 //@ts-ignore
 window.p = p;

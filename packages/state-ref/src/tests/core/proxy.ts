@@ -23,8 +23,8 @@ const makeDefaultValue = () => ({
 // let newValue!: People;
 
 const defaultValue = makeDefaultValue();
-const capture = createStore<People>(defaultValue);
-capture(stateRef => {
+const watch = createStore<People>(defaultValue);
+watch(stateRef => {
   console.log(stateRef.brown.house[0].color.current);
 });
 
@@ -32,7 +32,7 @@ capture(stateRef => {
  * 브라우저로 수동 테스트
  */
 if (!import.meta.vitest) {
-  const stateRef = capture();
+  const stateRef = watch();
 
   // @ts-ignore
   window.p = stateRef;
@@ -47,22 +47,22 @@ if (import.meta.vitest) {
   describe('Proxy - 구독하려는 데이터가 객체일때는 프록시에서 처리.', () => {
     it('구독함수로 부터 전달받은 stateRef 에서 current로 꺼낸 값에 대해서 구독 알림을 받아야 한다.', () => {
       const defaultValue = makeDefaultValue();
-      const capture = createStore<People>(defaultValue);
+      const watch = createStore<People>(defaultValue);
 
       const mockFn1 = vi.fn();
       const mockFn2 = vi.fn();
       const mockFn3 = vi.fn();
 
-      const stateRef = capture();
-      capture(stateRef => {
+      const stateRef = watch();
+      watch(stateRef => {
         console.log(stateRef.john.house[0].color.current);
         mockFn1();
       });
-      capture(stateRef => {
+      watch(stateRef => {
         console.log(stateRef.brown.house[0].color.current);
         mockFn2();
       });
-      capture(stateRef => {
+      watch(stateRef => {
         console.log(stateRef.sara.house[0].color.current);
         mockFn3();
       });
@@ -83,21 +83,21 @@ if (import.meta.vitest) {
       expect(mockFn3).toHaveBeenCalledTimes(1);
     });
 
-    it('capture로 부터 반환된 stateRef 에서 value로 꺼낸 값에 대해서 구독 알림을 받아야 한다.', () => {
+    it('watch로 부터 반환된 stateRef 에서 value로 꺼낸 값에 대해서 구독 알림을 받아야 한다.', () => {
       const defaultValue = makeDefaultValue();
-      const capture = createStore<People>(defaultValue);
+      const watch = createStore<People>(defaultValue);
 
       const mockFn1 = vi.fn();
       const mockFn2 = vi.fn();
       const mockFn3 = vi.fn();
 
-      capture(() => {
+      watch(() => {
         mockFn1();
       });
-      const stateRef = capture(() => {
+      const stateRef = watch(() => {
         mockFn2();
       });
-      capture(() => {
+      watch(() => {
         mockFn3();
       });
 
@@ -111,25 +111,25 @@ if (import.meta.vitest) {
 
     it('abortController 를 통해 지정된 구독 함수만 취소할수 있어야 한다.', () => {
       const defaultValue = makeDefaultValue();
-      const capture = createStore<People>(defaultValue);
+      const watch = createStore<People>(defaultValue);
       const abortController = new AbortController();
 
       const mockFn1 = vi.fn();
       const mockFn2 = vi.fn();
       const mockFn3 = vi.fn();
 
-      const stateRef = capture();
-      capture(stateRef => {
+      const stateRef = watch();
+      watch(stateRef => {
         console.log(stateRef.john.house[0].color.current);
         mockFn1();
 
         return abortController.signal;
       });
-      capture(stateRef => {
+      watch(stateRef => {
         console.log(stateRef.brown.house[0].color.current);
         mockFn2();
       });
-      capture(stateRef => {
+      watch(stateRef => {
         console.log(stateRef.sara.house[0].color.current);
         mockFn3();
       });
@@ -159,10 +159,10 @@ if (import.meta.vitest) {
 
     it('구독하자마자 처음 한번은 구독함수가 실행되어야 한다.', () => {
       const defaultValue = makeDefaultValue();
-      const capture = createStore<People>(defaultValue);
+      const watch = createStore<People>(defaultValue);
       const mockFn1 = vi.fn();
 
-      capture(() => {
+      watch(() => {
         mockFn1();
       });
 
@@ -171,11 +171,11 @@ if (import.meta.vitest) {
 
     it('구독하자마자 처음 한번은 두번째 인자로 true 값을 받아야 한다.', () => {
       const defaultValue = makeDefaultValue();
-      const capture = createStore<People>(defaultValue);
+      const watch = createStore<People>(defaultValue);
 
       const mockFn1 = vi.fn();
 
-      const stateRef = capture((stateRef, isFirst) => {
+      const stateRef = watch((stateRef, isFirst) => {
         console.log(stateRef.brown.house[0].color.current);
         mockFn1(isFirst);
       });
@@ -187,10 +187,10 @@ if (import.meta.vitest) {
 
     it('변경한 값에 대해서 copyOnWrite가 정확히 적용되어야 한다.', () => {
       const defaultValue = makeDefaultValue();
-      const capture = createStore<People>(defaultValue);
+      const watch = createStore<People>(defaultValue);
 
       let newValue!: People;
-      const stateRef = capture(stateRef => {
+      const stateRef = watch(stateRef => {
         newValue = stateRef.current;
         console.log(stateRef.brown.house[0].color.current);
       });
@@ -211,10 +211,10 @@ if (import.meta.vitest) {
 
     it('특정 값의 부모에 해당하는 뿌리를 구독하고 있다면, 특정 값의 데이터가 변경되었을때 반응해야 한다.', () => {
       const defaultValue = makeDefaultValue();
-      const capture = createStore<People>(defaultValue);
+      const watch = createStore<People>(defaultValue);
       const mockFn1 = vi.fn();
 
-      const stateRef = capture(({ john: { current: johnValue } }) => {
+      const stateRef = watch(({ john: { current: johnValue } }) => {
         mockFn1(johnValue);
       });
 
@@ -224,10 +224,10 @@ if (import.meta.vitest) {
 
     it('어떤 부모에 자식노드에 해당하는 특정값을 구독하고 있다면, 부모노드가 변경되었을때 반응해야 한다.', () => {
       const defaultValue = makeDefaultValue();
-      const capture = createStore<People>(defaultValue);
+      const watch = createStore<People>(defaultValue);
       const mockFn1 = vi.fn();
 
-      const stateRef = capture(
+      const stateRef = watch(
         ({
           john: {
             house: [
@@ -254,10 +254,10 @@ if (import.meta.vitest) {
 
     it('어떤 부모에 자식노드에 해당하는 특정값을 구독하고 있고 부모노드가 변경되었어도 값의 참조가 변하지 않았다면 구독함수는 반응하지 말아야 한다.', () => {
       const defaultValue = makeDefaultValue();
-      const capture = createStore<People>(defaultValue);
+      const watch = createStore<People>(defaultValue);
       const mockFn1 = vi.fn();
 
-      const stateRef = capture(
+      const stateRef = watch(
         ({
           john: {
             house: [

@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import type { StateRefStore, Capture } from 'state-ref';
+import type { StateRefStore, Watch } from 'state-ref';
 
 /**
  * React V18
  */
-export function connectWithReactA<T>(capture: Capture<T>) {
+export function connectWithReactA<T>(watch: Watch<T>) {
   const useForceUpdate = () => {
     const [, setDummy] = useState(0);
     const abortController = useRef(new AbortController());
@@ -22,5 +22,5 @@ export function connectWithReactA<T>(capture: Capture<T>) {
     return forceUpdateRef.current;
   };
 
-  return () => capture(useForceUpdate());
+  return () => watch(useForceUpdate());
 }

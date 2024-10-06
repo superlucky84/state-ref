@@ -21,7 +21,7 @@ export type StateRefStore<S> = S extends object
 // [K in keyof S]: StateRefStore<S[K]> & { current: S[K] };
 // current: { [K in keyof S]: StateRefStore<S[K]> } & { current: S };
 
-export type Capture<V> = (
+export type Watch<V> = (
   renew: Renew<StateRefStore<V>>,
   userOption?: { cache?: boolean }
 ) => StateRefStore<V>;

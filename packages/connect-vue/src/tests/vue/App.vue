@@ -3,14 +3,14 @@ import { createStore } from 'state-ref';
 import { connectWithVueA } from '@/index';
 
 type Profile = { name: { a: string; b: string }; age: number };
-const capture = createStore<Profile>({
+const watch = createStore<Profile>({
   name: { a: 'brown', b: 'jain' },
   age: 13,
 });
-const useProfileRef = connectWithVueA(capture);
+const useProfileRef = connectWithVueA(watch);
 
 // @ts-ignore
-window.p = capture();
+window.p = watch();
 
 const profile = useProfileRef<Profile>(store => store);
 

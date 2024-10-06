@@ -7,8 +7,8 @@ import type { Renew, StoreType, StateRefStore, StoreRenderList } from '@/types';
 /**
  * createStore 스토어를 만들어 준다
  * 인자는 초기값
- * const capture = createStore({ name: 'brown', age: 38 })
- * const stateRef = capture(stateRef => {
+ * const watch = createStore({ name: 'brown', age: 38 })
+ * const stateRef = watch(stateRef => {
  *   console.log(stateRef.current));
  * });
  */
