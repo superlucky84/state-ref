@@ -6,7 +6,7 @@ import {
   waitFor,
 } from '@testing-library/vue';
 import { describe, it, expect } from 'vitest';
-import { handleRef, getDefaultValue, useProfileRef } from '@/tests/store/store';
+import { handleRef, getDefaultValue } from '@/tests/store/store';
 import Age from '@/tests/vue/Age.vue';
 import Age1 from '@/tests/vue/Age1.vue';
 import Age2 from '@/tests/vue/Age2.vue';
@@ -97,8 +97,8 @@ describe('Connect Preact', () => {
   });
 
   /**
-   * '@testing-library/vue' 는 store를 싱글톤으로 가져오지 않고 새로운 인스턴스를 만드는 방식으로 테스트 환경을 격리시키므로 이 테스트가 안된다.
-   * npm run dev:vue 에서 수동 테스트 필요
+   * '@testing-library/vue' 는 각각 render시 store를 싱글톤으로 가져오지 않고 새로운 인스턴스를 만드는 방식으로 테스트 환경을 격리시키므로 이 테스트가 안된다.
+   * (npm run dev:vue 에서 수동 테스트 필요)
    */
   it.skip('서로 다른 render함수로 부터의 다른 뿌리를 가진 컴포넌트 들도 값을 공유할수 있어야 한다.', async () => {
     render(Age);
