@@ -9,8 +9,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test:all": "vitest run --reporter verbose",
-    "test": "vitest"
+    "test": "vitest run --reporter verbose",
+    "test:dev": "vitest"
   },
   "exports": {
     ".": {
@@ -40,6 +40,7 @@
     "state-ref": "^1.0.0"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.0.1",
     "@types/react": "^18.3.11",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
