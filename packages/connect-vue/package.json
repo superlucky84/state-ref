@@ -9,8 +9,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test:all": "vitest run --reporter verbose",
-    "test": "vitest"
+    "test": "vitest run --reporter verbose",
+    "test:dev": "vitest"
   },
   "exports": {
     ".": {
@@ -35,13 +35,14 @@
     "state-ref"
   ],
   "peerDependencies": {
-    "vue": "^3.0.0",
-    "state-ref": "^1.0.0"
+    "state-ref": "^1.0.0",
+    "vue": "^3.0.0"
   },
   "devDependencies": {
-    "state-ref": "workspace:*",
+    "@testing-library/vue": "^8.1.0",
     "@vitejs/plugin-vue": "^5.1.4",
     "@vue/compiler-sfc": "^3.5.10",
+    "state-ref": "workspace:*",
     "vue": "^3.5.10"
   },
   "volta": {
