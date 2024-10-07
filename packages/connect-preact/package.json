@@ -9,8 +9,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test:all": "vitest run --reporter verbose",
-    "test": "vitest"
+    "test": "vitest run --reporter verbose",
+    "test:dev": "vitest"
   },
   "exports": {
     ".": {

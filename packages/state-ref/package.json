@@ -10,8 +10,8 @@
     "dev": "vite",
     "build": "vite build",
     "watch": "vite build --watch",
-    "test:all": "vitest run --reporter verbose",
-    "test": "vitest"
+    "test": "vitest run --reporter verbose",
+    "test:dev": "vitest"
   },
   "exports": {
     ".": {

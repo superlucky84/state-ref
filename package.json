@@ -6,18 +6,14 @@
   "description": "X UI Library Universal State Management Library",
   "packageManager": "pnpm@7.6.0",
   "scripts": {
-    "dev:core": "pnpm --filter state-ref dev",
     "watch:core": "vite build --watch",
-    "test:core": "pnpm --filter state-ref test",
-    "test:all:core": "pnpm --filter state-ref test:all",
-    "clean": "pnpm clean:dist && pnpm clean:module",
-    "clean:dist": "pnpm -r exec rm -rf dist && rm -rf dist",
-    "clean:module": "pnpm -r exec rm -rf dist node_modules && rm -rf node_modules",
+    "dev:core": "pnpm --filter state-ref dev",
     "dev:preact": "pnpm watch:core & pnpm --filter @state-ref/preact dev",
     "dev:react": "pnpm watch:core & pnpm --filter @state-ref/react dev",
     "dev:vue": "pnpm watch:core & pnpm --filter @state-ref/vue dev",
     "dev:svelte": "pnpm watch:core & pnpm --filter @state-ref/svelte dev",
     "dev:solid": "pnpm watch:core & pnpm --filter @state-ref/solid dev",
+
     "build:core": "pnpm --filter state-ref build",
     "build:!core": "pnpm --filter '!state-ref' build",
     "build:preact": "pnpm --filter @state-ref/preact build",
@@ -25,14 +21,26 @@
     "build:vue": "pnpm --filter @state-ref/vue build",
     "build:svelte": "pnpm --filter @state-ref/svelte build",
     "build:solid": "pnpm --filter @state-ref/solid build",
-    "build": "pnpm build:core && pnpm build:!core"
+    "build": "pnpm build:core && pnpm build:!core",
+
+    "test:core": "pnpm --filter state-ref test",
+    "test:core:dev": "pnpm --filter state-ref test:dev",
+    "test:preact:dev": "pnpm --filter @state-ref/preact test:dev",
+    "test:react:dev": "pnpm --filter @state-ref/react test:dev",
+    "test:vue:dev": "pnpm --filter @state-ref/vue test:dev",
+    "test:svelte:dev": "pnpm --filter @state-ref/svelte test:dev",
+    "test:solid:dev": "pnpm --filter @state-ref/solid test:dev",
+
+    "clean": "pnpm clean:dist && pnpm clean:module",
+    "clean:dist": "pnpm -r exec rm -rf dist && rm -rf dist",
+    "clean:module": "pnpm -r exec rm -rf dist node_modules && rm -rf node_modules"
   },
   "author": "superlucky84",
   "repository": {
     "type": "git",
-    "url": "https://github.com/superlucky84/lenshelf.git"
+    "url": "https://github.com/superlucky84/state-ref.git"
   },
-  "homepage": "https://github.com/superlucky84/lenshelf",
+  "homepage": "https://github.com/superlucky84/state-ref",
   "license": "MIT",
   "keywords": [
     "state-ref"
