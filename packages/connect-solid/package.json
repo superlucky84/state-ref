@@ -9,8 +9,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test:all": "vitest run --reporter verbose",
-    "test": "vitest"
+    "test": "vitest run --reporter verbose",
+    "test:dev": "vitest"
   },
   "exports": {
     ".": {
@@ -39,8 +39,9 @@
     "state-ref": "^1.0.0"
   },
   "devDependencies": {
-    "state-ref": "workspace:*",
+    "@solidjs/testing-library": "^0.8.10",
     "solid-js": "^1.9.1",
+    "state-ref": "workspace:*",
     "vite-plugin-solid": "^2.10.2"
   },
   "volta": {
