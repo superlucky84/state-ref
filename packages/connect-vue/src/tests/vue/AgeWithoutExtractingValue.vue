@@ -15,11 +15,10 @@ onUpdated(() => {
 const changeName = () => {
   nameRef.value += ' james';
 };
-
 </script>
 
 <template>
-  <button @click="changeName">
+  <button @click="changeName" data-testid="name-display">
     name: {{ nameRef.value }}
   </button>
 </template>

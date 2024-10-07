@@ -9,7 +9,10 @@ const incrementFromage = () => {
 </script>
 
 <template>
-  <button @click="incrementFromage">
-    age: {{ ageRef.value }}
-  </button>
+  <div>
+    <div data-testid="age-display">age: {{ ageRef.value }}</div>
+    <button data-testid="age-increase" @click="incrementFromage">
+      increase
+    </button>
+  </div>
 </template>

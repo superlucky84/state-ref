@@ -14,8 +14,6 @@ window.p = watch();
 
 const profile = useProfileRef<Profile>(store => store);
 
-console.log('PROFILE', profile.value);
-
 const incrementFromProfile = () => {
   profile.value.age += 1;
 };

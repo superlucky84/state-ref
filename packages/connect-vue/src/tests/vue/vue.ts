@@ -1,5 +1,6 @@
 import { createApp } from 'vue';
 // @ts-ignore
-import App from './App.vue';
+// import App from './App.vue';
+import AgeWithoutExtractingValue from './AgeWithoutExtractingValue.vue';
 
-createApp(App).mount('#app');
+createApp(AgeWithoutExtractingValue).mount('#app');
