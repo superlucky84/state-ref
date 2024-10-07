@@ -6,10 +6,13 @@ import {
   waitFor,
 } from '@testing-library/vue';
 import { describe, it, expect } from 'vitest';
-import { handleRef, getDefaultValue } from '@/tests/store/store';
+import { handleRef, getDefaultValue, useProfileRef } from '@/tests/store/store';
 import Age from '@/tests/vue/Age.vue';
+import Age1 from '@/tests/vue/Age1.vue';
+import Age2 from '@/tests/vue/Age2.vue';
 import Root1 from '@/tests/vue/Root1.vue';
 import Root2 from '@/tests/vue/Root2.vue';
+import Root3 from '@/tests/vue/Root3.vue';
 import { nextTick } from 'vue';
 
 const resetStore = () => {
@@ -75,7 +78,45 @@ describe('Connect Preact', () => {
     });
   });
 
-  it.skip('여러개의 컴포넌트가 하나의 값을 구독중일때, 모두 스토어 값을 반영하여 정상 동작해야한다.', async () => {});
+  it('여러개의 컴포넌트가 하나의 값을 구독중일때, 모두 스토어 값을 반영하여 정상 동작해야한다.', async () => {
+    render(Root3);
 
-  it.skip('서로 다른 render함수로 부터의 다른 뿌리를 가진 컴포넌트 들도 값을 공유할수 있어야 한다.', async () => {});
+    const btnElement = screen.getByTestId('age-increase');
+    const displayElement = screen.getByTestId('age-display');
+    const displayElement1 = screen.getByTestId('age-display2');
+    const displayElement2 = screen.getByTestId('age-display2');
+
+    fireEvent.click(btnElement);
+    fireEvent.click(btnElement);
+
+    await waitFor(() => {
+      expect(displayElement.textContent).toBe('age: 15');
+      expect(displayElement1.textContent).toBe('age: 15');
+      expect(displayElement2.textContent).toBe('age: 15');
+    });
+  });
+
+  /**
+   * '@testing-library/vue' 는 store를 싱글톤으로 가져오지 않고 새로운 인스턴스를 만드는 방식으로 테스트 환경을 격리시키므로 이 테스트가 안된다.
+   * npm run dev:vue 에서 수동 테스트 필요
+   */
+  it.skip('서로 다른 render함수로 부터의 다른 뿌리를 가진 컴포넌트 들도 값을 공유할수 있어야 한다.', async () => {
+    render(Age);
+    render(Age1);
+    render(Age2);
+
+    const btnElement = screen.getByTestId('age-increase');
+    const displayElement = screen.getByTestId('age-display');
+    const displayElement1 = screen.getByTestId('age-display1');
+    const displayElement2 = screen.getByTestId('age-display2');
+
+    fireEvent.click(btnElement);
+    fireEvent.click(btnElement);
+
+    await waitFor(() => {
+      expect(displayElement.textContent).toBe('age: 15');
+      expect(displayElement1.textContent).toBe('age: 15');
+      expect(displayElement2.textContent).toBe('age: 15');
+    });
+  });
 });
