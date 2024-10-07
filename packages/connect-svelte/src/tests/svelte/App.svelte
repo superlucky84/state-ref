@@ -6,6 +6,8 @@
     name: 'brown',
     age: 13,
   });
+
+  // @ts-ignore
   window.p = watch();
 
   const useProfileShelf = connectWithSvelteA(watch);

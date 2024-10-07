@@ -1,4 +1,4 @@
-lockfileVersion: '6.1'
+lockfileVersion: '6.0'
 
 settings:
   autoInstallPeers: true
@@ -104,6 +104,9 @@ importers:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^3.1.2
         version: 3.1.2(svelte@4.2.19)(vite@5.4.8)
+      '@testing-library/svelte':
+        specifier: ^5.2.3
+        version: 5.2.3(svelte@4.2.19)(vite@5.4.8)(vitest@2.1.2)
       state-ref:
         specifier: workspace:*
         version: link:../state-ref
@@ -1066,6 +1069,25 @@ packages:
       '@types/react': 18.3.11
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
+    dev: true
+
+  /@testing-library/svelte@5.2.3(svelte@4.2.19)(vite@5.4.8)(vitest@2.1.2):
+    resolution: {integrity: sha512-y5eaD2Vp3hb729dAv3dOYNoZ9uNM0bQ0rd5AfXDWPvI+HiGmjl8ZMOuKzBopveyAkci1Kplb6kS53uZhPGEK+w==}
+    engines: {node: '>= 10'}
+    peerDependencies:
+      svelte: ^3 || ^4 || ^5 || ^5.0.0-next.0
+      vite: '*'
+      vitest: '*'
+    peerDependenciesMeta:
+      vite:
+        optional: true
+      vitest:
+        optional: true
+    dependencies:
+      '@testing-library/dom': 10.4.0
+      svelte: 4.2.19
+      vite: 5.4.8(terser@5.18.1)
+      vitest: 2.1.2(happy-dom@9.20.3)(jsdom@22.1.0)(terser@5.18.1)
     dev: true
 
   /@testing-library/vue@8.1.0(@vue/compiler-sfc@3.5.10)(vue@3.5.10):

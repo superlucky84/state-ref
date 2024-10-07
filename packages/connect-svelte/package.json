@@ -9,8 +9,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test:all": "vitest run --reporter verbose",
-    "test": "vitest"
+    "test": "vitest run --reporter verbose",
+    "test:dev": "vitest"
   },
   "exports": {
     ".": {
@@ -35,13 +35,14 @@
     "state-ref"
   ],
   "peerDependencies": {
-    "svelte": "^4.0.0",
-    "state-ref": "^1.0.0"
+    "state-ref": "^1.0.0",
+    "svelte": "^4.0.0"
   },
   "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^3.1.2",
+    "@testing-library/svelte": "^5.2.3",
     "state-ref": "workspace:*",
-    "svelte": "^4.2.19",
-    "@sveltejs/vite-plugin-svelte": "^3.1.2"
+    "svelte": "^4.2.19"
   },
   "volta": {
     "node": "20.3.0"
