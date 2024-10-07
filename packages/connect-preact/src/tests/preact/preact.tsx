@@ -3,22 +3,26 @@ import {
   fireEvent,
   cleanup,
   screen,
+  waitFor,
 } from '@testing-library/preact';
 import { h, render } from 'preact';
+import { useState } from 'preact/hooks';
 import { createStore } from 'state-ref';
 import { connectWithPreactA } from '@/index';
 
 type Profile = { name: string; age: number };
+
 const getDefaultValue = () => ({
   name: 'Brown',
   age: 13,
 });
+
 const watch = createStore<Profile>(getDefaultValue());
-const p = watch();
+const handleRef = watch();
 const usePofileStore = connectWithPreactA(watch);
 
 const resetStore = () => {
-  p.value = getDefaultValue();
+  handleRef.value = getDefaultValue();
 };
 
 function Name() {
@@ -50,19 +54,16 @@ function Age() {
     </div>
   );
 }
-function Root() {
-  return (
-    <div>
-      <Age />
-      <Name />
-    </div>
-  );
-}
 
 if (import.meta.vitest) {
-  // const { describe, it, expect } = import.meta.vitest;
+  const { describe, it, expect } = import.meta.vitest;
 
   describe('Connect Preact', () => {
+    afterEach(() => {
+      cleanup();
+      resetStore();
+    });
+
     it('꺼내온 stateRef 값에 대해서 리액티브하게 잘 동작해야 한다.', () => {
       trender(<Age />);
       const btnElement = screen.getByTestId('age-increase');
@@ -70,32 +71,146 @@ if (import.meta.vitest) {
 
       fireEvent.click(btnElement);
       expect(displayElement.textContent).toBe('age: 14');
-
-      cleanup();
-      resetStore();
     });
+
     it('여러개의 컴포넌트중 value로 꺼내어 값을 구독중인 컴포넌트에 변경만 동작해야한다.', () => {
-      trender(<Age />);
+      const mockFn1 = vi.fn();
+
+      function AgeWithoutExtractingValue() {
+        const stateRef = usePofileStore();
+        mockFn1();
+
+        return <div>age: {stateRef.age}</div>;
+      }
+      function Root() {
+        return (
+          <div>
+            <Age />
+            <AgeWithoutExtractingValue />
+          </div>
+        );
+      }
+      trender(<Root />);
+
       const btnElement = screen.getByTestId('age-increase');
       const displayElement = screen.getByTestId('age-display');
 
       fireEvent.click(btnElement);
-      expect(displayElement.textContent).toBe('age: 14');
+      fireEvent.click(btnElement);
 
-      cleanup();
-      resetStore();
+      expect(displayElement.textContent).toBe('age: 15');
+      expect(mockFn1).toHaveBeenCalledTimes(1);
     });
-    /*
     it('언마운트된 컴포넌트에 구독함수 호출은 일어나지 않아야 한다.', () => {
-      expect(screen.getByText('aa = 13')).toBeInTheDocument();
+      const mockFn1 = vi.fn();
+
+      function AgeUnmountable() {
+        const stateRef = usePofileStore();
+        mockFn1();
+
+        return <div>age: {stateRef.age.value}</div>;
+      }
+      function Root() {
+        const [mounted, setMounted] = useState(true);
+
+        return (
+          <div>
+            <button data-testid="unmount" onClick={() => setMounted(false)}>
+              unmount
+            </button>
+            <Age />
+            {mounted && <AgeUnmountable />}
+          </div>
+        );
+      }
+      trender(<Root />);
+
+      const btnUnmoutElement = screen.getByTestId('unmount');
+      const btnIncreaseElement = screen.getByTestId('age-increase');
+      const displayElement = screen.getByTestId('age-display');
+
+      fireEvent.click(btnIncreaseElement);
+
+      expect(displayElement.textContent).toBe('age: 14');
+      expect(mockFn1).toHaveBeenCalledTimes(2);
+
+      fireEvent.click(btnUnmoutElement);
+      fireEvent.click(btnIncreaseElement);
+
+      expect(displayElement.textContent).toBe('age: 15');
+      expect(mockFn1).toHaveBeenCalledTimes(2);
     });
-    it('여러개의 컴포넌트가 하나의 값을 구독중일때 언마운트된 컴포넌트 외에 다른 컴포넌트들은 정상 동작해야 한다.', () => {
-      expect(screen.getByText('aa = 13')).toBeInTheDocument();
+
+    it('여러개의 컴포넌트가 하나의 값을 구독중일때, 모두 스토어 값을 반영하여 정상 동작해야한다.', async () => {
+      const handleRef = watch();
+
+      function Age1() {
+        const stateRef = usePofileStore();
+        return <div data-testid="age-display1">age: {stateRef.age.value}</div>;
+      }
+      function Age2() {
+        const stateRef = usePofileStore();
+        return <div data-testid="age-display2">age: {stateRef.age.value}</div>;
+      }
+      function Age3() {
+        const stateRef = usePofileStore();
+        return <div data-testid="age-display3">age: {stateRef.age.value}</div>;
+      }
+      function Root() {
+        return (
+          <div>
+            <Age1 />
+            <Age2 />
+            <Age3 />
+          </div>
+        );
+      }
+      trender(<Root />);
+
+      const displayElement1 = screen.getByTestId('age-display1');
+      const displayElement2 = screen.getByTestId('age-display2');
+      const displayElement3 = screen.getByTestId('age-display3');
+
+      handleRef.age.value += 2;
+
+      await waitFor(() => {
+        expect(displayElement1.textContent).toBe('age: 15');
+        expect(displayElement2.textContent).toBe('age: 15');
+        expect(displayElement3.textContent).toBe('age: 15');
+      });
     });
-    it('서로 다른 render함수로 부터의 다른 뿌리를 가진 컴포넌트 들도 값을 공유할수 있어야 한다.', () => {
-      expect(screen.getByText('aa = 13')).toBeInTheDocument();
+
+    it('서로 다른 render함수로 부터의 다른 뿌리를 가진 컴포넌트 들도 값을 공유할수 있어야 한다.', async () => {
+      const handleRef = watch();
+
+      function Age1() {
+        const stateRef = usePofileStore();
+        return <div data-testid="age-display1">age: {stateRef.age.value}</div>;
+      }
+      function Age2() {
+        const stateRef = usePofileStore();
+        return <div data-testid="age-display2">age: {stateRef.age.value}</div>;
+      }
+      function Age3() {
+        const stateRef = usePofileStore();
+        return <div data-testid="age-display3">age: {stateRef.age.value}</div>;
+      }
+      trender(<Age1 />);
+      trender(<Age2 />);
+      trender(<Age3 />);
+
+      const displayElement1 = screen.getByTestId('age-display1');
+      const displayElement2 = screen.getByTestId('age-display2');
+      const displayElement3 = screen.getByTestId('age-display3');
+
+      handleRef.age.value += 2;
+
+      await waitFor(() => {
+        expect(displayElement1.textContent).toBe('age: 15');
+        expect(displayElement2.textContent).toBe('age: 15');
+        expect(displayElement3.textContent).toBe('age: 15');
+      });
     });
-     */
   });
 }
 
@@ -113,7 +228,16 @@ function getRandomName(excludeName: string) {
 
 if (!import.meta.vitest) {
   //@ts-ignore
-  window.p = p;
-  // render(<Age />, document.getElementById('root') as HTMLElement);
-  render(<Name />, document.getElementById('root2') as HTMLElement);
+  window.p = handleRef;
+  function Root() {
+    return (
+      <div>
+        <Age />
+        <Age />
+        <Age />
+        <Name />
+      </div>
+    );
+  }
+  render(<Root />, document.getElementById('root2') as HTMLElement);
 }
