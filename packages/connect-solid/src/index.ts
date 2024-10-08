@@ -6,7 +6,7 @@ import type { StateRefStore, Watch } from 'state-ref';
 /**
  * Solid-js V1
  */
-export function connectWithSolidA<T>(capture: Watch<T>) {
+export function connectSolid<T>(capture: Watch<T>) {
   return <V>(
     callback: (store: StateRefStore<T>) => StateRefStore<V>
   ): Signal<V> => {

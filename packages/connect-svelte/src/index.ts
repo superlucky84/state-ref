@@ -6,7 +6,7 @@ import type { StateRefStore, Watch } from 'state-ref';
 /**
  * Svelte V4
  */
-export function connectWithSvelteA<T>(capture: Watch<T>) {
+export function connectSvelte<T>(capture: Watch<T>) {
   return <V>(callback: (store: StateRefStore<T>) => StateRefStore<V>) => {
     const abortController = new AbortController();
     let signalValue!: Writable<V>;

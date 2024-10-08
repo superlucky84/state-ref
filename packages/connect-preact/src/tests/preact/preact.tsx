@@ -8,7 +8,7 @@ import {
 import { h, render } from 'preact';
 import { useState } from 'preact/hooks';
 import { createStore } from 'state-ref';
-import { connectWithPreactA } from '@/index';
+import { connectPreact } from '@/index';
 
 type Profile = { name: string; age: number };
 
@@ -19,7 +19,7 @@ const getDefaultValue = () => ({
 
 const watch = createStore<Profile>(getDefaultValue());
 const handleRef = watch();
-const usePofileStore = connectWithPreactA(watch);
+const usePofileStore = connectPreact(watch);
 
 const resetStore = () => {
   handleRef.value = getDefaultValue();

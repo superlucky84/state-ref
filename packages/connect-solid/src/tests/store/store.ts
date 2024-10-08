@@ -1,5 +1,5 @@
 import { createStore } from 'state-ref';
-import { connectWithSolidA } from '@/index';
+import { connectSolid } from '@/index';
 
 export type Profile = { name: string; age: number };
 
@@ -10,4 +10,4 @@ export const getDefaultValue = () => ({
 
 export const watch = createStore<Profile>(getDefaultValue());
 export const handleRef = watch();
-export const useProfileRef = connectWithSolidA(watch);
+export const useProfileRef = connectSolid(watch);

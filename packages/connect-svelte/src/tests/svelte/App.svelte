@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createStore, copyable } from 'state-ref';
-  import { connectWithSvelteA } from '@/index';
+  import { connectSvelte } from '@/index';
 
   const watch = createStore({
     name: 'brown',
@@ -10,7 +10,7 @@
   // @ts-ignore
   window.p = watch();
 
-  const useProfileShelf = connectWithSvelteA(watch);
+  const useProfileShelf = connectSvelte(watch);
   const profile = useProfileShelf(store => store);
 
   function handleClick() {

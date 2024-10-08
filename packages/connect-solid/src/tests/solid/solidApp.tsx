@@ -6,7 +6,7 @@ const capture = createStore({
   age: 13,
 });
 
-const useProfileShelf = connectWithSolidA(capture);
+const useProfileShelf = connectSolid(capture);
 
 function App() {
   const [profile, setProfile] = useProfileShelf<{ name: string; age: number }>(

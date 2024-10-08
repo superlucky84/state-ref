@@ -1,5 +1,5 @@
 import { createStore } from 'state-ref';
-import { connectWithSvelteA } from '@/index';
+import { connectSvelte } from '@/index';
 
 export type Profile = { name: string; age: number };
 
@@ -10,4 +10,4 @@ export const getDefaultValue = () => ({
 
 export const watch = createStore<Profile>(getDefaultValue());
 export const handleRef = watch();
-export const useProfileRef = connectWithSvelteA(watch);
+export const useProfileRef = connectSvelte(watch);

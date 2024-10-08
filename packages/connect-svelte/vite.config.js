@@ -30,11 +30,11 @@ export default defineConfig({
     minify: true,
     lib: {
       entry: resolve(__dirname, 'src'),
-      name: 'svelteStateRef',
+      name: 'staterefConnectSvelte',
       fileName: format => {
         return format === 'umd'
-          ? 'svelte-state-ref.umd.js'
-          : 'svelte-state-ref.mjs';
+          ? 'stateref-connect-svelte.umd.js'
+          : 'stateref-connect-svelte.mjs';
       },
     },
     rollupOptions: {

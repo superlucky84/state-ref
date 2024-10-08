@@ -26,11 +26,11 @@ export default defineConfig({
     minify: true,
     lib: {
       entry: resolve(__dirname, 'src'),
-      name: 'preactStateRef',
+      name: 'staterefConnectPreact',
       fileName: format => {
         return format === 'umd'
-          ? 'preact-state-ref.umd.js'
-          : 'preact-state-ref.mjs';
+          ? 'stateref-connect-preact.umd.js'
+          : 'stateref-connect-preact.mjs';
       },
     },
     rollupOptions: {

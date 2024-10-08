@@ -28,9 +28,11 @@ export default defineConfig({
     minify: true,
     lib: {
       entry: resolve(__dirname, 'src'),
-      name: 'vueStateRef',
+      name: 'stateref-connect-vue',
       fileName: format => {
-        return format === 'umd' ? 'vue-state-ref.umd.js' : 'vue-state-ref.mjs';
+        return format === 'umd'
+          ? 'stateref-connect-vue.umd.js'
+          : 'stateref-connect-vue.mjs';
       },
     },
     rollupOptions: {

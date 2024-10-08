@@ -4,7 +4,7 @@ import type { StateRefStore, Watch } from 'state-ref';
 /**
  * Preact V10 type A
  */
-export function connectWithPreactA<T>(watch: Watch<T>) {
+export function connectPreact<T>(watch: Watch<T>) {
   const useForceUpdate = () => {
     const [, setDummy] = useState(0);
     const abortController = useRef(new AbortController());

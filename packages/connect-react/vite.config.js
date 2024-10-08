@@ -29,8 +29,8 @@ export default defineConfig({
       name: 'reactStateRef',
       fileName: format => {
         return format === 'umd'
-          ? 'react-state-ref.umd.js'
-          : 'react-state-ref.mjs';
+          ? 'stateref-connect-react.umd.js'
+          : 'stateref-connect-react.mjs';
       },
     },
     rollupOptions: {

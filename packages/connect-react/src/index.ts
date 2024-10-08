@@ -4,7 +4,7 @@ import type { StateRefStore, Watch } from 'state-ref';
 /**
  * React V18
  */
-export function connectWithReactA<T>(watch: Watch<T>) {
+export function connectReact<T>(watch: Watch<T>) {
   const useForceUpdate = () => {
     const [, setDummy] = useState(0);
     const abortController = useRef(new AbortController());

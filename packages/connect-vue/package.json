@@ -1,11 +1,11 @@
 {
   "type": "module",
-  "name": "@state-ref/vue",
+  "name": "@state-ref/connect-vue",
   "version": "3.0.0",
   "description": "vue connector for state-ref",
   "packageManager": "pnpm@7.6.0",
-  "main": "./dist/vue-state-ref.umd.js",
-  "module": "./dist/vue-state-ref.mjs",
+  "main": "./dist/stateref-connect-vue.umd.js",
+  "module": "./dist/stateref-connect-vue.mjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -15,8 +15,8 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/vue-state-ref.mjs",
-      "require": "./dist/vue-state-ref.umd.js"
+      "import": "./dist/stateref-connect-vue.mjs",
+      "require": "./dist/stateref-connect-vue.umd.js"
     }
   },
   "types": "./dist/index.d.ts",

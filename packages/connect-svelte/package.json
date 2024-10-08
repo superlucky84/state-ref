@@ -1,11 +1,11 @@
 {
   "type": "module",
-  "name": "@state-ref/svelte",
+  "name": "@state-ref/connect-svelte",
   "version": "4.0.0",
   "description": "svelte connector for state-ref",
   "packageManager": "pnpm@7.6.0",
-  "main": "./dist/svelte-state-ref.umd.js",
-  "module": "./dist/svelte-state-ref.mjs",
+  "main": "./dist/stateref-connect-svelte.umd.js",
+  "module": "./dist/stateref-connect-svelte.mjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -15,8 +15,8 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/svelte-state-ref.mjs",
-      "require": "./dist/svelte-state-ref.umd.js"
+      "import": "./dist/stateref-connect-svelte.mjs",
+      "require": "./dist/stateref-connect-svelte.umd.js"
     }
   },
   "types": "./dist/index.d.ts",

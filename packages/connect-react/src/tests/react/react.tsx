@@ -11,7 +11,7 @@ import { createElement as h, useState } from 'react';
 // @ts-ignore
 import { createRoot } from 'react-dom/client';
 import { createStore } from 'state-ref';
-import { connectWithReactA } from '@/index';
+import { connectReact } from '@/index';
 
 type Profile = { name: string; age: number };
 
@@ -22,7 +22,7 @@ const getDefaultValue = () => ({
 
 const watch = createStore<Profile>(getDefaultValue());
 const handleRef = watch();
-const usePofileStore = connectWithReactA(watch);
+const usePofileStore = connectReact(watch);
 
 const resetStore = () => {
   handleRef.value = getDefaultValue();

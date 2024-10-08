@@ -7,7 +7,7 @@ import {
 } from '@solidjs/testing-library';
 import { createSignal, createEffect } from 'solid-js';
 import { createStore } from 'state-ref';
-import { connectWithSolidA } from '@/index';
+import { connectSolid } from '@/index';
 
 type Profile = { name: string; age: number };
 
@@ -18,7 +18,7 @@ const getDefaultValue = () => ({
 
 const watch = createStore<Profile>(getDefaultValue());
 const handleRef = watch();
-const usePofileStore = connectWithSolidA(watch);
+const usePofileStore = connectSolid(watch);
 
 const resetStore = () => {
   handleRef.value = getDefaultValue();

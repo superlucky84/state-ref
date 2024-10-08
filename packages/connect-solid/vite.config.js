@@ -28,11 +28,11 @@ export default defineConfig({
     minify: true,
     lib: {
       entry: resolve(__dirname, 'src'),
-      name: 'solidStateRef',
+      name: 'staterefConnectSolid',
       fileName: format => {
         return format === 'umd'
-          ? 'solid-state-ref.umd.js'
-          : 'solid-state-ref.mjs';
+          ? 'stateref-connect-solid.umd.js'
+          : 'stateref-connect-solid.mjs';
       },
     },
     rollupOptions: {

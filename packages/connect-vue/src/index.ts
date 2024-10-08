@@ -8,7 +8,7 @@ import type { StateRefStore, Watch } from 'state-ref';
 /**
  * Vue V3
  */
-export function connectWithVueA<T>(refWatch: Watch<T>) {
+export function connectVue<T>(refWatch: Watch<T>) {
   return <V>(
     callback: (store: StateRefStore<T>) => StateRefStore<V>
   ): Reactive<{ value: V }> => {

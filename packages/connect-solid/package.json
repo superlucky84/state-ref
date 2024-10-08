@@ -1,11 +1,11 @@
 {
   "type": "module",
-  "name": "@state-ref/solid",
+  "name": "@state-ref/connect-solid",
   "version": "1.0.0",
   "description": "solid connector for state-ref",
   "packageManager": "pnpm@7.6.0",
-  "main": "./dist/solid-state-ref.umd.js",
-  "module": "./dist/solid-state-ref.mjs",
+  "main": "./dist/stateref-connect-solid.umd.js",
+  "module": "./dist/stateref-connect-solid.mjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -15,8 +15,8 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/solid-state-ref.mjs",
-      "require": "./dist/solid-state-ref.umd.js"
+      "import": "./dist/stateref-connect-solid.mjs",
+      "require": "./dist/stateref-connect-solid.umd.js"
     }
   },
   "types": "./dist/index.d.ts",

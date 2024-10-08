@@ -1,11 +1,11 @@
 {
   "type": "module",
-  "name": "@state-ref/react",
+  "name": "@state-ref/connect-react",
   "version": "18.0.0",
   "description": "vue connector for state-ref",
   "packageManager": "pnpm@7.6.0",
-  "main": "./dist/react-state-ref.umd.js",
-  "module": "./dist/react-state-ref.mjs",
+  "main": "./dist/stateref-connect-react.umd.js",
+  "module": "./dist/stateref-connect-react.mjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -15,8 +15,8 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/react-state-ref.mjs",
-      "require": "./dist/react-state-ref.umd.js"
+      "import": "./dist/stateref-connect-react.mjs",
+      "require": "./dist/stateref-connect-react.umd.js"
     }
   },
   "types": "./dist/index.d.ts",
