@@ -13,7 +13,7 @@ It is also designed for easy integration with other UI libraries. We provide cod
 
 * Table of Contents
     * [Basic Usage](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#basic-usage)
-    * [Usage with React (Same for Preact)]([https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-svelte](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-svelte))
+    * [Usage with React (Same for Preact)](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-react-same-for-preact)
     * [Usage with Svelte](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-svelte)
     * [Usage with Vue](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-vue)
     * [Usage with Solid](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-vue)
