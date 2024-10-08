@@ -7,20 +7,7 @@ watch(store => {
 });
 
 /**
- * 브라우저로 수동 테스트
- */
-if (!import.meta.vitest) {
-  const stateRef = watch();
-
-  stateRef.value = 4;
-  stateRef.value = 5;
-
-  // @ts-ignore
-  window.p = stateRef;
-}
-
-/**
- * vitest 자동 테스트
+ * Auto Test
  */
 if (import.meta.vitest) {
   const { describe, it, expect, vi } = import.meta.vitest;
@@ -201,4 +188,17 @@ if (import.meta.vitest) {
       logSpy.mockRestore();
     });
   });
+}
+
+/**
+ * Manual testing with a browser (pnpm dev:core)
+ */
+if (!import.meta.vitest) {
+  const stateRef = watch();
+
+  stateRef.value = 4;
+  stateRef.value = 5;
+
+  // @ts-ignore
+  window.p = stateRef;
 }

@@ -1,3 +1,8 @@
+/**
+ * The stateRef relies on data immutability to determine changes.
+ * The lens pattern is used as a core part of the stateRef because,
+ * it makes it easy to locate and safely change data.
+ */
 export type Lens<T, U> = LensImpl<T, U> & LensProxy<T, U>;
 export type LensProxy<T, U> = { readonly [K in keyof U]: Lens<T, U[K]> };
 export type Getter<T, V> = (target: T) => V;

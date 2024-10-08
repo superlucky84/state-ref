@@ -1,8 +1,7 @@
 import type { StoreType } from '@/types';
 
 /**
- * ROOT 에서 프리미티브 타입으로 선언하여 접근할때
- * value로 값에 접근하고, value로 값을 수정할수 있는 객체로 감싸서 리턴한다.
+ * When a shared value is declared as a primitive type.
  */
 export class Root<V> {
   private _value: V;

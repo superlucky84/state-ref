@@ -3,6 +3,9 @@ import { firstRunner } from '@/connectors/runner';
 
 import type { Renew, StoreType, StateRefStore, StoreRenderList } from '@/types';
 
+/**
+ * If the value you want to share is 'object' (Return Proxy Type)
+ */
 export function makeObject<V>({
   renew,
   rootValue,
@@ -25,7 +28,9 @@ export function makeObject<V>({
     run
   );
 
-  // 처음 실행시 abort 이벤트 리스너에 추가
+  /**
+   * It is initialized only once per subscription and collects the 'abort' signal.
+   */
   firstRunner(run, storeRenderList, cacheMap, renew);
 
   cacheMap.set(renew, ref.value!.root);

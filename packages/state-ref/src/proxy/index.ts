@@ -22,19 +22,19 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
     makeDisplayProxyValue(depthList, value) as unknown as T,
     {
       /**
-       * 1. 프록시에서 value로 접근할때
-       *   1-1. collector 가 구독 콜백을 수집하도록 하고
-       *   1-2. 랜즈에서 값을 빼서 리턴해준다
-       * 2. 프록시에서 하위 객체타입으로 접근할때
-       *   2-1. 하위객체애 대한 프록시를 만든다
-       * 3. 프록시에서 하위 프리미티브 타입으로 접근할때
-       *   3-1. value로 값에 접근하고, value로 값을 수정할수 있는 객체로 감싸서 리턴한다.
+       * 1. When accessing ".value" from a proxy
+       *   1-1. Have the "collector" collect the subscription callbacks and the
+       *   1-2. Subtracts a value from "lens" and returns it
+       * 2. When accessing child object types from a proxy
+       *   2-1. Create a proxy for a sub object
+       * 3. When accessing lower primitive types from a proxy
+       *   3-1. Accesses a value by value, wraps the value in a modifiable object and returns it (Tail Type)
        */
       get(_: T, prop: keyof T) {
         const newDepthList = [...depthList, prop.toString()];
 
         /**
-         * 프록시에서 value로 접근할때
+         * When accessing ".value" from a proxy
          */
         if (prop === 'value') {
           const value: any = lensValue.get()(rootValue);
@@ -50,7 +50,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
         }
 
         /**
-         * 프록시에서 이터레이터로 접근할때
+         * When accessing "iterator" from a proxy
          */
         if (prop === Symbol.iterator) {
           return function* () {
@@ -71,7 +71,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
         }
 
         /**
-         * 프록시에서 하위 객체타입으로 접근할때
+         * When accessing child object types from a proxy
          */
         const lens = lensValue.k(prop);
         const propertyValue: any = lens.get()(rootValue);
@@ -89,7 +89,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
         }
 
         /**
-         * 프록시에서 하위 프리미티브 타입으로 접근할때
+         * When accessing lower primitive types from a proxy
          */
         const tail = new Tail(
           propertyValue,
@@ -115,8 +115,8 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
         return tail;
       },
       /**
-       * value에 값을 할당할때는 copyOnWrite를 해준다.
-       * value 가 아닌데 값을 할당할 경우 에러를 던진다.
+       * When assigning a value to “.value”, copyOnWrite is performed.
+       * Error if you try to assign a value to something that isn't a ".value".
        * ex) ref.a.b = 'newValue'; // Error
        * ex) ref.a.b.value = 'newValue'; // Success
        */
@@ -126,7 +126,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
           rootValue.root = newTree.root;
 
           /**
-           * 디팬던시 run 실행
+           * Run dependency subscription callbacks.
            */
           runner(storeRenderList);
         } else if (lensValue.k(prop).get()(rootValue) !== value) {

@@ -1,5 +1,9 @@
 import type { Run, Renew, StateRefStore, StoreRenderList } from '@/types';
 
+/**
+ * Based on the information gathered by the “collector”,
+ * this code identifies and executes a callback function for store changes.
+ */
 export function runner<V>(storeRenderList: StoreRenderList<V>) {
   const runableRenewList: Set<Run> = new Set();
 

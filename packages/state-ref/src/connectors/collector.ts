@@ -1,5 +1,9 @@
 import type { Run, RunInfo, StoreRenderList } from '@/types';
 
+/**
+ * The subscription to store starts the moment the user of stateRef fetches the reference as a “.value”.
+ * This code captures the moment of fetching to “.value” and collects the subscription.
+ */
 export function collector<V>(
   value: V,
   getNextValue: () => V,

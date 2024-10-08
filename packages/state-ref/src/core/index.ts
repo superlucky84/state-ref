@@ -5,9 +5,14 @@ import { makeObject } from '@/core/object';
 import type { Renew, StoreType, StateRefStore, StoreRenderList } from '@/types';
 
 /**
- * createStore 스토어를 만들어 준다
- * 인자는 초기값
- * const watch = createStore({ name: 'brown', age: 38 })
+ * createStore - The argument is the initial value of the state
+ *
+ * Can work with primitive types, or you can work with object types.
+ * The return value is the "watch" function.
+ *
+ * example>
+ * const watch = createStore<number>(7)
+ * // const watch = createStore<{name: string; age: number;}>({ name: 'brown', age: 38 })
  * const stateRef = watch(stateRef => {
  *   console.log(stateRef.value));
  * });
@@ -31,7 +36,7 @@ export function createStore<V>(orignalValue: V) {
     }
 
     /**
-     * 객체 가 아닌 데이터면 Root로 만들어서 반환
+     * If the value you want to share is not 'object' (primitive)
      */
     if (isPrimitiveType(orignalValue)) {
       return makePrimitive<V>({
@@ -44,7 +49,7 @@ export function createStore<V>(orignalValue: V) {
     }
 
     /**
-     * 객체일때는 프록시 만들어서 리턴
+     * If the value you want to share is 'object' (proxy)
      */
     return makeObject({ renew, rootValue, storeRenderList, cacheMap });
   };

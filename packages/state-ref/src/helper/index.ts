@@ -4,6 +4,9 @@ import { lens } from '@/lens';
 
 export const DEFAULT_OPTION = { cache: true };
 
+/**
+ * Create information about the proxy that can be viewed in the developer console.
+ */
 export function makeDisplayProxyValue(depthList: string[], value: object) {
   return {
     _navi: depthList.join('.'),
@@ -12,6 +15,9 @@ export function makeDisplayProxyValue(depthList: string[], value: object) {
   };
 }
 
+/**
+ * When createStore receives the initial value, it checks to see if it is of a primitive type.
+ */
 export function isPrimitiveType(
   orignalValue: unknown
 ): orignalValue is PrivitiveType {
@@ -21,7 +27,9 @@ export function isPrimitiveType(
   return !isObjectTypeValue;
 }
 
-// copyable 함수
+/**
+ * We provide a convenience utility to make it easy to create data when "copyOnWrite" is required.
+ */
 export function copyable<T extends { [key: string | symbol]: unknown }>(
   origObj: T,
   lensInit?: Lens<T, T>
@@ -36,7 +44,6 @@ export function copyable<T extends { [key: string | symbol]: unknown }>(
         };
       }
 
-      // 재귀적으로 copyable 적용
       return copyable(origObj, lensIns.k(prop) as any);
     },
     set() {
@@ -47,6 +54,9 @@ export function copyable<T extends { [key: string | symbol]: unknown }>(
   });
 }
 
+/**
+ * Provides a convenience utility to make deep copying easier in special cases.
+ */
 export function cloneDeep<T>(value: T): T {
   if (value == null) {
     return value;

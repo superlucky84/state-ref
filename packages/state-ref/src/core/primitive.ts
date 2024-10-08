@@ -4,6 +4,9 @@ import { firstRunner, runner } from '@/connectors/runner';
 
 import type { Renew, StoreType, StateRefStore, StoreRenderList } from '@/types';
 
+/**
+ * If the value you want to share is not 'object' (Return Root Type)
+ */
 export function makePrimitive<V>({
   renew,
   orignalValue,
