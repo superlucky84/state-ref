@@ -1,7 +1,7 @@
 /**
- * S StoreType<V>; // 처음 제공받는 값 타입 V에 root를 달음
- * G StateRefStore<V>; // 끝에 root가 안달린 상태 끝에 value를 달음
- * T StateRefStore<StoreType<V>>; // 끝에 root가 달린 상태 끝에 value를 달음
+ * S StoreType<V>; // Append root to the first value type V you are given
+ * G StateRefStore<V>; // Add "value" to the ending  point with “root” unattached.
+ * T StateRefStore<StoreType<V>>; // Attach a "value" to the ending point in the state where the root exists.
  */
 export type Renew<G> = (
   store: G,

@@ -12,8 +12,8 @@ watch(store => {
 if (import.meta.vitest) {
   const { describe, it, expect, vi } = import.meta.vitest;
 
-  describe('Root - 구독하려는 데이터의 root가 primitive 타입일때는 Root에서 처리', () => {
-    it('숫자형 데이터에서 구독즉시 한번 구독함수가 실행되어야 한다..', () => {
+  describe('Root - When the root of the data you want to subscribe to is of type primitive', () => {
+    it('On numeric data, the Subscribe function should be executed once immediately after subscribing.', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const defaultNumber = 3;
       const watch = createStore<number>(defaultNumber);
@@ -24,7 +24,7 @@ if (import.meta.vitest) {
       logSpy.mockRestore();
     });
 
-    it('문자열 데이터에서 구독즉시 한번 구독함수가 실행되어야 한다..', () => {
+    it('The subscribe function should be executed once immediately after subscribing to the string data.', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const defaultString = 'john';
       const watch = createStore<string>(defaultString);
@@ -35,7 +35,7 @@ if (import.meta.vitest) {
       logSpy.mockRestore();
     });
 
-    it('undefined 데이터에서 구독즉시 한번 구독함수가 실행되어야 한다..', () => {
+    it('Subscribe on undefined data should be executed once immediately after subscribing..', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const defaultUndefined = undefined;
       const watch = createStore<undefined>(defaultUndefined);
@@ -46,7 +46,7 @@ if (import.meta.vitest) {
       logSpy.mockRestore();
     });
 
-    it('null 데이터에서 구독즉시 한번 구독함수가 실행되어야 한다..', () => {
+    it('The subscribe function should be executed once immediately after subscribing from null data.', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const defaultNull = null;
       const watch = createStore<null>(defaultNull);
@@ -57,7 +57,7 @@ if (import.meta.vitest) {
       logSpy.mockRestore();
     });
 
-    it('숫자형 데이터가 변경되면 구독함수가 변경을 잘 감지해야한다.', () => {
+    it('When numeric data changes, the subscription function should detect the change well.', () => {
       const defaultNumber = 3;
       const changeNumber = 4;
       const watch = createStore<number>(defaultNumber);
@@ -70,7 +70,7 @@ if (import.meta.vitest) {
       logSpy.mockRestore();
     });
 
-    it('null 데이터가 널이 아닌 데이터로 변경되면 구독함수가 변경을 잘 감지해야한다.', () => {
+    it('When null data is changed to non-null data, the subscription function should detect the change well.', () => {
       const defaultValue = null;
       const changeValue = 4;
       const watch = createStore<number | null>(defaultValue);
@@ -83,7 +83,7 @@ if (import.meta.vitest) {
       logSpy.mockRestore();
     });
 
-    it('undefined 데이터가 undefined 아닌 데이터로 변경되면 구독함수가 변경을 잘 감지해야한다.', () => {
+    it('When undefined data is changed to non-undefined data, the subscription function should detect the change well.', () => {
       const defaultValue = undefined;
       const changeValue = 4;
       const watch = createStore<number | undefined>(defaultValue);
@@ -96,7 +96,7 @@ if (import.meta.vitest) {
       logSpy.mockRestore();
     });
 
-    it('undefined 아닌 데이터가 undefined 데이터로 변경되면 구독함수가 변경을 잘 감지해야한다.', () => {
+    it('When non-undefined data changes to undefined data, the subscription function should detect the change well.', () => {
       const defaultValue = 4;
       const changeValue = undefined;
       const watch = createStore<number | undefined>(defaultValue);
@@ -109,7 +109,7 @@ if (import.meta.vitest) {
       logSpy.mockRestore();
     });
 
-    it('연속으로 변경되어도 구독함수가 변경을 잘 감지해야한다.', () => {
+    it('The subscription function should be able to detect changes well even if they are consecutive.', () => {
       const defaultNumber = 3;
       const changeNumber = 4;
       const changeNumber2 = 5;
@@ -127,7 +127,7 @@ if (import.meta.vitest) {
       logSpy.mockRestore();
     });
 
-    it('문자형 데이터가 변경되면 구독함수가 변경을 잘 감지해야한다.', () => {
+    it('If the character type data changes, the subscription function should detect the change well.', () => {
       const defaultString = 'john';
       const changeString = 'james';
       const watch = createStore<string>(defaultString);
@@ -140,7 +140,7 @@ if (import.meta.vitest) {
       logSpy.mockRestore();
     });
 
-    it('abortController 를 통해 구독을 취소할수 있어야 한다.', () => {
+    it('Should be able to unsubscribe via "abortController".', () => {
       const defaultNumber = 3;
       const changeNumber = 4;
       const watch = createStore<number>(defaultNumber);
@@ -165,7 +165,7 @@ if (import.meta.vitest) {
       logSpy.mockRestore();
     });
 
-    it('콜백함수가 리턴 false 를 하면 단 한번의 변경만 알림을 받고 구독 취소 되어야 한다.', () => {
+    it('If the callback function returns false, you will be notified only the first time and your subscription will be cancelled.', () => {
       const defaultNumber = 3;
       const changeNumber = 4;
       const watch = createStore<number>(defaultNumber);

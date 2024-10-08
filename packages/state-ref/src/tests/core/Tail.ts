@@ -39,8 +39,8 @@ if (!import.meta.vitest) {
 if (import.meta.vitest) {
   const { describe, it, expect, vi } = import.meta.vitest;
 
-  describe('Tail - 구독하려는 데이터가 객체 끝에 달린 primitive 타입일때는 Tail에서 처리.', () => {
-    it('구독즉시 한번 구독함수가 실행되어야 한다..', () => {
+  describe('Tail - When the data you want to subscribe to is a primitive type at the end of an object, it is handled by the Tail.', () => {
+    it('Subscriptions are guaranteed to run at least once immediately upon subscription.', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const defaultValue = { a: { b: { c: 4 }, b1: { c2: 8 } }, a1: 9 };
       const watch = createStore<DataType>(defaultValue);
@@ -51,7 +51,7 @@ if (import.meta.vitest) {
       logSpy.mockRestore();
     });
 
-    it('데이터가 변경되면 copyOnWrite가 잘 이루어진 데이터로 갱신되어야 한다.', () => {
+    it('"copyOnWrite" should change to a well-applied state.', () => {
       const defaultValue = { a: { b: { c: 4 }, b1: { c2: 8 } }, a1: 9 };
       const watch = createStore<DataType>(defaultValue);
       let newValue!: DataType;
@@ -68,7 +68,7 @@ if (import.meta.vitest) {
       expect(defaultValue.a1).toBe(newValue.a1);
     });
 
-    it('문자열 데이터에서 구독즉시 한번 구독함수가 실행되어야 한다..', () => {
+    it('Subscribing from string data should be executed once immediately after subscribing.', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const defaultValue = { a: { b: { c: 4 }, b1: { c2: 8 } }, a1: 9 };
       const watch = createStore<DataType>(defaultValue);
@@ -79,7 +79,7 @@ if (import.meta.vitest) {
       logSpy.mockRestore();
     });
 
-    it('undefined 데이터에서 구독즉시 한번 구독함수가 실행되어야 한다..', () => {
+    it('Subscribe on undefined data should be executed once immediately after subscribing.', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const defaultValue = { a: { b: { c: undefined }, b1: { c2: 8 } }, a1: 9 };
       const watch = createStore<DataType>(defaultValue);
@@ -90,7 +90,7 @@ if (import.meta.vitest) {
       logSpy.mockRestore();
     });
 
-    it('null 데이터에서 구독즉시 한번 구독함수가 실행되어야 한다..', () => {
+    it('The subscribe function should be executed once immediately after subscribing from null data.', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const defaultValue = { a: { b: { c: null }, b1: { c2: 8 } }, a1: 9 };
       const watch = createStore<DataType>(defaultValue);
@@ -101,7 +101,7 @@ if (import.meta.vitest) {
       logSpy.mockRestore();
     });
 
-    it('null 데이터가 널이 아닌 데이터로 변경되면 copyOnWrite가 잘 이루어진 데이터로 갱신되어야 한다', () => {
+    it('When null data is changed to non-null data, "copyOnWrite" should update successfully.', () => {
       const defaultValue = { a: { b: { c: null }, b1: { c2: 8 } }, a1: 9 };
       const watch = createStore<DataType>(defaultValue);
       let newValue!: DataType;
@@ -114,7 +114,7 @@ if (import.meta.vitest) {
       assertCopyOnRight(defaultValue, newValue);
     });
 
-    it('undefined 데이터가 undefined 아닌 데이터로 copyOnWrite가 잘 이루어진 데이터로 갱신되어야 한다', () => {
+    it('When undefined data is changed to non-undefined data, "copyOnWrite" should update successfully.', () => {
       const defaultValue = { a: { b: { c: undefined }, b1: { c2: 8 } }, a1: 9 };
       const watch = createStore<DataType>(defaultValue);
       let newValue!: DataType;
@@ -127,7 +127,7 @@ if (import.meta.vitest) {
       assertCopyOnRight(defaultValue, newValue);
     });
 
-    it('undefined 아닌 데이터가 undefined 데이터로 변경되면 copyOnWrite가 잘 이루어진 데이터로 갱신되어야 한다.', () => {
+    it('When non-undefined data is changed to undefined data, copyOnWrite should be applied and updated properly.', () => {
       const defaultValue = { a: { b: { c: 7 }, b1: { c2: 8 } }, a1: 9 };
       const watch = createStore<DataType>(defaultValue);
       let newValue!: DataType;
@@ -140,7 +140,7 @@ if (import.meta.vitest) {
       assertCopyOnRight(defaultValue, newValue);
     });
 
-    it('연속으로 변경되어도 구독함수 함수에서 copyOnWrite가 잘 이루어진 데이터로 확인되어야 한다.', () => {
+    it('"copyOnWrite" in the subscription function should work even if it is changed consecutively.', () => {
       let defaultValue: DataType = {
         a: { b: { c: 'john' }, b1: { c2: 8 } },
         a1: 9,
@@ -166,7 +166,7 @@ if (import.meta.vitest) {
       assertCopyOnRight(defaultValue, newValue);
     });
 
-    it('문자형 데이터가 변경되면 구독함수에서 copyOnWrite가 잘 이루어진 데이터로 확인되어야 한다.', () => {
+    it('When the character type data changes, copyOnWrite should work well in the subscription function.', () => {
       const defaultValue = { a: { b: { c: 'john' }, b1: { c2: 8 } }, a1: 9 };
       const watch = createStore<DataType>(defaultValue);
       let newValue!: DataType;
@@ -179,7 +179,7 @@ if (import.meta.vitest) {
       assertCopyOnRight(defaultValue, newValue);
     });
 
-    it('abortController 를 통해 구독을 취소할수 있어야 한다.', () => {
+    it('Should be able to unsubscribe via "abortController".', () => {
       const abortController = new AbortController();
       let defaultValue: DataType = {
         a: { b: { c: 'john' }, b1: { c2: 8 } },
@@ -205,7 +205,7 @@ if (import.meta.vitest) {
       assertNotCopyOnRight(defaultValue, newValue);
     });
 
-    it('콜백함수가 리턴 false 를 하면 단 한번의 변경만 알림을 받고 구독 취소 되어야 한다.', () => {
+    it('If the callback function returns false, you will be notified only the first time and your subscription will be cancelled.', () => {
       let defaultValue: DataType = {
         a: { b: { c: 'john' }, b1: { c2: 8 } },
         a1: 9,
@@ -230,7 +230,7 @@ if (import.meta.vitest) {
   });
 
   /**
-   *해당 테스트 그룹에서 카피온 라이트가 잘 일어났는지 assert
+   * Verify that copyonwrite worked for that test group.
    */
   function assertCopyOnRight<T extends DataType>(defaultValue: T, newValue: T) {
     expect(defaultValue).not.toBe(newValue);
@@ -241,7 +241,7 @@ if (import.meta.vitest) {
   }
 
   /**
-   *해당 테스트 그룹에서 카피온 라이트가 일어나지 않았는지 assert
+   * Verify that no copyonwrites occurred in that test group.
    */
   function assertNotCopyOnRight<T extends DataType>(
     defaultValue: T,
