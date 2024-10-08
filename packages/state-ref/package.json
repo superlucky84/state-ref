@@ -1,8 +1,9 @@
 {
   "type": "module",
   "name": "state-ref",
-  "version": "1.0.0",
-  "description": "X UI Library Universal State Management Library",
+  "version": "1.0.1",
+  "private": false,
+  "description": "Universal state management library that can be easily integrated into UI libraries",
   "packageManager": "pnpm@7.6.0",
   "main": "./dist/state-ref.umd.js",
   "module": "./dist/state-ref.mjs",

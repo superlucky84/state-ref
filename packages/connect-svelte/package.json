@@ -2,6 +2,7 @@
   "type": "module",
   "name": "@state-ref/connect-svelte",
   "version": "4.0.0",
+  "private": false,
   "description": "svelte connector for state-ref",
   "packageManager": "pnpm@7.6.0",
   "main": "./dist/stateref-connect-svelte.umd.js",

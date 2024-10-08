@@ -2,6 +2,7 @@
   "type": "module",
   "name": "@state-ref/connect-vue",
   "version": "3.0.0",
+  "private": false,
   "description": "vue connector for state-ref",
   "packageManager": "pnpm@7.6.0",
   "main": "./dist/stateref-connect-vue.umd.js",

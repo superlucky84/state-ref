@@ -2,6 +2,7 @@
   "type": "module",
   "name": "@state-ref/connect-preact",
   "version": "10.0.0",
+  "private": false,
   "description": "vue connector for state-ref",
   "packageManager": "pnpm@7.6.0",
   "main": "./dist/preact-state-ref.umd.js",
