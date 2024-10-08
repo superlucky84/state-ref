@@ -116,8 +116,8 @@ It can be easily integrated with other UI libraries, and below is an example usi
 > Create the store and pass the `watch` to `connectReact` to create a state that can be used in components.
 
 ```typescript
-import { connectReact } from "@state-ref/connect-react";
-// import { connectPreact } from "@state-ref/connect-preact"; // for Preact
+import { connectReact } from "@stateref/connect-react";
+// import { connectPreact } from "@stateref/connect-preact"; // for Preact
 import { createStore } from "state-ref";
 
 type Info = { age: number; house: { color: string; floor: number }[] };
@@ -174,7 +174,7 @@ Below is a usage example.
 ### profileStore.ts
 
 ```typescript
-import { connectSvelte } from "@state-ref/connect-svelte";
+import { connectSvelte } from "@stateref/connect-svelte";
 // ... same as React example
 export const useProfileStore = connectSvelte(watch);
 ```
@@ -219,7 +219,7 @@ You can customize it by referring to the [connectVue implementation code](https:
 ### profileStore.ts
 
 ```typescript
-import { connectVue } from "@state-ref/connect-vue";
+import { connectVue } from "@stateref/connect-vue";
 // ... same as React example
 export const useProfileStore = connectVue(watch);
 ```
@@ -256,7 +256,7 @@ You can customize it by referring to the [connectSolid implementation code](http
 ### profileStore.ts
 
 ```typescript
-import { connectSolid } from "@state-ref/connect-solid";
+import { connectSolid } from "@stateref/connect-solid";
 // ... same as React example
 export const useProfileStore = connectSolid(watch);
 ```
