@@ -25,7 +25,7 @@ describe('Connect Vue', () => {
     resetStore();
   });
 
-  it('꺼내온 stateRef 값에 대해서 리액티브하게 잘 동작해야 한다.', () => {
+  it('It should work well responsively for stateRef value.', () => {
     render(Age);
     const btnElement = screen.getByTestId('age-increase');
     const displayElement = screen.getByTestId('age-display');
@@ -36,7 +36,7 @@ describe('Connect Vue', () => {
     });
   });
 
-  it('여러개의 컴포넌트중 value로 꺼내어 값을 구독중인 컴포넌트에만 업데이트가 일어나야 한다.', async () => {
+  it('Components should only react and act on the values they are subscribed to.', async () => {
     const mockFn = vi.fn();
     render(Root1, { props: { mockFn } });
 
@@ -54,7 +54,7 @@ describe('Connect Vue', () => {
     });
   });
 
-  it('언마운트된 컴포넌트에 구독함수 호출은 일어나지 않아야 한다.', async () => {
+  it('Unmounted components should not react.', async () => {
     const mockFn = vi.fn();
     render(Root2, { props: { mockFn } });
 
@@ -78,7 +78,7 @@ describe('Connect Vue', () => {
     });
   });
 
-  it('여러개의 컴포넌트가 하나의 값을 구독중일때, 모두 스토어 값을 반영하여 정상 동작해야한다.', async () => {
+  it('When multiple components are subscribing to a single value, they should all reflect the store value and behave normally.', async () => {
     render(Root3);
 
     const btnElement = screen.getByTestId('age-increase');
@@ -100,7 +100,7 @@ describe('Connect Vue', () => {
    * '@testing-library/vue' 는 각각 render시 store를 싱글톤으로 가져오지 않고 새로운 인스턴스를 만드는 방식으로 테스트 환경을 격리시키므로 이 테스트가 안된다.
    * (npm run dev:vue 에서 수동 테스트 필요)
    */
-  it.skip('서로 다른 render함수로 부터의 다른 뿌리를 가진 컴포넌트 들도 값을 공유할수 있어야 한다.', async () => {
+  it.skip('Components with different roots from different render functions should be able to share values.', async () => {
     render(Age);
     render(Age1);
     render(Age2);
