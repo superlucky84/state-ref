@@ -1,6 +1,8 @@
 
 # state-ref
 
+> Universal state management library that can be easily integrated into UI libraries
+
 ![sref](https://github.com/user-attachments/assets/93e54d8f-1326-482c-b2f6-e9822386425b)
 
 `StateRef` is a state management library focused on data immutability.
