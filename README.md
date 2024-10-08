@@ -17,6 +17,7 @@ It is also designed for easy integration with other UI libraries. We provide cod
     * [Usage with Svelte](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-svelte)
     * [Usage with Vue](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-vue)
     * [Usage with Solid](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-vue)
+    * [npm](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#npm)
 
 
 ## Basic Usage
@@ -291,3 +292,11 @@ function handleClick() {
    setProfileObj(n => copyable(n).john.age.writeCopy(n.age + 1));
 }
 ```
+
+## npm
+* [state-ref](https://www.npmjs.com/package/state-ref)
+* [connect-react](https://www.npmjs.com/package/@stateref/connect-react)
+* [connect-preact](https://www.npmjs.com/package/@stateref/connect-preact)
+* [connect-solid](https://www.npmjs.com/package/@stateref/connect-solid)
+* [connect-svelte](https://www.npmjs.com/package/@stateref/connect-svelte)
+* [connect-vue](https://www.npmjs.com/package/@stateref/connect-vue)
