@@ -19,7 +19,7 @@ const resetStore = () => {
   handleRef.value = getDefaultValue();
 };
 
-describe('Connect Preact', () => {
+describe('Connect Vue', () => {
   afterEach(() => {
     cleanup();
     resetStore();

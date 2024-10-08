@@ -61,7 +61,7 @@ function Age() {
 if (import.meta.vitest) {
   const { describe, it, expect } = import.meta.vitest;
 
-  describe('Connect Preact', () => {
+  describe('Connect React', () => {
     afterEach(() => {
       cleanup();
       resetStore();
