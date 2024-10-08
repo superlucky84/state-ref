@@ -1,5 +1,5 @@
 import { createStore, copyable } from 'state-ref';
-import { connectWithSolidA } from '@/index';
+import { connectSolid } from '@/index';
 
 const capture = createStore({
   name: 'brown',
