@@ -1,5 +1,7 @@
 # state-ref
 
+> Universal state management library that can be easily integrated into UI libraries
+
 ![sref](https://github.com/user-attachments/assets/93e54d8f-1326-482c-b2f6-e9822386425b)
 
 `StateRef` is a state management library focused on data immutability.
@@ -11,7 +13,7 @@ It is also designed for easy integration with other UI libraries. We provide cod
 
 * Table of Contents
     * [Basic Usage](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#basic-usage)
-    * [Usage with React (Same for Preact)]([https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-svelte](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-svelte))
+    * [Usage with React (Same for Preact)](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-react-same-for-preact)
     * [Usage with Svelte](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-svelte)
     * [Usage with Vue](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-vue)
     * [Usage with Solid](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-vue)
