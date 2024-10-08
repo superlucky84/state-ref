@@ -1,6 +1,6 @@
 {
   "type": "module",
-  "name": "@state-ref/connect-vue",
+  "name": "@stateref/connect-vue",
   "version": "3.0.0",
   "private": false,
   "description": "vue connector for state-ref",

@@ -1,6 +1,6 @@
 {
   "type": "module",
-  "name": "@state-ref/connect-solid",
+  "name": "@stateref/connect-solid",
   "version": "1.0.0",
   "private": false,
   "description": "solid connector for state-ref",

@@ -1,6 +1,6 @@
 {
   "type": "module",
-  "name": "@state-ref/connect-react",
+  "name": "@stateref/connect-react",
   "version": "18.0.0",
   "private": false,
   "description": "vue connector for state-ref",

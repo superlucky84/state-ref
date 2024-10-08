@@ -1,6 +1,6 @@
 {
   "type": "module",
-  "name": "@state-ref/connect-svelte",
+  "name": "@stateref/connect-svelte",
   "version": "4.0.0",
   "private": false,
   "description": "svelte connector for state-ref",
