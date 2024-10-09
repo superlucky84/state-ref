@@ -18,6 +18,7 @@ It is also designed for easy integration with other UI libraries. We provide cod
     * [Usage with Vue](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-vue)
     * [Usage with Solid](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-vue)
     * [npm](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#npm)
+    * [test](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#test)
 
 
 ## Basic Usage
@@ -300,3 +301,13 @@ function handleClick() {
 * [connect-solid](https://www.npmjs.com/package/@stateref/connect-solid)
 * [connect-svelte](https://www.npmjs.com/package/@stateref/connect-svelte)
 * [connect-vue](https://www.npmjs.com/package/@stateref/connect-vue)
+
+## test
+
+> Plugins must be build before they can be tested.
+
+```bash
+pnpm install
+pnpm build
+pnpm test
+```
