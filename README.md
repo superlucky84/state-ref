@@ -48,6 +48,9 @@ const srateRef = watch();
 // Using value.
 console.log(stateRef.john.house[1].color.value);
 
+// Change value.
+stateRef.john.house[1].color.value = "yellow";
+
 // To subscribe to a value
 watch((stateRef) => {
     console.log(
