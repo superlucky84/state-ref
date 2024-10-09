@@ -6,7 +6,7 @@
   "description": "X UI Library Universal State Management Library",
   "packageManager": "pnpm@7.6.0",
   "scripts": {
-    "watch:core": "vite build --watch",
+    "watch:core": "pnpm --filter state-ref watch",
     "dev:core": "pnpm --filter state-ref dev",
     "dev:preact": "pnpm watch:core & pnpm --filter @stateref/connect-preact dev",
     "dev:react": "pnpm watch:core & pnpm --filter @stateref/connect-react dev",
