@@ -52,6 +52,7 @@ console.log(stateRef.john.house[1].color.value);
 // Change value.
 stateRef.john.house[1].color.value = "yellow";
 
+// To subscribe
 watch((stateRef) => {
     console.log(
         "Changed John's Second House Color",
