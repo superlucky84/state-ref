@@ -43,6 +43,15 @@ const watch = createStore<People>({
     sara: { age: 26, house: [{ color: "red", floor: 5 }] },
 });
 
+// Get references
+const srateRef = watch();
+
+// Using value.
+console.log(stateRef.john.house[1].color.value);
+
+// Change value.
+stateRef.john.house[1].color.value = "yellow";
+
 watch((stateRef) => {
     console.log(
         "Changed John's Second House Color",
