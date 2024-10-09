@@ -42,7 +42,7 @@ const watch = createStore<People>({
     sara: { age: 26, house: [{ color: "red", floor: 5 }] },
 });
 
-// Using value references
+// Get references
 const srateRef = watch();
 
 // Using value.
