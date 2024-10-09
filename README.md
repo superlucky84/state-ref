@@ -42,6 +42,13 @@ const watch = createStore<People>({
     sara: { age: 26, house: [{ color: "red", floor: 5 }] },
 });
 
+// Using value references
+const srateRef = watch();
+
+// Using value.
+console.log(stateRef.john.house[1].color.value);
+
+// To subscribe to a value
 watch((stateRef) => {
     console.log(
         "Changed John's Second House Color",
