@@ -39,6 +39,6 @@ export default defineConfig({
     globals: true,
   },
   server: {
-    open: './html/test.html',
+    open: './html/core/proxy.html',
   },
 });
