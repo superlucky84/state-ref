@@ -99,7 +99,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
            * Run dependency subscription callbacks.
            */
           runner(storeRenderList);
-        } else if (lensValue.k(prop).get()(rootValue) !== value) {
+        } else if (prop !== 'value') {
           throw new Error('Can only be assigned to a "value".');
         }
 

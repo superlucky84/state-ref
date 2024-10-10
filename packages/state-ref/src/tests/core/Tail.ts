@@ -202,6 +202,44 @@ if (import.meta.vitest) {
       expect(newValue.a.b.c).toBe('sara');
       assertNotCopyOnRight(defaultValue, newValue);
     });
+
+    it('If it is not assigned via .value, an error should be thrown.', () => {
+      let defaultValue: DataType = {
+        a: { b: { c: 'john' }, b1: { c2: 8 } },
+        a1: 9,
+      };
+      const watch = createStore<DataType>(defaultValue);
+      const stateRef = watch();
+
+      expect(() => {
+        // @ts-ignore
+        stateRef.a.b.c = 'sara';
+      }).toThrow('Can only be assigned to a "value"');
+    });
+
+    it('If you replace it with the same value, nothing should happen and you should keep the same reference. copyOnWrite should not happen.', () => {
+      let defaultValue: DataType = {
+        a: { b: { c: 'john' }, b1: { c2: 8 } },
+        a1: 9,
+      };
+      const watch = createStore<DataType>(defaultValue);
+      const stateRef = watch();
+
+      stateRef.a.b.c.value = 'sara';
+      const origA = stateRef.a.value;
+      const origB = stateRef.a.b.value;
+      const origC = stateRef.a.b.c.value;
+
+      stateRef.a.b.c.value = 'sara';
+
+      const nextA = stateRef.a.value;
+      const nextB = stateRef.a.b.value;
+      const nextC = stateRef.a.b.c.value;
+
+      expect(origA).toBe(nextA);
+      expect(origB).toBe(nextB);
+      expect(origC).toBe(nextC);
+    });
   });
 
   /**
