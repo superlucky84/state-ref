@@ -35,7 +35,7 @@ export function createStore<V>(orignalValue: V) {
     }
 
     /**
-     * If the value you want to share is 'object' (proxy)
+     * Make the value a stateRef.
      */
     return makeReference({ renew, rootValue, storeRenderList, cacheMap });
   };
