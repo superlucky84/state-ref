@@ -78,9 +78,9 @@ if (import.meta.vitest) {
 
       function AgeWithoutExtractingValue() {
         const stateRef = usePofileStore();
-        mockFn1();
+        mockFn1(stateRef.age);
 
-        return <div>age: {stateRef.age}</div>;
+        return <div>None</div>;
       }
       function Root() {
         return (

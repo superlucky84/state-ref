@@ -8,38 +8,13 @@ type DataType = {
 const defaultValue = { a: { b: { c: 7 }, b1: { c2: 8 } }, a1: 9 };
 const watch = createStore<DataType>(defaultValue);
 
-const ref = watch();
-watch(store => {
-  console.log('a', store.a.b1.c2.value);
-});
-watch(store => {
-  console.log('b', store.a.b.c.value);
-});
-watch(store => {
-  console.log('c', store.a1.value);
-});
-
-//@ts-ignore
-window.p = ref;
-ref.a.b1.c2.value = 100;
-
 /**
- * 브라우저로 수동 테스트
- */
-if (!import.meta.vitest) {
-  const stateRef = watch();
-
-  // @ts-ignore
-  window.p = stateRef;
-}
-
-/**
- * vitest 자동 테스트
+ * Auto Test
  */
 if (import.meta.vitest) {
   const { describe, it, expect, vi } = import.meta.vitest;
 
-  describe('Tail - When the data you want to subscribe to is a primitive type at the end of an object, it is handled by the Tail.', () => {
+  describe('Tail - When the data you want to subscribe to is a primitive type at the end of an object', () => {
     it('Subscriptions are guaranteed to run at least once immediately upon subscription.', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const defaultValue = { a: { b: { c: 4 }, b1: { c2: 8 } }, a1: 9 };
@@ -253,4 +228,13 @@ if (import.meta.vitest) {
     expect(defaultValue.a.b1).toBe(newValue.a.b1);
     expect(defaultValue.a1).toBe(newValue.a1);
   }
+}
+
+/**
+ * Manual testing with a browser (pnpm dev:core) */
+if (!import.meta.vitest) {
+  const stateRef = watch();
+
+  // @ts-ignore
+  window.p = stateRef;
 }

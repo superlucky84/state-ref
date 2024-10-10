@@ -29,12 +29,12 @@ watch(stateRef => {
 });
 
 /**
- * vitest 자동 테스트
+ * Auto Test
  */
 if (import.meta.vitest) {
   const { describe, it, expect, vi } = import.meta.vitest;
 
-  describe("Proxy - When the data you want to subscribe to is an object, it's handled by the proxy", () => {
+  describe("Proxy - When the data you want to subscribe to is an object., it's handled by the proxy", () => {
     it('Should receive subscription notifications for the value retrieved as the ".value" of the stateRef passed in from the subscription function.', () => {
       const defaultValue = makeDefaultValue();
       const watch = createStore<People>(defaultValue);

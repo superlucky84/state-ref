@@ -97,8 +97,8 @@ describe('Connect Vue', () => {
   });
 
   /**
-   * '@testing-library/vue' 는 각각 render시 store를 싱글톤으로 가져오지 않고 새로운 인스턴스를 만드는 방식으로 테스트 환경을 격리시키므로 이 테스트가 안된다.
-   * (npm run dev:vue 에서 수동 테스트 필요)
+   * "@testing-library/vue" isolates the testing environment by creating a new instance of the store with each render, instead of using a singleton. As a result, this test does not work.
+   * (Manual testing is required with `npm run dev:vue`.)
    */
   it.skip('Components with different roots from different render functions should be able to share values.', async () => {
     render(Age);

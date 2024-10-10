@@ -3,11 +3,10 @@ import type { Lens } from '@/lens';
 import { makeDisplayProxyValue } from '@/helper';
 import { collector } from '@/connectors/collector';
 import { runner } from '@/connectors/runner';
-import { Tail } from '@/proxy/tail';
 import type { Run, WithRoot, StoreRenderList } from '@/types';
 
 /**
- * 자료형의 중첩되는 객체들을 프록시로 만들어 lens와 값을 연결해준다.
+ * Use proxies to secure values and match them to lens.
  */
 export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
   value: S,
@@ -25,10 +24,8 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
        * 1. When accessing ".value" from a proxy
        *   1-1. Have the "collector" collect the subscription callbacks and the
        *   1-2. Subtracts a value from "lens" and returns it
-       * 2. When accessing child object types from a proxy
-       *   2-1. Create a proxy for a sub object
-       * 3. When accessing lower primitive types from a proxy
-       *   3-1. Accesses a value by value, wraps the value in a modifiable object and returns it (Tail Type)
+       * 2. When accessing iterables from a proxy.
+       * 3. When accessing child object types from a proxy
        */
       get(_: T, prop: keyof T) {
         const newDepthList = [...depthList, prop.toString()];
@@ -76,44 +73,17 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
         const lens = lensValue.k(prop);
         const propertyValue: any = lens.get()(rootValue);
 
-        if (typeof propertyValue === 'object' && propertyValue !== null) {
-          return makeProxy(
-            propertyValue,
-            storeRenderList,
-            run,
-            rootValue,
-            lens,
-            depth + 1,
-            newDepthList
-          );
-        }
-
-        /**
-         * When accessing lower primitive types from a proxy
-         */
-        const tail = new Tail(
+        return makeProxy(
           propertyValue,
-          newDepthList,
-          lensValue,
+          storeRenderList,
+          run,
           rootValue,
-          () => {
-            collector(
-              propertyValue,
-              () => lens.get()(rootValue),
-              newDepthList,
-              run,
-              storeRenderList,
-              newValue => {
-                tail.setValue(newValue);
-              }
-            );
-          },
-          () => {
-            runner(storeRenderList);
-          }
+          lens,
+          depth + 1,
+          newDepthList
         );
-        return tail;
       },
+
       /**
        * When assigning a value to “.value”, copyOnWrite is performed.
        * Error if you try to assign a value to something that isn't a ".value".

@@ -4,9 +4,9 @@ import { firstRunner } from '@/connectors/runner';
 import type { Renew, StoreType, StateRefStore, StoreRenderList } from '@/types';
 
 /**
- * If the value you want to share is 'object' (Return Proxy Type)
+ * Make the value a stateRef.
  */
-export function makeObject<V>({
+export function makeReference<V>({
   renew,
   rootValue,
   storeRenderList,

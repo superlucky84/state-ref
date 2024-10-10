@@ -1,6 +1,5 @@
-import { isPrimitiveType, DEFAULT_OPTION } from '@/helper';
-import { makePrimitive } from '@/core/primitive';
-import { makeObject } from '@/core/object';
+import { DEFAULT_OPTION } from '@/helper';
+import { makeReference } from '@/core/ref';
 
 import type { Renew, StoreType, StateRefStore, StoreRenderList } from '@/types';
 
@@ -27,7 +26,7 @@ export function createStore<V>(orignalValue: V) {
     userOption?: { cache?: boolean }
   ): StateRefStore<V> => {
     /**
-     * 캐시처리
+     * Caching
      */
     const { cache } = Object.assign({}, DEFAULT_OPTION, userOption || {});
 
@@ -36,21 +35,8 @@ export function createStore<V>(orignalValue: V) {
     }
 
     /**
-     * If the value you want to share is not 'object' (primitive)
-     */
-    if (isPrimitiveType(orignalValue)) {
-      return makePrimitive<V>({
-        renew,
-        orignalValue,
-        rootValue,
-        storeRenderList,
-        cacheMap,
-      });
-    }
-
-    /**
      * If the value you want to share is 'object' (proxy)
      */
-    return makeObject({ renew, rootValue, storeRenderList, cacheMap });
+    return makeReference({ renew, rootValue, storeRenderList, cacheMap });
   };
 }

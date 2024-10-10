@@ -25,7 +25,7 @@ export function runner<V>(storeRenderList: StoreRenderList<V>) {
         defs.delete(key);
 
         /**
-         * 나중에 라도 def가 들어올수 있으니 run map 은 남겨놔야 함
+         * Should still leave it there in case the dependency is created later.
          * if (!defs.size) {
          *   storeRenderList.delete(run);
          * }

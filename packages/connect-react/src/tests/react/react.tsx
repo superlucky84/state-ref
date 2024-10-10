@@ -6,9 +6,7 @@ import {
   waitFor,
   act,
 } from '@testing-library/react';
-// @ts-ignore
-import { createElement as h, useState } from 'react';
-// @ts-ignore
+import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createStore } from 'state-ref';
 import { connectReact } from '@/index';
