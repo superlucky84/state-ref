@@ -22,14 +22,12 @@ export function runner<V>(storeRenderList: StoreRenderList<V>) {
           }
         }
       } catch {
-        defs.delete(key);
-
         /**
-         * Should still leave it there in case the dependency is created later.
-         * if (!defs.size) {
-         *   storeRenderList.delete(run);
-         * }
+         * The subscribe function is subscribing to a value that has already been removed,
+         * so when run is executed, either the user has handled the exception with optional chaining or similar,
+         * or an error will occur. Therefore, it’s fine not to throw an error at this point.
          */
+        defs.delete(key);
       }
     });
   });
