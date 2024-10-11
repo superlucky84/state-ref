@@ -21,13 +21,16 @@ export function runner<V>(storeRenderList: StoreRenderList<V>) {
             primitiveSetter(nextValue);
           }
         }
-      } catch {
+      } catch (error) {
         /**
          * The subscribe function is subscribing to a value that has already been removed,
          * so when run is executed, either the user has handled the exception with optional chaining or similar,
          * or an error will occur. Therefore, it’s fine not to throw an error at this point.
          */
-        defs.delete(key);
+        console.warn(
+          `Value for key ${key} has been removed, skipping update:`,
+          error
+        );
       }
     });
   });
