@@ -9,17 +9,13 @@ export function runner<V>(storeRenderList: StoreRenderList<V>) {
 
   storeRenderList.forEach((defs, run) => {
     defs.forEach((item, key) => {
-      const { value, getNextValue, primitiveSetter } = item;
+      const { value, getNextValue } = item;
       try {
         const nextValue = getNextValue();
 
         if (value !== nextValue) {
           runableRenewList.add(run);
           item.value = nextValue;
-
-          if (primitiveSetter) {
-            primitiveSetter(nextValue);
-          }
         }
       } catch (error) {
         /**

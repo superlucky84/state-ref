@@ -278,8 +278,14 @@ if (import.meta.vitest) {
  * Manual testing with a browser (pnpm dev:core)
  */
 if (!import.meta.vitest) {
-  const stateRef = watch();
+  const stateRef = watch(stateRef => {
+    const [firstHouse] = stateRef.john.house;
+    console.log(firstHouse.value);
+  });
+  const hohnHouse = stateRef.john.house;
+
+  hohnHouse[0].color.value = 'yellow';
 
   // @ts-ignore
-  window.p = stateRef;
+  window.p = hohnHouse;
 }

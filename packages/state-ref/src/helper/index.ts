@@ -7,12 +7,24 @@ export const DEFAULT_OPTION = { cache: true };
 /**
  * Create information about the proxy that can be viewed in the developer console.
  */
-export function makeDisplayProxyValue(depthList: string[], value: object) {
+export function makeDisplayProxyValue(depthList: string[], value: unknown) {
   return {
     _navi: depthList.join('.'),
-    _type: Array.isArray(value) ? 'Array' : 'Object',
+    _type: getType(value),
     _value: '..',
   };
+}
+
+function getType(value: unknown) {
+  if (value === null) {
+    return 'null';
+  } else if (Array.isArray(value)) {
+    return 'array';
+  } else if (typeof value === 'object') {
+    return 'object';
+  } else {
+    return typeof value;
+  }
 }
 
 /**

@@ -9,14 +9,12 @@ export function collector<V>(
   getNextValue: () => V,
   newDepthList: string[],
   run: Run,
-  storeRenderList: StoreRenderList<V>,
-  primitiveSetter?: (newValue: V) => void
+  storeRenderList: StoreRenderList<V>
 ) {
   const runInfo: RunInfo<V> = {
     value,
     getNextValue,
     key: newDepthList.join('.'),
-    primitiveSetter,
   };
 
   if (run) {
