@@ -44,7 +44,7 @@ const watch = createStore<People>({
 });
 
 // Get references
-const srateRef = watch();
+const stateRef = watch();
 
 // Using value.
 console.log(stateRef.john.house[1].color.value);
