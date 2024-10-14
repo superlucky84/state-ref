@@ -16,7 +16,7 @@ export function connectReact<T>(watch: Watch<T>) {
       return abortController.current.signal;
     });
 
-    // 컴포넌트가 언마운트될 때 abort 작업 수행
+    // Unsubscribe if the component is unmounted.
     useEffect(() => () => abortController.current.abort(), []);
 
     return forceUpdateRef.current;
