@@ -214,7 +214,7 @@ import { copyable } from "state-ref";
 const profileObj = useProfileRef(stateRef => stateRef);
 
 function handleClick() {
-   profileObj.update(n => copyable(n).john.age.writeCopy(n.age + 1));
+   profileObj.update(n => copyable(n).john.age.writeCopy(n.john.age + 1));
 }
 ```
 
@@ -275,7 +275,6 @@ export const useProfileStore = connectSolid(watch);
 ### UserComponent.tsx
 
 ```tsx
-import { copyable } from "state-ref";
 import { useProfileStore } from 'profileStore';
 
 function UserComponent() {
@@ -300,7 +299,7 @@ import { copyable } from "state-ref";
 const [profileObj, setProfileObj] = useProfileStore(stateRef => stateRef);
 
 function handleClick() {
-   setProfileObj(n => copyable(n).john.age.writeCopy(n.age + 1));
+   setProfileObj(n => copyable(n).john.age.writeCopy(n.john.age + 1));
 }
 ```
 
