@@ -24,7 +24,7 @@ It is also designed for easy integration with other UI libraries. We provide cod
 
 ## Basic Usage
 
-The moment `.value` is accessed, a subscription is automatically established, and the moment a value is assigned using `.value=`, the subscription function is triggered.
+The basic principle is that the subscription function only reacts to values retrieved through `.value`, and when a value is assigned with `.value=`, the subscription function is triggered if the value is already subscribed.
 
 Below is a simple usage example.
 
