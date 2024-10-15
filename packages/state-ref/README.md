@@ -8,7 +8,7 @@
 
 It combines proxies and the functional programming lens pattern to efficiently and safely access and modify deeply structured data.
 
-It is also designed for easy integration with other UI libraries. We provide code snippets for connecting with React, Preact, Vue, Svelte, and Solid, and users can also create their own connection snippets.
+It is also designed for easy integration with other UI libraries. We provide code snippets for connecting with React, Preact, Vue, Svelte, Solid, and Lithent , and users can also create their own connection snippets.
 
 
 * Table of Contents
@@ -17,6 +17,7 @@ It is also designed for easy integration with other UI libraries. We provide cod
     * [Usage with Svelte](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-svelte)
     * [Usage with Vue](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-vue)
     * [Usage with Solid](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-vue)
+    * [Usage with Lithent](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-lithent)
     * [npm](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#npm)
     * [test](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#test)
 
@@ -44,7 +45,7 @@ const watch = createStore<People>({
 });
 
 // Get references
-const srateRef = watch();
+const stateRef = watch();
 
 // Using value.
 console.log(stateRef.john.house[1].color.value);
@@ -303,6 +304,57 @@ function handleClick() {
 }
 ```
 
+## Usage with Lithent
+
+### profileStore.ts
+
+> In [Lithent](https://github.com/superlucky84/lithent), you can use it directly with watch without needing a connect code.
+
+
+
+```typescript
+import { createStore } from "state-ref";
+
+type Info = { age: number; house: { color: string; floor: number }[] };
+type People = { john: Info; brown: Info; sara: Info };
+
+export const watch = createStore<People>({
+    john: {
+        age: 20,
+        house: [
+            { color: "red", floor: 5 },
+            { color: "red", floor: 5 },
+        ],
+    },
+    brown: { age: 26, house: [{ color: "red", floor: 5 }] },
+    sara: { age: 26, house: [{ color: "red", floor: 5 }] },
+});
+```
+
+### UserComponent.tsx
+
+```tsx
+import { mount, h } from 'lithent';
+import { watch } from 'profileStore';
+
+const UserComponent = mount(r => {
+    const {
+        john: { age: ageRef },
+    } = watch(r);
+
+    const increaseAge = () => {
+        ageRef.value += 1;
+    };
+
+    return () => (
+        <button onClick={increaseAge}>
+            john's age: {ageRef.value}
+        </button>;
+    );
+});
+```
+
+
 ## npm
 * [state-ref](https://www.npmjs.com/package/state-ref)
 * [connect-react](https://www.npmjs.com/package/@stateref/connect-react)
@@ -310,6 +362,7 @@ function handleClick() {
 * [connect-solid](https://www.npmjs.com/package/@stateref/connect-solid)
 * [connect-svelte](https://www.npmjs.com/package/@stateref/connect-svelte)
 * [connect-vue](https://www.npmjs.com/package/@stateref/connect-vue)
+* [lithent](https://www.npmjs.com/package/lithent)
 
 ## test
 
