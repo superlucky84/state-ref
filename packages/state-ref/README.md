@@ -98,9 +98,9 @@ By chaining directly from the `stateRef` and assigning a value to the `.value` o
 
 You can see in the example that you can use the spread operator to directly extract a reference to a specific state and use it.
 
-If you directly access the value from the returned `stateRef` (for the purpose of reference rather than assignment), any changes to that value will be reflected in the value dependencies of the subscription function registered in `watch`.
+If you simply read the `.value` from the returned `stateRef`, any changes to that value will automatically trigger the subscription function."
 
-If you want to avoid side effects caused by this, you can receive a new `stateRef` that is not connected to the subscription function for a different purpose.
+If you want to avoid automatic updates, you can use a `new stateRef` that is not connected to the subscription function.
 
 ```typescript
 const otherStateRef = watch();
