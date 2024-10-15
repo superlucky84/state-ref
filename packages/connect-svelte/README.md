@@ -8,6 +8,8 @@
 
 It combines proxies and the functional programming lens pattern to efficiently and safely access and modify deeply structured data.
 
+It provides more direct and fine-grained state management compared to other types of state management libraries.
+
 It is also designed for easy integration with other UI libraries. We provide code snippets for connecting with React, Preact, Vue, Svelte, Solid, and Lithent , and users can also create their own connection snippets.
 
 
