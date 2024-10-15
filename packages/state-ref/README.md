@@ -24,6 +24,8 @@ It is also designed for easy integration with other UI libraries. We provide cod
 
 ## Basic Usage
 
+The moment `.value` is accessed, a subscription is automatically established, and the moment a value is assigned using `.value=`, the subscription function is triggered.
+
 Below is a simple usage example.
 
 ```typescript
