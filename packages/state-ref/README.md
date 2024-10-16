@@ -96,7 +96,7 @@ The `watch` function returns a `stateRef`. Through the returned `stateRef`, you 
 
 By chaining directly from the `stateRef` and assigning a value to the `.value` of the part you want to change, the original data in the store will be reflected with `copyOnWrite` applied.
 
-You can see in the example that you can use the spread operator to directly extract a reference to a specific state and use it.
+You can see in the example that you can use the destructuring operator to directly extract a reference to a specific state and use it.
 
 If you simply read the `.value` from the returned `stateRef`, any changes to that value will automatically trigger the subscription function."
 
