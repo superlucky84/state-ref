@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@stateref/connect-react",
-  "version": "18.0.1",
+  "version": "18.0.2",
   "private": false,
   "description": "vue connector for state-ref",
   "packageManager": "pnpm@7.6.0",
