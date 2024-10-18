@@ -1,5 +1,6 @@
 import { DEFAULT_OPTION } from '@/helper';
 import { makeReference } from '@/core/ref';
+import { runner } from '@/connectors/runner';
 
 import type { Renew, StoreType, StateRefStore, StoreRenderList } from '@/types';
 
@@ -21,7 +22,7 @@ export function createStore<V>(orignalValue: V) {
   const cacheMap = new WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>();
   const rootValue: StoreType<V> = { root: orignalValue };
 
-  return (
+  const watch = (
     renew: Renew<StateRefStore<V>> = () => {},
     userOption?: { cache?: boolean }
   ): StateRefStore<V> => {
@@ -39,4 +40,6 @@ export function createStore<V>(orignalValue: V) {
      */
     return makeReference({ renew, rootValue, storeRenderList, cacheMap });
   };
+
+  return watch;
 }
