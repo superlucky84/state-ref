@@ -24,11 +24,8 @@ export function createStore<V>(
   return create(orignalValue, userCreateOption)[0];
 }
 
-export function createStoreX<V>(
-  orignalValue: V,
-  userCreateOption?: { autoSync?: boolean }
-) {
-  return createStore(orignalValue, userCreateOption);
+export function createStoreX<V>(orignalValue: V) {
+  return createStore(orignalValue, { autoSync: false });
 }
 
 function create<V>(orignalValue: V, userCreateOption?: { autoSync?: boolean }) {
