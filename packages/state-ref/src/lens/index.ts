@@ -1,4 +1,11 @@
 /**
+ * This code are sourced from the lens.ts project.
+ * lens.ts: https://github.com/hatashiro/lens.ts
+ * Licensed under the MIT License.
+ *
+ * Copyright (c) Hyunje Jun
+ */
+/**
  * The stateRef relies on data immutability to determine changes.
  * The lens pattern is used as a core part of the stateRef because,
  * it makes it easy to locate and safely change data.
