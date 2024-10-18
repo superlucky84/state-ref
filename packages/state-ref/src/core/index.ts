@@ -1,6 +1,5 @@
-import { DEFAULT_OPTION } from '@/helper';
+import { DEFAULT_WATCH_OPTION, DEFAULT_CREATE_OPTION } from '@/helper';
 import { makeReference } from '@/core/ref';
-import { runner } from '@/connectors/runner';
 
 import type { Renew, StoreType, StateRefStore, StoreRenderList } from '@/types';
 
@@ -17,9 +16,17 @@ import type { Renew, StoreType, StateRefStore, StoreRenderList } from '@/types';
  *   console.log(stateRef.value));
  * });
  */
-export function createStore<V>(orignalValue: V) {
+export function createStore<V>(
+  orignalValue: V,
+  userCreateOption?: { autoSync?: boolean }
+) {
   const storeRenderList: StoreRenderList<V> = new Map();
   const cacheMap = new WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>();
+  const { autoSync } = Object.assign(
+    {},
+    DEFAULT_CREATE_OPTION,
+    userCreateOption || {}
+  );
   const rootValue: StoreType<V> = { root: orignalValue };
 
   const watch = (
@@ -29,7 +36,7 @@ export function createStore<V>(orignalValue: V) {
     /**
      * Caching
      */
-    const { cache } = Object.assign({}, DEFAULT_OPTION, userOption || {});
+    const { cache } = Object.assign({}, DEFAULT_WATCH_OPTION, userOption || {});
 
     if (cache && renew && cacheMap.has(renew)) {
       return cacheMap.get(renew)!;
@@ -38,7 +45,13 @@ export function createStore<V>(orignalValue: V) {
     /**
      * Make the value a stateRef.
      */
-    return makeReference({ renew, rootValue, storeRenderList, cacheMap });
+    return makeReference({
+      renew,
+      rootValue,
+      storeRenderList,
+      cacheMap,
+      autoSync,
+    });
   };
 
   return watch;

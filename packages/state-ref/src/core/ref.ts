@@ -11,11 +11,13 @@ export function makeReference<V>({
   rootValue,
   storeRenderList,
   cacheMap,
+  autoSync,
 }: {
   renew: Renew<StateRefStore<V>>;
   rootValue: StoreType<V>;
   storeRenderList: StoreRenderList<V>;
   cacheMap: WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>;
+  autoSync: boolean;
 }) {
   const ref: { value: null | StateRefStore<StoreType<V>> } = {
     value: null,
@@ -25,7 +27,8 @@ export function makeReference<V>({
   ref.value = makeProxy<StoreType<V>, StateRefStore<StoreType<V>>, V>(
     rootValue,
     storeRenderList,
-    run
+    run,
+    autoSync
   );
 
   /**

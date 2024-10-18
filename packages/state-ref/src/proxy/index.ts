@@ -12,6 +12,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
   value: S,
   storeRenderList: StoreRenderList<V>,
   run: Run,
+  autoSync: boolean,
   rootValue: S = value,
   lensValue: Lens<S, S> = lens<S>(),
   depth: number = 0,
@@ -58,6 +59,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
                 value,
                 storeRenderList,
                 run,
+                autoSync,
                 rootValue,
                 lensValue.k(index),
                 depth + 1,
@@ -77,6 +79,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
           propertyValue,
           storeRenderList,
           run,
+          autoSync,
           rootValue,
           lens,
           depth + 1,
@@ -98,7 +101,9 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
           /**
            * Run dependency subscription callbacks.
            */
-          runner(storeRenderList);
+          if (autoSync) {
+            runner(storeRenderList);
+          }
         } else if (prop !== 'value') {
           throw new Error('Can only be assigned to a "value".');
         }
