@@ -26,7 +26,7 @@ export function createStore<V>(
   return watch;
 }
 
-export function createStoreX<V>(orignalValue: V) {
+export function createStoreWithAction<V>(orignalValue: V) {
   return create(orignalValue, { autoSync: false });
 }
 
@@ -73,6 +73,7 @@ function create<V>(orignalValue: V, userCreateOption?: { autoSync?: boolean }) {
 
   return {
     watch,
+    settableRef: watch(() => {}, { editable: true }),
     sync: () => {
       runner(storeRenderList);
     },

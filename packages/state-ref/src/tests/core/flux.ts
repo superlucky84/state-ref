@@ -1,4 +1,4 @@
-import { createStoreX } from '@/index';
+import { createStoreWithAction } from '@/index';
 type Info = {
   age: number;
   house: {
@@ -41,11 +41,32 @@ if (import.meta.vitest) {
  */
 if (!import.meta.vitest) {
   const defaultValue = makeDefaultValue();
-  const { watch, sync } = createStoreX<People>(defaultValue);
+  const { watch, settableRef, sync } =
+    createStoreWithAction<People>(defaultValue);
 
   const stateRef = watch(stateRef => {
     console.log(stateRef.brown.house[0].color.value);
   });
+
+  const action = {
+    changeJohnAge(newAge: number) {
+      settableRef.john.age.value = newAge;
+      sync();
+    },
+    changeJohnFirstHouseInfo(firstHouseInfo = { color: 'blue', floor: 7 }) {
+      settableRef.john.house[0].value = firstHouseInfo;
+      sync();
+    },
+    changeBrownFirstHouseInfo(firstHouseInfo = { color: 'blue', floor: 7 }) {
+      settableRef.brown.house[0].value = firstHouseInfo;
+      sync();
+    },
+    changeBrownSecondHouseInfo(firstHouseInfo = { color: 'blue', floor: 7 }) {
+      settableRef.brown.house[1].value = firstHouseInfo;
+      sync();
+    },
+  };
+  console.log(action);
 
   // @ts-ignore
   window.p = stateRef;
