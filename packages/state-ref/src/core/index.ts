@@ -27,7 +27,7 @@ export function createStore<V>(
 }
 
 export function createStoreX<V>(orignalValue: V) {
-  return createStore(orignalValue, { autoSync: false });
+  return create(orignalValue, { autoSync: false });
 }
 
 function create<V>(orignalValue: V, userCreateOption?: { autoSync?: boolean }) {
@@ -73,7 +73,7 @@ function create<V>(orignalValue: V, userCreateOption?: { autoSync?: boolean }) {
 
   return {
     watch,
-    runner: () => {
+    sync: () => {
       runner(storeRenderList);
     },
   };
