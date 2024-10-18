@@ -14,14 +14,25 @@ It is also designed for easy integration with other UI libraries. We provide cod
 
 
 * Table of Contents
+    * [Acknowledgements](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#acknowledgements)
     * [Basic Usage](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#basic-usage)
     * [Usage with React (Same for Preact)](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-react-same-for-preact)
     * [Usage with Svelte](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-svelte)
     * [Usage with Vue](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-vue)
-    * [Usage with Solid](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-vue)
+    * [Usage with Solid](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-solid)
     * [Usage with Lithent](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-lithent)
     * [npm](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#npm)
     * [test](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#test)
+
+## Acknowledgements
+
+I would like to extend my gratitude to the following people and projects:
+
+- **[Juho Vepsäläinen](https://survivejs.com)**: Thank you for the [insightful interview](https://survivejs.com/blog/state-ref-interview/) and featuring me on your blog. Your work and contributions to the JavaScript community have been a great source of inspiration.
+- **[lens.ts](https://github.com/hatashiro/lens.ts)**: This project includes portions of code from the `lens.ts` project, which is licensed under the MIT License.
+  - lens.ts: A TypeScript utility for working with immutable data structures.
+  - Licensed under the [MIT License](https://github.com/hatashiro/lens.ts/blob/master/LICENSE).
+  
 
 
 ## Basic Usage
