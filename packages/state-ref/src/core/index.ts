@@ -1,5 +1,6 @@
 import { DEFAULT_WATCH_OPTION, DEFAULT_CREATE_OPTION } from '@/helper';
 import { makeReference } from '@/core/ref';
+import { runner } from '@/connectors/runner';
 
 import type { Renew, StoreType, StateRefStore, StoreRenderList } from '@/types';
 
@@ -20,6 +21,17 @@ export function createStore<V>(
   orignalValue: V,
   userCreateOption?: { autoSync?: boolean }
 ) {
+  return create(orignalValue, userCreateOption)[0];
+}
+
+export function createStoreX<V>(
+  orignalValue: V,
+  userCreateOption?: { autoSync?: boolean }
+) {
+  return createStore(orignalValue, userCreateOption);
+}
+
+function create<V>(orignalValue: V, userCreateOption?: { autoSync?: boolean }) {
   const storeRenderList: StoreRenderList<V> = new Map();
   const cacheMap = new WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>();
   const { autoSync } = Object.assign(
@@ -60,5 +72,10 @@ export function createStore<V>(
     });
   };
 
-  return watch;
+  return [
+    watch,
+    () => {
+      runner(storeRenderList);
+    },
+  ];
 }
