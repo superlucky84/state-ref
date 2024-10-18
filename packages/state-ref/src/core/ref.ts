@@ -12,12 +12,14 @@ export function makeReference<V>({
   storeRenderList,
   cacheMap,
   autoSync,
+  editable,
 }: {
   renew: Renew<StateRefStore<V>>;
   rootValue: StoreType<V>;
   storeRenderList: StoreRenderList<V>;
   cacheMap: WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>;
   autoSync: boolean;
+  editable: boolean;
 }) {
   const ref: { value: null | StateRefStore<StoreType<V>> } = {
     value: null,
@@ -28,7 +30,8 @@ export function makeReference<V>({
     rootValue,
     storeRenderList,
     run,
-    autoSync
+    autoSync,
+    editable
   );
 
   /**

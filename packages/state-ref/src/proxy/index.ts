@@ -13,6 +13,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
   storeRenderList: StoreRenderList<V>,
   run: Run,
   autoSync: boolean,
+  editable: boolean,
   rootValue: S = value,
   lensValue: Lens<S, S> = lens<S>(),
   depth: number = 0,
@@ -60,6 +61,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
                 storeRenderList,
                 run,
                 autoSync,
+                editable,
                 rootValue,
                 lensValue.k(index),
                 depth + 1,
@@ -80,6 +82,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
           storeRenderList,
           run,
           autoSync,
+          editable,
           rootValue,
           lens,
           depth + 1,
@@ -94,7 +97,13 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
        * ex) ref.a.b.value = 'newValue'; // Success
        */
       set(_, prop: string | symbol, value) {
-        if (prop === 'value' && value !== lensValue.get()(rootValue)) {
+        if (prop !== 'value') {
+          throw new Error('Can only be assigned to a "value".');
+        } else if (prop === 'value' && !editable) {
+          throw new Error(
+            'With the current settings, direct modification is not allowed.'
+          );
+        } else if (prop === 'value' && value !== lensValue.get()(rootValue)) {
           const newTree = lensValue.set(value)(rootValue);
           rootValue.root = newTree.root;
 
@@ -104,8 +113,6 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
           if (autoSync) {
             runner(storeRenderList);
           }
-        } else if (prop !== 'value') {
-          throw new Error('Can only be assigned to a "value".');
         }
 
         return true;

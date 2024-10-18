@@ -31,13 +31,18 @@ export function createStore<V>(
 
   const watch = (
     renew: Renew<StateRefStore<V>> = () => {},
-    userOption?: { cache?: boolean }
+    userOption?: { cache?: boolean; editable?: boolean }
   ): StateRefStore<V> => {
+    const watchOption = Object.assign(
+      {},
+      DEFAULT_WATCH_OPTION,
+      userOption || { editable: autoSync }
+    );
+    const { cache, editable } = watchOption;
+
     /**
      * Caching
      */
-    const { cache } = Object.assign({}, DEFAULT_WATCH_OPTION, userOption || {});
-
     if (cache && renew && cacheMap.has(renew)) {
       return cacheMap.get(renew)!;
     }
@@ -51,6 +56,7 @@ export function createStore<V>(
       storeRenderList,
       cacheMap,
       autoSync,
+      editable,
     });
   };
 
