@@ -1,4 +1,4 @@
-import { createStoreWithAction } from '@/index';
+import { createStoreLayered } from '@/index';
 type Info = {
   age: number;
   house: {
@@ -41,8 +41,7 @@ if (import.meta.vitest) {
  */
 if (!import.meta.vitest) {
   const defaultValue = makeDefaultValue();
-  const { watch, settableRef, sync } =
-    createStoreWithAction<People>(defaultValue);
+  const { watch, updateRef, flush } = createStoreLayered<People>(defaultValue);
 
   const stateRef = watch(stateRef => {
     console.log(stateRef.brown.house[0].color.value);
@@ -50,20 +49,23 @@ if (!import.meta.vitest) {
 
   const action = {
     changeJohnAge(newAge: number) {
-      settableRef.john.age.value = newAge;
-      sync();
+      updateRef.john.age.value = newAge;
+      flush();
     },
     changeJohnFirstHouseInfo(firstHouseInfo = { color: 'blue', floor: 7 }) {
-      settableRef.john.house[0].value = firstHouseInfo;
-      sync();
+      updateRef.john.house[0].value = firstHouseInfo;
+      flush();
     },
     changeBrownFirstHouseInfo(firstHouseInfo = { color: 'blue', floor: 7 }) {
-      settableRef.brown.house[0].value = firstHouseInfo;
-      sync();
+      updateRef.brown.house[0].value = firstHouseInfo;
+      flush();
     },
-    changeBrownSecondHouseInfo(firstHouseInfo = { color: 'blue', floor: 7 }) {
-      settableRef.brown.house[1].value = firstHouseInfo;
-      sync();
+    async changeBrownSecondHouseInfo(
+      firstHouseInfo = { color: 'blue', floor: 7 }
+    ) {
+      const vv = await fetch('https://ss.www.com');
+      updateRef.brown.house[1].value = firstHouseInfo;
+      flush();
     },
   };
   console.log(action);
