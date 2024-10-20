@@ -150,7 +150,8 @@ export function lens() {
   }
 }
 
-export const DEFAULT_OPTION = { cache: true };
+export const DEFAULT_WATCH_OPTION = { cache: true, editable: true };
+export const DEFAULT_CREATE_OPTION = { autoSync: true };
 
 /**
  * Create information about the proxy that can be viewed in the developer console.
@@ -335,6 +336,8 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
   value: S,
   storeRenderList: StoreRenderList<V>,
   run: Run,
+  autoSync: boolean,
+  editable: boolean,
   rootValue: S = value,
   lensValue: Lens<S, S> = lens<S>(),
   depth: number = 0,
@@ -381,6 +384,8 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
                 value,
                 storeRenderList,
                 run,
+                autoSync,
+                editable,
                 rootValue,
                 lensValue.k(index),
                 depth + 1,
@@ -400,6 +405,8 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
           propertyValue,
           storeRenderList,
           run,
+          autoSync,
+          editable,
           rootValue,
           lens,
           depth + 1,
@@ -414,16 +421,22 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
        * ex) ref.a.b.value = 'newValue'; // Success
        */
       set(_, prop: string | symbol, value) {
-        if (prop === 'value' && value !== lensValue.get()(rootValue)) {
+        if (prop !== 'value') {
+          throw new Error('Can only be assigned to a "value".');
+        } else if (prop === 'value' && !editable) {
+          throw new Error(
+            'With the current settings, direct modification is not allowed.'
+          );
+        } else if (prop === 'value' && value !== lensValue.get()(rootValue)) {
           const newTree = lensValue.set(value)(rootValue);
           rootValue.root = newTree.root;
 
           /**
            * Run dependency subscription callbacks.
            */
-          runner(storeRenderList);
-        } else if (prop !== 'value') {
-          throw new Error('Can only be assigned to a "value".');
+          if (autoSync) {
+            runner(storeRenderList);
+          }
         }
 
         return true;
@@ -442,11 +455,15 @@ export function makeReference<V>({
   rootValue,
   storeRenderList,
   cacheMap,
+  autoSync,
+  editable,
 }: {
   renew: Renew<StateRefStore<V>>;
   rootValue: StoreType<V>;
   storeRenderList: StoreRenderList<V>;
   cacheMap: WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>;
+  autoSync: boolean;
+  editable: boolean;
 }) {
   const ref: { value: null | StateRefStore<StoreType<V>> } = {
     value: null,
@@ -456,7 +473,9 @@ export function makeReference<V>({
   ref.value = makeProxy<StoreType<V>, StateRefStore<StoreType<V>>, V>(
     rootValue,
     storeRenderList,
-    run
+    run,
+    autoSync,
+    editable
   );
 
   /**
@@ -482,20 +501,42 @@ export function makeReference<V>({
  *   console.log(stateRef.value));
  * });
  */
-export function createStore<V>(orignalValue: V) {
+export function createStore<V>(
+  orignalValue: V,
+  userCreateOption?: { autoSync?: boolean }
+) {
+  const { watch } = create(orignalValue, userCreateOption);
+
+  return watch;
+}
+export function createStoreManualSync<V>(orignalValue: V) {
+  return create(orignalValue, { autoSync: false });
+}
+
+function create<V>(orignalValue: V, userCreateOption?: { autoSync?: boolean }) {
   const storeRenderList: StoreRenderList<V> = new Map();
   const cacheMap = new WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>();
+  const { autoSync } = Object.assign(
+    {},
+    DEFAULT_CREATE_OPTION,
+    userCreateOption || {}
+  );
   const rootValue: StoreType<V> = { root: orignalValue };
 
-  return (
+  const watch = (
     renew: Renew<StateRefStore<V>> = () => {},
-    userOption?: { cache?: boolean }
+    userOption?: { cache?: boolean; editable?: boolean }
   ): StateRefStore<V> => {
+    const watchOption = Object.assign(
+      {},
+      DEFAULT_WATCH_OPTION,
+      userOption || { editable: autoSync }
+    );
+    const { cache, editable } = watchOption;
+
     /**
      * Caching
      */
-    const { cache } = Object.assign({}, DEFAULT_OPTION, userOption || {});
-
     if (cache && renew && cacheMap.has(renew)) {
       return cacheMap.get(renew)!;
     }
@@ -503,6 +544,21 @@ export function createStore<V>(orignalValue: V) {
     /**
      * Make the value a stateRef.
      */
-    return makeReference({ renew, rootValue, storeRenderList, cacheMap });
+    return makeReference({
+      renew,
+      rootValue,
+      storeRenderList,
+      cacheMap,
+      autoSync,
+      editable,
+    });
+  };
+
+  return {
+    watch,
+    updateRef: watch(() => {}, { editable: true }),
+    sync: () => {
+      runner(storeRenderList);
+    },
   };
 }
