@@ -25,8 +25,7 @@ export function createStore<V>(
 
   return watch;
 }
-
-export function createStoreLayered<V>(orignalValue: V) {
+export function createStoreManualSync<V>(orignalValue: V) {
   return create(orignalValue, { autoSync: false });
 }
 
@@ -74,7 +73,7 @@ function create<V>(orignalValue: V, userCreateOption?: { autoSync?: boolean }) {
   return {
     watch,
     updateRef: watch(() => {}, { editable: true }),
-    flush: () => {
+    sync: () => {
       runner(storeRenderList);
     },
   };
