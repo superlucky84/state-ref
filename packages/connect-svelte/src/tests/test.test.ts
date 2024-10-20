@@ -8,6 +8,7 @@ import {
 import { describe, it, expect } from 'vitest';
 import { handleRef, getDefaultValue } from '@/tests/store/store';
 
+import AgeWithAction from '@/tests/svelte/AgeWithAction.svelte';
 import Age from '@/tests/svelte/Age.svelte';
 import Age1 from '@/tests/svelte/Age1.svelte';
 import Age2 from '@/tests/svelte/Age2.svelte';
@@ -113,6 +114,18 @@ describe('Connect Svelte', () => {
       expect(displayElement.textContent).toBe('age: 15');
       expect(displayElement1.textContent).toBe('age: 15');
       expect(displayElement2.textContent).toBe('age: 15');
+    });
+  });
+  it('It should properly update in "manualSync" mode.', async () => {
+    render(AgeWithAction);
+
+    const btnElement = screen.getByTestId('age-increase');
+    const displayElement = screen.getByTestId('age-display');
+
+    fireEvent.click(btnElement);
+
+    await waitFor(() => {
+      expect(displayElement.textContent).toBe('age: 99');
     });
   });
 });

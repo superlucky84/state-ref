@@ -7,7 +7,7 @@ import {
 } from '@testing-library/preact';
 import { h, render } from 'preact';
 import { useState } from 'preact/hooks';
-import { createStore } from 'state-ref';
+import { createStore, createStoreManualSync } from 'state-ref';
 import { connectPreact } from '@/index';
 
 type Profile = { name: string; age: number };
@@ -212,6 +212,40 @@ if (import.meta.vitest) {
         expect(displayElement3.textContent).toBe('age: 15');
       });
     });
+
+    it('It should properly update in "manualSync" mode.', () => {
+      const { watch, updateRef, sync } = createStoreManualSync<Profile>(
+        getDefaultValue()
+      );
+
+      const changeAge = (newAge: number) => {
+        updateRef.age.value = newAge;
+        sync();
+      };
+      const usePofileStore = connectPreact(watch);
+
+      function AgeWithAction() {
+        const { age } = usePofileStore();
+
+        return (
+          <div>
+            <div data-testid="age-display">age: {age.value}</div>
+            <button data-testid="age-increase" onClick={() => changeAge(99)}>
+              increase
+            </button>
+          </div>
+        );
+      }
+
+      trender(<AgeWithAction />);
+
+      const btnIncreaseElement = screen.getByTestId('age-increase');
+      const displayElement = screen.getByTestId('age-display');
+
+      fireEvent.click(btnIncreaseElement);
+
+      expect(displayElement.textContent).toBe('age: 99');
+    });
   });
 }
 
@@ -230,12 +264,36 @@ function getRandomName(excludeName: string) {
 if (!import.meta.vitest) {
   //@ts-ignore
   window.p = handleRef;
+
+  const { watch, updateRef, sync } = createStoreManualSync<Profile>(
+    getDefaultValue()
+  );
+
+  const changeAge = (newAge: number) => {
+    updateRef.age.value = newAge;
+    sync();
+  };
+  const usePofileStore = connectPreact(watch);
+
+  function AgeWithAction() {
+    const { age } = usePofileStore();
+
+    return (
+      <div>
+        <div data-testid="age-display">age: {age.value}</div>
+        <button
+          data-testid="age-increase"
+          onClick={() => changeAge(age.value + 1)}
+        >
+          increase
+        </button>
+      </div>
+    );
+  }
   function Root() {
     return (
       <div>
-        <Age />
-        <Age />
-        <Age />
+        <AgeWithAction />
         <Name />
       </div>
     );
