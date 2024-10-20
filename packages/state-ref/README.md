@@ -358,6 +358,12 @@ const UserComponent = mount(r => {
 });
 ```
 
+## Supports Flux-like implementation
+
+If the user wants to use `state-ref` with a centralized store management pattern, they can create the store using **`createStoreManualSync`** for greater flexibility. This mode is designed to make it easier to build code using the `Flux` pattern or a `Flux-like` pattern.
+
+Below is a simple `Flux-like` example code using `createStoreManualSync` with React.
+
 
 ## npm
 * [state-ref](https://www.npmjs.com/package/state-ref)
