@@ -20,6 +20,7 @@ It is also designed for easy integration with other UI libraries. We provide cod
     * [Usage with Vue](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-vue)
     * [Usage with Solid](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-vue)
     * [Usage with Lithent](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-lithent)
+    * [Supports Flux-like implementation](https://github.com/superlucky84/state-ref/tree/feat/fluxStyleExtension?tab=readme-ov-file#usage-with-lithent)
     * [npm](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#npm)
     * [test](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#test)
 
