@@ -359,12 +359,79 @@ const UserComponent = mount(r => {
 });
 ```
 
-## Supports Flux-like implementation
+## Supports flux-like implementation
 
-If the user wants to use `state-ref` with a centralized store management pattern, they can create the store using **`createStoreManualSync`** for greater flexibility. This mode is designed to make it easier to build code using the `Flux` pattern or a `Flux-like` pattern.
+If users prefer to manage state using a centralized store pattern, `state-ref` provides flexibility with the `createStoreManualSync` function. This mode makes it easier to implement centralized patterns like `Flux`.
 
-Below is a simple `Flux-like` example code using `createStoreManualSync` with React.
+Below is a simple `Flux-like` example using `createStoreManualSync` with React.
 
+### profileStore
+
+`createStoreManualSync` returns `updateRef` and `sync`, along with `watch`.
+
+In the default mode, values can be modified through the references created by `watch`. However, in `manualSync` mode, values cannot be modified via `watch`.
+
+To update values, you must use `updateRef`. To propagate the changes to subscribed code (and trigger subscription callbacks), you can manually execute the `sync` function at your desired time.
+
+```typescript
+import { createStoreManualSync } from "state-ref";
+
+type Info = { age: number; house: { color: string; floor: number }[] };
+type People = { john: Info; brown: Info; sara: Info };
+
+const { watch, updateRef, sync } = createStoreManualSync<People>({
+    john: { age: 20, house: [ { color: "red", floor: 5 }] },
+    brown: { age: 26, house: [{ color: "red", floor: 5 }] },
+});
+
+export const useProfileStore = connectReact(watch);
+
+// Action to change John's age
+export const changeJohnAge = (newAge: number) => {
+    updateRef.john.age.value = newAge;
+    sync();
+};
+
+// Action to change Brown's first house info
+export const changeBrownFirstHouseInfo = (
+    firstHouseInfo = { color: 'blue', floor: 7 }
+) => {
+    updateRef.brown.house[0].value = firstHouseInfo;
+    sync();
+};
+```
+
+### UserComponent.tsx
+
+Values can only be updated through actions created by `profileStore`. Any attempt to modify the values in other ways will result in an error.
+
+```tsx
+import { useProfileStore, changeJohnAge } from 'profileStore';
+
+function UserComponent() {
+  // The stateRef received via watch or the values received via connect are for reference only
+  // (direct modification is not allowed).
+  const {
+    john: { age: ageRef },
+  } = useProfileStore();
+
+  const increaseAge = () => {
+    // An error occurs if you attempt to modify 'ageRef' directly.
+    // ageRef.value += 1; // 
+
+    // You must modify the reference through the action's updateRef.
+    // Afterward, the subscribed code will synchronize via the sync function
+    // (triggering subscription callbacks).
+    changeJohnAge(ageRef.value + 1);
+  };
+
+  return (
+    <button onClick={increaseAge}>
+        john's age: {ageRef.value}
+    </button>;
+  );
+}
+```
 
 ## npm
 * [state-ref](https://www.npmjs.com/package/state-ref)
