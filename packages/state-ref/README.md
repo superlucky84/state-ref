@@ -20,7 +20,7 @@ It is also designed for easy integration with other UI libraries. We provide cod
     * [Usage with Vue](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-vue)
     * [Usage with Solid](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-vue)
     * [Usage with Lithent](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-lithent)
-    * [Supports Flux-like implementation](https://github.com/superlucky84/state-ref/tree/feat/fluxStyleExtension?tab=readme-ov-file#usage-with-lithent)
+    * [Supports Flux-like State Management](https://github.com/superlucky84/state-ref/tree/feat/fluxStyleExtension?tab=readme-ov-file#supports-flux-like-state-management)
     * [npm](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#npm)
     * [test](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#test)
 
@@ -359,8 +359,8 @@ const UserComponent = mount(r => {
 });
 ```
 
-## Supports flux-like implementation
-
+## Supports Flux-like State Management
+   
 If users prefer to manage state using a centralized store pattern, `state-ref` provides flexibility with the `createStoreManualSync` function. This mode makes it easier to implement centralized patterns like `Flux`.
 
 Below is a simple `Flux-like` example using `createStoreManualSync` with React.
