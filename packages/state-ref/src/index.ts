@@ -1,4 +1,4 @@
-export { createStore } from '@/core';
+export { createStore, createStoreManualSync } from '@/core';
 export { lens } from '@/lens';
 export { copyable, cloneDeep } from '@/helper';
 export type { StateRefStore, Renew, Watch } from '@/types';

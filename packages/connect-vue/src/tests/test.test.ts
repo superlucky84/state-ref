@@ -7,6 +7,8 @@ import {
 } from '@testing-library/vue';
 import { describe, it, expect } from 'vitest';
 import { handleRef, getDefaultValue } from '@/tests/store/store';
+
+import AgeWithAction from '@/tests/vue/AgeWithAction.vue';
 import Age from '@/tests/vue/Age.vue';
 import Age1 from '@/tests/vue/Age1.vue';
 import Age2 from '@/tests/vue/Age2.vue';
@@ -117,6 +119,20 @@ describe('Connect Vue', () => {
       expect(displayElement.textContent).toBe('age: 15');
       expect(displayElement1.textContent).toBe('age: 15');
       expect(displayElement2.textContent).toBe('age: 15');
+    });
+  });
+
+  it('It should properly update in "manualSync" mode.', async () => {
+    render(AgeWithAction);
+    await nextTick();
+
+    const btnElement = screen.getByTestId('age-increase');
+    const displayElement = screen.getByTestId('age-display');
+
+    fireEvent.click(btnElement);
+
+    await waitFor(() => {
+      expect(displayElement.textContent).toBe('age1: 99');
     });
   });
 });

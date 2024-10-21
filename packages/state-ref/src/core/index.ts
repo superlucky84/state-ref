@@ -1,5 +1,6 @@
-import { DEFAULT_OPTION } from '@/helper';
+import { DEFAULT_WATCH_OPTION, DEFAULT_CREATE_OPTION } from '@/helper';
 import { makeReference } from '@/core/ref';
+import { runner } from '@/connectors/runner';
 
 import type { Renew, StoreType, StateRefStore, StoreRenderList } from '@/types';
 
@@ -16,20 +17,42 @@ import type { Renew, StoreType, StateRefStore, StoreRenderList } from '@/types';
  *   console.log(stateRef.value));
  * });
  */
-export function createStore<V>(orignalValue: V) {
+export function createStore<V>(
+  orignalValue: V,
+  userCreateOption?: { autoSync?: boolean }
+) {
+  const { watch } = create(orignalValue, userCreateOption);
+
+  return watch;
+}
+export function createStoreManualSync<V>(orignalValue: V) {
+  return create(orignalValue, { autoSync: false });
+}
+
+function create<V>(orignalValue: V, userCreateOption?: { autoSync?: boolean }) {
   const storeRenderList: StoreRenderList<V> = new Map();
   const cacheMap = new WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>();
+  const { autoSync } = Object.assign(
+    {},
+    DEFAULT_CREATE_OPTION,
+    userCreateOption || {}
+  );
   const rootValue: StoreType<V> = { root: orignalValue };
 
-  return (
+  const watch = (
     renew: Renew<StateRefStore<V>> = () => {},
-    userOption?: { cache?: boolean }
+    userOption?: { cache?: boolean; editable?: boolean }
   ): StateRefStore<V> => {
+    const watchOption = Object.assign(
+      {},
+      DEFAULT_WATCH_OPTION,
+      userOption || { editable: autoSync }
+    );
+    const { cache, editable } = watchOption;
+
     /**
      * Caching
      */
-    const { cache } = Object.assign({}, DEFAULT_OPTION, userOption || {});
-
     if (cache && renew && cacheMap.has(renew)) {
       return cacheMap.get(renew)!;
     }
@@ -37,6 +60,21 @@ export function createStore<V>(orignalValue: V) {
     /**
      * Make the value a stateRef.
      */
-    return makeReference({ renew, rootValue, storeRenderList, cacheMap });
+    return makeReference({
+      renew,
+      rootValue,
+      storeRenderList,
+      cacheMap,
+      autoSync,
+      editable,
+    });
+  };
+
+  return {
+    watch,
+    updateRef: watch(() => {}, { editable: true }),
+    sync: () => {
+      runner(storeRenderList);
+    },
   };
 }

@@ -280,12 +280,13 @@ if (import.meta.vitest) {
 if (!import.meta.vitest) {
   const stateRef = watch(stateRef => {
     const [firstHouse] = stateRef.john.house;
-    console.log(firstHouse.value);
+    const age = stateRef.john.age.value;
+    console.log(firstHouse.value, age);
   });
   const hohnHouse = stateRef.john.house;
 
   hohnHouse[0].color.value = 'yellow';
 
   // @ts-ignore
-  window.p = hohnHouse;
+  window.p = stateRef;
 }

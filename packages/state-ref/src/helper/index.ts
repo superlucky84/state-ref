@@ -2,7 +2,8 @@ import type { PrivitiveType, Copyable } from '@/types';
 import type { Lens } from '@/lens';
 import { lens } from '@/lens';
 
-export const DEFAULT_OPTION = { cache: true };
+export const DEFAULT_WATCH_OPTION = { cache: true, editable: true };
+export const DEFAULT_CREATE_OPTION = { autoSync: true };
 
 /**
  * Create information about the proxy that can be viewed in the developer console.

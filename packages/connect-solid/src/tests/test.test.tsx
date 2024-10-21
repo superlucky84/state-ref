@@ -6,7 +6,7 @@ import {
   waitFor,
 } from '@solidjs/testing-library';
 import { createSignal, createEffect } from 'solid-js';
-import { createStore } from 'state-ref';
+import { createStore, createStoreManualSync } from 'state-ref';
 import { connectSolid } from '@/index';
 
 type Profile = { name: string; age: number };
@@ -203,6 +203,45 @@ if (import.meta.vitest) {
         expect(displayElement2.textContent).toBe('age: 15');
         expect(displayElement3.textContent).toBe('age: 15');
       });
+    });
+
+    it('It should properly update in "manualSync" mode.', () => {
+      const { watch, updateRef, sync } = createStoreManualSync<Profile>(
+        getDefaultValue()
+      );
+
+      const changeAge = (newAge: number) => {
+        updateRef.age.value = newAge;
+        sync();
+      };
+      const usePofileStore = connectSolid(watch);
+
+      function AgeWithAction() {
+        const [age] = usePofileStore(stateRef => stateRef.age);
+
+        return (
+          <div>
+            <div data-testid="age-display">age: {age()}</div>
+            <button
+              data-testid="age-increase"
+              onClick={() => {
+                changeAge(99);
+              }}
+            >
+              increase
+            </button>
+          </div>
+        );
+      }
+
+      trender(() => <AgeWithAction />);
+
+      const btnIncreaseElement = screen.getByTestId('age-increase');
+      const displayElement = screen.getByTestId('age-display');
+
+      fireEvent.click(btnIncreaseElement);
+
+      expect(displayElement.textContent).toBe('age: 99');
     });
   });
 }
