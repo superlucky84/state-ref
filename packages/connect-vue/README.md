@@ -21,7 +21,7 @@ It is also designed for easy integration with other UI libraries. We provide cod
     * [Usage with Vue](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-vue)
     * [Usage with Solid](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-solid)
     * [Usage with Lithent](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-lithent)
-    * [Supports Flux-like State Management](https://github.com/superlucky84/state-ref/tree/feat/fluxStyleExtension?tab=readme-ov-file#supports-flux-like-state-management)
+    * [Supports Flux-like State Management](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#supports-flux-like-state-management)
     * [npm](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#npm)
     * [test](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#test)
 
