@@ -48,6 +48,7 @@ import { createStore } from "state-ref";
 type Info = { age: number; house: { color: string; floor: number }[] };
 type People = { john: Info; brown: Info; sara: Info };
 
+// const watch = createStore<number>(3); // Primitive types can also be used easily."
 const watch = createStore<People>({
     john: {
         age: 20,
