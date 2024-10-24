@@ -135,6 +135,20 @@ watch((stateRef) => {
 abortController.abort(); // run abort
 ```
 
+**Primitive types** like numbers or strings can also be handled easily. Here's how:
+
+```typescript
+const watch = createStore<number>(3);
+
+watch((stateRef) => {
+    console.log(
+        "Changed Privitive Number",
+        stateRef.value
+    );
+});
+
+```
+
 ## Usage with React (Same for Preact)
 
 It can be easily integrated with other UI libraries, and below is an example using React.
