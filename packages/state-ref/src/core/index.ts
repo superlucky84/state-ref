@@ -17,11 +17,8 @@ import type { Renew, StoreType, StateRefStore, StoreRenderList } from '@/types';
  *   console.log(stateRef.value));
  * });
  */
-export function createStore<V>(
-  orignalValue: V,
-  userCreateOption?: { autoSync?: boolean }
-) {
-  const { watch } = create(orignalValue, userCreateOption);
+export function createStore<V>(orignalValue: V) {
+  const { watch } = create(orignalValue, { autoSync: true });
 
   return watch;
 }
