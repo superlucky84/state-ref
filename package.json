@@ -4,7 +4,7 @@
   "name": "state-ref-root",
   "version": "0.0.1",
   "description": "X UI Library Universal State Management Library",
-  "packageManager": "pnpm@7.6.0",
+  "packageManager": "pnpm@9.12.3",
   "scripts": {
     "watch:core": "pnpm --filter state-ref watch",
     "dev:core": "pnpm --filter state-ref dev",
@@ -53,21 +53,21 @@
   ],
   "devDependencies": {
     "@testing-library/jest-dom": "^6.5.0",
-    "@typescript-eslint/eslint-plugin": "^5.60.0",
-    "@typescript-eslint/parser": "^5.60.0",
-    "eslint": "^7.32.0",
+    "eslint": "^8.0.0",
     "eslint-config-prettier": "^8.8.0",
     "eslint-plugin-prettier": "^4.2.1",
     "happy-dom": "^9.20.3",
     "jsdom": "^22.1.0",
-    "lithent": "^1.13.1",
+    "lithent": "^1.14.0",
     "prettier": "^2.8.8",
     "terser": "^5.18.1",
-    "typescript": "^4.9.5",
+    "typescript": "^5.6.3",
     "vite": "^5.4.8",
     "vite-plugin-checker": "^0.6.1",
     "vite-plugin-dts": "^2.3.0",
-    "vitest": "^2.1.2"
+    "vitest": "^2.1.2",
+    "@typescript-eslint/eslint-plugin": "^8.12.2",
+    "@typescript-eslint/parser": "^8.12.2"
   },
   "volta": {
     "node": "20.3.0"
