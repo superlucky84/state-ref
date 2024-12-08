@@ -22,7 +22,7 @@ export type StateRefStore<S> = S extends object
 // value: { [K in keyof S]: StateRefStore<S[K]> } & { value: S };
 
 export type Watch<V> = (
-  renew: Renew<StateRefStore<V>>,
+  renew?: Renew<StateRefStore<V>>,
   userOption?: { cache?: boolean }
 ) => StateRefStore<V>;
 
