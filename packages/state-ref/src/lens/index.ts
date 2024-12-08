@@ -53,13 +53,8 @@ export class LensImpl<T, U> {
   }
 
   public set(value: U): Setter<T>;
-  public set(f: Setter<U>): Setter<T>;
-  public set(modifier: U | Setter<U>) {
-    if (typeof modifier === 'function') {
-      return (t: T) => this._set((modifier as Setter<U>)(this._get(t)))(t);
-    } else {
-      return this._set(modifier);
-    }
+  public set(modifier: U) {
+    return this._set(modifier);
   }
 }
 
