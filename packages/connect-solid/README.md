@@ -46,12 +46,14 @@ Below is a simple usage example.
 
 ```typescript
 import { createStore } from "state-ref";
+import type { StateRefStore, Watch } from "state-ref";
 
 type Info = { age: number; house: { color: string; floor: number }[] };
 type People = { john: Info; brown: Info; sara: Info };
 
 // const watch = createStore<number>(3); // Primitive types can also be used easily."
 const watch = createStore<People>({
+    // Type: Watch<People>
     john: {
         age: 20,
         house: [
@@ -65,6 +67,7 @@ const watch = createStore<People>({
 
 // Get references
 const stateRef = watch();
+// Type: StateRefStore<People>
 
 // Using value.
 console.log(stateRef.john.house[1].color.value);
