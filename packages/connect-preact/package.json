@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@stateref/connect-preact",
-  "version": "10.0.1",
+  "version": "10.0.2",
   "private": false,
   "description": "vue connector for state-ref",
   "packageManager": "pnpm@7.6.0",

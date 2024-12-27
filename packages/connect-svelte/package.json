@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@stateref/connect-svelte",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "private": false,
   "description": "svelte connector for state-ref",
   "packageManager": "pnpm@7.6.0",

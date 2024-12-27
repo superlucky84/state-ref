@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@stateref/connect-solid",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": false,
   "description": "solid connector for state-ref",
   "packageManager": "pnpm@7.6.0",
