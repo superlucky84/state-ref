@@ -1,61 +1,54 @@
 /**
- * This code are sourced from the lens.ts project.
- * lens.ts: https://github.com/hatashiro/lens.ts
- * Licensed under the MIT License.
- *
- * Copyright (c) Hyunje Jun
- */
-/**
  * The stateRef relies on data immutability to determine changes.
  * The lens pattern is used as a core part of the stateRef because,
  * it makes it easy to locate and safely change data.
  */
-export type Lens<T, U> = LensImpl<T, U> & LensProxy<T, U>;
-export type LensProxy<T, U> = { readonly [K in keyof U]: Lens<T, U[K]> };
-export type Getter<T, V> = (target: T) => V;
-export type Setter<T> = (target: T) => T;
+export type Lens<T> = {
+  sceneList: { prop: string | number | symbol }[]; // 경로를 추적
+  chain<K extends keyof T>(prop: K): Lens<T>; // 경로를 추가
+  get(targetObject: T): T; // 값을 추출
+  set(value: T): (targetObject: T) => T; // 값을 설정 (copy-on-write)
+};
 
-export class LensImpl<T, U> {
-  constructor(
-    private _get: Getter<T, U>,
-    private _set: (value: U) => Setter<T>
-  ) {}
+export function lens<T extends object>(
+  defaultList: { prop: string | number | symbol }[] = []
+) {
+  const sceneList: { prop: string | number | symbol }[] = defaultList;
 
-  public k<K extends keyof U>(key: K): Lens<T, U[K]> {
-    return this.compose(
-      lens(
-        t => t[key],
-        v => t => {
-          const copied = copy(t);
-          copied[key] = v;
-          return copied;
-        }
-      )
-    );
-  }
+  const result = {
+    sceneList,
+    chain(prop: string | number | symbol) {
+      const newLens = lens<T>([...sceneList]);
+      newLens.sceneList.push({ prop });
+      return newLens;
+    },
+    get(targetObject: T) {
+      return sceneList.reduce((currentObject: any, aItem) => {
+        return currentObject[aItem.prop];
+      }, targetObject);
+    },
+    set(value: any) {
+      return (targetObject: T) => {
+        const copiedObject = copy(targetObject); // 원본 객체 복사
 
-  public compose<V>(other: Lens<U, V>): Lens<T, V> {
-    return lens(
-      t => other._get(this._get(t)),
-      v => t => this._set(other._set(v)(this._get(t)))(t)
-    );
-  }
+        return sceneList.reduce((currentObject: any, aItem, index) => {
+          const prop = aItem.prop;
 
-  public get(): Getter<T, U>;
-  public get<V>(f: Getter<U, V>): Getter<T, V>;
-  public get() {
-    if (arguments.length) {
-      const f = arguments[0];
-      return (t: T) => f(this._get(t));
-    } else {
-      return this._get;
-    }
-  }
+          if (index === sceneList.length - 1) {
+            currentObject[prop] = value;
+            return copiedObject;
+          } else {
+            const next = currentObject[prop];
+            currentObject[prop] = copy(next);
 
-  public set(value: U): Setter<T>;
-  public set(modifier: U) {
-    return this._set(modifier);
-  }
+            return currentObject[prop];
+          }
+        }, copiedObject as T); // 초기값을 `T`로 설정하여 타입을 맞춤
+      };
+    },
+  };
+
+  return result;
 }
 
 function copy<T>(x: T): T {
@@ -68,32 +61,5 @@ function copy<T>(x: T): T {
     }, {});
   } else {
     return x;
-  }
-}
-
-function proxify<T, U>(impl: LensImpl<T, U>): Lens<T, U> {
-  return new Proxy(impl, {
-    get(target, prop) {
-      if (typeof (target as any)[prop] !== 'undefined') {
-        return (target as any)[prop];
-      }
-      return target.k(prop as any);
-    },
-  }) as any;
-}
-
-export function lens<T>(): Lens<T, T>;
-export function lens<T, U>(
-  _get: Getter<T, U>,
-  _set: (value: U) => Setter<T>
-): Lens<T, U>;
-export function lens() {
-  if (arguments.length) {
-    return proxify(new LensImpl(arguments[0], arguments[1]));
-  } else {
-    return lens(
-      t => t,
-      v => _ => v
-    );
   }
 }
