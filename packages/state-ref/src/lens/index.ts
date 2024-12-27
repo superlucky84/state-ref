@@ -1,99 +1,52 @@
 /**
- * This code are sourced from the lens.ts project.
- * lens.ts: https://github.com/hatashiro/lens.ts
- * Licensed under the MIT License.
- *
- * Copyright (c) Hyunje Jun
- */
-/**
  * The stateRef relies on data immutability to determine changes.
  * The lens pattern is used as a core part of the stateRef because,
- * it makes it easy to locate and safely change data.
- */
-export type Lens<T, U> = LensImpl<T, U> & LensProxy<T, U>;
-export type LensProxy<T, U> = { readonly [K in keyof U]: Lens<T, U[K]> };
-export type Getter<T, V> = (target: T) => V;
-export type Setter<T> = (target: T) => T;
-
-export class LensImpl<T, U> {
-  constructor(
-    private _get: Getter<T, U>,
-    private _set: (value: U) => Setter<T>
-  ) {}
-
-  public k<K extends keyof U>(key: K): Lens<T, U[K]> {
-    return this.compose(
-      lens(
-        t => t[key],
-        v => t => {
-          const copied = copy(t);
-          copied[key] = v;
-          return copied;
-        }
-      )
-    );
-  }
-
-  public compose<V>(other: Lens<U, V>): Lens<T, V> {
-    return lens(
-      t => other._get(this._get(t)),
-      v => t => this._set(other._set(v)(this._get(t)))(t)
-    );
-  }
-
-  public get(): Getter<T, U>;
-  public get<V>(f: Getter<U, V>): Getter<T, V>;
-  public get() {
-    if (arguments.length) {
-      const f = arguments[0];
-      return (t: T) => f(this._get(t));
-    } else {
-      return this._get;
-    }
-  }
-
-  public set(value: U): Setter<T>;
-  public set(modifier: U) {
-    return this._set(modifier);
-  }
-}
-
-function copy<T>(x: T): T {
-  if (Array.isArray(x)) {
-    return x.slice() as any;
-  } else if (x && typeof x === 'object') {
-    return Object.keys(x).reduce<any>((res, k) => {
-      res[k] = (x as any)[k];
-      return res;
-    }, {});
-  } else {
-    return x;
-  }
-}
-
-function proxify<T, U>(impl: LensImpl<T, U>): Lens<T, U> {
-  return new Proxy(impl, {
-    get(target, prop) {
-      if (typeof (target as any)[prop] !== 'undefined') {
-        return (target as any)[prop];
-      }
-      return target.k(prop as any);
+ * it makes it easy to locate and safely change data. */
+export type Lens<T> = {
+  sceneList: (string | number | symbol)[];
+  chain<K extends keyof T>(prop: K): Lens<T>;
+  get(targetObject: T): T;
+  set(value: T): (targetObject: T) => T;
+};
+export function lens<T extends object>(
+  sceneList: (string | number | symbol)[] = []
+) {
+  return {
+    sceneList,
+    chain(prop: string | number | symbol) {
+      const newLens = lens<T>([...this.sceneList]);
+      newLens.sceneList.push(prop);
+      return newLens;
     },
-  }) as any;
-}
+    get(targetObject: T) {
+      return this.sceneList.reduce(
+        (currentObject: any, prop) => currentObject[prop],
+        targetObject
+      );
+    },
+    set(value: any) {
+      return (targetObject: T) => {
+        const copiedObject = shallowCopy(targetObject);
 
-export function lens<T>(): Lens<T, T>;
-export function lens<T, U>(
-  _get: Getter<T, U>,
-  _set: (value: U) => Setter<T>
-): Lens<T, U>;
-export function lens() {
-  if (arguments.length) {
-    return proxify(new LensImpl(arguments[0], arguments[1]));
-  } else {
-    return lens(
-      t => t,
-      v => _ => v
-    );
+        this.sceneList.reduce(
+          (currentObject: any, prop, index) =>
+            (currentObject[prop] =
+              index === this.sceneList.length - 1
+                ? value
+                : shallowCopy(currentObject[prop])),
+          copiedObject
+        );
+
+        return copiedObject;
+      };
+    },
+  };
+}
+function shallowCopy<T>(x: T): T {
+  if (Array.isArray(x)) {
+    return [...x] as T;
+  } else if (x && typeof x === 'object') {
+    return { ...x } as T;
   }
+  return x;
 }

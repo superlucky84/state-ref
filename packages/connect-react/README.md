@@ -32,10 +32,6 @@ It is also designed for easy integration with other UI libraries. We provide cod
 I would like to extend my gratitude to the following people and projects:
 
 - **[Juho Vepsäläinen](https://survivejs.com)**: Thank you for the [insightful interview](https://survivejs.com/blog/state-ref-interview/) and featuring me on your blog. Your work and contributions to the JavaScript community have been a great source of inspiration.
-- **[lens.ts](https://github.com/hatashiro/lens.ts)**: This project includes portions of code from the `lens.ts` project, which is licensed under the MIT License.
-  - lens.ts: A TypeScript utility for working with immutable data structures.
-  - Licensed under the [MIT License](https://github.com/hatashiro/lens.ts/blob/master/LICENSE).
-  
 
 
 ## Basic Usage

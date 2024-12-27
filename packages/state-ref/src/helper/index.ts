@@ -45,7 +45,7 @@ export function isPrimitiveType(
  */
 export function copyable<T extends { [key: string | symbol]: unknown }>(
   origObj: T,
-  lensInit?: Lens<T, T>
+  lensInit?: Lens<T>
 ): Copyable<T> {
   let lensIns = lensInit || lens();
 
@@ -57,7 +57,7 @@ export function copyable<T extends { [key: string | symbol]: unknown }>(
         };
       }
 
-      return copyable(origObj, lensIns.k(prop) as any);
+      return copyable(origObj, lensIns.chain(prop) as any);
     },
     set() {
       throw new Error(

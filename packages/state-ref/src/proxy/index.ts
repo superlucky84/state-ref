@@ -15,7 +15,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
   autoSync: boolean,
   editable: boolean,
   rootValue: S = value,
-  lensValue: Lens<S, S> = lens<S>(),
+  lensValue: Lens<S> = lens<S>(),
   depth: number = 0,
   depthList: string[] = []
 ): T {
@@ -36,10 +36,10 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
          * When accessing ".value" from a proxy
          */
         if (prop === 'value') {
-          const value: any = lensValue.get()(rootValue);
+          const value: any = lensValue.get(rootValue);
           collector(
             value,
-            () => lensValue.get()(rootValue),
+            () => lensValue.get(rootValue),
             [...depthList],
             run,
             storeRenderList
@@ -54,7 +54,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
         if (prop === Symbol.iterator) {
           return function* () {
             for (const [index, value] of (
-              lensValue.get()(rootValue) as any
+              lensValue.get(rootValue) as any
             ).entries()) {
               yield makeProxy(
                 value,
@@ -63,7 +63,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
                 autoSync,
                 editable,
                 rootValue,
-                lensValue.k(index),
+                lensValue.chain(index),
                 depth + 1,
                 [...depthList, String(index)]
               );
@@ -74,8 +74,8 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
         /**
          * When accessing child object types from a proxy
          */
-        const lens = lensValue.k(prop);
-        const propertyValue: any = lens.get()(rootValue);
+        const lens = lensValue.chain(prop);
+        const propertyValue: any = lens.get(rootValue);
 
         return makeProxy(
           propertyValue,
@@ -103,7 +103,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
           throw new Error(
             'With the current settings, direct modification is not allowed.'
           );
-        } else if (prop === 'value' && value !== lensValue.get()(rootValue)) {
+        } else if (prop === 'value' && value !== lensValue.get(rootValue)) {
           const newTree = lensValue.set(value)(rootValue);
           rootValue.root = newTree.root;
 
