@@ -29,9 +29,6 @@
 다음 사람들과 프로젝트에 감사의 말씀을 전하고 싶습니다:
 
 - **[Juho Vepsäläinen](https://survivejs.com)**: [통찰력 있는 인터뷰](https://survivejs.com/blog/state-ref-interview/)에 감사드리며, 블로그에 저를 소개해 주셔서 감사합니다. 당신의 작업과 자바스크립트 커뮤니티에 대한 기여는 큰 영감을 주었습니다.
-- **[lens.ts](https://github.com/hatashiro/lens.ts)**: 이 프로젝트는 MIT 라이센스 하에 라이센스된 `lens.ts` 프로젝트에서 일부 코드를 포함하고 있습니다.
-  - lens.ts: 불변 데이터 구조를 다루기 위한 TypeScript 유틸리티입니다.
-  - [MIT 라이센스](https://github.com/hatashiro/lens.ts/blob/master/LICENSE).
 
 ## 기본 사용법
 
