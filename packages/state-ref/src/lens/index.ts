@@ -1,52 +1,49 @@
 /**
  * The stateRef relies on data immutability to determine changes.
  * The lens pattern is used as a core part of the stateRef because,
- * it makes it easy to locate and safely change data. */
-export type Lens<T> = {
-  sceneList: (string | number | symbol)[];
-  chain<K extends keyof T>(prop: K): Lens<T>;
-  get(targetObject: T): T;
-  set(value: T): (targetObject: T) => T;
-};
+ * it makes it easy to locate and safely change data.
+ */
 export function lens<T extends object>(
   sceneList: (string | number | symbol)[] = []
 ) {
-  return {
-    sceneList,
-    chain(prop: string | number | symbol) {
-      const newLens = lens<T>([...this.sceneList]);
-      newLens.sceneList.push(prop);
-      return newLens;
-    },
-    get(targetObject: T) {
-      return this.sceneList.reduce(
-        (currentObject: any, prop) => currentObject[prop],
-        targetObject
-      );
-    },
-    set(value: any) {
-      return (targetObject: T) => {
-        const copiedObject = shallowCopy(targetObject);
-
-        this.sceneList.reduce(
-          (currentObject: any, prop, index) =>
-            (currentObject[prop] =
-              index === this.sceneList.length - 1
-                ? value
-                : shallowCopy(currentObject[prop])),
-          copiedObject
-        );
-
-        return copiedObject;
-      };
-    },
-  };
+  return new Lens<T>(sceneList);
 }
-function shallowCopy<T>(x: T): T {
-  if (Array.isArray(x)) {
-    return [...x] as T;
-  } else if (x && typeof x === 'object') {
-    return { ...x } as T;
+
+export class Lens<T extends object> {
+  private sceneList: (string | number | symbol)[];
+  constructor(sceneList: (string | number | symbol)[]) {
+    this.sceneList = sceneList;
   }
-  return x;
+  chain(prop: string | number | symbol) {
+    return lens<T>([...this.sceneList, prop]);
+  }
+  get(targetObject: T) {
+    return this.sceneList.reduce(
+      (currentObject: any, prop) => currentObject[prop],
+      targetObject
+    );
+  }
+  set(value: any) {
+    return (targetObject: T) => this.copyOnWrite(targetObject, value);
+  }
+  private copyOnWrite(targetObject: T, value: any) {
+    const copiedObject = this.shallowCopy(targetObject);
+
+    this.sceneList.reduce((currentObject: any, prop, index) => {
+      return (currentObject[prop] =
+        index === this.sceneList.length - 1
+          ? value
+          : this.shallowCopy(currentObject[prop]));
+    }, copiedObject);
+
+    return copiedObject;
+  }
+  private shallowCopy<T>(x: T): T {
+    if (Array.isArray(x)) {
+      return [...x] as T;
+    } else if (x && typeof x === 'object') {
+      return { ...x } as T;
+    }
+    return x;
+  }
 }
