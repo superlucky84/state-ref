@@ -34,7 +34,7 @@ export default defineConfig({
       },
     },
     rollupOptions: {
-      external: ['state-ref', 'preact'],
+      external: ['state-ref', 'preact', 'preact/hooks'],
       output: {
         globals: {
           'state-ref': 'stateRef',

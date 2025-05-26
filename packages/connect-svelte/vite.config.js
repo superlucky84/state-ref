@@ -38,7 +38,7 @@ export default defineConfig({
       },
     },
     rollupOptions: {
-      external: ['state-ref', 'svelte'],
+      external: ['state-ref', 'svelte', 'svelte/store'],
       output: {
         globals: {
           'state-ref': 'stateRef',
