@@ -110,14 +110,14 @@ export function createComputed<V>(
     },
   };
 
-  return (computedCallback: (proxy: { value: V }) => void) => {
+  return (computedCallback?: (proxy: { value: V }) => void) => {
     const refs = watches.map(watch => watch(() => false));
 
     watches.forEach((watch, index) => {
       watch((ref, init) => {
         refs[index] = ref;
         result = callback(refs);
-        if (!init) {
+        if (!init && computedCallback) {
           computedCallback(proxy);
         }
       });
