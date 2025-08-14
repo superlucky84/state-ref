@@ -1,4 +1,4 @@
-import type { PrivitiveType, Copyable } from '@/types';
+import type { PrivitiveType, Copyable, Watch, StateRefStore } from '@/types';
 import type { Lens } from '@/lens';
 import { lens } from '@/lens';
 
@@ -91,4 +91,38 @@ export function cloneDeep<T>(value: T): T {
   }
 
   return result;
+}
+/**
+ * Combines multiple state watchers to produce a derived (computed) value,
+ * and invokes the provided callback whenever the computed value changes.
+ */
+export function createComputed<V>(
+  watches: Watch<V>[],
+  callback: (a: StateRefStore<V>[]) => V
+) {
+  let result: V;
+  const proxy: { value: V } = {
+    get value(): V {
+      return result;
+    },
+    set value(_setter) {
+      console.warn('Can not setting');
+    },
+  };
+
+  return (computedCallback: (proxy: { value: V }) => void) => {
+    const refs = watches.map(watch => watch(() => false));
+
+    watches.forEach((watch, index) => {
+      watch((ref, init) => {
+        refs[index] = ref;
+        result = callback(refs);
+        if (!init) {
+          computedCallback(proxy);
+        }
+      });
+    });
+
+    return proxy;
+  };
 }
