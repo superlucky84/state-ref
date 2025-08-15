@@ -1,14 +1,9 @@
 import { createStore } from '@/index';
-import { createComputed } from '@/helper';
 
 const watch = createStore<number>(3);
 
 watch(store => {
   console.log('numberChange', store.value);
-});
-
-createComputed([watch], ([a]) => {
-  return a.value;
 });
 
 /**
