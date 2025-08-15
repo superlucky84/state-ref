@@ -460,6 +460,45 @@ function UserComponent() {
 }
 ```
 
+## createComputed 
+
+`createComputed` is a helper function that combines multiple watches to produce a new computed (derived) value, and executes a specified callback function whenever that computed value changes.
+
+A Watch created with `createComputed` can be used just like any other watch, including in integrations such as `connectReact` or `connectPreact`.
+
+Below is a simple usage example.
+
+```typescript
+import { createStore, createComputed } from "state-ref";
+import type { StateRefStore, Watch } from "state-ref";
+
+type Info = { age: number; house: { color: string; floor: number }[] };
+
+const watch1 = createStore<Info>(
+    { age: 10, house: [{ color: "blue", floor: 7 }] },
+);
+const watch2 = createStore<number>(20);
+
+const computedWatch = creatComputed<[Watch<Info>, Watch<number>]>([watch1, watch2], ([ref1, ref2]) => {
+    return ref1.age.value + ref2.value;
+});
+
+const ref2 = watch2();
+
+ref2.value = 30;
+
+// To subscribe
+computedWatch((stateRef) => {
+    console.log(
+        "Changed Computed Value",
+        stateRef.value
+    );
+});
+
+// connect another ui library
+const useComputedValue = connectReact(computedWatch);
+```
+
 ## npm
 * [state-ref](https://www.npmjs.com/package/state-ref)
 * [connect-react](https://www.npmjs.com/package/@stateref/connect-react)

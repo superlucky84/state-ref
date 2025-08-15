@@ -38,6 +38,17 @@ describe('Connect Vue', () => {
     });
   });
 
+  it('The computed property should be reflected correctly.', () => {
+    render(Age);
+    const btnElement = screen.getByTestId('age-increase');
+    const displayElement = screen.getByTestId('computed-display');
+
+    fireEvent.click(btnElement);
+    waitFor(() => {
+      expect(displayElement.textContent).toBe('age: 21');
+    });
+  });
+
   it('Components should only react and act on the values they are subscribed to.', async () => {
     const mockFn = vi.fn();
     render(Root1, { props: { mockFn } });
