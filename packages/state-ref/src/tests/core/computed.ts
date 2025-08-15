@@ -28,6 +28,26 @@ if (import.meta.vitest) {
       expect(computedRef.value).toBe(1111);
     });
 
+    it('When setting, the callback is executed once initially with isFirst included..', () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      const watch1 = createStore<number>(defaultValue1);
+      const watch2 = createStore<number>(defaultValue2);
+      // const watch2Ref = watch2();
+
+      const computedWatch = createComputed([watch1, watch2], ([ref1, ref2]) => {
+        return ref1.value + ref2.value;
+      });
+
+      computedWatch((computedRef, isFirst) => {
+        console.log('value', computedRef.value, isFirst);
+      });
+
+      expect(logSpy).toHaveBeenCalledWith('value', 1111, true);
+
+      logSpy.mockRestore();
+    });
+
     it('When the value changes, the change should be detected and the callback function should be executed.', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
@@ -39,20 +59,15 @@ if (import.meta.vitest) {
         return ref1.value + ref2.value;
       });
 
-      const computedRef = computedWatch(computedRef => {
-        console.log('value', computedRef.value);
+      const computedRef = computedWatch((computedRef, isFirst) => {
+        console.log('value', computedRef.value, isFirst);
       });
       watch2Ref.value += 111;
 
-      expect(logSpy).toHaveBeenCalledWith('value', 1222);
+      expect(logSpy).toHaveBeenCalledWith('value', 1222, false);
+      expect(computedRef.value).toBe(1222);
 
       logSpy.mockRestore();
     });
   });
-}
-
-/**
- * Manual testing with a browser (pnpm dev:core)
- */
-if (!import.meta.vitest) {
 }

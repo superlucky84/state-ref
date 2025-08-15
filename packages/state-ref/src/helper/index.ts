@@ -96,13 +96,15 @@ export function cloneDeep<T>(value: T): T {
  * Combines multiple state watchers to produce a derived (computed) value,
  * and invokes the provided callback whenever the computed value changes.
  */
-export function createComputed<V>(
-  watches: Watch<V>[],
-  callback: (a: StateRefStore<V>[]) => V
+export function createComputed<W extends readonly Watch<any>[], R>(
+  watches: W,
+  callback: (a: {
+    [K in keyof W]: W[K] extends Watch<infer T> ? StateRefStore<T> : never;
+  }) => R
 ) {
-  let result: V;
-  const proxy: { value: V } = {
-    get value(): V {
+  let result: R;
+  const proxy: { value: R } = {
+    get value(): R {
       return result;
     },
     set value(_setter) {
@@ -110,18 +112,26 @@ export function createComputed<V>(
     },
   };
 
-  return (computedCallback?: (proxy: { value: V }) => void) => {
-    const refs = watches.map(watch => watch(() => false));
+  return (
+    computedCallback?: (proxy: { value: R }, isFirst: boolean) => void
+  ) => {
+    const refs = watches.map(watch => watch(() => false)) as unknown as {
+      [K in keyof W]: W[K] extends Watch<infer T> ? StateRefStore<T> : never;
+    }[];
 
     watches.forEach((watch, index) => {
       watch((ref, init) => {
-        refs[index] = ref;
-        result = callback(refs);
+        refs[index] = ref as any;
+        result = callback(refs as any);
         if (!init && computedCallback) {
-          computedCallback(proxy);
+          computedCallback(proxy, false);
         }
       });
     });
+
+    if (computedCallback) {
+      computedCallback(proxy, true);
+    }
 
     return proxy;
   };

@@ -8,7 +8,8 @@ import {
 } from '@testing-library/react';
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { createStore, createStoreManualSync } from 'state-ref';
+import { createStore, createStoreManualSync, createComputed } from 'state-ref';
+import type { Watch } from 'state-ref';
 import { connectReact } from '@/index';
 
 type Profile = { name: string; age: number };
@@ -19,8 +20,17 @@ const getDefaultValue = () => ({
 });
 
 const watch = createStore<Profile>(getDefaultValue());
+const watch2 = createStore<number>(7);
 const handleRef = watch();
 const usePofileStore = connectReact(watch);
+
+const computedWatch = createComputed<[Watch<Profile>, Watch<number>], number>(
+  [watch, watch2],
+  ([ref, ref2]) => {
+    return ref.age.value + ref2.value;
+  }
+);
+const useComputedStore = connectReact(computedWatch);
 
 const resetStore = () => {
   handleRef.value = getDefaultValue();
@@ -45,10 +55,12 @@ function Name() {
 
 function Age() {
   const { age } = usePofileStore();
+  const computedRef = useComputedStore();
 
   return (
     <div>
       <div data-testid="age-display">age: {age.value}</div>
+      <div data-testid="computed-display">age: {computedRef.value}</div>
       <button data-testid="age-increase" onClick={() => (age.value += 1)}>
         increase
       </button>
@@ -74,6 +86,15 @@ if (import.meta.vitest) {
         fireEvent.click(btnElement);
       });
       expect(displayElement.textContent).toBe('age: 14');
+    });
+
+    it('The computed property should be reflected correctly.', () => {
+      trender(<Age />);
+      const btnElement = screen.getByTestId('age-increase');
+      const displayElement = screen.getByTestId('computed-display');
+
+      fireEvent.click(btnElement);
+      expect(displayElement.textContent).toBe('age: 21');
     });
 
     it('Components should only react and act on the values they are subscribed to.', () => {
