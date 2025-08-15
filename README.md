@@ -479,7 +479,7 @@ const watch1 = createStore<Info>(
 );
 const watch2 = createStore<number>(20);
 
-const computedWatch = creatComputed<[Watch<Info>, Watch<number>]>([watch1, watch2], ([ref1, ref2]) => {
+const computedWatch = creatComputed<[Watch<Info>, Watch<number>], number>([watch1, watch2], ([ref1, ref2]) => {
     return ref1.age.value + ref2.value;
 });
 
