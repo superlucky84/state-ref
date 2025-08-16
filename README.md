@@ -483,9 +483,6 @@ const computedWatch = creatComputed<[Watch<Info>, Watch<number>], number>([watch
     return ref1.age.value + ref2.value;
 });
 
-const ref2 = watch2();
-
-ref2.value = 30;
 
 // To subscribe
 computedWatch((stateRef) => {
@@ -495,7 +492,11 @@ computedWatch((stateRef) => {
     );
 });
 
-// connect another ui library
+// Change value
+const computedRef = watch2();
+computedRef.value = 30;
+
+// Connect another ui library
 const useComputedValue = connectReact(computedWatch);
 ```
 
