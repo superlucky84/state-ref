@@ -75,7 +75,7 @@ if (import.meta.vitest) {
       type TestData = {
         group: {
           [key: symbol]: {
-            [key: symbol]: string
+            [key: symbol]: string;
           };
         };
       };
