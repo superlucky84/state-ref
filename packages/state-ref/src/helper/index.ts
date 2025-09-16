@@ -8,7 +8,10 @@ export const DEFAULT_CREATE_OPTION = { autoSync: true };
 /**
  * Create information about the proxy that can be viewed in the developer console.
  */
-export function makeDisplayProxyValue(depthList: string[], value: unknown) {
+export function makeDisplayProxyValue(
+  depthList: (string | number | symbol)[],
+  value: unknown
+) {
   return {
     _navi: depthList.join('.'),
     _type: getType(value),

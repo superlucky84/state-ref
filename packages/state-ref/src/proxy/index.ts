@@ -17,7 +17,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
   rootValue: S = value,
   lensValue: Lens<S> = lens<S>(),
   depth: number = 0,
-  depthList: string[] = []
+  depthList: (string | number | symbol)[] = []
 ): T {
   const result = new Proxy(
     makeDisplayProxyValue(depthList, value) as unknown as T,
@@ -30,7 +30,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
        * 3. When accessing child object types from a proxy
        */
       get(_: T, prop: keyof T) {
-        const newDepthList = [...depthList, prop.toString()];
+        const newDepthList = [...depthList, prop];
 
         /**
          * When accessing ".value" from a proxy
