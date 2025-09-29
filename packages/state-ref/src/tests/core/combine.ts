@@ -23,7 +23,6 @@ if (import.meta.vitest) {
         callback(ref1.value + ref2.value.jj, isFirst);
       });
 
-      // 초기 호출 확인
       expect(callback).toHaveBeenCalledTimes(1);
       expect(callback).toHaveBeenCalledWith(3000, true); // 1000 + 2000
 
@@ -31,7 +30,7 @@ if (import.meta.vitest) {
       expect(callback).toHaveBeenCalledTimes(2);
       expect(callback).toHaveBeenLastCalledWith(3500, false); // 1500 + 2000
 
-      watch2().value.jj = 2500;
+      watch2().jj.value = 2500;
       expect(callback).toHaveBeenCalledTimes(3);
       expect(callback).toHaveBeenLastCalledWith(4000, false); // 1500 + 2500
     });
