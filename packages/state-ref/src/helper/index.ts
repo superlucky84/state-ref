@@ -182,3 +182,39 @@ export function createComputed<W extends readonly Watch<any>[], R>(
     return proxy;
   };
 }
+
+/**
+ * Observes multiple Watch instances together and triggers a callback
+ * whenever any of them changes. The callback receives the current
+ * StateRefStore values of all watches and a boolean indicating
+ * whether this is the first invocation.
+ */
+export function combineWatch<W extends readonly Watch<any>[]>(watches: W) {
+  return (
+    callback: (
+      refs: {
+        [K in keyof W]: W[K] extends Watch<infer T> ? StateRefStore<T> : never;
+      },
+      isFirst: boolean
+    ) => void
+  ) => {
+    const refs = watches.map(watch => watch(() => false)) as {
+      [K in keyof W]: W[K] extends Watch<infer T> ? StateRefStore<T> : never;
+    }[];
+
+    watches.forEach((watch, index) => {
+      watch((ref, init) => {
+        refs[index] = ref as any;
+        if (!init && callback) {
+          callback(refs as any, false);
+        }
+      });
+    });
+
+    if (callback) {
+      callback(refs as any, true);
+    }
+
+    return refs;
+  };
+}
