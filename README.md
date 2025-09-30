@@ -505,53 +505,57 @@ const useComputedValue = connectReact(computedWatch);
 
 ## combineWatch
 
-`combineWatch` is a helper function that observes multiple `Watch` instances together and produces a new `Watch` that delivers their combined values as a tuple-like structure.
+`combineWatch` is a helper function that **observes multiple `Watch` instances together** and produces a new `Watch` that delivers their **combined values as a tuple-like structure**.
 
-Unlike `createComputed`, which produces a **derived value**, `combineWatch` focuses on **grouping multiple stores** so you can react to changes from any of them in a single subscription.
-When combined multiple times, the structure naturally nests, so you can build hierarchical watch compositions.
+Unlike `createComputed`, which produces a **single derived value**, `combineWatch` focuses on **grouping multiple watches** so you can react to changes from any of them in a **single subscription**.
+When combined multiple times, the structure naturally **nests**, allowing you to build **hierarchical watch compositions**.
 
 ### Basic Usage
 
 ```typescript
 import { createStore, combineWatch } from "state-ref";
 
-const storeA = createStore<number>(100);
-const storeB = createStore<string>("hello");
+const countWatch = createStore<number>(100);
+const textWatch = createStore<string>("hello");
 
-const combinedAB = combineWatch([storeA, storeB] as const);
+// Combine multiple watches into one
+const combinedCountTextWatch = combineWatch([countWatch, textWatch] as const);
 
-combinedAB(([aRef, bRef], isFirst) => {
-  console.log("Combined:", aRef.value, bRef.value, isFirst);
+combinedCountTextWatch(([countRef, textRef], isFirst) => {
+  console.log("Combined Watches:", countRef.value, textRef.value, isFirst);
 });
 
-// Change storeA
-storeA().value = 200; 
+// Update a watch
+const countRef = countWatch();
+countRef.value = 200; 
 // → triggers callback with [200, "hello"]
 ```
 
 ### Nested Combination
 
-You can also nest `combineWatch` to build deeper structures:
+You can **nest `combineWatch`** to observe more complex structures:
 
 ```typescript
-const storeA = createStore<number>(100);
-const storeB = createStore<string>("hello");
-const storeC = createStore<boolean>(false);
+const countWatch = createStore<number>(100);
+const textWatch = createStore<string>("hello");
+const toggleWatch = createStore<boolean>(false);
 
-const combinedAB = combineWatch([storeA, storeB] as const);
-const combinedABC = combineWatch([combinedAB, storeC] as const);
+// Combine countWatch and textWatch
+const combinedCountTextWatch = combineWatch([countWatch, textWatch] as const);
 
-combinedABC(([abRef, cRef], isFirst) => {
-  const [aRef, bRef] = abRef;
-  console.log("Nested:", aRef.value, bRef.value, cRef.value, isFirst);
+// Nest the combined watch with toggleWatch
+const combinedAllWatch = combineWatch([combinedCountTextWatch, toggleWatch] as const);
+
+combinedAllWatch(([countTextRef, toggleRef], isFirst) => {
+  const [countRef, textRef] = countTextRef;
+  console.log("Nested Watches:", countRef.value, textRef.value, toggleRef.value, isFirst);
 });
 ```
 
 ### When to Use
 
 * Use **`createComputed`** when you need a **single derived value** (e.g., number, string, object).
-* Use **`combineWatch`** when you need to **observe multiple stores together** and handle their values as a structured group.
-
+* Use **`combineWatch`** when you need to **observe multiple watches together** and handle their values as a **structured group**.
 
 ## npm
 * [state-ref](https://www.npmjs.com/package/state-ref)
