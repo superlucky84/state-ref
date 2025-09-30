@@ -1,4 +1,10 @@
-import type { PrivitiveType, Copyable, Watch, StateRefStore } from '@/types';
+import type {
+  PrivitiveType,
+  Copyable,
+  Watch,
+  StateRefStore,
+  Renew,
+} from '@/types';
 import type { Lens } from '@/lens';
 import { lens } from '@/lens';
 
@@ -189,87 +195,42 @@ export function createComputed<W extends readonly Watch<any>[], R>(
  * StateRefStore values of all watches and a boolean indicating
  * whether this is the first invocation.
  */
-// Helper type: 입력된 Watch 배열의 T 타입을 추출하여 StateRefStore<T>의 튜플로 변환
-type RefsTuple<W extends readonly Watch<any>[]> = {
+type CombinedValue<W extends readonly Watch<any>[]> = {
   [K in keyof W]: W[K] extends Watch<infer T> ? StateRefStore<T> : never;
 };
 
-/**
- * 여러 개의 watch 함수를 하나로 결합하여, 모든 watch의 상태 배열을 값으로 가지는
- * 새로운 watch 함수를 반환합니다. 이 함수는 재귀적으로 사용 가능합니다.
- *
- * @param watches 결합할 watch 함수들의 배열
- * @returns 모든 watch의 최신 상태(ref) 배열을 값으로 가지는 새로운 Watch 함수
- */
-  /*
 export function combineWatch<W extends readonly Watch<any>[]>(
-  watches: [...W] // Variadic tuple types for better type inference
-): Watch<RefsTuple<W>> {
-  // 여러 watch를 구독하고, 그 결과(상태 배열)를 전달하는 새로운 Watch 함수를 반환
+  watches: W
+): Watch<CombinedValue<W>> {
+  type R = CombinedValue<W>;
+  let combinedRef: StateRefStore<R>;
+
   return (
-    masterCallback: (combinedRefs: RefsTuple<W>, isFirst: boolean) => void
-  ): StateRefStore<RefsTuple<W>> => {
-    // 1. 각 watch의 초기 상태(ref)를 가져와 배열로 만든다.
-    //    이 배열이 이 combined watch의 현재 상태가 된다.
-    const currentRefs = watches.map(watch =>
-      // 콜백으로 빈 함수를 넘겨주어 초기 ref만 얻어온다.
-      watch(() => {})
-    ) as RefsTuple<W>;
+    callback?: Renew<StateRefStore<R>>,
+    userOption?: { cache?: boolean }
+  ): StateRefStore<R> => {
+    const refs = watches.map(watch => watch(() => false)) as any[] as R;
 
-    // 2. 입력된 모든 watch에 대해 구독을 설정한다.
-    watches.forEach((watch, index) => {
-      watch((updatedRef, isFirst) => {
-        // isFirst=true인 초기 호출은 무시한다. (이미 아래 masterCallback에서 처리)
-        // 오직 "업데이트" 시에만 masterCallback을 호출한다.
-        if (!isFirst) {
-          // 해당 index의 ref를 최신 값으로 업데이트
-          currentRefs[index] = updatedRef;
-
-          // masterCallback에게 최신 상태 배열의 복사본을 전달한다.
-          // (불변성을 위해 복사본을 전달하는 것이 좋음)
-          masterCallback([...currentRefs] as RefsTuple<W>, false);
-        }
-      });
-    });
-
-    // 3. 이 새로운 watch가 처음 구독될 때, masterCallback을 동기적으로 한 번 호출해준다.
-    if (masterCallback) {
-      masterCallback(currentRefs, true);
-    }
-
-    // 4. Watch<T>의 정의에 따라 초기 상태(StateRefStore<T>)를 반환해야 한다.
-    //    이 경우 T는 상태 배열이므로, 그 배열을 value로 가지는 StateRefStore를 반환.
-    return { value: currentRefs };
-  };
-}
-*/
-
-export function combineWatch<W extends readonly Watch<any>[]>(watches: W) {
-  return (
-    callback: (
-      refs: {
-        [K in keyof W]: W[K] extends Watch<infer T> ? StateRefStore<T> : never;
-      },
-      isFirst: boolean
-    ) => void
-  ) => {
-    const refs = watches.map(watch => watch(() => false)) as {
-      [K in keyof W]: W[K] extends Watch<infer T> ? StateRefStore<T> : never;
-    }[];
-
-    watches.forEach((watch, index) => {
-      watch((ref, init) => {
-        refs[index] = ref as any;
-        if (!init && callback) {
-          callback(refs as any, false);
-        }
-      });
-    });
+    combinedRef = {
+      value: refs,
+    } as StateRefStore<R>;
 
     if (callback) {
-      callback(refs as any, true);
+      watches.forEach((watch, index) => {
+        watch((ref, init) => {
+          (refs as any[])[index] = ref as any;
+
+          if (!init && callback) {
+            callback(combinedRef, false);
+          }
+        }, userOption); // userOption을 전달
+      });
+
+      if (callback) {
+        callback(combinedRef, true);
+      }
     }
 
-    return refs;
+    return combinedRef;
   };
 }
