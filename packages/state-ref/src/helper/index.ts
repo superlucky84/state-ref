@@ -201,6 +201,7 @@ type RefsTuple<W extends readonly Watch<any>[]> = {
  * @param watches 결합할 watch 함수들의 배열
  * @returns 모든 watch의 최신 상태(ref) 배열을 값으로 가지는 새로운 Watch 함수
  */
+  /*
 export function combineWatch<W extends readonly Watch<any>[]>(
   watches: [...W] // Variadic tuple types for better type inference
 ): Watch<RefsTuple<W>> {
@@ -241,8 +242,8 @@ export function combineWatch<W extends readonly Watch<any>[]>(
     return { value: currentRefs };
   };
 }
+*/
 
-/*
 export function combineWatch<W extends readonly Watch<any>[]>(watches: W) {
   return (
     callback: (
@@ -272,4 +273,3 @@ export function combineWatch<W extends readonly Watch<any>[]>(watches: W) {
     return refs;
   };
 }
-*/
