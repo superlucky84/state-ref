@@ -24,6 +24,9 @@ It is also designed for easy integration with other UI libraries. We provide cod
     * [Usage with Solid](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-solid)
     * [Usage with Lithent](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-lithent)
     * [Supports Flux-like State Management](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#supports-flux-like-state-management)
+
+    * [createComputed](https://github.com/superlucky84/state-ref?tab=readme-ov-file#createcomputed)
+    * [combinewatch](https://github.com/superlucky84/state-ref?tab=readme-ov-file#combinewatch)
     * [npm](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#npm)
     * [test](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#test)
 
