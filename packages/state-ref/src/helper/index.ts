@@ -196,39 +196,58 @@ export function createComputed<W extends readonly Watch<any>[], R>(
  * whether this is the first invocation.
  */
 type CombinedValue<W extends readonly Watch<any>[]> = {
-  [K in keyof W]: W[K] extends Watch<infer T> ? StateRefStore<T> : never;
+  [K in keyof W]: W[K] extends Watch<infer T> ? T : never;
 };
 
 export function combineWatch<W extends readonly Watch<any>[]>(
   watches: W
 ): Watch<CombinedValue<W>> {
   type R = CombinedValue<W>;
-  let combinedRef: StateRefStore<R>;
 
   return (
     callback?: Renew<StateRefStore<R>>,
     userOption?: { cache?: boolean }
   ): StateRefStore<R> => {
-    const refs = watches.map(watch => watch(() => false)) as any[] as R;
+    const refs: { -readonly [K in keyof W]: StateRefStore<R[K]> } = watches.map(
+      w => w(() => false)
+    ) as any;
 
-    combinedRef = {
-      value: refs,
-    } as StateRefStore<R>;
+    const combinedRef: StateRefStore<R> = new Proxy(
+      {
+        _type: 'combined-array',
+        _length: watches.length,
+        _value: '..',
+      } as unknown as StateRefStore<R>,
+      {
+        get(_, prop) {
+          if (prop === 'value') {
+            return refs.map(r => r) as any;
+          }
+          return (refs as any)[prop];
+        },
+        set(_, prop, value) {
+          if (prop === 'value') {
+            console.warn('Cannot overwrite .value directly on combinedRef');
+            return false;
+          }
+          (refs as any)[prop] = value;
+
+          return true;
+        },
+      }
+    );
+
+    watches.forEach((watch, i) => {
+      watch((ref, init) => {
+        refs[i] = ref as any;
+        if (!init && callback) {
+          callback(combinedRef, false);
+        }
+      }, userOption);
+    });
 
     if (callback) {
-      watches.forEach((watch, index) => {
-        watch((ref, init) => {
-          (refs as any[])[index] = ref as any;
-
-          if (!init && callback) {
-            callback(combinedRef, false);
-          }
-        }, userOption); // userOption을 전달
-      });
-
-      if (callback) {
-        callback(combinedRef, true);
-      }
+      callback(combinedRef, true);
     }
 
     return combinedRef;

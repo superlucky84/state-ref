@@ -1,4 +1,4 @@
-import { createStore, createComputed } from 'state-ref';
+import { createStore, createComputed, combineWatch } from 'state-ref';
 import type { Watch } from 'state-ref';
 import { connectVue } from '@/index';
 
@@ -21,4 +21,7 @@ const computedWatch = createComputed<[Watch<Profile>, Watch<number>], number>(
   }
 );
 
+export const combinedWatch = combineWatch([watch, watch2] as const);
+
 export const useComputedRef = connectVue(computedWatch);
+export const useCombindRef = connectVue(combinedWatch);

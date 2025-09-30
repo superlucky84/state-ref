@@ -6,7 +6,12 @@ import {
   waitFor,
 } from '@solidjs/testing-library';
 import { createSignal, createEffect } from 'solid-js';
-import { createStore, createStoreManualSync, createComputed } from 'state-ref';
+import {
+  createStore,
+  createStoreManualSync,
+  createComputed,
+  combineWatch,
+} from 'state-ref';
 import type { Watch } from 'state-ref';
 import { connectSolid } from '@/index';
 
@@ -263,6 +268,43 @@ if (import.meta.vitest) {
       fireEvent.click(btnIncreaseElement);
 
       expect(displayElement.textContent).toBe('age: 99');
+    });
+
+    it('Should reflect combined values correctly', async () => {
+      const combinedWatch = combineWatch([watch, watch2] as const);
+      const useCombinedStore = connectSolid(combinedWatch);
+
+      function CombinedAge() {
+        const [profile] = useCombinedStore(state => state[0]);
+        const [num] = useCombinedStore(state => state[1]);
+
+        return (
+          <div>
+            <div data-testid="combined-name">name: {profile().name}</div>
+            <div data-testid="combined-age">age: {profile().age}</div>
+            <div data-testid="combined-num">num: {num()}</div>
+          </div>
+        );
+      }
+
+      trender(() => <CombinedAge />);
+
+      const displayName = screen.getByTestId('combined-name');
+      const displayAge = screen.getByTestId('combined-age');
+      const displayNum = screen.getByTestId('combined-num');
+
+      expect(displayName.textContent).toBe('name: Brown');
+      expect(displayAge.textContent).toBe('age: 13');
+      expect(displayNum.textContent).toBe('num: 7');
+
+      // age 업데이트
+      handleRef.age.value += 2;
+      await waitFor(() => expect(displayAge.textContent).toBe('age: 15'));
+
+      // watch2 업데이트
+      const numRef = watch2();
+      numRef.value = 42;
+      await waitFor(() => expect(displayNum.textContent).toBe('num: 42'));
     });
   });
 }

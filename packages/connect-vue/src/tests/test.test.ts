@@ -6,7 +6,7 @@ import {
   waitFor,
 } from '@testing-library/vue';
 import { describe, it, expect } from 'vitest';
-import { handleRef, getDefaultValue } from '@/tests/store/store';
+import { handleRef, getDefaultValue, watch, watch2 } from '@/tests/store/store';
 
 import AgeWithAction from '@/tests/vue/AgeWithAction.vue';
 import Age from '@/tests/vue/Age.vue';
@@ -15,6 +15,7 @@ import Age2 from '@/tests/vue/Age2.vue';
 import Root1 from '@/tests/vue/Root1.vue';
 import Root2 from '@/tests/vue/Root2.vue';
 import Root3 from '@/tests/vue/Root3.vue';
+import AgeCombind from '@/tests/vue/AgeCombind.vue';
 import { nextTick } from 'vue';
 
 const resetStore = () => {
@@ -145,5 +146,27 @@ describe('Connect Vue', () => {
     await waitFor(() => {
       expect(displayElement.textContent).toBe('age1: 99');
     });
+  });
+
+  it('Should reflect combined values correctly', async () => {
+    render(AgeCombind);
+    await nextTick();
+
+    const displayAge = screen.getByTestId('age-display');
+    const displayNum = screen.getByTestId('num-display');
+
+    expect(displayAge.textContent).toBe('age: 13');
+    expect(displayNum.textContent).toBe('num: 7');
+
+    const handleRef = watch();
+    const numRef = watch2();
+
+    handleRef.age.value += 2;
+
+    await waitFor(() => expect(displayAge.textContent).toBe('age: 15'));
+
+    numRef.value = 42;
+
+    await waitFor(() => expect(displayNum.textContent).toBe('num: 42'));
   });
 });

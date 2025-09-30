@@ -7,7 +7,12 @@ import {
 } from '@testing-library/preact';
 import { h, render } from 'preact';
 import { useState } from 'preact/hooks';
-import { createStore, createStoreManualSync, createComputed } from 'state-ref';
+import {
+  createStore,
+  createStoreManualSync,
+  createComputed,
+  combineWatch,
+} from 'state-ref';
 import type { Watch } from 'state-ref';
 import { connectPreact } from '@/index';
 
@@ -266,6 +271,53 @@ if (import.meta.vitest) {
       fireEvent.click(btnIncreaseElement);
 
       expect(displayElement.textContent).toBe('age: 99');
+    });
+
+    it('should combine multiple stores and update reactively', () => {
+      const combined = combineWatch([watch, watch2] as const);
+      const useCombinedStore = connectPreact(combined);
+
+      function ProfileWithNumber() {
+        const [profileRef, numberRef] = useCombinedStore();
+
+        return (
+          <div>
+            <div data-testid="name-display">{profileRef.name.value}</div>
+            <div data-testid="age-display">{profileRef.age.value}</div>
+            <div data-testid="number-display">{numberRef.value}</div>
+            <button
+              data-testid="increase-age"
+              onClick={() => (profileRef.age.value += 1)}
+            >
+              increase age
+            </button>
+            <button
+              data-testid="increase-number"
+              onClick={() => (numberRef.value += 1)}
+            >
+              increase number
+            </button>
+          </div>
+        );
+      }
+
+      trender(<ProfileWithNumber />);
+
+      const nameEl = screen.getByTestId('name-display');
+      const ageEl = screen.getByTestId('age-display');
+      const numberEl = screen.getByTestId('number-display');
+      const btnAge = screen.getByTestId('increase-age');
+      const btnNum = screen.getByTestId('increase-number');
+
+      expect(nameEl.textContent).toBe('Brown');
+      expect(ageEl.textContent).toBe('13');
+      expect(numberEl.textContent).toBe('7');
+
+      fireEvent.click(btnAge);
+      expect(ageEl.textContent).toBe('14');
+
+      fireEvent.click(btnNum);
+      expect(numberEl.textContent).toBe('8');
     });
   });
 }

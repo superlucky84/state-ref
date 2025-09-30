@@ -5,6 +5,15 @@ import { createStore, combineWatch } from '@/index';
 const defaultValue1 = 1000;
 const defaultValue2 = { jj: 2000 };
 
+/*
+const storeA = createStore<number>(100);
+const storeB = createStore<string>('hello');
+const storeC = createStore<boolean>(false);
+
+const combinedAB = combineWatch([storeA, storeB] as const);
+const combinedABC = combineWatch([combinedAB, storeC] as const);
+*/
+
 if (import.meta.vitest) {
   const { describe, it, expect, vi } = import.meta.vitest;
 
@@ -19,7 +28,7 @@ if (import.meta.vitest) {
       const combinedWatch = combineWatch([watch1, watch2] as const);
 
       // subscribe
-      combinedWatch(({ value: [ref1, ref2] }, isFirst) => {
+      combinedWatch(([ref1, ref2], isFirst) => {
         callback(ref1.value + ref2.jj.value, isFirst);
       });
 
@@ -41,20 +50,20 @@ if (import.meta.vitest) {
       const storeC = createStore<boolean>(false);
 
       const combinedAB = combineWatch([storeA, storeB] as const);
-      
+
       const combinedABC = combineWatch([combinedAB, storeC] as const);
 
       const nestedCallback = vi.fn();
 
-      combinedABC(({ value: [abRef, cRef] }, isFirst) => {
-        const [aRef, bRef] = abRef.value;
-        
+      combinedABC(([abRef, cRef], isFirst) => {
+        const [aRef, bRef] = abRef;
+
         const output = `${aRef.value} ${bRef.value} ${cRef.value}`;
         nestedCallback(output, isFirst);
       });
-      
+
       expect(nestedCallback).toHaveBeenCalledTimes(1);
-      expect(nestedCallback).toHaveBeenCalledWith('100 hello false', true); 
+      expect(nestedCallback).toHaveBeenCalledWith('100 hello false', true);
 
       storeA().value = 200;
       expect(nestedCallback).toHaveBeenCalledTimes(2);

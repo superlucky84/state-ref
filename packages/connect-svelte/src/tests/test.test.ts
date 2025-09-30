@@ -6,7 +6,7 @@ import {
   waitFor,
 } from '@testing-library/svelte';
 import { describe, it, expect } from 'vitest';
-import { handleRef, getDefaultValue } from '@/tests/store/store';
+import { handleRef, getDefaultValue, watch, watch2 } from '@/tests/store/store';
 
 import AgeWithAction from '@/tests/svelte/AgeWithAction.svelte';
 import Age from '@/tests/svelte/Age.svelte';
@@ -15,6 +15,7 @@ import Age2 from '@/tests/svelte/Age2.svelte';
 import Root1 from '@/tests/svelte/Root1.svelte';
 import Root2 from '@/tests/svelte/Root2.svelte';
 import Root3 from '@/tests/svelte/Root3.svelte';
+import AgeCombind from '@/tests/svelte/AgeCombind.svelte';
 
 const resetStore = () => {
   handleRef.value = getDefaultValue();
@@ -139,5 +140,28 @@ describe('Connect Svelte', () => {
     await waitFor(() => {
       expect(displayElement.textContent).toBe('age: 99');
     });
+  });
+
+  it('Should reflect combined values correctly', async () => {
+    render(AgeCombind);
+
+    const displayName = screen.getByTestId('combined-name');
+    const displayAge = screen.getByTestId('combined-age');
+    const displayNum = screen.getByTestId('combined-num');
+
+    expect(displayName.textContent).toBe('name: Brown');
+    expect(displayAge.textContent).toBe('age: 13');
+    expect(displayNum.textContent).toBe('num: 7');
+
+    const handleRef = watch();
+    const numRef = watch2();
+
+    handleRef.age.value += 2;
+
+    await waitFor(() => expect(displayAge.textContent).toBe('age: 15'));
+
+    numRef.value = 42;
+
+    await waitFor(() => expect(displayNum.textContent).toBe('num: 42'));
   });
 });
