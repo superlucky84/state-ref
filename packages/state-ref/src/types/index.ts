@@ -51,3 +51,13 @@ export type Copyable<T> = {
 } & {
   writeCopy: <J>(v?: T) => J; // lensIns.set의 반환 타입을 사용
 };
+
+export type StateRefsTuple<W extends readonly Watch<any>[]> = {
+  -readonly [K in keyof W]: W[K] extends Watch<infer T>
+    ? StateRefStore<T>
+    : never;
+};
+
+export type CombinedValue<W extends readonly Watch<any>[]> = {
+  [K in keyof W]: W[K] extends Watch<infer T> ? T : never;
+};

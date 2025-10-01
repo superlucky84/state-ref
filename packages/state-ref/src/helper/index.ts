@@ -4,6 +4,8 @@ import type {
   Watch,
   StateRefStore,
   Renew,
+  StateRefsTuple,
+  CombinedValue,
 } from '@/types';
 import type { Lens } from '@/lens';
 import { lens } from '@/lens';
@@ -195,61 +197,63 @@ export function createComputed<W extends readonly Watch<any>[], R>(
  * StateRefStore values of all watches and a boolean indicating
  * whether this is the first invocation.
  */
-type CombinedValue<W extends readonly Watch<any>[]> = {
-  [K in keyof W]: W[K] extends Watch<infer T> ? T : never;
-};
-
 export function combineWatch<W extends readonly Watch<any>[]>(
-  watches: W
+  watches: [...W]
 ): Watch<CombinedValue<W>> {
   type R = CombinedValue<W>;
+  type RefsTuple = StateRefsTuple<W>;
 
   return (
     callback?: Renew<StateRefStore<R>>,
     userOption?: { cache?: boolean }
   ): StateRefStore<R> => {
-    const refs: { -readonly [K in keyof W]: StateRefStore<R[K]> } = watches.map(
-      w => w(() => false)
-    ) as any;
+    const refs: RefsTuple = watches.map(w =>
+      w(() => {}, userOption)
+    ) as RefsTuple;
 
-    const combinedRef: StateRefStore<R> = new Proxy(
-      {
-        _type: 'combined-array',
-        _length: watches.length,
-        _value: '..',
-      } as unknown as StateRefStore<R>,
-      {
-        get(_, prop) {
-          if (prop === 'value') {
-            return refs.map(r => r) as any;
-          }
-          return (refs as any)[prop];
-        },
-        set(_, prop, value) {
-          if (prop === 'value') {
-            console.warn('Cannot overwrite .value directly on combinedRef');
-            return false;
-          }
-          (refs as any)[prop] = value;
+    const combinedStore: StateRefStore<R> = new Proxy({} as StateRefStore<R>, {
+      get(_, prop) {
+        if (prop === 'value') {
+          console.warn(
+            `You cannot directly access the nested 'value' of a store created by combineWatch.`
+          );
 
-          return true;
-        },
-      }
-    );
+          return refs.map(s => s.value) as R;
+        }
+
+        return Reflect.get(refs, prop);
+      },
+      set(_, prop) {
+        if (prop === 'value') {
+          console.warn(
+            "You cannot directly assign to '.value' of a store created by combineWatch. Use an individual store instead (e.g., store[0].value)."
+          );
+        } else {
+          console.warn(
+            `You cannot directly assign to the property '${String(
+              prop
+            )}' of a store created by combineWatch.`
+          );
+        }
+        return false;
+      },
+    });
 
     watches.forEach((watch, i) => {
-      watch((ref, init) => {
-        refs[i] = ref as any;
-        if (!init && callback) {
-          callback(combinedRef, false);
+      const index = i as keyof RefsTuple;
+      watch((ref, isFirst) => {
+        refs[index] = ref as RefsTuple[number];
+
+        if (!isFirst && callback) {
+          callback(combinedStore, false);
         }
       }, userOption);
     });
 
     if (callback) {
-      callback(combinedRef, true);
+      callback(combinedStore, true);
     }
 
-    return combinedRef;
+    return combinedStore;
   };
 }
