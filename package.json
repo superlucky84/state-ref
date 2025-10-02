@@ -17,7 +17,7 @@
     "build:core": "pnpm --filter state-ref build",
     "build:!core": "pnpm --filter '!state-ref' build",
     "build:preact": "pnpm --filter @stateref/connect-preact build",
-    "build:react": "pnpm --filter @stateref/-connect-react build",
+    "build:react": "pnpm --filter @stateref/connect-react build",
     "build:vue": "pnpm --filter @stateref/connect-vue build",
     "build:svelte": "pnpm --filter @stateref/connect-svelte build",
     "build:solid": "pnpm --filter @stateref/connect-solid build",

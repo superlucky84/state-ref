@@ -24,6 +24,9 @@ It is also designed for easy integration with other UI libraries. We provide cod
     * [Usage with Solid](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-solid)
     * [Usage with Lithent](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-lithent)
     * [Supports Flux-like State Management](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#supports-flux-like-state-management)
+
+    * [createComputed](https://github.com/superlucky84/state-ref?tab=readme-ov-file#createcomputed)
+    * [combinewatch](https://github.com/superlucky84/state-ref?tab=readme-ov-file#combinewatch)
     * [npm](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#npm)
     * [test](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#test)
 
@@ -500,6 +503,60 @@ computedRef.value = 30;
 const useComputedValue = connectReact(computedWatch);
 ```
 
+## combineWatch
+
+`combineWatch` is a helper function that **observes multiple `Watch` instances together** and produces a new `Watch` that delivers their **combined values as a tuple-like structure**.
+
+Unlike `createComputed`, which produces a **single derived value**, `combineWatch` focuses on **grouping multiple watches** so you can react to changes from any of them in a **single subscription**.
+When combined multiple times, the structure naturally **nests**, allowing you to build **hierarchical watch compositions**.
+
+### Basic Usage
+
+```typescript
+import { createStore, combineWatch } from "state-ref";
+
+const countWatch = createStore<number>(100);
+const textWatch = createStore<string>("hello");
+
+// Combine multiple watches into one
+const combinedCountTextWatch = combineWatch([countWatch, textWatch] as const);
+
+combinedCountTextWatch(([countRef, textRef], isFirst) => {
+  console.log("Combined Watches:", countRef.value, textRef.value, isFirst);
+});
+
+// Update a watch
+const countRef = countWatch();
+countRef.value = 200; 
+// → triggers callback with [200, "hello"]
+```
+
+### Nested Combination
+
+You can **nest `combineWatch`** to observe more complex structures:
+
+```typescript
+const countWatch = createStore<number>(100);
+const textWatch = createStore<string>("hello");
+const toggleWatch = createStore<boolean>(false);
+
+// Combine countWatch and textWatch
+const combinedCountTextWatch = combineWatch([countWatch, textWatch] as const);
+
+// Nest the combined watch with toggleWatch
+const combinedAllWatch = combineWatch([combinedCountTextWatch, toggleWatch] as const);
+
+combinedAllWatch(([countTextRef, toggleRef], isFirst) => {
+  const [countRef, textRef] = countTextRef;
+  console.log("Nested Watches:", countRef.value, textRef.value, toggleRef.value, isFirst);
+});
+```
+
+### When to Use
+
+* Use **`createComputed`** when you need a **single derived value** (e.g., number, string, object).
+* Use **`combineWatch`** when you need to **observe multiple watches together** and handle their values as a **structured group**.
+
 ## npm
 * [state-ref](https://www.npmjs.com/package/state-ref)
 * [connect-react](https://www.npmjs.com/package/@stateref/connect-react)
@@ -518,3 +575,24 @@ pnpm install
 pnpm build
 pnpm test
 ```
+
+
+# Changelog
+
+## [1.4.0] - 2025-09-30
+
+### Added
+
+* **`combineWatch`**
+
+  * Observe multiple `Watch` instances together as a single `Watch`.
+  * Delivers values as a tuple-like structure.
+  * Supports **nested combinations** for hierarchical subscriptions.
+  * Useful when you want to handle updates from multiple stores in one callback.
+* **Documentation**
+
+  * Added README section for `combineWatch` with:
+
+    * Clear comparison with `createComputed`.
+    * **Basic usage** and **nested composition** examples.
+

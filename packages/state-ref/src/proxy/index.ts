@@ -8,13 +8,13 @@ import type { Run, WithRoot, StoreRenderList } from '@/types';
 /**
  * Use proxies to secure values and match them to lens.
  */
-export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
-  value: S,
-  storeRenderList: StoreRenderList<V>,
+export function makeProxy<S extends WithRoot, T extends object>(
+  value: unknown,
+  storeRenderList: StoreRenderList<any>,
   run: Run,
   autoSync: boolean,
   editable: boolean,
-  rootValue: S = value,
+  rootValue: S,
   lensValue: Lens<S> = lens<S>(),
   depth: number = 0,
   depthList: (string | number | symbol)[] = []
@@ -29,23 +29,24 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
        * 2. When accessing iterables from a proxy.
        * 3. When accessing child object types from a proxy
        */
-      get(_: T, prop: keyof T) {
+      get(_: T, prop: keyof T & (string | symbol)) {
         const newDepthList = [...depthList, prop];
 
         /**
          * When accessing ".value" from a proxy
          */
         if (prop === 'value') {
-          const value: any = lensValue.get(rootValue);
+          const currentValue = lensValue.get(rootValue);
+
           collector(
-            value,
+            currentValue,
             () => lensValue.get(rootValue),
             [...depthList],
             run,
             storeRenderList
           );
 
-          return value;
+          return currentValue;
         }
 
         /**
@@ -53,11 +54,18 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
          */
         if (prop === Symbol.iterator) {
           return function* () {
-            for (const [index, value] of (
-              lensValue.get(rootValue) as any
+            const iterableValue = lensValue.get(rootValue);
+            if (
+              !iterableValue ||
+              typeof (iterableValue as any)[Symbol.iterator] !== 'function'
+            ) {
+              return;
+            }
+            for (const [index, itemValue] of (
+              iterableValue as any[]
             ).entries()) {
               yield makeProxy(
-                value,
+                itemValue,
                 storeRenderList,
                 run,
                 autoSync,
@@ -75,7 +83,7 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
          * When accessing child object types from a proxy
          */
         const lens = lensValue.chain(prop);
-        const propertyValue: any = lens.get(rootValue);
+        const propertyValue = lens.get(rootValue);
 
         return makeProxy(
           propertyValue,
@@ -114,7 +122,6 @@ export function makeProxy<S extends WithRoot, T extends WithRoot, V>(
             runner(storeRenderList);
           }
         }
-
         return true;
       },
     }

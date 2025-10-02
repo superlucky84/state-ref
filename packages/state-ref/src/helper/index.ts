@@ -1,4 +1,11 @@
-import type { PrivitiveType, Copyable, Watch, StateRefStore } from '@/types';
+import type {
+  Copyable,
+  Watch,
+  StateRefStore,
+  Renew,
+  StateRefsTuple,
+  CombinedValue,
+} from '@/types';
 import type { Lens } from '@/lens';
 import { lens } from '@/lens';
 
@@ -37,18 +44,6 @@ function getType(value: unknown) {
   } else {
     return typeof value;
   }
-}
-
-/**
- * When createStore receives the initial value, it checks to see if it is of a primitive type.
- */
-export function isPrimitiveType(
-  orignalValue: unknown
-): orignalValue is PrivitiveType {
-  const isObjectTypeValue =
-    typeof orignalValue === 'object' && orignalValue !== null;
-
-  return !isObjectTypeValue;
 }
 
 /**
@@ -93,17 +88,17 @@ export function copyable<T extends { [key: string | symbol]: unknown }>(
   origObj: T,
   lensInit?: Lens<T>
 ): Copyable<T> {
-  let lensIns = lensInit || lens();
+  let lensIns = lensInit || lens<T>();
 
   return new Proxy(origObj as unknown as Copyable<T>, {
     get(target: Copyable<T>, prop: keyof T) {
       if (prop === 'writeCopy') {
         return (value: T) => {
-          return lensIns.set(value)(target as unknown as T); // 원본 코드는 변경되지 않음
+          return lensIns.set(value)(target as unknown as T);
         };
       }
 
-      return copyable(origObj, lensIns.chain(prop) as any);
+      return copyable(origObj, lensIns.chain(prop));
     },
     set() {
       throw new Error(
@@ -144,9 +139,7 @@ export function cloneDeep<T>(value: T): T {
  */
 export function createComputed<W extends readonly Watch<any>[], R>(
   watches: W,
-  callback: (a: {
-    [K in keyof W]: W[K] extends Watch<infer T> ? StateRefStore<T> : never;
-  }) => R
+  callback: (a: StateRefsTuple<W>) => R
 ) {
   let result: R;
   const proxy: { value: R } = {
@@ -161,14 +154,12 @@ export function createComputed<W extends readonly Watch<any>[], R>(
   return (
     computedCallback?: (proxy: { value: R }, isFirst: boolean) => void
   ) => {
-    const refs = watches.map(watch => watch(() => false)) as unknown as {
-      [K in keyof W]: W[K] extends Watch<infer T> ? StateRefStore<T> : never;
-    }[];
+    const refs = watches.map(watch => watch(() => false)) as StateRefsTuple<W>;
 
     watches.forEach((watch, index) => {
       watch((ref, init) => {
-        refs[index] = ref as any;
-        result = callback(refs as any);
+        (refs as any)[index] = ref;
+        result = callback(refs);
         if (!init && computedCallback) {
           computedCallback(proxy, false);
         }
@@ -180,5 +171,72 @@ export function createComputed<W extends readonly Watch<any>[], R>(
     }
 
     return proxy;
+  };
+}
+
+/**
+ * Observes multiple Watch instances together and triggers a callback
+ * whenever any of them changes. The callback receives the current
+ * StateRefStore values of all watches and a boolean indicating
+ * whether this is the first invocation.
+ */
+export function combineWatch<W extends readonly Watch<any>[]>(
+  watches: [...W]
+): Watch<CombinedValue<W>> {
+  type R = CombinedValue<W>;
+  type RefsTuple = StateRefsTuple<W>;
+
+  return (
+    callback?: Renew<StateRefStore<R>>,
+    userOption?: { cache?: boolean }
+  ): StateRefStore<R> => {
+    const refs: RefsTuple = watches.map(w =>
+      w(() => {}, userOption)
+    ) as RefsTuple;
+
+    const combinedStore: StateRefStore<R> = new Proxy({} as StateRefStore<R>, {
+      get(_, prop) {
+        if (prop === 'value') {
+          console.warn(
+            `You cannot directly access the nested 'value' of a store created by combineWatch.`
+          );
+
+          return refs.map(s => s.value) as R;
+        }
+
+        return Reflect.get(refs, prop);
+      },
+      set(_, prop) {
+        if (prop === 'value') {
+          console.warn(
+            "You cannot directly assign to '.value' of a store created by combineWatch. Use an individual store instead (e.g., store[0].value)."
+          );
+        } else {
+          console.warn(
+            `You cannot directly assign to the property '${String(
+              prop
+            )}' of a store created by combineWatch.`
+          );
+        }
+        return false;
+      },
+    });
+
+    watches.forEach((watch, i) => {
+      const index = i as keyof RefsTuple;
+      watch((ref, isFirst) => {
+        refs[index] = ref as RefsTuple[number];
+
+        if (!isFirst && callback) {
+          callback(combinedStore, false);
+        }
+      }, userOption);
+    });
+
+    if (callback) {
+      callback(combinedStore, true);
+    }
+
+    return combinedStore;
   };
 }

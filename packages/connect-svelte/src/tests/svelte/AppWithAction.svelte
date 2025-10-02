@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createStoreManualSync, copyable } from 'state-ref';
+  import { createStoreManualSync } from 'state-ref';
   import { connectSvelte } from '@/index';
 
   const { watch, updateRef, sync } = createStoreManualSync({

@@ -26,15 +26,6 @@ export type Watch<V> = (
   userOption?: { cache?: boolean }
 ) => StateRefStore<V>;
 
-export type PrivitiveType =
-  | string
-  | number
-  | symbol
-  | null
-  | undefined
-  | boolean
-  | bigint;
-
 export type RunInfo<A> = {
   value: A;
   getNextValue: () => A;
@@ -49,5 +40,15 @@ export type StoreRenderList<A> = Map<Run, RenderListSub<A>>;
 export type Copyable<T> = {
   [K in keyof T]: Copyable<T[K]>;
 } & {
-  writeCopy: <J>(v?: T) => J; // lensIns.set의 반환 타입을 사용
+  writeCopy: <J>(v?: T) => J;
+};
+
+export type StateRefsTuple<W extends readonly Watch<any>[]> = {
+  -readonly [K in keyof W]: W[K] extends Watch<infer T>
+    ? StateRefStore<T>
+    : never;
+};
+
+export type CombinedValue<W extends readonly Watch<any>[]> = {
+  [K in keyof W]: W[K] extends Watch<infer T> ? T : never;
 };
