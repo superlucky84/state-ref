@@ -1,5 +1,4 @@
 import type {
-  PrivitiveType,
   Copyable,
   Watch,
   StateRefStore,
@@ -45,18 +44,6 @@ function getType(value: unknown) {
   } else {
     return typeof value;
   }
-}
-
-/**
- * When createStore receives the initial value, it checks to see if it is of a primitive type.
- */
-export function isPrimitiveType(
-  orignalValue: unknown
-): orignalValue is PrivitiveType {
-  const isObjectTypeValue =
-    typeof orignalValue === 'object' && orignalValue !== null;
-
-  return !isObjectTypeValue;
 }
 
 /**
