@@ -575,24 +575,3 @@ pnpm install
 pnpm build
 pnpm test
 ```
-
-
-# Changelog
-
-## [1.4.0] - 2025-09-30
-
-### Added
-
-* **`combineWatch`**
-
-  * Observe multiple `Watch` instances together as a single `Watch`.
-  * Delivers values as a tuple-like structure.
-  * Supports **nested combinations** for hierarchical subscriptions.
-  * Useful when you want to handle updates from multiple stores in one callback.
-* **Documentation**
-
-  * Added README section for `combineWatch` with:
-
-    * Clear comparison with `createComputed`.
-    * **Basic usage** and **nested composition** examples.
-

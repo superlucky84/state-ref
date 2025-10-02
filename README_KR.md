@@ -13,16 +13,18 @@
 또한 다른 UI 라이브러리와의 쉬운 통합을 위해 설계되었습니다. React, Preact, Vue, Svelte, Solid, Lithent와의 연결을 위한 코드 스니펫을 제공하며, 사용자가 자신의 연결 스니펫을 만들 수도 있습니다.
 
 * 목차
-    * [감사](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#acknowledgements)
-    * [기본 사용법](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#basic-usage)
-    * [React와의 사용법 (Preact와 동일)](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-react-same-for-preact)
-    * [Svelte와의 사용법](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-svelte)
-    * [Vue와의 사용법](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-vue)
-    * [Solid와의 사용법](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-solid)
-    * [Lithent와의 사용법](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-lithent)
-    * [Flux와 유사한 상태 관리 지원](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#supports-flux-like-state-management)
-    * [npm](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#npm)
-    * [테스트](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#test)
+    * 감사
+    * 기본 사용법
+    * React와의 사용법 (Preact와 동일)
+    * Svelte와의 사용법
+    * Vue와의 사용법
+    * Solid와의 사용법
+    * Lithent와의 사용법
+    * Flux와 유사한 상태 관리 지원
+    * createComputed
+    * combinewatch
+    * npm
+    * 테스트
 
 ## 감사
 
@@ -443,6 +445,105 @@ function UserComponent() {
   );
 }
 ```
+
+## createComputed
+
+`createComputed`는 여러 `watch`를 결합하여 새로운 **계산(파생) 값**을 생성하고, 그 계산 값이 변경될 때 지정된 **콜백 함수**를 실행하는 **도우미 함수**입니다.
+
+`createComputed`로 생성된 `Watch`는 다른 `watch`와 마찬가지로 사용할 수 있으며, `connectReact`나 `connectPreact`와 같은 통합에서도 활용할 수 있습니다.
+
+아래는 간단한 사용 예제입니다.
+
+```typescript
+import { createStore, createComputed } from "state-ref";
+import type { StateRefStore, Watch } from "state-ref";
+
+type Info = { age: number; house: { color: string; floor: number }[] };
+
+const watch1 = createStore<Info>(
+    { age: 10, house: [{ color: "blue", floor: 7 }] },
+);
+const watch2 = createStore<number>(20);
+
+const computedWatch = creatComputed<[Watch<Info>, Watch<number>], number>([watch1, watch2], ([ref1, ref2]) => {
+    return ref1.age.value + ref2.value;
+});
+
+
+// 구독하기
+computedWatch((stateRef) => {
+    console.log(
+        "변경된 계산 값",
+        stateRef.value
+    );
+});
+
+// 값 변경
+const computedRef = watch2();
+computedRef.value = 30;
+
+// 다른 UI 라이브러리 연결
+const useComputedValue = connectReact(computedWatch);
+```
+
+---
+
+## combineWatch
+
+`combineWatch`는 여러 `Watch` 인스턴스를 **함께 관찰**하고, 그들의 **값을 튜플 구조와 유사한 형태로 결합**하여 전달하는 새로운 `Watch`를 생성하는 **도우미 함수**입니다.
+
+`createComputed`와 달리 **단일 파생 값을 생성**하는 것이 아니라, 여러 watch를 **그룹화**하여 **하나의 구독에서 변화에 대응**할 수 있도록 합니다.
+여러 번 결합하면 구조가 자연스럽게 **중첩**되어, **계층적인 watch 구성**을 만들 수 있습니다.
+
+### 기본 사용법
+
+```typescript
+import { createStore, combineWatch } from "state-ref";
+
+const countWatch = createStore<number>(100);
+const textWatch = createStore<string>("hello");
+
+// 여러 watch를 하나로 결합
+const combinedCountTextWatch = combineWatch([countWatch, textWatch] as const);
+
+combinedCountTextWatch(([countRef, textRef], isFirst) => {
+  console.log("결합된 Watches:", countRef.value, textRef.value, isFirst);
+});
+
+// watch 값 변경
+const countRef = countWatch();
+countRef.value = 200; 
+// → 콜백이 [200, "hello"]로 호출됨
+```
+
+### 중첩 결합
+
+`combineWatch`를 **중첩**하여 더 복잡한 구조를 관찰할 수도 있습니다.
+
+```typescript
+const countWatch = createStore<number>(100);
+const textWatch = createStore<string>("hello");
+const toggleWatch = createStore<boolean>(false);
+
+// countWatch와 textWatch 결합
+const combinedCountTextWatch = combineWatch([countWatch, textWatch] as const);
+
+// 결합된 watch와 toggleWatch를 중첩 결합
+const combinedAllWatch = combineWatch([combinedCountTextWatch, toggleWatch] as const);
+
+combinedAllWatch(([countTextRef, toggleRef], isFirst) => {
+  const [countRef, textRef] = countTextRef;
+  console.log("중첩된 Watches:", countRef.value, textRef.value, toggleRef.value, isFirst);
+});
+```
+
+### 사용 시점
+
+* **`createComputed`**는 **단일 파생 값**이 필요할 때 사용합니다. (예: 숫자, 문자열, 객체)
+* **`combineWatch`**는 **여러 watch를 함께 관찰**하고, **구조화된 그룹**으로 값 변화를 처리할 때 사용합니다.
+
+---
+
 
 ## npm
 * [state-ref](https://www.npmjs.com/package/state-ref)
