@@ -17,9 +17,9 @@ export class Lens<T extends object> {
   chain(prop: string | number | symbol) {
     return lens<T>([...this.sceneList, prop]);
   }
-  get(targetObject: T) {
+  get(targetObject: T): unknown {
     return this.sceneList.reduce(
-      (currentObject: any, prop) => currentObject[prop],
+      (currentObject: any, prop) => currentObject?.[prop],
       targetObject
     );
   }

@@ -27,7 +27,7 @@ export function createStoreManualSync<V>(orignalValue: V) {
 }
 
 function create<V>(orignalValue: V, userCreateOption?: { autoSync?: boolean }) {
-  const storeRenderList: StoreRenderList<V> = new Map();
+  const storeRenderList: StoreRenderList<any> = new Map();
   const cacheMap = new WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>();
   const { autoSync } = Object.assign(
     {},

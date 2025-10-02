@@ -88,17 +88,17 @@ export function copyable<T extends { [key: string | symbol]: unknown }>(
   origObj: T,
   lensInit?: Lens<T>
 ): Copyable<T> {
-  let lensIns = lensInit || lens();
+  let lensIns = lensInit || lens<T>();
 
   return new Proxy(origObj as unknown as Copyable<T>, {
     get(target: Copyable<T>, prop: keyof T) {
       if (prop === 'writeCopy') {
         return (value: T) => {
-          return lensIns.set(value)(target as unknown as T); // 원본 코드는 변경되지 않음
+          return lensIns.set(value)(target as unknown as T);
         };
       }
 
-      return copyable(origObj, lensIns.chain(prop) as any);
+      return copyable(origObj, lensIns.chain(prop));
     },
     set() {
       throw new Error(
@@ -139,9 +139,7 @@ export function cloneDeep<T>(value: T): T {
  */
 export function createComputed<W extends readonly Watch<any>[], R>(
   watches: W,
-  callback: (a: {
-    [K in keyof W]: W[K] extends Watch<infer T> ? StateRefStore<T> : never;
-  }) => R
+  callback: (a: StateRefsTuple<W>) => R
 ) {
   let result: R;
   const proxy: { value: R } = {
@@ -156,14 +154,12 @@ export function createComputed<W extends readonly Watch<any>[], R>(
   return (
     computedCallback?: (proxy: { value: R }, isFirst: boolean) => void
   ) => {
-    const refs = watches.map(watch => watch(() => false)) as unknown as {
-      [K in keyof W]: W[K] extends Watch<infer T> ? StateRefStore<T> : never;
-    }[];
+    const refs = watches.map(watch => watch(() => false)) as StateRefsTuple<W>;
 
     watches.forEach((watch, index) => {
       watch((ref, init) => {
-        refs[index] = ref as any;
-        result = callback(refs as any);
+        (refs as any)[index] = ref;
+        result = callback(refs);
         if (!init && computedCallback) {
           computedCallback(proxy, false);
         }
