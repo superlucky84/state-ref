@@ -75,80 +75,65 @@ const subscribeCallback = (innerRef, isFirst) => {
 const outerRef = watch(subscribeCallback);
 
 // Both trigger subscribeCallback
-outerRef.rowCount.value = 10;
-innerRef.columnCount.value = 5;
+anotherRef.rowCount.value = 10;
+anotherRef.columnCount.value = 5;
 
 // This doesn't trigger subscribeCallback
 anotherRef.etcCount.value = 2;
 ```
 
-This design makes it easy to integrate with UI libraries by using `outerRef` outside the subscription callback.
+Besides the `innerRef` reference object used inside the subscription function, as seen in the previous example, the `outerRef` returned by `watch` allows access outside the subscription callback. This design makes it easier to integrate with components in a UI library.
 
-Below is a simple usage example.
+To illustrate, I’ll use my project, the component-based UI library [lithent](https://github.com/superlucky84/lithent), as an example.
 
 ```typescript
-import { createStore } from "state-ref";
-import type { StateRefStore, Watch } from "state-ref";
-
-type Info = { age: number; house: { color: string; floor: number }[] };
-type People = { john: Info; brown: Info; sara: Info };
-
-// const watch = createStore<number>(3); // Primitive types can also be used easily."
-const watch = createStore<People>({
-    // Type: Watch<People>
-    john: {
-        age: 20,
-        house: [
-            { color: "red", floor: 5 },
-            { color: "red", floor: 5 },
-        ],
-    },
-    brown: { age: 26, house: [{ color: "red", floor: 5 }] },
-    sara: { age: 26, house: [{ color: "red", floor: 5 }] },
-});
-
-// Get Unbound Reference (Outer Reference)
-const outerRef = watch();
-// Type: StateRefStore<People>
-
-// Using value from outer reference
-console.log(outerRef.john.house[1].color.value);
-
-// Change value using outer reference
-outerRef.john.house[1].color.value = "yellow";
-
-// Subscribe with Bound Reference (Inner Reference)
-watch((innerRef) => {
-    // innerRef is bound to this subscription
-    console.log(
-        "Changed John's Second House Color",
-        innerRef.john.house[1].color.value // This read is tracked
-    );
+const Component = mount((renew) => {
+    let count = 1;
+  
+    const change = () => {
+        count += 1;
+        renew();
+    };
+  
+    return () => <button onClick={change}>{count}</button>;
 });
 ```
 
-Here is another example showing how `innerRef` and `outerRef` work:
+`mount` is a function that creates a component, and it provides a `renew` function as the first argument to the function it consumes.
+
+The `renew` function requests an update for the component. In the example below, it increments the `count` value by 1 and then re-renders the component.
+
+> In Lithent, calling update functions like `renew` is generally seen as an anti-pattern, but this approach was adopted to keep state management simple and practical using native closures.
+
+
+If you want to share store values using `state-ref` instead of the component’s internal `count` state, you can do so as follows.
 
 ```typescript
-// outerRef and innerRef are the same reference
-const outerRef = watch((innerRef) => {
-    console.log(
-        "Changed John's Second House Color",
-        innerRef.john.house[1].color.value
-    );
+
+const watch = createStore(1);
+
+const Component = mount((renew) => {
+    count countRef = watch(renew);
+  
+    const change = () => {
+      countRef.value += 1;
+    };
+  
+    return () => <button onClick={change}>{count.value}</button>;
 });
-
-// Destructure for convenient access
-const {
-    john: {
-        house: [, { color: colorHandleRef }],
-    },
-} = outerRef;
-
-// All these trigger the subscription
-outerRef.john.house[1].color.value = "blue";
-colorHandleRef.value = "green";
 ```
+
+By returning a proxy reference externally via `watch`, you can easily collect the subscription points outside of the subscription function, making it useful in various scenarios.
+
+Using `outerRef`, you can effortlessly connect components with state.
+
+Building on this feature, you can also connect state easily in `React` and `Preact` using simple snippets:
+
+* [react snippet](https://github.com/superlucky84/state-ref/blob/main/packages/connect-react/src/index.ts)
+* [preact snippet](https://github.com/superlucky84/state-ref/blob/main/packages/connect-preact/src/index.ts)
+
+
+### cancel subscription
 
 If you want to cancel the subscription, use `abortController` as shown in the example below.
 
