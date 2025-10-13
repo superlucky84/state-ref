@@ -1,6 +1,6 @@
 /**
  * S StoreType<V>; // Append root to the first value type V you are given
- * G StateRefStore<V>; // Add "value" to the ending  point with “root” unattached.
+ * G StateRefStore<V>; // Add "value" to the ending  point with "root" unattached.
  * T StateRefStore<StoreType<V>>; // Attach a "value" to the ending point in the state where the root exists.
  */
 export type Renew<G> = (
@@ -23,7 +23,7 @@ export type StateRefStore<S> = S extends object
 
 export type Watch<V> = (
   renew?: Renew<StateRefStore<V>>,
-  userOption?: { cache?: boolean }
+  userOption?: { cache?: boolean; editable?: boolean }
 ) => StateRefStore<V>;
 
 export type RunInfo<A> = {
@@ -37,10 +37,10 @@ export type RenderListSub<A> = Map<string, RunInfo<A>>;
 
 export type StoreRenderList<A> = Map<Run, RenderListSub<A>>;
 
-export type Copyable<T> = {
-  [K in keyof T]: Copyable<T[K]>;
+export type Copyable<T, Root = T> = {
+  [K in keyof T]: Copyable<T[K], Root>;
 } & {
-  writeCopy: <J>(v?: T) => J;
+  writeCopy: <V = T>(v: V) => Root;
 };
 
 export type StateRefsTuple<W extends readonly Watch<any>[]> = {
@@ -53,9 +53,26 @@ export type CombinedValue<W extends readonly Watch<any>[]> = {
   [K in keyof W]: W[K] extends Watch<infer T> ? T : never;
 };
 
+export type ManualSyncStore<V> = {
+  watch: Watch<V>;
+  updateRef: StateRefStore<V>;
+  sync: () => void;
+};
+
 /**
  * FILE: lens.ts
  */
+/**
+ * Type helper to extract nested property type
+ */
+type PropType<T, K extends keyof any> = K extends keyof T
+  ? T[K]
+  : K extends `${number}`
+  ? T extends readonly (infer U)[]
+    ? U
+    : any
+  : any;
+
 /**
  * The stateRef relies on data immutability to determine changes.
  * The lens pattern is used as a core part of the stateRef because,
@@ -64,27 +81,31 @@ export type CombinedValue<W extends readonly Watch<any>[]> = {
 export function lens<T extends object>(
   sceneList: (string | number | symbol)[] = []
 ) {
-  return new Lens<T>(sceneList);
+  return new Lens<T, T>(sceneList);
 }
 
-export class Lens<T extends object> {
+export class Lens<Root extends object, Focus = Root> {
   private sceneList: (string | number | symbol)[];
   constructor(sceneList: (string | number | symbol)[]) {
     this.sceneList = sceneList;
   }
-  chain(prop: string | number | symbol) {
-    return lens<T>([...this.sceneList, prop]);
+  chain<K extends keyof Focus>(prop: K): Lens<Root, PropType<Focus, K>>;
+  chain<K extends string | number | symbol>(
+    prop: K
+  ): Lens<Root, PropType<Focus, K>>;
+  chain(prop: string | number | symbol): Lens<Root, any> {
+    return new Lens<Root, any>([...this.sceneList, prop]);
   }
-  get(targetObject: T): unknown {
+  get(targetObject: Root): Focus {
     return this.sceneList.reduce(
       (currentObject: any, prop) => currentObject?.[prop],
       targetObject
-    );
+    ) as Focus;
   }
-  set(value: any) {
-    return (targetObject: T) => this.copyOnWrite(targetObject, value);
+  set(value: Focus) {
+    return (targetObject: Root): Root => this.copyOnWrite(targetObject, value);
   }
-  private copyOnWrite(targetObject: T, value: any) {
+  private copyOnWrite(targetObject: Root, value: Focus): Root {
     const copiedObject = this.shallowCopy(targetObject);
 
     this.sceneList.reduce((currentObject: any, prop, index) => {
@@ -186,19 +207,19 @@ export function keyFromDepthList(path: (string | number | symbol)[]): string {
  */
 export function copyable<T extends { [key: string | symbol]: unknown }>(
   origObj: T,
-  lensInit?: Lens<T>
+  lensInit?: Lens<T, any>
 ): Copyable<T> {
   let lensIns = lensInit || lens<T>();
 
   return new Proxy(origObj as unknown as Copyable<T>, {
-    get(target: Copyable<T>, prop: keyof T) {
+    get(target: Copyable<T>, prop: keyof T | 'writeCopy') {
       if (prop === 'writeCopy') {
-        return (value: T) => {
+        return <V>(value: V) => {
           return lensIns.set(value)(target as unknown as T);
         };
       }
 
-      return copyable(origObj, lensIns.chain(prop));
+      return copyable(origObj, lensIns.chain(prop as keyof T));
     },
     set() {
       throw new Error(
@@ -345,10 +366,9 @@ export function combineWatch<W extends readonly Watch<any>[]>(
  * FILE: collector.ts
  */
 /**
- * The subscription to store starts the moment the user of stateRef fetches the reference as a “.value”.
- * This code captures the moment of fetching to “.value” and collects the subscription.
+ * The subscription to store starts the moment the user of stateRef fetches the reference as a ".value".
+ * This code captures the moment of fetching to ".value" and collects the subscription.
  */
-// BEFORE: export function collector<V>(..., storeRenderList: StoreRenderList<V>)
 export function collector(
   value: unknown,
   getNextValue: () => unknown,
@@ -359,7 +379,6 @@ export function collector(
   if (run) {
     const key = keyFromDepthList(newDepthList);
 
-    // RunInfo의 타입도 value에 맞춰 추론되도록 합니다.
     const runInfo: RunInfo<unknown> = {
       value,
       getNextValue,
@@ -382,7 +401,7 @@ export function collector(
  */
 
 /**
- * Based on the information gathered by the “collector”,
+ * Based on the information gathered by the "collector",
  * this code identifies and executes a callback function for store changes.
  */
 export function runner(storeRenderList: StoreRenderList<any>) {
@@ -402,7 +421,7 @@ export function runner(storeRenderList: StoreRenderList<any>) {
         /**
          * The subscribe function is subscribing to a value that has already been removed,
          * so when run is executed, either the user has handled the exception with optional chaining or similar,
-         * or an error will occur. Therefore, it’s fine not to throw an error at this point.
+         * or an error will occur. Therefore, it's fine not to throw an error at this point.
          */
         console.warn(
           `Value for key ${key} has been removed, skipping update:`,
@@ -442,15 +461,14 @@ export function firstRunner<V>(
 /**
  * Use proxies to secure values and match them to lens.
  */
-// BEFORE: export function makeProxy<S extends WithRoot, T, V>(
-export function makeProxy<S extends WithRoot, T extends object>( // AFTER: T에 'extends object' 제약 추가
+export function makeProxy<S extends WithRoot, T extends object>(
   value: unknown,
   storeRenderList: StoreRenderList<any>,
   run: Run,
   autoSync: boolean,
   editable: boolean,
   rootValue: S,
-  lensValue: Lens<S> = lens<S>(),
+  lensValue: Lens<S, any> = lens<S>(),
   depth: number = 0,
   depthList: (string | number | symbol)[] = []
 ): T {
@@ -497,7 +515,7 @@ export function makeProxy<S extends WithRoot, T extends object>( // AFTER: T에 
               return;
             }
             for (const [index, itemValue] of (
-              iterableValue as any[]
+              iterableValue as unknown as any[]
             ).entries()) {
               yield makeProxy(
                 itemValue,
@@ -534,7 +552,7 @@ export function makeProxy<S extends WithRoot, T extends object>( // AFTER: T에 
       },
 
       /**
-       * When assigning a value to “.value”, copyOnWrite is performed.
+       * When assigning a value to ".value", copyOnWrite is performed.
        * Error if you try to assign a value to something that isn't a ".value".
        * ex) ref.a.b = 'newValue'; // Error
        * ex) ref.a.b.value = 'newValue'; // Success
@@ -581,7 +599,7 @@ export function makeReference<V>({
 }: {
   renew: Renew<StateRefStore<V>>;
   rootValue: StoreType<V>;
-  storeRenderList: StoreRenderList<any>; // 이전 수정 사항 반영
+  storeRenderList: StoreRenderList<any>;
   cacheMap: WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>;
   autoSync: boolean;
   editable: boolean;
@@ -591,14 +609,13 @@ export function makeReference<V>({
   };
   const run = (isFirst?: boolean) => renew(ref.value!.root, isFirst ?? false);
 
-  // AFTER:
   ref.value = makeProxy<StoreType<V>, StateRefStore<StoreType<V>>>(
-    rootValue, // 1. value: 현재 경로의 값 (최초에는 root)
-    storeRenderList, // 2. storeRenderList
-    run, // 3. run
-    autoSync, // 4. autoSync
-    editable, // 5. editable
-    rootValue // 6. rootValue: 전체 트리의 루트 값 (필수 인자)
+    rootValue,
+    storeRenderList,
+    run,
+    autoSync,
+    editable,
+    rootValue
   );
 
   /**
@@ -632,7 +649,8 @@ export function createStore<V>(orignalValue: V) {
 
   return watch;
 }
-export function createStoreManualSync<V>(orignalValue: V) {
+
+export function createStoreManualSync<V>(orignalValue: V): ManualSyncStore<V> {
   return create(orignalValue, { autoSync: false });
 }
 
