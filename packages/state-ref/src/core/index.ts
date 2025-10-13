@@ -2,7 +2,13 @@ import { DEFAULT_WATCH_OPTION, DEFAULT_CREATE_OPTION } from '@/helper';
 import { makeReference } from '@/core/ref';
 import { runner } from '@/connectors/runner';
 
-import type { Renew, StoreType, StateRefStore, StoreRenderList } from '@/types';
+import type {
+  Renew,
+  StoreType,
+  StateRefStore,
+  StoreRenderList,
+  ManualSyncStore,
+} from '@/types';
 
 /**
  * createStore - The argument is the initial value of the state
@@ -22,7 +28,7 @@ export function createStore<V>(orignalValue: V) {
 
   return watch;
 }
-export function createStoreManualSync<V>(orignalValue: V) {
+export function createStoreManualSync<V>(orignalValue: V): ManualSyncStore<V> {
   return create(orignalValue, { autoSync: false });
 }
 

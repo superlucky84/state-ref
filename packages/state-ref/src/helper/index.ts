@@ -91,14 +91,14 @@ export function copyable<T extends { [key: string | symbol]: unknown }>(
   let lensIns = lensInit || lens<T>();
 
   return new Proxy(origObj as unknown as Copyable<T>, {
-    get(target: Copyable<T>, prop: keyof T) {
+    get(target: Copyable<T>, prop: keyof T | 'writeCopy') {
       if (prop === 'writeCopy') {
-        return (value: T) => {
+        return <V>(value: V) => {
           return lensIns.set(value)(target as unknown as T);
         };
       }
 
-      return copyable(origObj, lensIns.chain(prop));
+      return copyable(origObj, lensIns.chain(prop as keyof T));
     },
     set() {
       throw new Error(
