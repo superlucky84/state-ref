@@ -86,7 +86,7 @@ export function keyFromDepthList(path: (string | number | symbol)[]): string {
  */
 export function copyable<T extends { [key: string | symbol]: unknown }>(
   origObj: T,
-  lensInit?: Lens<T>
+  lensInit?: Lens<T, any>
 ): Copyable<T> {
   let lensIns = lensInit || lens<T>();
 

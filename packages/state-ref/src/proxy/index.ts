@@ -15,7 +15,7 @@ export function makeProxy<S extends WithRoot, T extends object>(
   autoSync: boolean,
   editable: boolean,
   rootValue: S,
-  lensValue: Lens<S> = lens<S>(),
+  lensValue: Lens<S, any> = lens<S>(),
   depth: number = 0,
   depthList: (string | number | symbol)[] = []
 ): T {
@@ -62,7 +62,7 @@ export function makeProxy<S extends WithRoot, T extends object>(
               return;
             }
             for (const [index, itemValue] of (
-              iterableValue as any[]
+              iterableValue as unknown as any[]
             ).entries()) {
               yield makeProxy(
                 itemValue,
