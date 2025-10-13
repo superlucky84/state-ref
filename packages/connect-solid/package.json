@@ -3,7 +3,7 @@
   "name": "@stateref/connect-solid",
   "version": "1.0.2",
   "private": false,
-  "description": "solid connector for state-ref",
+  "description": "Solid connector for state-ref",
   "packageManager": "pnpm@7.6.0",
   "main": "./dist/stateref-connect-solid.umd.js",
   "module": "./dist/stateref-connect-solid.mjs",

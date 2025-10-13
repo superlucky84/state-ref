@@ -3,7 +3,7 @@
   "name": "@stateref/connect-react",
   "version": "18.0.3",
   "private": false,
-  "description": "vue connector for state-ref",
+  "description": "React connector for state-ref",
   "packageManager": "pnpm@7.6.0",
   "main": "./dist/stateref-connect-react.umd.js",
   "module": "./dist/stateref-connect-react.mjs",

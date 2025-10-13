@@ -3,7 +3,7 @@
   "name": "@stateref/connect-preact",
   "version": "10.0.4",
   "private": false,
-  "description": "vue connector for state-ref",
+  "description": "Preact connector for state-ref",
   "packageManager": "pnpm@7.6.0",
   "main": "./dist/stateref-connect-preact.umd.js",
   "module": "./dist/stateref-connect-preact.mjs",

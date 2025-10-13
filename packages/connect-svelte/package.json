@@ -3,7 +3,7 @@
   "name": "@stateref/connect-svelte",
   "version": "4.0.3",
   "private": false,
-  "description": "svelte connector for state-ref",
+  "description": "Svelte connector for state-ref",
   "packageManager": "pnpm@7.6.0",
   "main": "./dist/stateref-connect-svelte.umd.js",
   "module": "./dist/stateref-connect-svelte.mjs",
