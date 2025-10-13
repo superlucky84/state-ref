@@ -2,8 +2,6 @@
 
 > Universal state management library that can be easily integrated into UI libraries
 
-* [README_KR](https://github.com/superlucky84/state-ref/blob/main/README_KR.md)
-
 ![sref](https://github.com/user-attachments/assets/93e54d8f-1326-482c-b2f6-e9822386425b)
 
 `StateRef` is a state management library focused on data immutability.
@@ -16,30 +14,75 @@ It is also designed for easy integration with other UI libraries. We provide cod
 
 
 * Table of Contents
-    * [Acknowledgements](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#acknowledgements)
     * [Basic Usage](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#basic-usage)
-    * [Usage with React (Same for Preact)](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-react-same-for-preact)
-    * [Usage with Svelte](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-svelte)
-    * [Usage with Vue](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-vue)
-    * [Usage with Solid](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-solid)
-    * [Usage with Lithent](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#usage-with-lithent)
-    * [Supports Flux-like State Management](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#supports-flux-like-state-management)
 
-    * [createComputed](https://github.com/superlucky84/state-ref?tab=readme-ov-file#createcomputed)
-    * [combinewatch](https://github.com/superlucky84/state-ref?tab=readme-ov-file#combinewatch)
+    * [Using with UI Libraries](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#using-with-ui-libraries)
+        * [Usage with React](https://github.com/superlucky84/state-ref/tree/main/packages/connect-react)
+        * [Usage with Preact](https://github.com/superlucky84/state-ref/tree/main/packages/connect-preact)
+        * [Usage with Svelte](https://github.com/superlucky84/state-ref/tree/main/packages/connect-svelte)
+        * [Usage with Vue](https://github.com/superlucky84/state-ref/tree/main/packages/connect-vue)
+        * [Usage with Solid](https://github.com/superlucky84/state-ref/tree/main/packages/connect-solid)
+        * Usage with Lithent
+
+    * [Advanced Usage](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#advanced-usage)
+        * [combineWatch](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#combinewatch)
+        * [createComputed](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#createcomputed)
+        * [supports flux like state management](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#supports-flux-like-state-management)
+
+
+    * [Acknowledgements](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#acknowledgements)
     * [npm](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#npm)
-    * [test](https://github.com/superlucky84/state-ref/?tab=readme-ov-file#test)
-
-## Acknowledgements
-
-I would like to extend my gratitude to the following people and projects:
-
-- **[Juho Vepsäläinen](https://survivejs.com)**: Thank you for the [insightful interview](https://survivejs.com/blog/state-ref-interview/) and featuring me on your blog. Your work and contributions to the JavaScript community have been a great source of inspiration.
 
 
 ## Basic Usage
 
 The basic principle is that the subscription function only reacts to values retrieved through `.value`, and when a value is assigned with `.value=`, the subscription function is triggered if the value is already subscribed.
+
+### Understanding References: Inner vs Outer
+
+When you register a subscription function via `watch`, it is executed once initially to collect dependencies. The second argument `isFirst` indicates whether this is the first run.
+
+```typescript
+const subscribeCallback = (innerRef, isFirst) => {
+  const matrixCount = innerRef.rowCount.value * innerRef.columnCount.value;
+  console.log(matrixCount);
+};
+
+// outerRef: Bound to subscribeCallback
+const outerRef = watch(subscribeCallback);
+
+// anotherRef: Not bound to any subscription
+const anotherRef = watch();
+```
+
+**Key Points:**
+- Both `innerRef` (callback argument) and `outerRef` (return value) are **the same reference**
+- Both are **bound to the subscription** - accessing `.value` from either registers tracking
+- `anotherRef` is **unbound** - accessing `.value` doesn't register any tracking
+
+```typescript
+// This WON'T trigger subscribeCallback when etcCount changes
+const anotherRef = watch();
+
+const subscribeCallback = (innerRef, isFirst) => {
+  const result =
+    innerRef.rowCount.value *        // Tracked
+    innerRef.columnCount.value *     // Tracked
+    anotherRef.etcCount.value;       // NOT tracked
+  console.log(result);
+};
+
+const outerRef = watch(subscribeCallback);
+
+// Both trigger subscribeCallback
+outerRef.rowCount.value = 10;
+innerRef.columnCount.value = 5;
+
+// This doesn't trigger subscribeCallback
+anotherRef.etcCount.value = 2;
+```
+
+This design makes it easy to integrate with UI libraries by using `outerRef` outside the subscription callback.
 
 Below is a simple usage example.
 
@@ -64,63 +107,47 @@ const watch = createStore<People>({
     sara: { age: 26, house: [{ color: "red", floor: 5 }] },
 });
 
-// Get references
-const stateRef = watch();
+// Get Unbound Reference (Outer Reference)
+const outerRef = watch();
 // Type: StateRefStore<People>
 
-// Using value.
-console.log(stateRef.john.house[1].color.value);
+// Using value from outer reference
+console.log(outerRef.john.house[1].color.value);
 
-// Change value.
-stateRef.john.house[1].color.value = "yellow";
+// Change value using outer reference
+outerRef.john.house[1].color.value = "yellow";
 
-// To subscribe
-watch((stateRef) => {
+// Subscribe with Bound Reference (Inner Reference)
+watch((innerRef) => {
+    // innerRef is bound to this subscription
     console.log(
         "Changed John's Second House Color",
-        stateRef.john.house[1].color.value
+        innerRef.john.house[1].color.value // This read is tracked
     );
 });
 ```
 
-When you define the initial state using the `createStore` function, it returns `watch`, which helps you subscribe to or reference the values.
-
-You can register a subscription function with `watch` that triggers when the value changes.
-
-The first argument passed to the subscription function is `stateRef`, and by using the `value` property of `stateRef`, you can retrieve the value. The subscription function will only execute when the referenced value changes.
-
-Here is another example:
+Here is another example showing how `innerRef` and `outerRef` work:
 
 ```typescript
-const stateRef = watch((stateRef) => {
+// outerRef and innerRef are the same reference
+const outerRef = watch((innerRef) => {
     console.log(
         "Changed John's Second House Color",
-        stateRef.john.house[1].color.value
+        innerRef.john.house[1].color.value
     );
 });
 
+// Destructure for convenient access
 const {
     john: {
-        house: [, { color: colorhandleref }],
+        house: [, { color: colorHandleRef }],
     },
-} = stateRef;
+} = outerRef;
 
-stateRef.john.house[1].color.value = "blue";
+// All these trigger the subscription
+outerRef.john.house[1].color.value = "blue";
 colorHandleRef.value = "green";
-```
-
-The `watch` function returns a `stateRef`. Through the returned `stateRef`, you can change or reference values outside of the subscription function.
-
-By chaining directly from the `stateRef` and assigning a value to the `.value` of the part you want to change, the original data in the store will be reflected with `copyOnWrite` applied.
-
-You can see in the example that you can use the destructuring operator to directly extract a reference to a specific state and use it.
-
-If you simply read the `.value` from the returned `stateRef`, any changes to that value will automatically trigger the subscription function."
-
-If you want to avoid automatic updates, you can use a `new stateRef` that is not connected to the subscription function.
-
-```typescript
-const otherStateRef = watch();
 ```
 
 If you want to cancel the subscription, use `abortController` as shown in the example below.
@@ -154,14 +181,15 @@ watch((stateRef) => {
 
 ```
 
-## Usage with React (Same for Preact)
+## Using with UI Libraries
 
-It can be easily integrated with other UI libraries, and below is an example using React.
+### Usage with React
 
-### profileStore.ts
+* It can be easily integrated with other UI libraries, and below is an example using React.
 
-> Create the store and pass the `watch` to `connectReact` to create a state that can be used in components.
+* Create the store and pass the `watch` to `connectReact` to create a state that can be used in components.
 
+> profileStore.ts
 ```typescript
 import { connectReact } from "@stateref/connect-react";
 // import { connectPreact } from "@stateref/connect-preact"; // for Preact
@@ -185,7 +213,7 @@ const watch = createStore<People>({
 export const useProfileStore = connectReact(watch);
 ```
 
-### UserComponent.tsx
+> UserComponent.tsx
 
 ```tsx
 import { useProfileStore } from 'profileStore';
@@ -211,259 +239,81 @@ In the example above, `useProfileStore` directly returns `stateRef`, allowing ea
 
 You can create your own custom connection pattern by referring to the [connectReact implementation code](https://github.com/superlucky84/state-ref/blob/main/packages/connect-react/src/index.ts).
 
+### Usage with ...
 
-## Usage with Svelte
+* [React](https://www.npmjs.com/package/@stateref/connect-react)
+* [Preact](https://www.npmjs.com/package/@stateref/connect-preact)
+* [Svelte](https://www.npmjs.com/package/@stateref/connect-svelte)
+* [Vue](https://www.npmjs.com/package/@stateref/connect-vue)
+* [Solid](https://www.npmjs.com/package/@stateref/connect-solid)
+* Lithent
 
-While React and Preact's `useProfile` function directly returns `stateRef`, SvelteConnect returns Svelte's built-in reactive [Writable](https://svelte.dev/docs/svelte-store#writable) synchronized with the `stateRef` state value.
+    ```tsx
+    import { mount, h } from 'lithent';
+    import { watch } from 'profileStore';
 
-Below is a usage example.
+    const UserComponent = mount(renew => {
+        const { john: { age: ageRef } } = watch(renew);
+        const increaseAge = () => { ageRef.value += 1 };
 
-### profileStore.ts
-
-```typescript
-import { connectSvelte } from "@stateref/connect-svelte";
-// ... same as React example
-export const useProfileStore = connectSvelte(watch);
-```
-
-### UserComponent.svelte
-
-```svelte
-<script lang="ts">
-import { useProfileStore } from 'profileStore';
-const age = useProfileStore<number>(stateRef => stateRef.john.age);
-
-function handleClick() {
-  age.update(n => n + 1);
-}
-</script>
-
-<button on:click={handleClick}>
-    john's age is {$age}
-</button>
-```
-
-If Writable needs to reference and modify an object from the store, the `copyable` function is available to assist with `copyOnWrite`.
-
-```typescript
-import { copyable } from "state-ref";
-const profileObj = useProfileRef(stateRef => stateRef);
-
-function handleClick() {
-   profileObj.update(n => copyable(n).john.age.writeCopy(n.john.age + 1));
-}
-```
-
-You can customize it by referring to the [connectSvelte implementation code](https://github.com/superlucky84/state-ref/blob/main/packages/connect-svelte/src/index.ts).
+        return () => <button onClick={increaseAge}> john's age: {ageRef.value} </button>;
+    });
+    ```
 
 
-## Usage with Vue
 
-In Vue, the store is connected and returns Vue's built-in reactive [Reactive](https://ko.vuejs.org/api/reactivity-core#reactive) synchronized with the `stateRef` state value.
+## Advanced Usage
 
-You can customize it by referring to the [connectVue implementation code](https://github.com/superlucky84/state-ref/blob/main/packages/connect-vue/src/index.ts).
+### combineWatch
 
-### profileStore.ts
+`combineWatch` is a helper function that **observes multiple `Watch` instances together** and produces a new `Watch` that delivers their **combined values as a tuple-like structure**.
+
+Unlike `createComputed`, which produces a **single derived value**, `combineWatch` focuses on **grouping multiple watches** so you can react to changes from any of them in a **single subscription**.
+When combined multiple times, the structure naturally **nests**, allowing you to build **hierarchical watch compositions**.
+
+#### Basic Usage
 
 ```typescript
-import { connectVue } from "@stateref/connect-vue";
-// ... same as React example
-export const useProfileStore = connectVue(watch);
+import { createStore, combineWatch } from "state-ref";
+
+const countWatch = createStore<number>(100);
+const textWatch = createStore<string>("hello");
+
+// Combine multiple watches into one
+const combinedCountTextWatch = combineWatch([countWatch, textWatch] as const);
+
+combinedCountTextWatch(([countRef, textRef], isFirst) => {
+  console.log("Combined Watches:", countRef.value, textRef.value, isFirst);
+});
+
+// Update a watch
+const countRef = countWatch();
+countRef.value = 200; 
+// → triggers callback with [200, "hello"]
 ```
 
-### UserComponent.vue
+#### Nested Combination
 
-```vue
-<script setup lang="ts">
-import { useProfileStore } from 'profileStore';
-
-const age = useProfileStore<number>(store => store.john.age);
-
-const incrementFromProfile = () => {
-  // This looks the same as stateRef, but it's a Reactive value in Vue.
-  age.value += 1;
-};
-</script>
-
-<template>
-  <button @click="incrementFromProfile">
-    john's age is: {{ age.value }}
-  </button>
-</template>
-```
-
-
-## Usage with Solid
-
-Solid does not directly use `stateRef` but returns Solid's built-in reactive [Signal](https://www.solidjs.com/docs/latest/api#basic-reactivity) synchronized with the `stateRef` state value.
-
-You can customize it by referring to the [connectSolid implementation code](https://github.com/superlucky84/state-ref/blob/main/packages/connect-solid/src/index.ts).
-
-
-### profileStore.ts
+You can **nest `combineWatch`** to observe more complex structures:
 
 ```typescript
-import { connectSolid } from "@stateref/connect-solid";
-// ... same as React example
-export const useProfileStore = connectSolid(watch);
-```
+const countWatch = createStore<number>(100);
+const textWatch = createStore<string>("hello");
+const toggleWatch = createStore<boolean>(false);
 
-### UserComponent.tsx
+// Combine countWatch and textWatch
+const combinedCountTextWatch = combineWatch([countWatch, textWatch] as const);
 
-```tsx
-import { useProfileStore } from 'profileStore';
+// Nest the combined watch with toggleWatch
+const combinedAllWatch = combineWatch([combinedCountTextWatch, toggleWatch] as const);
 
-function UserComponent() {
-    const [age, setAge] = useProfileStore<number>(store => store.john.age);
-
-    function increaseAge() {
-      setAge(age => age + 1);
-    }
-
-    return (
-      <button onClick={increaseAge}>
-          john's age: {age()}
-      </button>;
-    );
-}
-```
-
-If Signal needs to reference and modify an object from the store, the `copyable` function is available to assist with `copyOnWrite`.
-
-```typescript
-import { copyable } from "state-ref";
-const [profileObj, setProfileObj] = useProfileStore(stateRef => stateRef);
-
-function handleClick() {
-   setProfileObj(n => copyable(n).john.age.writeCopy(n.john.age + 1));
-}
-```
-
-## Usage with Lithent
-
-### profileStore.ts
-
-> In [Lithent](https://github.com/superlucky84/lithent), you can use it directly with watch without needing a connect code.
-
-
-
-```typescript
-import { createStore } from "state-ref";
-
-type Info = { age: number; house: { color: string; floor: number }[] };
-type People = { john: Info; brown: Info; sara: Info };
-
-export const watch = createStore<People>({
-    john: {
-        age: 20,
-        house: [
-            { color: "red", floor: 5 },
-            { color: "red", floor: 5 },
-        ],
-    },
-    brown: { age: 26, house: [{ color: "red", floor: 5 }] },
-    sara: { age: 26, house: [{ color: "red", floor: 5 }] },
+combinedAllWatch(([countTextRef, toggleRef], isFirst) => {
+  const [countRef, textRef] = countTextRef;
+  console.log("Nested Watches:", countRef.value, textRef.value, toggleRef.value, isFirst);
 });
 ```
 
-### UserComponent.tsx
-
-```tsx
-import { mount, h } from 'lithent';
-import { watch } from 'profileStore';
-
-const UserComponent = mount(r => {
-    const {
-        john: { age: ageRef },
-    } = watch(r);
-
-    const increaseAge = () => {
-        ageRef.value += 1;
-    };
-
-    return () => (
-        <button onClick={increaseAge}>
-            john's age: {ageRef.value}
-        </button>;
-    );
-});
-```
-
-## Supports Flux-like State Management
-   
-If users prefer to manage state using a centralized store pattern, `state-ref` provides flexibility with the `createStoreManualSync` function. This mode makes it easier to implement centralized patterns like `Flux`.
-
-Below is a simple `Flux-like` example using `createStoreManualSync` with React.
-
-### profileStore
-
-`createStoreManualSync` returns `updateRef` and `sync`, along with `watch`.
-
-In the default mode, values can be modified through the references created by `watch`. However, in `manualSync` mode, values cannot be modified via `watch`.
-
-To update values, you must use `updateRef`. To propagate the changes to subscribed code (and trigger subscription callbacks), you can manually execute the `sync` function at your desired time.
-
-```typescript
-import { createStoreManualSync } from "state-ref";
-
-type Info = { age: number; house: { color: string; floor: number }[] };
-type People = { john: Info; brown: Info; sara: Info };
-
-const { watch, updateRef, sync } = createStoreManualSync<People>({
-    john: { age: 20, house: [ { color: "red", floor: 5 }] },
-    brown: { age: 26, house: [{ color: "red", floor: 5 }] },
-});
-
-export const useProfileStore = connectReact(watch);
-
-// Action to change John's age
-export const changeJohnAge = (newAge: number) => {
-    updateRef.john.age.value = newAge;
-    sync();
-};
-
-// Action to change Brown's first house info
-export const changeBrownFirstHouseInfo = (
-    firstHouseInfo = { color: 'blue', floor: 7 }
-) => {
-    updateRef.brown.house[0].value = firstHouseInfo;
-    sync();
-};
-```
-
-### UserComponent.tsx
-
-Values can only be updated through actions created by `profileStore`. Any attempt to modify the values in other ways will result in an error.
-
-```tsx
-import { useProfileStore, changeJohnAge } from 'profileStore';
-
-function UserComponent() {
-  // The stateRef received via watch or the values received via connect are for reference only
-  // (direct modification is not allowed).
-  const {
-    john: { age: ageRef },
-  } = useProfileStore();
-
-  const increaseAge = () => {
-    // An error occurs if you attempt to modify 'ageRef' directly.
-    // ageRef.value += 1; // 
-
-    // You must modify the reference through the action's updateRef.
-    // Afterward, the subscribed code will synchronize via the sync function
-    // (triggering subscription callbacks).
-    changeJohnAge(ageRef.value + 1);
-  };
-
-  return (
-    <button onClick={increaseAge}>
-        john's age: {ageRef.value}
-    </button>;
-  );
-}
-```
-
-## createComputed 
+### createComputed 
 
 `createComputed` is a helper function that combines multiple watches to produce a new computed (derived) value, and executes a specified callback function whenever that computed value changes.
 
@@ -503,59 +353,85 @@ computedRef.value = 30;
 const useComputedValue = connectReact(computedWatch);
 ```
 
-## combineWatch
+### Supports Flux-like State Management
+   
+If users prefer to manage state using a centralized store pattern, `state-ref` provides flexibility with the `createStoreManualSync` function. This mode makes it easier to implement centralized patterns like `Flux`.
 
-`combineWatch` is a helper function that **observes multiple `Watch` instances together** and produces a new `Watch` that delivers their **combined values as a tuple-like structure**.
+Below is a simple `Flux-like` example using `createStoreManualSync` with React.
 
-Unlike `createComputed`, which produces a **single derived value**, `combineWatch` focuses on **grouping multiple watches** so you can react to changes from any of them in a **single subscription**.
-When combined multiple times, the structure naturally **nests**, allowing you to build **hierarchical watch compositions**.
+#### profileStore
 
-### Basic Usage
+`createStoreManualSync` returns `updateRef` and `sync`, along with `watch`.
 
-```typescript
-import { createStore, combineWatch } from "state-ref";
+In the default mode, values can be modified through the references created by `watch`. However, in `manualSync` mode, values cannot be modified via `watch`.
 
-const countWatch = createStore<number>(100);
-const textWatch = createStore<string>("hello");
-
-// Combine multiple watches into one
-const combinedCountTextWatch = combineWatch([countWatch, textWatch] as const);
-
-combinedCountTextWatch(([countRef, textRef], isFirst) => {
-  console.log("Combined Watches:", countRef.value, textRef.value, isFirst);
-});
-
-// Update a watch
-const countRef = countWatch();
-countRef.value = 200; 
-// → triggers callback with [200, "hello"]
-```
-
-### Nested Combination
-
-You can **nest `combineWatch`** to observe more complex structures:
+To update values, you must use `updateRef`. To propagate the changes to subscribed code (and trigger subscription callbacks), you can manually execute the `sync` function at your desired time.
 
 ```typescript
-const countWatch = createStore<number>(100);
-const textWatch = createStore<string>("hello");
-const toggleWatch = createStore<boolean>(false);
+import { createStoreManualSync } from "state-ref";
 
-// Combine countWatch and textWatch
-const combinedCountTextWatch = combineWatch([countWatch, textWatch] as const);
+type Info = { age: number; house: { color: string; floor: number }[] };
+type People = { john: Info; brown: Info; sara: Info };
 
-// Nest the combined watch with toggleWatch
-const combinedAllWatch = combineWatch([combinedCountTextWatch, toggleWatch] as const);
-
-combinedAllWatch(([countTextRef, toggleRef], isFirst) => {
-  const [countRef, textRef] = countTextRef;
-  console.log("Nested Watches:", countRef.value, textRef.value, toggleRef.value, isFirst);
+const { watch, updateRef, sync } = createStoreManualSync<People>({
+    john: { age: 20, house: [ { color: "red", floor: 5 }] },
+    brown: { age: 26, house: [{ color: "red", floor: 5 }] },
 });
+
+export const useProfileStore = connectReact(watch);
+
+// Action to change John's age
+export const changeJohnAge = (newAge: number) => {
+    updateRef.john.age.value = newAge;
+    sync();
+};
+
+// Action to change Brown's first house info
+export const changeBrownFirstHouseInfo = (
+    firstHouseInfo = { color: 'blue', floor: 7 }
+) => {
+    updateRef.brown.house[0].value = firstHouseInfo;
+    sync();
+};
 ```
 
-### When to Use
+#### UserComponent.tsx
 
-* Use **`createComputed`** when you need a **single derived value** (e.g., number, string, object).
-* Use **`combineWatch`** when you need to **observe multiple watches together** and handle their values as a **structured group**.
+Values can only be updated through actions created by `profileStore`. Any attempt to modify the values in other ways will result in an error.
+
+```tsx
+import { useProfileStore, changeJohnAge } from 'profileStore';
+
+function UserComponent() {
+  // The stateRef received via watch or the values received via connect are for reference only
+  // (direct modification is not allowed).
+  const {
+    john: { age: ageRef },
+  } = useProfileStore();
+
+  const increaseAge = () => {
+    // An error occurs if you attempt to modify 'ageRef' directly.
+    // ageRef.value += 1; // 
+
+    // You must modify the reference through the action's updateRef.
+    // Afterward, the subscribed code will synchronize via the sync function
+    // (triggering subscription callbacks).
+    changeJohnAge(ageRef.value + 1);
+  };
+
+  return (
+    <button onClick={increaseAge}>
+        john's age: {ageRef.value}
+    </button>;
+  );
+}
+```
+
+## Acknowledgements
+
+I would like to extend my gratitude to the following people and projects:
+
+- **[Juho Vepsäläinen](https://survivejs.com)**: Thank you for the [insightful interview](https://survivejs.com/blog/state-ref-interview/) and featuring me on your blog. Your work and contributions to the JavaScript community have been a great source of inspiration.
 
 ## npm
 * [state-ref](https://www.npmjs.com/package/state-ref)
@@ -566,12 +442,3 @@ combinedAllWatch(([countTextRef, toggleRef], isFirst) => {
 * [connect-vue](https://www.npmjs.com/package/@stateref/connect-vue)
 * [lithent](https://www.npmjs.com/package/lithent)
 
-## test
-
-> Plugins must be build before they can be tested.
-
-```bash
-pnpm install
-pnpm build
-pnpm test
-```
