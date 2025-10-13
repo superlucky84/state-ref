@@ -23,7 +23,7 @@ export type StateRefStore<S> = S extends object
 
 export type Watch<V> = (
   renew?: Renew<StateRefStore<V>>,
-  userOption?: { cache?: boolean }
+  userOption?: { cache?: boolean; editable?: boolean }
 ) => StateRefStore<V>;
 
 export type RunInfo<A> = {
@@ -37,10 +37,10 @@ export type RenderListSub<A> = Map<string, RunInfo<A>>;
 
 export type StoreRenderList<A> = Map<Run, RenderListSub<A>>;
 
-export type Copyable<T> = {
-  [K in keyof T]: Copyable<T[K]>;
+export type Copyable<T, Root = T> = {
+  [K in keyof T]: Copyable<T[K], Root>;
 } & {
-  writeCopy: <J>(v?: T) => J;
+  writeCopy: <V = T>(v: V) => Root;
 };
 
 export type StateRefsTuple<W extends readonly Watch<any>[]> = {
@@ -51,4 +51,10 @@ export type StateRefsTuple<W extends readonly Watch<any>[]> = {
 
 export type CombinedValue<W extends readonly Watch<any>[]> = {
   [K in keyof W]: W[K] extends Watch<infer T> ? T : never;
+};
+
+export type ManualSyncStore<V> = {
+  watch: Watch<V>;
+  updateRef: StateRefStore<V>;
+  sync: () => void;
 };

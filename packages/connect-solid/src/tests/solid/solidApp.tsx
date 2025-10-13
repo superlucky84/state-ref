@@ -25,9 +25,7 @@ function App() {
           onClick={() => {
             // setAge(age => ({ ...age, age: age.age + 1 }));
             setProfile(profile =>
-              copyable(profile).age.writeCopy<{ name: string; age: number }>(
-                profile.age + 1
-              )
+              copyable(profile).age.writeCopy(profile.age + 1)
             );
           }}
         >
