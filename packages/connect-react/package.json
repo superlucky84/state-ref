@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@stateref/connect-react",
-  "version": "18.0.3",
+  "version": "18.2.0",
   "private": false,
   "description": "React connector for state-ref",
   "packageManager": "pnpm@7.6.0",
@@ -37,7 +37,7 @@
   ],
   "peerDependencies": {
     "react": "^18.0.0",
-    "state-ref": "^1.0.0"
+    "state-ref": "^2.0.0"
   },
   "devDependencies": {
     "@testing-library/react": "^16.0.1",

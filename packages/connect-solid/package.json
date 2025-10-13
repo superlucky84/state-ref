@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@stateref/connect-solid",
-  "version": "1.0.2",
+  "version": "1.2.0",
   "private": false,
   "description": "Solid connector for state-ref",
   "packageManager": "pnpm@7.6.0",
@@ -37,7 +37,7 @@
   ],
   "peerDependencies": {
     "solid-js": "^1.9.1",
-    "state-ref": "^1.0.0"
+    "state-ref": "^2.0.0"
   },
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.10",

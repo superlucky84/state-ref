@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@stateref/connect-vue",
-  "version": "3.0.2",
+  "version": "3.2.0",
   "private": false,
   "description": "Vue connector for state-ref",
   "packageManager": "pnpm@7.6.0",
@@ -36,7 +36,7 @@
     "state-ref"
   ],
   "peerDependencies": {
-    "state-ref": "^1.0.0",
+    "state-ref": "^2.0.0",
     "vue": "^3.0.0"
   },
   "devDependencies": {
