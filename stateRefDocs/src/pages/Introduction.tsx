@@ -1,4 +1,5 @@
 import { mount } from 'lithent';
+import { CodeBlock } from '@/components/CodeBlock';
 
 export const Introduction = mount(() => {
   return () => (
@@ -84,24 +85,23 @@ export const Introduction = mount(() => {
 
       <h2>Installation</h2>
 
-      <pre>
-        <code>
-          {`# Core library
-npm install state-ref
+      <CodeBlock
+        language="bash"
+        code={`# Core library
+$ npm install state-ref
 
 # Framework connectors (choose what you need)
-npm install @stateref/connect-react
-npm install @stateref/connect-vue
-npm install @stateref/connect-svelte
-npm install @stateref/connect-solid`}
-        </code>
-      </pre>
+$ npm install @stateref/connect-react
+$ npm install @stateref/connect-vue
+$ npm install @stateref/connect-svelte
+$ npm install @stateref/connect-solid`}
+      />
 
       <h2>Basic Example</h2>
 
-      <pre>
-        <code>
-          {`import { createStore } from 'state-ref';
+      <CodeBlock
+        language="typescript"
+        code={`import { createStore } from 'state-ref';
 
 // Create a store
 const watch = createStore({ count: 0 });
@@ -116,8 +116,44 @@ watch((store, isFirst) => {
 const store = watch();
 store.count.value = 1;
 // Logs: Count: 1`}
-        </code>
-      </pre>
+      />
+
+      <h2>Usage with React</h2>
+
+      <p>
+        StateRef can be easily integrated with React using the <code>connectReact</code> helper:
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`// store.ts
+import { createStore } from 'state-ref';
+import { connectReact } from '@stateref/connect-react';
+
+const watch = createStore({ count: 0 });
+export const useCountStore = connectReact(watch);`}
+      />
+
+      <CodeBlock
+        language="tsx"
+        code={`// Counter.tsx
+import { useCountStore } from './store';
+
+function Counter() {
+  const { count } = useCountStore();
+
+  return (
+    <button onClick={() => count.value++}>
+      Count: {count.value}
+    </button>
+  );
+}`}
+      />
+
+      <p>
+        The component automatically re-renders when <code>count.value</code> changes.
+        Learn more in the <a href="#/guide/react">React Integration</a> guide.
+      </p>
 
       <h2>Next Steps</h2>
 

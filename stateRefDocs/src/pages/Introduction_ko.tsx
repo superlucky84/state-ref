@@ -1,4 +1,5 @@
 import { mount } from 'lithent';
+import { CodeBlock } from '@/components/CodeBlock';
 
 export const IntroductionKo = mount(() => {
   return () => (
@@ -82,24 +83,23 @@ export const IntroductionKo = mount(() => {
 
       <h2>설치</h2>
 
-      <pre>
-        <code>
-          {`# 코어 라이브러리
-npm install state-ref
+      <CodeBlock
+        language="bash"
+        code={`# 코어 라이브러리
+$ npm install state-ref
 
 # 프레임워크 커넥터 (필요한 것만 선택)
-npm install @stateref/connect-react
-npm install @stateref/connect-vue
-npm install @stateref/connect-svelte
-npm install @stateref/connect-solid`}
-        </code>
-      </pre>
+$ npm install @stateref/connect-react
+$ npm install @stateref/connect-vue
+$ npm install @stateref/connect-svelte
+$ npm install @stateref/connect-solid`}
+      />
 
       <h2>기본 예제</h2>
 
-      <pre>
-        <code>
-          {`import { createStore } from 'state-ref';
+      <CodeBlock
+        language="typescript"
+        code={`import { createStore } from 'state-ref';
 
 // 스토어 생성
 const watch = createStore({ count: 0 });
@@ -114,8 +114,44 @@ watch((store, isFirst) => {
 const store = watch();
 store.count.value = 1;
 // 로그: Count: 1`}
-        </code>
-      </pre>
+      />
+
+      <h2>React와 함께 사용하기</h2>
+
+      <p>
+        StateRef는 <code>connectReact</code> 헬퍼를 사용하여 React와 쉽게 통합할 수 있습니다:
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`// store.ts
+import { createStore } from 'state-ref';
+import { connectReact } from '@stateref/connect-react';
+
+const watch = createStore({ count: 0 });
+export const useCountStore = connectReact(watch);`}
+      />
+
+      <CodeBlock
+        language="tsx"
+        code={`// Counter.tsx
+import { useCountStore } from './store';
+
+function Counter() {
+  const { count } = useCountStore();
+
+  return (
+    <button onClick={() => count.value++}>
+      Count: {count.value}
+    </button>
+  );
+}`}
+      />
+
+      <p>
+        <code>count.value</code>가 변경되면 컴포넌트가 자동으로 다시 렌더링됩니다.
+        자세한 내용은 <a href="#/ko/guide/react">React 연동</a> 가이드를 참고하세요.
+      </p>
 
       <h2>다음 단계</h2>
 

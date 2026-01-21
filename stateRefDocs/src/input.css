@@ -2,22 +2,199 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+@layer base {
+  * {
+    @apply transition-colors duration-200;
+  }
+
+  body {
+    @apply m-0 p-0;
+  }
+
+  code {
+    @apply font-mono text-sm;
+  }
+
+  a {
+    @apply no-underline;
+  }
 }
 
-::-webkit-scrollbar-track {
-  @apply bg-gray-100 dark:bg-gray-800;
-}
+@layer utilities {
+  .prose code {
+    @apply px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-700 text-sm;
+  }
 
-::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 dark:bg-gray-600 rounded;
-}
+  .prose pre {
+    @apply my-4;
+  }
 
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-400 dark:bg-gray-500;
+  .prose pre code {
+    @apply p-0 bg-transparent dark:bg-transparent;
+  }
+
+  /* highlight.js code blocks */
+  .prose pre code.hljs {
+    @apply bg-transparent dark:bg-transparent p-0;
+  }
+
+  /* Bash prompt styling */
+  .bash-prompt {
+    @apply text-indigo-500 font-semibold;
+  }
+
+  /* Aside sidebar scrollbar styling - Light theme */
+  aside.overflow-y-auto {
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db #ffffff;
+  }
+
+  aside.overflow-y-auto::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  aside.overflow-y-auto::-webkit-scrollbar-track {
+    background: #ffffff;
+  }
+
+  aside.overflow-y-auto::-webkit-scrollbar-thumb {
+    background-color: #d1d5db;
+    border-radius: 4px;
+  }
+
+  aside.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+    background-color: #9ca3af;
+  }
+
+  /* Aside sidebar scrollbar styling - Dark theme */
+  :is(.dark aside.overflow-y-auto) {
+    scrollbar-width: thin;
+    scrollbar-color: #374151 #1b1b1f;
+  }
+
+  :is(.dark aside.overflow-y-auto)::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  :is(.dark aside.overflow-y-auto)::-webkit-scrollbar-track {
+    background: #1b1b1f;
+  }
+
+  :is(.dark aside.overflow-y-auto)::-webkit-scrollbar-thumb {
+    background-color: #374151;
+    border-radius: 4px;
+  }
+
+  :is(.dark aside.overflow-y-auto)::-webkit-scrollbar-thumb:hover {
+    background-color: #4b5563;
+  }
+
+  /* Code block scrollbar styling */
+  .code-block {
+    scrollbar-width: thin;
+    scrollbar-color: #6366f150 transparent;
+  }
+
+  .code-block::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  .code-block::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .code-block::-webkit-scrollbar-thumb {
+    background-color: #6366f150;
+    border-radius: 4px;
+  }
+
+  .code-block::-webkit-scrollbar-thumb:hover {
+    background-color: #6366f180;
+  }
+
+  /* Light mode syntax highlighting */
+  .code-block code {
+    @apply text-gray-800 dark:text-gray-200;
+  }
+
+  .code-block .hljs-comment {
+    @apply text-gray-500 dark:text-gray-500 italic;
+  }
+
+  .code-block .hljs-keyword,
+  .code-block .hljs-selector-tag,
+  .code-block .hljs-literal,
+  .code-block .hljs-section,
+  .code-block .hljs-link {
+    @apply text-purple-600 dark:text-purple-400;
+  }
+
+  .code-block .hljs-string {
+    @apply text-green-600 dark:text-green-400;
+  }
+
+  .code-block .hljs-title,
+  .code-block .hljs-name,
+  .code-block .hljs-type,
+  .code-block .hljs-attribute,
+  .code-block .hljs-symbol,
+  .code-block .hljs-bullet,
+  .code-block .hljs-built_in,
+  .code-block .hljs-addition,
+  .code-block .hljs-variable,
+  .code-block .hljs-template-tag,
+  .code-block .hljs-template-variable {
+    @apply text-blue-600 dark:text-blue-400;
+  }
+
+  .code-block .hljs-attr,
+  .code-block .hljs-property {
+    @apply text-orange-600 dark:text-orange-400;
+  }
+
+  .code-block .hljs-number,
+  .code-block .hljs-regexp,
+  .code-block .hljs-meta {
+    @apply text-red-600 dark:text-red-400;
+  }
+
+  .code-block .hljs-tag {
+    @apply text-gray-800 dark:text-gray-200;
+  }
+
+  .code-block .hljs-punctuation {
+    @apply text-gray-600 dark:text-gray-400;
+  }
+
+  /* Page transition - slide + fade */
+  .page-shell {
+    perspective: 1200px;
+  }
+
+  .page-sheet {
+    position: relative;
+    animation: pageSlideIn 180ms cubic-bezier(0.25, 0.7, 0.35, 1);
+    will-change: transform, opacity;
+  }
+
+  @keyframes pageSlideIn {
+    from {
+      opacity: 0;
+      transform: translateX(12px) translateY(6px);
+      filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.08));
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0) translateY(0);
+      filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.04));
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .page-sheet {
+      animation: none;
+    }
+  }
 }
 
 /* Page content styles */
@@ -45,16 +222,8 @@
   @apply list-decimal list-inside mb-4 text-gray-700 dark:text-gray-300 space-y-2;
 }
 
-.page-shell code {
+.page-shell code:not(.code-block code) {
   @apply bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm font-mono text-indigo-600 dark:text-indigo-400;
-}
-
-.page-shell pre {
-  @apply bg-gray-900 dark:bg-black rounded-lg p-4 mb-4 overflow-x-auto;
-}
-
-.page-shell pre code {
-  @apply bg-transparent text-gray-100 p-0;
 }
 
 .page-shell a {
