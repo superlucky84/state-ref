@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100 dark:bg-gray-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 dark:bg-gray-600 rounded;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400 dark:bg-gray-500;
+}
+
+/* Page content styles */
+.page-shell h1 {
+  @apply text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-6 mt-8;
+}
+
+.page-shell h2 {
+  @apply text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-4 mt-8;
+}
+
+.page-shell h3 {
+  @apply text-xl md:text-2xl font-semibold text-gray-900 dark:text-white mb-3 mt-6;
+}
+
+.page-shell p {
+  @apply text-gray-700 dark:text-gray-300 mb-4 leading-relaxed;
+}
+
+.page-shell ul {
+  @apply list-disc list-inside mb-4 text-gray-700 dark:text-gray-300 space-y-2;
+}
+
+.page-shell ol {
+  @apply list-decimal list-inside mb-4 text-gray-700 dark:text-gray-300 space-y-2;
+}
+
+.page-shell code {
+  @apply bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm font-mono text-indigo-600 dark:text-indigo-400;
+}
+
+.page-shell pre {
+  @apply bg-gray-900 dark:bg-black rounded-lg p-4 mb-4 overflow-x-auto;
+}
+
+.page-shell pre code {
+  @apply bg-transparent text-gray-100 p-0;
+}
+
+.page-shell a {
+  @apply text-indigo-600 dark:text-indigo-400 hover:underline;
+}
+
+.page-shell blockquote {
+  @apply border-l-4 border-indigo-500 pl-4 italic text-gray-600 dark:text-gray-400 mb-4;
+}

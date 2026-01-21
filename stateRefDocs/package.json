@@ -1,0 +1,40 @@
+{
+  "type": "module",
+  "private": true,
+  "name": "state-ref-docs",
+  "version": "0.1.0",
+  "description": "state-ref documentation",
+  "main": "./dist/stateRefDocs.umd.js",
+  "module": "./dist/stateRefDocs.mjs",
+  "exports": {
+    ".": {
+      "import": "./dist/stateRefDocs.mjs",
+      "require": "./dist/stateRefDocs.umd.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "author": "superlucky84",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/superlucky84/state-ref.git",
+    "directory": "stateRefDocs"
+  },
+  "keywords": [
+    "state-ref"
+  ],
+  "devDependencies": {
+    "autoprefixer": "^10.4.14",
+    "highlight.js": "^11.8.0",
+    "lithent": "^1.21.4",
+    "postcss": "^8.4.24",
+    "tailwindcss": "^3.3.2",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.8",
+    "vite-plugin-checker": "^0.6.1"
+  }
+}
