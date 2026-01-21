@@ -18,6 +18,7 @@ export const Header = mount(renew => {
               }}
             >
               <svg
+                xmlns="http //www.w3.org/2000/svg"
                 class="w-6 h-6 text-gray-700 dark:text-gray-300"
                 fill="none"
                 stroke="currentColor"
@@ -67,6 +68,7 @@ export const Header = mount(renew => {
             >
               {store.theme === 'light' ? (
                 <svg
+                  xmlns="http://www.w3.org/2000/svg"
                   class="w-5 h-5 text-gray-700 dark:text-gray-300"
                   fill="none"
                   stroke="currentColor"
@@ -81,6 +83,7 @@ export const Header = mount(renew => {
                 </svg>
               ) : (
                 <svg
+                  xmlns="http://www.w3.org/2000/svg"
                   class="w-5 h-5 text-gray-700 dark:text-gray-300"
                   fill="none"
                   stroke="currentColor"
@@ -105,6 +108,7 @@ export const Header = mount(renew => {
               aria-label="GitHub"
             >
               <svg
+                xmlns="http://www.w3.org/2000/svg"
                 class="w-5 h-5 text-gray-700 dark:text-gray-300"
                 fill="currentColor"
                 viewBox="0 0 24 24"

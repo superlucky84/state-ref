@@ -2,6 +2,59 @@
 
 이 문서는 StateRef 문서 사이트 작업 계획서입니다. 작업자는 이 문서를 참고하여 문서 페이지를 작성해주세요.
 
+---
+
+## 📋 작업 체크리스트
+
+작업 완료 시 `[ ]`를 `[x]`로 변경해주세요.
+
+### 1. Getting Started (시작하기)
+- [x] Introduction (소개) - `Introduction.tsx`, `Introduction_ko.tsx`
+- [ ] Quick Start (빠른 시작) - `QuickStart.tsx`, `QuickStart_ko.tsx`
+
+### 2. Core Concepts (핵심 개념)
+- [ ] createStore - `CreateStore.tsx`, `CreateStore_ko.tsx`
+- [ ] Watch Function (Watch 함수) - `Watch.tsx`, `Watch_ko.tsx`
+- [ ] StateRefStore - `StateRefStore.tsx`, `StateRefStore_ko.tsx`
+- [ ] Subscription (구독) - `Subscription.tsx`, `Subscription_ko.tsx`
+- [ ] Primitive Types (원시 타입) - `Primitives.tsx`, `Primitives_ko.tsx`
+
+### 3. Advanced Usage (고급 사용법)
+- [ ] createComputed - `Computed.tsx`, `Computed_ko.tsx`
+- [ ] combineWatch - `CombineWatch.tsx`, `CombineWatch_ko.tsx`
+- [ ] Manual Sync / Flux (수동 동기화) - `ManualSync.tsx`, `ManualSync_ko.tsx`
+
+### 4. Helper Functions (헬퍼 함수)
+- [ ] Lens Pattern (Lens 패턴) - `Lens.tsx`, `Lens_ko.tsx`
+- [ ] copyable - `Copyable.tsx`, `Copyable_ko.tsx`
+- [ ] cloneDeep - `CloneDeep.tsx`, `CloneDeep_ko.tsx`
+
+### 5. Framework Integration (프레임워크 연동)
+- [ ] React - `React.tsx`, `React_ko.tsx`
+- [ ] Preact - `Preact.tsx`, `Preact_ko.tsx`
+- [ ] Vue - `Vue.tsx`, `Vue_ko.tsx`
+- [ ] Svelte - `Svelte.tsx`, `Svelte_ko.tsx`
+- [ ] Solid - `Solid.tsx`, `Solid_ko.tsx`
+- [ ] Lithent - `Lithent.tsx`, `Lithent_ko.tsx`
+- [ ] Custom Connector (커스텀 커넥터) - `CustomConnector.tsx`, `CustomConnector_ko.tsx`
+
+### 6. API Reference (선택사항)
+- [ ] Core API (코어 API) - `ApiCore.tsx`, `ApiCore_ko.tsx`
+- [ ] Helper API (헬퍼 API) - `ApiHelpers.tsx`, `ApiHelpers_ko.tsx`
+- [ ] TypeScript Types (타입) - `ApiTypes.tsx`, `ApiTypes_ko.tsx`
+
+### 🔧 설정 작업
+- [x] Layout.tsx 라우트 등록
+- [x] Sidebar.tsx 메뉴 등록
+- [ ] 모든 라우트 등록 완료
+- [ ] 모든 메뉴 항목 등록 완료
+
+---
+
+**진행 현황: 1 / 20 완료 (5%)**
+
+---
+
 ## 프로젝트 구조
 
 ```
