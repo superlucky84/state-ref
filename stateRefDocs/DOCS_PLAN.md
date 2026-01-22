@@ -10,13 +10,14 @@
 
 ### 1. Getting Started (시작하기)
 - [x] Introduction (소개) - `Introduction.tsx`, `Introduction_ko.tsx`
-- [ ] Quick Start (빠른 시작) - `QuickStart.tsx`, `QuickStart_ko.tsx`
+- [x] Quick Start (빠른 시작) - `QuickStart.tsx`, `QuickStart_ko.tsx`
 
 ### 2. Core Concepts (핵심 개념)
-- [ ] createStore - `CreateStore.tsx`, `CreateStore_ko.tsx`
-- [ ] Watch Function (Watch 함수) - `Watch.tsx`, `Watch_ko.tsx`
-- [ ] StateRefStore - `StateRefStore.tsx`, `StateRefStore_ko.tsx`
-- [ ] Subscription (구독) - `Subscription.tsx`, `Subscription_ko.tsx`
+- [x] createStore - `CreateStore.tsx`, `CreateStore_ko.tsx`
+- [x] Watch Function (Watch 함수) - `Watch.tsx`, `Watch_ko.tsx`
+- [x] Understanding References (참조 이해하기) - `References.tsx`, `References_ko.tsx`
+- [x] StateRefStore - `StateRefStore.tsx`, `StateRefStore_ko.tsx`
+- [x] Subscription (구독) - `Subscription.tsx`, `Subscription_ko.tsx`
 - [ ] Primitive Types (원시 타입) - `Primitives.tsx`, `Primitives_ko.tsx`
 
 ### 3. Advanced Usage (고급 사용법)
@@ -51,7 +52,7 @@
 
 ---
 
-**진행 현황: 1 / 20 완료 (5%)**
+**진행 현황: 7 / 21 완료 (33%)**
 
 ---
 
@@ -90,7 +91,7 @@ stateRefDocs/
 | 라우트 | 영문 제목 | 한글 제목 | 파일명 | 상태 |
 |--------|----------|----------|--------|------|
 | `/guide/introduction` | Introduction | 소개 | `Introduction.tsx` | ✅ 완료 |
-| `/guide/quick-start` | Quick Start | 빠른 시작 | `QuickStart.tsx` | ⬜ 미작성 |
+| `/guide/quick-start` | Quick Start | 빠른 시작 | `QuickStart.tsx` | ✅ 완료 |
 
 **내용 가이드:**
 - **Introduction**: StateRef 개요, 주요 특징, 설치 방법 (`npm install state-ref`)
@@ -102,15 +103,17 @@ stateRefDocs/
 
 | 라우트 | 영문 제목 | 한글 제목 | 파일명 | 상태 |
 |--------|----------|----------|--------|------|
-| `/guide/create-store` | createStore | createStore | `CreateStore.tsx` | ⬜ 미작성 |
-| `/guide/watch` | Watch Function | Watch 함수 | `Watch.tsx` | ⬜ 미작성 |
-| `/guide/state-ref-store` | StateRefStore | StateRefStore | `StateRefStore.tsx` | ⬜ 미작성 |
-| `/guide/subscription` | Subscription | 구독 | `Subscription.tsx` | ⬜ 미작성 |
+| `/guide/create-store` | createStore | createStore | `CreateStore.tsx` | ✅ 완료 |
+| `/guide/watch` | Watch Function | Watch 함수 | `Watch.tsx` | ✅ 완료 |
+| `/guide/references` | Understanding References | 참조 이해하기 | `References.tsx` | ✅ 완료 |
+| `/guide/state-ref-store` | StateRefStore | StateRefStore | `StateRefStore.tsx` | ✅ 완료 |
+| `/guide/subscription` | Subscription | 구독 | `Subscription.tsx` | ✅ 완료 |
 | `/guide/primitives` | Primitive Types | 원시 타입 | `Primitives.tsx` | ⬜ 미작성 |
 
 **내용 가이드:**
 - **createStore**: 스토어 생성 API, 초기값 설정, 타입 지정
-- **Watch Function**: watch 함수의 두 가지 사용법 (구독 vs 참조), innerRef vs outerRef 개념
+- **Watch Function**: watch 함수의 두 가지 사용법 (구독 vs 참조)
+- **Understanding References**: innerRef(내부 참조), outerRef(외부 참조), unbound reference(언바운드 참조) 개념, 추적되는 참조 vs 추적되지 않는 참조
 - **StateRefStore**: .value 프로퍼티 접근, 프록시 동작 원리, 깊은 중첩 접근
 - **Subscription**: 구독 콜백 작성, isFirst 파라미터, AbortController로 구독 취소
 - **Primitive Types**: number, string 등 원시 타입 스토어 다루기
@@ -270,8 +273,8 @@ const example = 'code';`}
 
 ## 진행 상황
 
-- **총 페이지**: 20개 (API Reference 제외)
-- **완료**: 1개
-- **진행률**: 5%
+- **총 페이지**: 21개 (API Reference 제외)
+- **완료**: 7개
+- **진행률**: 33%
 
-마지막 업데이트: 2025-01-21
+마지막 업데이트: 2025-01-22

@@ -24,24 +24,38 @@ const menuData: MenuSection[] = [
     items: [
       { text: { en: 'createStore', ko: 'createStore' }, link: '/guide/create-store' },
       { text: { en: 'Watch Function', ko: 'Watch 함수' }, link: '/guide/watch' },
-      { text: { en: 'Lens Pattern', ko: 'Lens 패턴' }, link: '/guide/lens' },
+      { text: { en: 'Understanding References', ko: '참조 이해하기' }, link: '/guide/references' },
+      { text: { en: 'StateRefStore', ko: 'StateRefStore' }, link: '/guide/state-ref-store' },
+      { text: { en: 'Subscription', ko: '구독' }, link: '/guide/subscription' },
+      { text: { en: 'Primitive Types', ko: '원시 타입' }, link: '/guide/primitives' },
+    ],
+  },
+  {
+    text: { en: 'Advanced Usage', ko: '고급 사용법' },
+    items: [
+      { text: { en: 'createComputed', ko: 'createComputed' }, link: '/guide/computed' },
+      { text: { en: 'combineWatch', ko: 'combineWatch' }, link: '/guide/combine-watch' },
+      { text: { en: 'Manual Sync (Flux)', ko: '수동 동기화 (Flux)' }, link: '/guide/manual-sync' },
     ],
   },
   {
     text: { en: 'Helper Functions', ko: '헬퍼 함수' },
     items: [
+      { text: { en: 'Lens Pattern', ko: 'Lens 패턴' }, link: '/guide/lens' },
       { text: { en: 'copyable', ko: 'copyable' }, link: '/guide/copyable' },
-      { text: { en: 'createComputed', ko: 'createComputed' }, link: '/guide/computed' },
-      { text: { en: 'combineWatch', ko: 'combineWatch' }, link: '/guide/combine-watch' },
+      { text: { en: 'cloneDeep', ko: 'cloneDeep' }, link: '/guide/clone-deep' },
     ],
   },
   {
     text: { en: 'Framework Integration', ko: '프레임워크 연동' },
     items: [
       { text: { en: 'React', ko: 'React' }, link: '/guide/react' },
+      { text: { en: 'Preact', ko: 'Preact' }, link: '/guide/preact' },
       { text: { en: 'Vue', ko: 'Vue' }, link: '/guide/vue' },
       { text: { en: 'Svelte', ko: 'Svelte' }, link: '/guide/svelte' },
       { text: { en: 'Solid', ko: 'Solid' }, link: '/guide/solid' },
+      { text: { en: 'Lithent', ko: 'Lithent' }, link: '/guide/lithent' },
+      { text: { en: 'Custom Connector', ko: '커스텀 커넥터' }, link: '/guide/custom-connector' },
     ],
   },
 ];

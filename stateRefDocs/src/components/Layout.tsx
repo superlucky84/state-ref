@@ -6,6 +6,18 @@ import { Home } from '@/pages/Home';
 import { HomeKo } from '@/pages/Home_ko';
 import { Introduction } from '@/pages/Introduction';
 import { IntroductionKo } from '@/pages/Introduction_ko';
+import { QuickStart } from '@/pages/QuickStart';
+import { QuickStartKo } from '@/pages/QuickStart_ko';
+import { CreateStore } from '@/pages/CreateStore';
+import { CreateStoreKo } from '@/pages/CreateStore_ko';
+import { Watch } from '@/pages/Watch';
+import { WatchKo } from '@/pages/Watch_ko';
+import { References } from '@/pages/References';
+import { ReferencesKo } from '@/pages/References_ko';
+import { StateRefStore } from '@/pages/StateRefStore';
+import { StateRefStoreKo } from '@/pages/StateRefStore_ko';
+import { Subscription } from '@/pages/Subscription';
+import { SubscriptionKo } from '@/pages/Subscription_ko';
 
 type PageComponent = (...args: any[]) => any;
 
@@ -20,6 +32,18 @@ const routes: Record<string, PageComponent> = {
   '/ko': HomeKo,
   '/guide/introduction': Introduction,
   '/ko/guide/introduction': IntroductionKo,
+  '/guide/quick-start': QuickStart,
+  '/ko/guide/quick-start': QuickStartKo,
+  '/guide/create-store': CreateStore,
+  '/ko/guide/create-store': CreateStoreKo,
+  '/guide/watch': Watch,
+  '/ko/guide/watch': WatchKo,
+  '/guide/references': References,
+  '/ko/guide/references': ReferencesKo,
+  '/guide/state-ref-store': StateRefStore,
+  '/ko/guide/state-ref-store': StateRefStoreKo,
+  '/guide/subscription': Subscription,
+  '/ko/guide/subscription': SubscriptionKo,
 };
 
 const resolveRoute = (path: string): PageComponent => {
