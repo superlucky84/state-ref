@@ -18,20 +18,20 @@
 - [x] Understanding References (참조 이해하기) - `References.tsx`, `References_ko.tsx`
 - [x] StateRefStore - `StateRefStore.tsx`, `StateRefStore_ko.tsx`
 - [x] Subscription (구독) - `Subscription.tsx`, `Subscription_ko.tsx`
-- [ ] Primitive Types (원시 타입) - `Primitives.tsx`, `Primitives_ko.tsx`
+- [x] Primitive Types (원시 타입) - `Primitives.tsx`, `Primitives_ko.tsx`
 
 ### 3. Advanced Usage (고급 사용법)
-- [ ] createComputed - `Computed.tsx`, `Computed_ko.tsx`
-- [ ] combineWatch - `CombineWatch.tsx`, `CombineWatch_ko.tsx`
-- [ ] Manual Sync / Flux (수동 동기화) - `ManualSync.tsx`, `ManualSync_ko.tsx`
+- [x] createComputed - `Computed.tsx`, `Computed_ko.tsx`
+- [x] combineWatch - `CombineWatch.tsx`, `CombineWatch_ko.tsx`
+- [x] Manual Sync / Flux (수동 동기화) - `ManualSync.tsx`, `ManualSync_ko.tsx`
 
 ### 4. Helper Functions (헬퍼 함수)
-- [ ] Lens Pattern (Lens 패턴) - `Lens.tsx`, `Lens_ko.tsx`
-- [ ] copyable - `Copyable.tsx`, `Copyable_ko.tsx`
-- [ ] cloneDeep - `CloneDeep.tsx`, `CloneDeep_ko.tsx`
+- [x] Lens Pattern (Lens 패턴) - `Lens.tsx`, `Lens_ko.tsx`
+- [x] copyable - `Copyable.tsx`, `Copyable_ko.tsx`
+- [x] cloneDeep - `CloneDeep.tsx`, `CloneDeep_ko.tsx`
 
 ### 5. Framework Integration (프레임워크 연동)
-- [ ] React - `React.tsx`, `React_ko.tsx`
+- [x] React - `React.tsx`, `React_ko.tsx`
 - [ ] Preact - `Preact.tsx`, `Preact_ko.tsx`
 - [ ] Vue - `Vue.tsx`, `Vue_ko.tsx`
 - [ ] Svelte - `Svelte.tsx`, `Svelte_ko.tsx`
@@ -52,7 +52,7 @@
 
 ---
 
-**진행 현황: 7 / 21 완료 (33%)**
+**진행 현황: 15 / 21 완료 (71%)**
 
 ---
 
@@ -108,7 +108,7 @@ stateRefDocs/
 | `/guide/references` | Understanding References | 참조 이해하기 | `References.tsx` | ✅ 완료 |
 | `/guide/state-ref-store` | StateRefStore | StateRefStore | `StateRefStore.tsx` | ✅ 완료 |
 | `/guide/subscription` | Subscription | 구독 | `Subscription.tsx` | ✅ 완료 |
-| `/guide/primitives` | Primitive Types | 원시 타입 | `Primitives.tsx` | ⬜ 미작성 |
+| `/guide/primitives` | Primitive Types | 원시 타입 | `Primitives.tsx` | ✅ 완료 |
 
 **내용 가이드:**
 - **createStore**: 스토어 생성 API, 초기값 설정, 타입 지정
@@ -124,9 +124,9 @@ stateRefDocs/
 
 | 라우트 | 영문 제목 | 한글 제목 | 파일명 | 상태 |
 |--------|----------|----------|--------|------|
-| `/guide/computed` | createComputed | createComputed | `Computed.tsx` | ⬜ 미작성 |
-| `/guide/combine-watch` | combineWatch | combineWatch | `CombineWatch.tsx` | ⬜ 미작성 |
-| `/guide/manual-sync` | Manual Sync (Flux) | 수동 동기화 (Flux) | `ManualSync.tsx` | ⬜ 미작성 |
+| `/guide/computed` | createComputed | createComputed | `Computed.tsx` | ✅ 완료 |
+| `/guide/combine-watch` | combineWatch | combineWatch | `CombineWatch.tsx` | ✅ 완료 |
+| `/guide/manual-sync` | Manual Sync (Flux) | 수동 동기화 (Flux) | `ManualSync.tsx` | ✅ 완료 |
 
 **내용 가이드:**
 - **createComputed**: 여러 watch에서 파생 값 계산, 읽기 전용 computed 값
@@ -139,9 +139,9 @@ stateRefDocs/
 
 | 라우트 | 영문 제목 | 한글 제목 | 파일명 | 상태 |
 |--------|----------|----------|--------|------|
-| `/guide/lens` | Lens Pattern | Lens 패턴 | `Lens.tsx` | ⬜ 미작성 |
-| `/guide/copyable` | copyable | copyable | `Copyable.tsx` | ⬜ 미작성 |
-| `/guide/clone-deep` | cloneDeep | cloneDeep | `CloneDeep.tsx` | ⬜ 미작성 |
+| `/guide/lens` | Lens Pattern | Lens 패턴 | `Lens.tsx` | ✅ 완료 |
+| `/guide/copyable` | copyable | copyable | `Copyable.tsx` | ✅ 완료 |
+| `/guide/clone-deep` | cloneDeep | cloneDeep | `CloneDeep.tsx` | ✅ 완료 |
 
 **내용 가이드:**
 - **Lens Pattern**: lens() 함수, chain()으로 경로 탐색, get()/set()으로 불변 업데이트
@@ -154,7 +154,7 @@ stateRefDocs/
 
 | 라우트 | 영문 제목 | 한글 제목 | 파일명 | 상태 |
 |--------|----------|----------|--------|------|
-| `/guide/react` | React | React | `React.tsx` | ⬜ 미작성 |
+| `/guide/react` | React | React | `React.tsx` | ✅ 완료 |
 | `/guide/preact` | Preact | Preact | `Preact.tsx` | ⬜ 미작성 |
 | `/guide/vue` | Vue | Vue | `Vue.tsx` | ⬜ 미작성 |
 | `/guide/svelte` | Svelte | Svelte | `Svelte.tsx` | ⬜ 미작성 |
@@ -194,19 +194,19 @@ stateRefDocs/
 - [ ] Quick Start
 - [ ] createStore
 - [ ] Watch Function
-- [ ] React
+- [x] React
 
 ### 2차 (중요)
 - [ ] Subscription
 - [ ] createComputed
 - [ ] combineWatch
-- [ ] Manual Sync (Flux)
+- [x] Manual Sync (Flux)
 
 ### 3차 (완성도)
 - [ ] StateRefStore
 - [ ] Primitives
 - [ ] Preact, Vue, Svelte, Solid, Lithent
-- [ ] Lens, copyable, cloneDeep
+- [x] Lens, copyable, cloneDeep
 
 ### 4차 (선택)
 - [ ] Custom Connector
@@ -274,7 +274,7 @@ const example = 'code';`}
 ## 진행 상황
 
 - **총 페이지**: 21개 (API Reference 제외)
-- **완료**: 7개
-- **진행률**: 33%
+- **완료**: 15개
+- **진행률**: 71%
 
-마지막 업데이트: 2025-01-22
+마지막 업데이트: 2026-01-22

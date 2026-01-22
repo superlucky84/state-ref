@@ -74,6 +74,9 @@ watch((store, isFirst) => {
         code={`const watch = createStore({ userId: null, data: null });
 
 watch((store, isFirst) => {
+  // 먼저 .value에 접근하여 구독 수집
+  const userId = store.userId.value;
+
   if (isFirst) {
     // 초기 구독 시 한 번만 실행
     console.log('구독 초기화됨');
@@ -81,9 +84,9 @@ watch((store, isFirst) => {
   }
 
   // 모든 업데이트마다 실행
-  if (store.userId.value) {
-    console.log('사용자 데이터 가져오기:', store.userId.value);
-    fetchUserData(store.userId.value);
+  if (userId) {
+    console.log('사용자 데이터 가져오기:', userId);
+    fetchUserData(userId);
   }
 });`}
       />
@@ -96,16 +99,19 @@ watch((store, isFirst) => {
 
 // 패턴 1: 초기 실행 건너뛰기
 watch((store, isFirst) => {
+  // 먼저 .value에 접근하여 구독 수집
+  const items = store.items.value;
   if (isFirst) return;
-  console.log('아이템 업데이트됨:', store.items.value);
+  console.log('아이템 업데이트됨:', items);
 });
 
 // 패턴 2: 초기 vs 업데이트에 다른 로직
 watch((store, isFirst) => {
+  const items = store.items.value;
   if (isFirst) {
-    console.log('초기 아이템:', store.items.value);
+    console.log('초기 아이템:', items);
   } else {
-    console.log('아이템 변경됨:', store.items.value);
+    console.log('아이템 변경됨:', items);
   }
 });
 
@@ -309,9 +315,10 @@ ref.firstName.value = 'Jane';
         code={`const watch = createStore({ searchQuery: '', results: [] });
 
 watch((store, isFirst) => {
-  if (isFirst) return; // 초기 실행 건너뛰기
-
+  // 먼저 .value에 접근하여 구독 수집
   const query = store.searchQuery.value;
+
+  if (isFirst) return; // 초기 실행 건너뛰기
 
   if (query.length > 2) {
     // 검색 쿼리 변경 시 API 호출 트리거
@@ -330,16 +337,19 @@ watch((store, isFirst) => {
         language="typescript"
         code={`const watch = createStore({ searchQuery: '' });
 
-watch((store, isFirst) => {
-  if (isFirst) return;
+let timeoutId: NodeJS.Timeout;
 
-  let timeoutId: NodeJS.Timeout;
+watch((store, isFirst) => {
+  // 먼저 .value에 접근하여 구독 수집
+  const query = store.searchQuery.value;
+
+  if (isFirst) return;
 
   // API 호출 디바운싱
   clearTimeout(timeoutId);
   timeoutId = setTimeout(() => {
-    console.log('검색 중:', store.searchQuery.value);
-    performSearch(store.searchQuery.value);
+    console.log('검색 중:', query);
+    performSearch(query);
   }, 300);
 
   // 참고: 실제 앱에서는 AbortSignal이나 컴포넌트 생명주기를 통해
@@ -456,8 +466,10 @@ watch((store) => {
 
 // ✓ 좋음: 조건부 로직 사용
 watch((store, isFirst) => {
-  if (!isFirst && store.count.value < 10) {
-    store.count.value += 1;
+  // 먼저 .value에 접근하여 구독 수집
+  const count = store.count.value;
+  if (!isFirst && count < 10) {
+    store.count.value = count + 1;
   }
 });`}
       />

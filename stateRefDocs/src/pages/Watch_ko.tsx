@@ -314,9 +314,11 @@ store.firstName.value = 'Jane';
         code={`const watch = createStore({ userId: null });
 
 watch((store, isFirst) => {
-  if (!isFirst && store.userId.value) {
+  // 먼저 .value에 접근하여 구독 수집
+  const userId = store.userId.value;
+  if (!isFirst && userId) {
     // userId 변경 시 사용자 데이터 가져오기
-    fetchUserData(store.userId.value);
+    fetchUserData(userId);
   }
 });`}
       />

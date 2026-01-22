@@ -74,6 +74,9 @@ watch((store, isFirst) => {
         code={`const watch = createStore({ userId: null, data: null });
 
 watch((store, isFirst) => {
+  // Access .value first to collect subscription
+  const userId = store.userId.value;
+
   if (isFirst) {
     // Runs only once on initial subscription
     console.log('Subscription initialized');
@@ -81,9 +84,9 @@ watch((store, isFirst) => {
   }
 
   // Runs on every update
-  if (store.userId.value) {
-    console.log('Fetching data for user:', store.userId.value);
-    fetchUserData(store.userId.value);
+  if (userId) {
+    console.log('Fetching data for user:', userId);
+    fetchUserData(userId);
   }
 });`}
       />
@@ -96,16 +99,19 @@ watch((store, isFirst) => {
 
 // Pattern 1: Skip initial run
 watch((store, isFirst) => {
+  // Access .value first to collect subscription
+  const items = store.items.value;
   if (isFirst) return;
-  console.log('Items updated:', store.items.value);
+  console.log('Items updated:', items);
 });
 
 // Pattern 2: Different logic for initial vs updates
 watch((store, isFirst) => {
+  const items = store.items.value;
   if (isFirst) {
-    console.log('Initial items:', store.items.value);
+    console.log('Initial items:', items);
   } else {
-    console.log('Items changed to:', store.items.value);
+    console.log('Items changed to:', items);
   }
 });
 
@@ -310,9 +316,10 @@ ref.firstName.value = 'Jane';
         code={`const watch = createStore({ searchQuery: '', results: [] });
 
 watch((store, isFirst) => {
-  if (isFirst) return; // Skip initial run
-
+  // Access .value first to collect subscription
   const query = store.searchQuery.value;
+
+  if (isFirst) return; // Skip initial run
 
   if (query.length > 2) {
     // Trigger API call when search query changes
@@ -331,16 +338,19 @@ watch((store, isFirst) => {
         language="typescript"
         code={`const watch = createStore({ searchQuery: '' });
 
-watch((store, isFirst) => {
-  if (isFirst) return;
+let timeoutId: NodeJS.Timeout;
 
-  let timeoutId: NodeJS.Timeout;
+watch((store, isFirst) => {
+  // Access .value first to collect subscription
+  const query = store.searchQuery.value;
+
+  if (isFirst) return;
 
   // Debounce the API call
   clearTimeout(timeoutId);
   timeoutId = setTimeout(() => {
-    console.log('Searching for:', store.searchQuery.value);
-    performSearch(store.searchQuery.value);
+    console.log('Searching for:', query);
+    performSearch(query);
   }, 300);
 
   // Note: In a real app, you'd need to manage cleanup
@@ -457,8 +467,10 @@ watch((store) => {
 
 // ✓ Good: Use conditional logic
 watch((store, isFirst) => {
-  if (!isFirst && store.count.value < 10) {
-    store.count.value += 1;
+  // Access .value first to collect subscription
+  const count = store.count.value;
+  if (!isFirst && count < 10) {
+    store.count.value = count + 1;
   }
 });`}
       />

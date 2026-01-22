@@ -18,6 +18,22 @@ import { StateRefStore } from '@/pages/StateRefStore';
 import { StateRefStoreKo } from '@/pages/StateRefStore_ko';
 import { Subscription } from '@/pages/Subscription';
 import { SubscriptionKo } from '@/pages/Subscription_ko';
+import { Primitives } from '@/pages/Primitives';
+import { PrimitivesKo } from '@/pages/Primitives_ko';
+import { Computed } from '@/pages/Computed';
+import { ComputedKo } from '@/pages/Computed_ko';
+import { CombineWatch } from '@/pages/CombineWatch';
+import { CombineWatchKo } from '@/pages/CombineWatch_ko';
+import { ManualSync } from '@/pages/ManualSync';
+import { ManualSyncKo } from '@/pages/ManualSync_ko';
+import { Lens } from '@/pages/Lens';
+import { LensKo } from '@/pages/Lens_ko';
+import { Copyable } from '@/pages/Copyable';
+import { CopyableKo } from '@/pages/Copyable_ko';
+import { CloneDeep } from '@/pages/CloneDeep';
+import { CloneDeepKo } from '@/pages/CloneDeep_ko';
+import { React } from '@/pages/React';
+import { ReactKo } from '@/pages/React_ko';
 
 type PageComponent = (...args: any[]) => any;
 
@@ -44,6 +60,22 @@ const routes: Record<string, PageComponent> = {
   '/ko/guide/state-ref-store': StateRefStoreKo,
   '/guide/subscription': Subscription,
   '/ko/guide/subscription': SubscriptionKo,
+  '/guide/primitives': Primitives,
+  '/ko/guide/primitives': PrimitivesKo,
+  '/guide/computed': Computed,
+  '/ko/guide/computed': ComputedKo,
+  '/guide/combine-watch': CombineWatch,
+  '/ko/guide/combine-watch': CombineWatchKo,
+  '/guide/manual-sync': ManualSync,
+  '/ko/guide/manual-sync': ManualSyncKo,
+  '/guide/lens': Lens,
+  '/ko/guide/lens': LensKo,
+  '/guide/copyable': Copyable,
+  '/ko/guide/copyable': CopyableKo,
+  '/guide/clone-deep': CloneDeep,
+  '/ko/guide/clone-deep': CloneDeepKo,
+  '/guide/react': React,
+  '/ko/guide/react': ReactKo,
 };
 
 const resolveRoute = (path: string): PageComponent => {

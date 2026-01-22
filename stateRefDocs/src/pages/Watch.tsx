@@ -316,9 +316,11 @@ store.firstName.value = 'Jane';
         code={`const watch = createStore({ userId: null });
 
 watch((store, isFirst) => {
-  if (!isFirst && store.userId.value) {
+  // Access .value first to collect subscription
+  const userId = store.userId.value;
+  if (!isFirst && userId) {
     // Fetch user data when userId changes
-    fetchUserData(store.userId.value);
+    fetchUserData(userId);
   }
 });`}
       />
