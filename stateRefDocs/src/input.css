@@ -235,7 +235,17 @@
 }
 
 .page-shell table {
-  @apply w-full mb-4 border-collapse border border-gray-300 dark:border-gray-600;
+  @apply w-full mb-4 border-collapse border border-gray-300 dark:border-gray-600 text-sm;
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 768px) {
+  .page-shell table {
+    display: table;
+    overflow-x: visible;
+  }
 }
 
 .page-shell th {
