@@ -18,6 +18,7 @@ hljs.registerLanguage('html', xml); // HTML uses XML highlighting
 hljs.registerLanguage('jsx', typescript);
 hljs.registerLanguage('bash', bash);
 hljs.registerLanguage('json', json);
+hljs.registerLanguage('vue', xml); // Vue SFC uses XML/HTML highlighting
 
 interface CodeBlockProps {
   code: string;

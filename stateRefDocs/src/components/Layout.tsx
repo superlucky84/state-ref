@@ -34,6 +34,18 @@ import { CloneDeep } from '@/pages/CloneDeep';
 import { CloneDeepKo } from '@/pages/CloneDeep_ko';
 import { React } from '@/pages/React';
 import { ReactKo } from '@/pages/React_ko';
+import { Preact } from '@/pages/Preact';
+import { PreactKo } from '@/pages/Preact_ko';
+import { Vue } from '@/pages/Vue';
+import { VueKo } from '@/pages/Vue_ko';
+import { Svelte } from '@/pages/Svelte';
+import { SvelteKo } from '@/pages/Svelte_ko';
+import { Solid } from '@/pages/Solid';
+import { SolidKo } from '@/pages/Solid_ko';
+import { Lithent } from '@/pages/Lithent';
+import { LithentKo } from '@/pages/Lithent_ko';
+import { CustomConnector } from '@/pages/CustomConnector';
+import { CustomConnectorKo } from '@/pages/CustomConnector_ko';
 
 type PageComponent = (...args: any[]) => any;
 
@@ -76,6 +88,18 @@ const routes: Record<string, PageComponent> = {
   '/ko/guide/clone-deep': CloneDeepKo,
   '/guide/react': React,
   '/ko/guide/react': ReactKo,
+  '/guide/preact': Preact,
+  '/ko/guide/preact': PreactKo,
+  '/guide/vue': Vue,
+  '/ko/guide/vue': VueKo,
+  '/guide/svelte': Svelte,
+  '/ko/guide/svelte': SvelteKo,
+  '/guide/solid': Solid,
+  '/ko/guide/solid': SolidKo,
+  '/guide/lithent': Lithent,
+  '/ko/guide/lithent': LithentKo,
+  '/guide/custom-connector': CustomConnector,
+  '/ko/guide/custom-connector': CustomConnectorKo,
 };
 
 const resolveRoute = (path: string): PageComponent => {

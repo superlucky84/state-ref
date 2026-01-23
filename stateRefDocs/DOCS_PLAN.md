@@ -32,12 +32,12 @@
 
 ### 5. Framework Integration (프레임워크 연동)
 - [x] React - `React.tsx`, `React_ko.tsx`
-- [ ] Preact - `Preact.tsx`, `Preact_ko.tsx`
-- [ ] Vue - `Vue.tsx`, `Vue_ko.tsx`
-- [ ] Svelte - `Svelte.tsx`, `Svelte_ko.tsx`
-- [ ] Solid - `Solid.tsx`, `Solid_ko.tsx`
-- [ ] Lithent - `Lithent.tsx`, `Lithent_ko.tsx`
-- [ ] Custom Connector (커스텀 커넥터) - `CustomConnector.tsx`, `CustomConnector_ko.tsx`
+- [x] Preact - `Preact.tsx`, `Preact_ko.tsx`
+- [x] Vue - `Vue.tsx`, `Vue_ko.tsx`
+- [x] Svelte - `Svelte.tsx`, `Svelte_ko.tsx`
+- [x] Solid - `Solid.tsx`, `Solid_ko.tsx`
+- [x] Lithent - `Lithent.tsx`, `Lithent_ko.tsx`
+- [x] Custom Connector (커스텀 커넥터) - `CustomConnector.tsx`, `CustomConnector_ko.tsx`
 
 ### 6. API Reference (선택사항)
 - [ ] Core API (코어 API) - `ApiCore.tsx`, `ApiCore_ko.tsx`
@@ -52,7 +52,7 @@
 
 ---
 
-**진행 현황: 15 / 21 완료 (71%)**
+**진행 현황: 21 / 21 완료 (100%)**
 
 ---
 
@@ -155,12 +155,12 @@ stateRefDocs/
 | 라우트 | 영문 제목 | 한글 제목 | 파일명 | 상태 |
 |--------|----------|----------|--------|------|
 | `/guide/react` | React | React | `React.tsx` | ✅ 완료 |
-| `/guide/preact` | Preact | Preact | `Preact.tsx` | ⬜ 미작성 |
-| `/guide/vue` | Vue | Vue | `Vue.tsx` | ⬜ 미작성 |
-| `/guide/svelte` | Svelte | Svelte | `Svelte.tsx` | ⬜ 미작성 |
-| `/guide/solid` | Solid | Solid | `Solid.tsx` | ⬜ 미작성 |
-| `/guide/lithent` | Lithent | Lithent | `Lithent.tsx` | ⬜ 미작성 |
-| `/guide/custom-connector` | Custom Connector | 커스텀 커넥터 | `CustomConnector.tsx` | ⬜ 미작성 |
+| `/guide/preact` | Preact | Preact | `Preact.tsx` | ✅ 완료 |
+| `/guide/vue` | Vue | Vue | `Vue.tsx` | ✅ 완료 |
+| `/guide/svelte` | Svelte | Svelte | `Svelte.tsx` | ✅ 완료 |
+| `/guide/solid` | Solid | Solid | `Solid.tsx` | ✅ 완료 |
+| `/guide/lithent` | Lithent | Lithent | `Lithent.tsx` | ✅ 완료 |
+| `/guide/custom-connector` | Custom Connector | 커스텀 커넥터 | `CustomConnector.tsx` | ✅ 완료 |
 
 **내용 가이드:**
 - **React**: `@stateref/connect-react` 설치, connectReact() 사용법, 컴포넌트 예제
@@ -274,7 +274,7 @@ const example = 'code';`}
 ## 진행 상황
 
 - **총 페이지**: 21개 (API Reference 제외)
-- **완료**: 15개
-- **진행률**: 71%
+- **완료**: 21개
+- **진행률**: 100%
 
 마지막 업데이트: 2026-01-22
