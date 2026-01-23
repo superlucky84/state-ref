@@ -4,6 +4,7 @@ import { appStore, navigateTo, resolveRouteForLanguage } from '@/store';
 interface MenuItem {
   text: { en: string; ko: string };
   link: string;
+  external?: boolean;
 }
 
 interface MenuSection {
@@ -17,6 +18,11 @@ const menuData: MenuSection[] = [
     items: [
       { text: { en: 'Introduction', ko: '소개' }, link: '/guide/introduction' },
       { text: { en: 'Quick Start', ko: '빠른 시작' }, link: '/guide/quick-start' },
+      {
+        text: { en: 'GitHub', ko: 'GitHub' },
+        link: 'https://github.com/superlucky84/state-ref',
+        external: true,
+      },
     ],
   },
   {
@@ -136,9 +142,10 @@ export const Sidebar = mount(renew => {
                 normalizedRoute !== '/' &&
                 normalizedRoute !== '/ko'
               ) {
-                const hasActive = section.items.some(
-                  item => toLocalizedLink(item.link) === normalizedRoute
-                );
+                const hasActive = section.items.some(item => {
+                  if (item.external) return false;
+                  return toLocalizedLink(item.link) === normalizedRoute;
+                });
                 if (hasActive) {
                   expanded[sectionKey] = true;
                 }
@@ -165,20 +172,27 @@ export const Sidebar = mount(renew => {
                     aria-hidden={!isExpanded}
                   >
                     {section.items.map(item => {
-                      const targetLink = resolveRouteForLanguage(
-                        item.link,
-                        currentLang
-                      );
-                      const isActive =
-                        normalizedRoute === normalizePath(targetLink);
+                      const isExternal = item.external;
+                      const targetLink = isExternal
+                        ? item.link
+                        : resolveRouteForLanguage(item.link, currentLang);
+                      const isActive = isExternal
+                        ? false
+                        : normalizedRoute === normalizePath(targetLink);
                       return (
                         <li>
                           <a
                             href={targetLink}
-                            onClick={(e: Event) => {
-                              e.preventDefault();
-                              handleClick(item.link);
-                            }}
+                            target={isExternal ? '_blank' : undefined}
+                            rel={isExternal ? 'noreferrer' : undefined}
+                            onClick={
+                              isExternal
+                                ? undefined
+                                : (e: Event) => {
+                                    e.preventDefault();
+                                    handleClick(item.link);
+                                  }
+                            }
                             class={`
                               block px-2 py-1.5 rounded-md text-sm font-normal transition-colors
                               ${
