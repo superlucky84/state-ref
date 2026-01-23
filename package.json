@@ -13,8 +13,10 @@
     "dev:vue": "pnpm watch:core & pnpm --filter @stateref/connect-vue dev",
     "dev:svelte": "pnpm watch:core & pnpm --filter @stateref/connect-svelte dev",
     "dev:solid": "pnpm watch:core & pnpm --filter @stateref/connect-solid dev",
+    "dev:docs": "pnpm --filter state-ref-docs dev",
 
     "build:core": "pnpm --filter state-ref build",
+    "build:docs": "pnpm --filter state-ref-docs build",
     "build:!core": "pnpm --filter '!state-ref' build",
     "build:preact": "pnpm --filter @stateref/connect-preact build",
     "build:react": "pnpm --filter @stateref/connect-react build",
