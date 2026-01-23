@@ -46,6 +46,12 @@ import { Lithent } from '@/pages/Lithent';
 import { LithentKo } from '@/pages/Lithent_ko';
 import { CustomConnector } from '@/pages/CustomConnector';
 import { CustomConnectorKo } from '@/pages/CustomConnector_ko';
+import { ApiCore } from '@/pages/ApiCore';
+import { ApiCoreKo } from '@/pages/ApiCore_ko';
+import { ApiHelpers } from '@/pages/ApiHelpers';
+import { ApiHelpersKo } from '@/pages/ApiHelpers_ko';
+import { ApiTypes } from '@/pages/ApiTypes';
+import { ApiTypesKo } from '@/pages/ApiTypes_ko';
 
 type PageComponent = (...args: any[]) => any;
 
@@ -100,6 +106,12 @@ const routes: Record<string, PageComponent> = {
   '/ko/guide/lithent': LithentKo,
   '/guide/custom-connector': CustomConnector,
   '/ko/guide/custom-connector': CustomConnectorKo,
+  '/api/core': ApiCore,
+  '/ko/api/core': ApiCoreKo,
+  '/api/helpers': ApiHelpers,
+  '/ko/api/helpers': ApiHelpersKo,
+  '/api/types': ApiTypes,
+  '/ko/api/types': ApiTypesKo,
 };
 
 const resolveRoute = (path: string): PageComponent => {

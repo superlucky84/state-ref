@@ -58,6 +58,14 @@ const menuData: MenuSection[] = [
       { text: { en: 'Custom Connector', ko: '커스텀 커넥터' }, link: '/guide/custom-connector' },
     ],
   },
+  {
+    text: { en: 'API Reference', ko: 'API 레퍼런스' },
+    items: [
+      { text: { en: 'Core API', ko: '코어 API' }, link: '/api/core' },
+      { text: { en: 'Helper API', ko: '헬퍼 API' }, link: '/api/helpers' },
+      { text: { en: 'TypeScript Types', ko: 'TypeScript 타입' }, link: '/api/types' },
+    ],
+  },
 ];
 
 const normalizePath = (path: string) => path.replace(/\/+$/, '') || '/';

@@ -9,30 +9,7 @@ export const Header = mount(renew => {
       <div class="mx-auto max-w-[1440px] px-6 md:px-12">
         <div class="flex items-center justify-between h-16">
           {/* Left: Logo and Title */}
-          <div class="flex items-center gap-4">
-            {/* Mobile menu button */}
-            <button
-              class="lg:hidden p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
-              onClick={() => {
-                store.sidebarOpen = !store.sidebarOpen;
-              }}
-            >
-              <svg
-                xmlns="http //www.w3.org/2000/svg"
-                class="w-6 h-6 text-gray-700 dark:text-gray-300"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-            </button>
-
+          <div class="flex items-center">
             <a
               href="#/"
               onClick={(e: Event) => {
@@ -41,9 +18,7 @@ export const Header = mount(renew => {
               }}
               class="flex items-center gap-3 hover:opacity-80 transition-opacity"
             >
-              <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <span class="text-white font-bold text-lg">S</span>
-              </div>
+              <img src="/state-ref/stateref.png" alt="StateRef Logo" class="w-8 h-8 rounded-lg" />
               <span class="text-xl font-bold text-gray-900 dark:text-white">
                 StateRef
               </span>
@@ -57,7 +32,7 @@ export const Header = mount(renew => {
               onClick={toggleLanguage}
               class="px-3 py-1.5 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
-              {isKoreanRoute() ? 'EN' : 'KO'}
+              {isKoreanRoute() ? 'KO' : 'EN'}
             </button>
 
             {/* Theme Toggle */}
@@ -78,7 +53,7 @@ export const Header = mount(renew => {
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     stroke-width="2"
-                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
                   />
                 </svg>
               ) : (
@@ -93,7 +68,7 @@ export const Header = mount(renew => {
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     stroke-width="2"
-                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
                   />
                 </svg>
               )}
@@ -120,6 +95,29 @@ export const Header = mount(renew => {
                 />
               </svg>
             </a>
+
+            {/* Mobile menu button */}
+            <button
+              class="lg:hidden p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+              onClick={() => {
+                store.sidebarOpen = !store.sidebarOpen;
+              }}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="w-6 h-6 text-gray-700 dark:text-gray-300"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            </button>
           </div>
         </div>
       </div>

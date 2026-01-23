@@ -40,15 +40,15 @@
 - [x] Custom Connector (커스텀 커넥터) - `CustomConnector.tsx`, `CustomConnector_ko.tsx`
 
 ### 6. API Reference (선택사항)
-- [ ] Core API (코어 API) - `ApiCore.tsx`, `ApiCore_ko.tsx`
-- [ ] Helper API (헬퍼 API) - `ApiHelpers.tsx`, `ApiHelpers_ko.tsx`
-- [ ] TypeScript Types (타입) - `ApiTypes.tsx`, `ApiTypes_ko.tsx`
+- [x] Core API (코어 API) - `ApiCore.tsx`, `ApiCore_ko.tsx`
+- [x] Helper API (헬퍼 API) - `ApiHelpers.tsx`, `ApiHelpers_ko.tsx`
+- [x] TypeScript Types (타입) - `ApiTypes.tsx`, `ApiTypes_ko.tsx`
 
 ### 🔧 설정 작업
 - [x] Layout.tsx 라우트 등록
 - [x] Sidebar.tsx 메뉴 등록
-- [ ] 모든 라우트 등록 완료
-- [ ] 모든 메뉴 항목 등록 완료
+- [x] 모든 라우트 등록 완료
+- [x] 모든 메뉴 항목 등록 완료
 
 ---
 
@@ -177,9 +177,9 @@ stateRefDocs/
 
 | 라우트 | 영문 제목 | 한글 제목 | 파일명 | 상태 |
 |--------|----------|----------|--------|------|
-| `/api/core` | Core API | 코어 API | `ApiCore.tsx` | ⬜ 미작성 |
-| `/api/helpers` | Helper API | 헬퍼 API | `ApiHelpers.tsx` | ⬜ 미작성 |
-| `/api/types` | TypeScript Types | 타입스크립트 타입 | `ApiTypes.tsx` | ⬜ 미작성 |
+| `/api/core` | Core API | 코어 API | `ApiCore.tsx` | ✅ 완료 |
+| `/api/helpers` | Helper API | 헬퍼 API | `ApiHelpers.tsx` | ✅ 완료 |
+| `/api/types` | TypeScript Types | 타입스크립트 타입 | `ApiTypes.tsx` | ✅ 완료 |
 
 **내용 가이드:**
 - **Core API**: createStore, createStoreManualSync 시그니처 및 옵션
