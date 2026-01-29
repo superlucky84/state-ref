@@ -24,7 +24,9 @@
   "types": "./dist/index.d.ts",
   "files": [
     "src",
-    "dist"
+    "dist",
+    "dist/skills",
+    "dist/ai-addons"
   ],
   "author": "superlucky84",
   "repository": {

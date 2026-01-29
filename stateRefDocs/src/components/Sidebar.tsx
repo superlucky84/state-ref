@@ -23,6 +23,14 @@ const menuData: MenuSection[] = [
         link: 'https://github.com/superlucky84/state-ref',
         external: true,
       },
+      {
+        text: { en: 'AI Agent Skills', ko: 'AI Agent Skills' },
+        link: '/ai-agent-skills',
+      },
+      {
+        text: { en: 'AI Agent Role Add-on', ko: 'AI Agent Role Add-on' },
+        link: '/ai-agent-addon',
+      },
     ],
   },
   {

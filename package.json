@@ -23,7 +23,7 @@
     "build:vue": "pnpm --filter @stateref/connect-vue build",
     "build:svelte": "pnpm --filter @stateref/connect-svelte build",
     "build:solid": "pnpm --filter @stateref/connect-solid build",
-    "build": "pnpm build:core && pnpm build:!core",
+    "build": "pnpm build:core && pnpm build:!core && node scripts/copy-skills.mjs",
 
     "test": "pnpm -r test",
     "test:core": "pnpm --filter state-ref test",
