@@ -52,6 +52,10 @@ import { ApiHelpers } from '@/pages/ApiHelpers';
 import { ApiHelpersKo } from '@/pages/ApiHelpers_ko';
 import { ApiTypes } from '@/pages/ApiTypes';
 import { ApiTypesKo } from '@/pages/ApiTypes_ko';
+import { AIAgentSkills } from '@/pages/AIAgentSkills';
+import { AIAgentSkillsKo } from '@/pages/AIAgentSkills_ko';
+import { AIAgentAddon } from '@/pages/AIAgentAddon';
+import { AIAgentAddonKo } from '@/pages/AIAgentAddon_ko';
 
 type PageComponent = (...args: any[]) => any;
 
@@ -112,6 +116,10 @@ const routes: Record<string, PageComponent> = {
   '/ko/api/helpers': ApiHelpersKo,
   '/api/types': ApiTypes,
   '/ko/api/types': ApiTypesKo,
+  '/ai-agent-skills': AIAgentSkills,
+  '/ko/ai-agent-skills': AIAgentSkillsKo,
+  '/ai-agent-addon': AIAgentAddon,
+  '/ko/ai-agent-addon': AIAgentAddonKo,
 };
 
 const resolveRoute = (path: string): PageComponent => {
