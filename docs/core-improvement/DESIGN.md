@@ -61,13 +61,31 @@ Object.assign({}, DEFAULT_WATCH_OPTION, { editable: autoSync }, userOption ?? {}
 
 문제의 뿌리는 get 트랩이 **모든** prop을 자식 프록시로 처리한다는 점이다. 표시용 키와 언어 프로토콜 키가 그 그물에 걸린다.
 
+**DC-05 확정: 표시 키를 Symbol로 이전한다.**
+
+원안은 문자열 키 `_navi`/`_type`/`_value`를 get 트랩 선두에서 타깃으로 패스스루하는 것이었다. **이 안은 새 회귀를 만든다**: 사용자 상태가 그 이름의 키를 실제로 쓰면 표시용 더미가 사용자 데이터를 가린다. 현행 동작은 정상이므로 명백한 퇴행이다.
+
+```js
+createStore({ _value: 'user-owned' });
+ref._value.value;   // 현행: 'user-owned' (정상) / 원안 적용 시: '..' (가려짐)
+```
+
+Symbol 키는 문자열 키와 충돌할 여지가 없다. 또한 `ownKeys` 트랩이 붙으면 devtools가 표시 타깃이 아니라 **실제 상태 키**를 보여주게 되므로, 표시 키가 콘솔 표시를 담당할 이유 자체가 사라진다 — 명시적 디버그 조회 수단으로만 남는다.
+
+```ts
+// helper/index.ts
+export const NAVI = Symbol.for('state-ref.navi');
+export const TYPE = Symbol.for('state-ref.type');
+```
+> `Symbol.for`(registered)를 쓰면 번들 경계를 넘어서도 같은 심볼로 조회된다. 단 registered symbol은 WeakMap 키가 될 수 없으므로 CI-09(§3.6)의 분기 처리와 일관되게 다뤄야 한다.
+
 get 트랩 선두에 분기 3단을 추가한다:
 ```
-1) DISPLAY_KEYS ('_navi' | '_type' | '_value')  → Reflect.get(target, prop)
-2) 'toJSON'                                     → () => lensValue.get(rootValue)
-3) Symbol.toPrimitive / 'valueOf' / 'toString'  → 원시 변환은 현재 값 기준
+1) NAVI / TYPE (Symbol)  → 경로 문자열 / 현재 값의 타입
+2) 'toJSON'              → () => lensValue.get(rootValue)
+3) Symbol.toPrimitive / 'valueOf' / 'toString' → 원시 변환은 현재 값 기준
 ```
-- (1)이 CI-02의 무한 재귀를 끊는다. `_value` → `_value` → … 체인이 1단에서 종료된다.
+- 표시용 문자열 키가 사라지므로 CI-02의 `_value` → `_value` → … 무한 재귀 체인이 **원천적으로** 성립하지 않는다. 타깃은 빈 객체가 되고, 프록시 타깃이 들고 있던 `_value: '..'`가 없어진다.
 - (2)로 `JSON.stringify(ref)`가 "그 경로의 실제 값"을 낸다. 가장 직관적인 계약이다.
 
 추가 트랩:
@@ -77,20 +95,36 @@ ownKeys(_)              → Reflect.ownKeys(lensValue.get(rootValue) ?? {})
 getOwnPropertyDescriptor→ { enumerable: true, configurable: true, value: <child proxy> }
 deleteProperty          → 명시적 throw ('Use .value assignment to remove a property.')
 ```
-> `getOwnPropertyDescriptor`는 반드시 `configurable: true`를 반환해야 한다. 타깃(`{_navi,_type,_value}`)에 존재하지 않는 키를 non-configurable로 보고하면 프록시 불변식 위반으로 `TypeError`가 난다. — `DC-05` 검증 항목.
+> `getOwnPropertyDescriptor`는 반드시 `configurable: true`를 반환해야 한다. 타깃에 존재하지 않는 키를 non-configurable로 보고하면 프록시 불변식 위반으로 `TypeError`가 난다. 타깃이 빈 객체(확장 가능)이므로 임의의 키를 보고하는 것 자체는 허용된다.
 
-CI-10(배열): 런타임에서 배열 메서드를 실제로 제공하는 것은 INV-1과 충돌한다(메서드는 값 복사본에 바인딩되어 프록시 밖으로 탈출한다). 따라서 **타입을 런타임에 맞춘다**:
+**DC-04 확정: 타입을 런타임에 맞춰 좁히되, `length`는 경로로 살린다.**
+
+런타임에서 배열 메서드를 실제로 제공하는 것은 INV-1과 충돌한다(메서드는 값 복사본에 바인딩되어 프록시 밖으로 탈출한다). 따라서 타입을 런타임에 맞춘다.
+
+원안은 `length`도 타입에서 지우려 했으나, **`length`는 이미 완전한 반응형 경로로 동작한다**는 것을 확인했다:
+
+```js
+ref.items.length.value;                 // 3
+watch(s => s.items.length.value);       // 배열 교체 시 정상 발화
+```
+
+`lens.chain('length')`가 다른 속성과 똑같이 동작하기 때문이며, "모든 것은 경로, 값은 `.value`로"라는 INV-1에 정확히 부합한다. 런타임이 제공하는 기능을 타입이 숨길 이유가 없다.
+
 ```ts
 export type StateRefStore<S> =
   S extends readonly (infer U)[]
-    ? { [index: number]: StateRefStore<U> } & { value: S } & Iterable<StateRefStore<U>>
+    ? { [index: number]: StateRefStore<U> } &
+        { length: StateRefStore<number> } &
+        { value: S } &
+        Iterable<StateRefStore<U>>
   : S extends object
     ? { [K in keyof S]: StateRefStore<S[K]> } & { value: S }
     : { value: S };
 ```
 - `ref.items.map(...)`이 **컴파일 타임에** 막힌다 (현행: 통과 후 런타임 폭발).
+- `ref.items.length.value`(반응형 경로)와 `ref.items.value.length`(스냅샷) 양쪽 다 타입·런타임이 일치한다.
 - `[...ref.items]`와 `for..of`는 `Iterable`로 계속 보장된다.
-- `ref.items.length`가 타입에서 사라진다. 대체 경로는 `ref.items.value.length`.
+- `IC-03`에서 문서가 이미 `.value` 경유 패턴만 가르치는 것을 확인했으므로 실사용 파손 위험은 낮다.
 
 ### 3.3 읽기 경로 (CI-11, CI-15, CI-19)
 
@@ -196,11 +230,13 @@ if (!Object.is(next, result)) { result = next; notify(); }
   - 검증: Phase 8 커넥터 통합 테스트에서 렌더 횟수 비교
 - [ ] **DC-03** CI-13 배칭 기본값: `'sync'` 유지 vs `'microtask'` 전환 → **TBD (초기값: `'sync'`)**
   - 검증: Phase 8
-- [ ] **DC-04** CI-10 배열 타입을 좁힐 것인가(컴파일 에러 발생 가능) vs `@deprecated` 주석만 달 것인가 → **TBD (초기값: 축소. `IC-03`에서 리스크 낮음 확인)**
-  - 검증: Phase 2에서 `tsc --noEmit`으로 기존 테스트/샘플 영향 측정
-- [ ] **DC-05** 표시 키 `_navi`/`_type`/`_value`를 lazy getter로 둘 것인가, Symbol 키로 옮길 것인가 → **TBD (초기값: lazy getter)**
-  - Symbol 이전은 `ownKeys` 오염을 근본 제거하지만 devtools 표시가 약해진다.
-  - 검증: Phase 2/3 — Chrome devtools + Node `console.log` 육안 확인 (`MANUAL_TEST_CHECKLIST.md` M-03)
+- [x] **DC-04** CI-10 배열 타입 → **해소 (2026-09-16): 타입 축소 + `length`를 `StateRefStore<number>`로 유지**
+  - 근거: `length`가 이미 반응형 경로로 동작함을 실측 확인(§3.2). 런타임이 제공하는 기능을 타입이 숨기지 않는다. `IC-03`에서 문서의 실사용 패턴이 축소된 타입과 호환됨을 확인
+  - 검증: Phase 2에서 `tsc --noEmit` + 타입 테스트, M-02
+- [x] **DC-05** 표시 키 → **해소 (2026-09-16): Symbol 키(`Symbol.for`)로 이전**
+  - 근거: 문자열 패스스루 안은 `_value`/`_navi`/`_type`을 키로 쓰는 사용자 상태를 가리는 **새 회귀**를 만든다(§3.2 실측). Symbol은 충돌 원천 차단. `ownKeys` 트랩이 devtools에 실제 상태 키를 보여주므로 표시 키의 콘솔 역할도 불필요해짐
+  - 부수 효과: 타깃이 빈 객체가 되어 CI-02의 무한 재귀가 원천 소멸
+  - 검증: Phase 2 — `tsc --noEmit`, M-02, M-03(devtools 육안)
 - [ ] **DC-06** 공식 `dispose()` API를 추가할 것인가, `AbortSignal` 단일 경로를 유지할 것인가 → **TBD (초기값: AbortSignal 유지)**
 - [ ] **DC-07** `cloneDeep`을 `structuredClone` 위임으로 갈 것인가 → **TBD (초기값: 위임 + 폴백)**
 - [ ] **DC-08** semver 등급. CI-01/13/14/16이 동작을 바꾼다. 2.2.0(opt-in 전부) vs 3.0.0(기본값 전환) → **TBD**
