@@ -1,3 +1,5 @@
+import type { PathNode } from '@/path';
+
 /**
  * S StoreType<V>; // Append root to the first value type V you are given
  * G StateRefStore<V>; // Add "value" to the ending  point with “root” unattached.
@@ -57,11 +59,9 @@ export type Watch<V> = (
 export type RunInfo<A> = {
   value: A;
   getNextValue: () => A;
-  key: string;
-  primitiveSetter?: (newValue: A) => void;
 };
 
-export type RenderListSub<A> = Map<string, RunInfo<A>>;
+export type RenderListSub<A> = Map<PathNode, RunInfo<A>>;
 
 export type StoreRenderList<A> = Map<Run, RenderListSub<A>>;
 

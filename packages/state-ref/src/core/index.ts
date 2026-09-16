@@ -1,6 +1,7 @@
 import { DEFAULT_WATCH_OPTION, DEFAULT_CREATE_OPTION } from '@/helper';
 import { makeReference } from '@/core/ref';
 import { runner } from '@/connectors/runner';
+import { createPathRoot } from '@/path';
 
 import type {
   Renew,
@@ -37,6 +38,7 @@ function create<V>(
   userCreateOption?: { autoSync?: boolean }
 ) {
   const storeRenderList: StoreRenderList<any> = new Map();
+  const pathRoot = createPathRoot();
   const cacheMap = new WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>();
   const { autoSync } = Object.assign(
     {},
@@ -80,6 +82,7 @@ function create<V>(
       cacheMap,
       autoSync,
       editable,
+      pathRoot,
     });
   };
 

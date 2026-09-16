@@ -23,17 +23,17 @@
 | CI-06 | `combineWatch`가 `AbortSignal`을 코어로 반환하지 않아 해제 불가 | `src/helper/index.ts:225-234` | 누수 |
 | CI-07 | `createComputed`이 파생값 불변인데도 발화 + 중복 발화 + 해제 수단 없음 | `src/helper/index.ts:140-175` | 계약 위반 |
 | CI-08 | `cloneDeep`이 Symbol 키/Date/Map/Set/RegExp 손실, 순환참조 `RangeError` | `src/helper/index.ts:114-135` | 버그 |
-| CI-09 | `symbolIdMap` 전역 강참조 `Map`, 영구 미해제 | `src/helper/index.ts:20-21` | 누수 |
+| CI-09 | `symbolIdMap` 전역 강참조 `Map`, 영구 미해제 → **`DC-10`으로 원인 자체가 제거됨 (Phase 3)** | `src/helper/index.ts:20-21` | 누수 |
 | CI-10 | `StateRefStore<T[]>` 타입/런타임 불일치 (`.map`, `.length`) | `src/types/index.ts:14-20` | 타입 |
 | CI-11 | 읽기 O(depth²) — `lens.get`이 devtools 표시용으로만 호출됨 | `src/proxy/index.ts:86` | 성능 |
-| CI-12 | 쓰기마다 전 구독자 × 전 경로 풀스캔 | `src/connectors/runner.ts:10-32` | 성능 |
+| CI-12 | 쓰기마다 전 구독자 × 전 경로 풀스캔 → **Phase 3에서 경로 트리로 해결** | `src/connectors/runner.ts:10-32` | 성능 |
 | CI-13 | 배칭 없음 — `.value` 대입 1회당 `runner` 1회 | `src/proxy/index.ts:121-123` | 성능 |
 | CI-14 | 의존성 재수집 없음 — 더 이상 읽지 않는 경로도 영구 구독 | `src/connectors/collector.ts:26` | 정확성/성능 |
 | CI-15 | 프록시 identity 불안정 (`ref.a !== ref.a`), 접근마다 신규 할당 | `src/proxy/index.ts:88-98` | 성능 |
 | CI-16 | `cache:false`가 구독을 중복 증식시키고 `cacheMap`에는 계속 write | `src/core/ref.ts:43` | API |
 | CI-17 | `storeRenderList` 강참조 `Map`, 공식 해제 API 부재 | `src/core/index.ts:36` | 누수 |
 | CI-18 | ~~`runner`의 try/catch가 도달 불가 (dead code)~~ → **정정: 도달 가능. 주석과 메시지가 틀렸다** | `src/connectors/runner.ts:20-30` | 정리 |
-| CI-19 | `newDepthList`가 사용되지 않는 분기에서도 매 접근 할당 | `src/proxy/index.ts:33` | 성능 |
+| CI-19 | `newDepthList`가 사용되지 않는 분기에서도 매 접근 할당 → **Phase 3에서 경로 배열 자체가 제거됨** | `src/proxy/index.ts:33` | 성능 |
 | CI-20 | public 시그니처 오타 `orignalValue` (d.ts 노출) | `src/core/index.ts:26,31,35` | API |
 
 ## 3. 재현 근거 (측정값)

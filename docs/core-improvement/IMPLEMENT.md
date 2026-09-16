@@ -163,33 +163,61 @@
 - [x] `pnpm test` 전체 통과, 커넥터 5종 무수정 통과
 - [ ] **NFR-3 미충족** — `DC-09` 확정 전까지 열어 둔다
 
-## Phase 3 — 읽기 경로 성능 (CI-11, CI-15, CI-19)
+## Phase 3 — 경로 트리 도입 (CI-09, CI-11, CI-12, CI-15, CI-19)  ✅ 완료 (2026-09-16)
 
-**진입 조건:** Phase 2 종료 조건 충족 (트랩이 확정되어야 memoize 범위가 결정됨)
+> **범위 재편 (`DC-10`).** 원래 Phase 3는 CI-11/CI-15/CI-19였고 CI-12는 Phase 4, CI-09는 Phase 6이었다. 구독 식별자를 문자열 key에서 경로 노드 identity로 바꾸면 네 항목이 한 변경에 모이므로 합쳤다. Phase 4에는 CI-13(배칭)만 남고, Phase 6에서 CI-09가 빠진다.
+
+**진입 조건:** Phase 2 종료 + `DC-09`, `DC-10` 확정
 
 **체크리스트**
-- [ ] `makeDisplayProxyValue` 시그니처를 `(depthList, getValue: () => unknown)`으로 변경, `_navi`/`_type`을 lazy getter화
-- [ ] `src/proxy/index.ts:86`의 `lens.get(rootValue)` 제거 (devtools 표시 전용 경로였음)
-- [ ] `src/proxy/index.ts:33`의 `newDepthList` 할당을 실제 사용 분기로 이동
-- [ ] 노드별 `childCache: Map<string|symbol, T>` 도입, 자식 프록시 memoize (INV-1 덕분에 값 변화와 무관하게 유효)
-- [ ] `Lens` 인스턴스도 `childCache`와 함께 재사용
+- [x] `src/path/index.ts` 신설 — `PathNode`, `createPathRoot`, `childOf`, `affectedRuns`, `pathToString`
+- [x] `childOf`가 숫자 세그먼트를 문자열로 정규화 (`ref.items[0]`과 iterator가 같은 노드)
+- [x] `RunInfo`에서 죽은 필드 `key`/`primitiveSetter` 제거, `RenderListSub`를 `Map<PathNode, RunInfo>`로
+- [x] `collector`가 노드 identity로 중복 제거하고 `pathNode.subs`에 run 등록
+- [x] `runner(storeRenderList, writtenNode?)` — 후보 narrowing. `writtenNode` 없으면(manual `sync()`) 전체 검사
+- [x] `removeRun` 신설 — 구독 해제 시 각 노드의 `subs`에서도 제거 (`runner`의 `false` 반환 / `firstRunner`의 abort 양쪽)
+- [x] CI-09: `symbolIdMap` / `symbolCounter` **삭제**
+- [x] `escapeString` / `keyFromDepthList` **삭제**
+- [x] CI-19: `depthList` 배열 자체 제거 — 프록시가 `PathNode` 하나를 든다
+- [x] CI-11: 자식 경로의 eager `lens.get` 제거 (표시용이었음). `TYPE`/inspect는 필요할 때만 조회
+- [x] CI-15: 자식 프록시 memoize (`childProxies`) — `ref.a === ref.a`
+- [x] `depth` 파라미터 제거 (`PathNode.parent` 체인이 대체)
+- [x] `NAVI` 포맷을 `s:root|s:a|s:b` → `root.a.b`로 단순화 (디버그 전용, 미출시 심볼)
 
 **기준 테스트**
-- [ ] `ref.a === ref.a`, `ref.a.b === ref.a.b` (identity 안정)
-- [ ] 값 변경 후에도 캐시된 프록시가 **새 값**을 읽음 (INV-1 검증: `ref.a.value = 1` 후 보관해둔 `ref.a`가 1을 반환)
-- [ ] `console.log(ref)`가 `_navi`/`_type`을 여전히 표시
-- [ ] 구독 해제 후 `childCache`가 함께 폐기됨 (누수 없음)
-- [ ] 벤치 게이트 **NFR-1**: 깊이 8 / 50k 읽기 ≤ 200 ms (baseline 301 ms)
-- [ ] 참고 목표: 깊이 32 / 50k 읽기 ≤ 800 ms (baseline 2,719 ms, 시제품 624 ms)
+- [x] `ref.a === ref.a`, `ref.a.b === ref.a.b`
+- [x] memoize된 ref가 쓰기 후에도 **현재 값**을 읽음 (INV-1 검증)
+- [x] 조상 쓰기 → 하위 구독 발화
+- [x] 하위 쓰기 → 조상 구독 발화
+- [x] 형제 쓰기 → 아무도 발화 안 함
+- [x] 무관한 경로는 **읽히지도 않음** (throwing getter를 프로브로 사용)
+- [x] `ref.items[0]`과 `for..of`가 같은 구독 노드를 공유
+- [x] manual `sync()`는 여전히 전체 검사
+- [x] Symbol 경로 구독/쓰기 정상 (전역 레지스트리 없이)
+- [x] `ref[symbol][NAVI]` → `root.Symbol(dynamic)`
+
+**실측**
+
+| 항목 | baseline | Phase 2 | **Phase 3** | 배수 |
+|---|---|---|---|---|
+| 코어 테스트 | 49 | 82 | **90** | |
+| 읽기 깊이 2 (50k) | 73.0 ms | 44.3 ms | **4.6 ms** | 16x |
+| 읽기 깊이 8 (50k) | 325.6 ms | 114.2 ms | **12.3 ms** | **26x** |
+| 읽기 깊이 32 (50k) | 2,769 ms | 502 ms | **40.0 ms** | **69x** |
+| 쓰기 100 구독자 | 2.3 ms | 2.2 ms | **0.3 ms** | |
+| 쓰기 1,600 구독자 | 35.6 ms | 40.5 ms | **0.5 ms** | **71x** |
+| 번들 gzip | 2,686 B | 3,140 B | **3,258 B** | 상한 4,000 B |
+| 게이트 | 0/2 | 1/2 | **2/2 PASS** | |
 
 **종료 조건**
-- NFR-1 충족, 벤치 결과를 `docs/core-improvement/bench-phase3.txt`에 기록
-- 관측 가능한 동작 변화 0 (Phase 0 회귀 스냅샷 무변경)
-- `pnpm test` 전체 통과
+- [x] NFR-1, NFR-2 충족 — `docs/core-improvement/bench-phase3.txt`
+- [x] NFR-3 충족 (3,258 B < 4,000 B)
+- [x] `pnpm test` 전체 통과, 커넥터 5종 무수정 통과 (NFR-4)
+- [x] `tsc --noEmit` / `eslint` 0 error
 
----
+## Phase 4 — 배칭 (CI-13)
 
-## Phase 4 — 쓰기 경로 성능 (CI-12, CI-13)
+> **범위 축소.** CI-12는 Phase 3의 경로 트리가 해결했다(`DC-10`). 남은 것은 배칭뿐이다.
 
 **진입 조건:** Phase 3 종료 조건 충족
 
@@ -261,7 +289,9 @@
 
 ---
 
-## Phase 6 — Lens / 헬퍼 (CI-04, CI-08, CI-09)
+## Phase 6 — Lens / 헬퍼 (CI-04, CI-08)
+
+> **범위 축소.** CI-09는 Phase 3에서 원인(`symbolIdMap`)이 삭제되며 소멸했다.
 
 **진입 조건:** Phase 5 종료 조건 충족
 
@@ -270,9 +300,6 @@
 - [ ] `cloneDeep` — `structuredClone` 위임 + 실패 시 재귀 폴백 (`DC-07`)
 - [ ] 폴백 경로에 `Reflect.ownKeys` (Symbol 키 포함)
 - [ ] 폴백 경로에 `WeakMap` seen 세트 (순환 차단)
-- [ ] `symbolIdMap` → `WeakMap<symbol, number>`
-- [ ] registered symbol(`Symbol.keyFor(s) !== undefined`)은 별도 `Map`으로 분기 — WeakMap 키 불가
-- [ ] `helper/index.ts:18-19`의 낡은 주석("WeakMap can't use symbol as key in TS") 삭제
 - [ ] `cloneDeep` JSDoc에 지원 타입 명시
 
 **기준 테스트**
@@ -436,3 +463,23 @@
   - `Symbol.toPrimitive`만 정의하면 `valueOf`/`toString`을 가리지 않고도 원시 변환을 전부 잡는다
   - `{ ...ref }`의 선언 타입에는 `value`가 남지만 런타임에는 없다. TS가 `ownKeys` 트랩을 볼 수 없는 데서 오는 한계로, 테스트에 주석으로 고정
 - **commit** `697f84b` (DC-04/DC-05 결정) 기준, 본 Phase 2 커밋이 그 위에 쌓임
+
+### 2026-09-16 — Phase 3 완료 (범위 재편)
+- **done**
+  - `DC-09` 번들 상한을 절대값 4,000 B로 재설정
+  - `DC-10` 확정 후 Phase 3 재편 — CI-09·CI-12·CI-19를 흡수
+  - `src/path/index.ts` 신설. 구독 식별을 문자열 key → `PathNode` identity로 전환
+  - `symbolIdMap`·`escapeString`·`keyFromDepthList`·`depthList` 삭제. CI-09 누수는 **고쳐진 게 아니라 원인이 사라짐**
+  - `runner`가 `affectedRuns`로 후보를 좁힘. `removeRun`이 노드의 `subs`까지 정리
+  - 자식 프록시 memoize → `ref.a === ref.a`, 그리고 읽기 비용이 Map 조회로 붕괴
+  - 회귀 33 → 41건. CI-15 스냅샷 전환 + CI-12 narrowing 6건 + CI-09 1건 신규
+  - **게이트 2/2 통과.** 읽기 깊이 8 26x, 쓰기 1,600 구독자 71x
+- **next**
+  - **Phase 4 — 배칭(CI-13)만 남음.** `DC-03`(기본값 `'sync'` vs `'microtask'`) 확정 필요
+  - 그 다음 Phase 5(구독 수명), Phase 6(Lens/헬퍼, CI-09 제외)
+- **blockers**
+  - 없음. `DC-03`은 초기값이 있어 그대로 진행 가능
+- **발견**
+  - 후보 narrowing이 들어가자 CI-18 회귀 테스트가 깨졌다. 무관한 경로는 **읽히지도 않으므로** throwing getter가 발화하지 않는다. 의도한 개선이라 테스트를 "쓰기가 조상에 닿는" 형태로 재구성했고, narrowing 자체를 검증하는 테스트(조상/하위/형제/배열/manual sync)를 새로 추가했다
+  - 읽기 성능 개선의 대부분은 memoize에서 나왔다. 벤치가 같은 경로를 반복 순회하므로 프록시·lens 할당이 통째로 사라진다. `.value` 자체는 여전히 O(depth) `lens.get`이다
+- **commit** `29c7367` (DC-09) 기준, 본 Phase 3 커밋이 그 위에 쌓임

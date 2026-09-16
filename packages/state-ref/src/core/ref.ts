@@ -1,4 +1,5 @@
 import { makeProxy } from '@/proxy';
+import type { PathNode } from '@/path';
 import { firstRunner } from '@/connectors/runner';
 
 import type { Renew, StoreType, StateRefStore, StoreRenderList } from '@/types';
@@ -13,6 +14,7 @@ export function makeReference<V>({
   cacheMap,
   autoSync,
   editable,
+  pathRoot,
 }: {
   renew: Renew<StateRefStore<V>>;
   rootValue: StoreType<V>;
@@ -20,6 +22,7 @@ export function makeReference<V>({
   cacheMap: WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>;
   autoSync: boolean;
   editable: boolean;
+  pathRoot: PathNode;
 }) {
   const ref: { value: null | StateRefStore<StoreType<V>> } = {
     value: null,
@@ -27,12 +30,12 @@ export function makeReference<V>({
   const run = (isFirst?: boolean) => renew(ref.value!.root, isFirst ?? false);
 
   ref.value = makeProxy<StoreType<V>, StateRefStore<StoreType<V>>>(
-    rootValue,
     storeRenderList,
     run,
     autoSync,
     editable,
-    rootValue
+    rootValue,
+    pathRoot
   );
 
   /**

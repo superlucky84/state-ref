@@ -111,7 +111,7 @@ if (import.meta.vitest) {
       const watch = createStore<{ a: { b: number } }>({ a: { b: 1 } });
       const ref = watch();
 
-      expect((ref.a.b as any)[NAVI]).toBe('s:root|s:a|s:b');
+      expect((ref.a.b as any)[NAVI]).toBe('root.a.b');
       expect((ref.a.b as any)[TYPE]).toBe('number');
       expect((ref.a as any)[TYPE]).toBe('object');
     });
@@ -246,16 +246,20 @@ if (import.meta.vitest) {
        * CI-18 was filed as dead code. It is not: the lens walks with optional
        * chaining, so a removed value yields undefined, but a throwing getter in
        * the user's own state does reach this path.
+       *
+       * The write has to land on an ancestor of the throwing path, otherwise
+       * Phase 3's narrowing never reads it - see the CI-12 block below.
        */
       let armed = false;
-      const watch = createStore<{ a: { flaky: number }; other: number }>({
-        a: {
-          get flaky() {
-            if (armed) throw new Error('getter exploded');
-            return 1;
-          },
+      const makeBranch = (tick: number) => ({
+        get flaky(): number {
+          if (armed) throw new Error('getter exploded');
+          return 1;
         },
-        other: 0,
+        tick,
+      });
+      const watch = createStore<{ a: { flaky: number; tick: number } }>({
+        a: makeBranch(0),
       });
       const ref = watch();
       const reported: unknown[] = [];
@@ -266,22 +270,127 @@ if (import.meta.vitest) {
       try {
         watch(s => noop(s.a.flaky.value));
         watch(s => {
-          noop(s.other.value);
+          noop(s.a.tick.value);
           survivor += 1;
         });
 
         armed = true;
         survivor = 0;
-        ref.other.value = 1;
+        ref.a.value = makeBranch(1);
       } finally {
         console.error = original;
       }
 
       expect(survivor).toBe(1);
-      expect(ref.other.value).toBe(1);
+      expect(ref.a.tick.value).toBe(1);
       expect((reported[0] as AggregateError).errors[0].message).toBe(
         'getter exploded'
       );
+    });
+  });
+
+  describe('CI-12 writes only wake the subscriptions they can have touched', () => {
+    it('FIXED (Phase 3): an unrelated path is not even read', () => {
+      let reads = 0;
+      const watch = createStore<{ a: { probe: number }; other: number }>({
+        a: {
+          get probe() {
+            reads += 1;
+            return 1;
+          },
+        },
+        other: 0,
+      });
+      const ref = watch();
+
+      watch(s => noop(s.a.probe.value));
+      reads = 0;
+      ref.other.value = 1;
+
+      expect(reads).toBe(0);
+    });
+
+    it('an ancestor write wakes a descendant subscription', () => {
+      const watch = createStore<{ a: { b: number } }>({ a: { b: 1 } });
+      const ref = watch();
+      let seen = 0;
+
+      watch(s => {
+        seen = s.a.b.value;
+      });
+      ref.a.value = { b: 9 };
+
+      expect(seen).toBe(9);
+    });
+
+    it('a descendant write wakes an ancestor subscription', () => {
+      const watch = createStore<{ a: { b: number } }>({ a: { b: 1 } });
+      const ref = watch();
+      let calls = 0;
+
+      watch(s => {
+        noop(s.a.value);
+        calls += 1;
+      });
+
+      calls = 0;
+      ref.a.b.value = 9;
+
+      expect(calls).toBe(1);
+    });
+
+    it('a sibling write wakes nobody', () => {
+      const watch = createStore<{ a: number; b: number }>({ a: 1, b: 1 });
+      const ref = watch();
+      let calls = 0;
+
+      watch(s => {
+        noop(s.a.value);
+        calls += 1;
+      });
+
+      calls = 0;
+      ref.b.value = 9;
+
+      expect(calls).toBe(0);
+    });
+
+    it('array index and iteration share one subscription node', () => {
+      const watch = createStore<{ items: number[] }>({ items: [1, 2] });
+      const ref = watch();
+      let calls = 0;
+
+      watch(s => {
+        noop(s.items[0].value);
+        for (const item of s.items) noop(item.value);
+        calls += 1;
+      });
+
+      calls = 0;
+      ref.items[0].value = 9;
+
+      expect(calls).toBe(1);
+    });
+
+    it('manual sync() still examines everything', () => {
+      const { watch, updateRef, sync } = createStoreManualSync<{
+        a: number;
+        b: number;
+      }>({ a: 1, b: 1 });
+      let calls = 0;
+
+      watch(s => {
+        noop(s.a.value);
+        noop(s.b.value);
+        calls += 1;
+      });
+
+      calls = 0;
+      updateRef.a.value = 2;
+      updateRef.b.value = 2;
+      sync();
+
+      expect(calls).toBe(1);
     });
   });
 
@@ -430,12 +539,37 @@ if (import.meta.vitest) {
   });
 
   describe('CI-15 proxy identity is unstable', () => {
-    it('SNAPSHOT (wrong): every access allocates a new proxy — Phase 3 must flip this', () => {
+    it('FIXED (Phase 3): child refs are memoised, so identity is stable', () => {
       const watch = createStore<{ a: { b: number } }>({ a: { b: 1 } });
       const ref = watch();
 
-      expect(ref.a === ref.a).toBe(false);
-      expect(ref.a.b === ref.a.b).toBe(false);
+      expect(ref.a === ref.a).toBe(true);
+      expect(ref.a.b === ref.a.b).toBe(true);
+    });
+
+    it('a memoised ref still reads the current value after a write', () => {
+      const watch = createStore<{ a: { b: number } }>({ a: { b: 1 } });
+      const ref = watch();
+      const held = ref.a.b;
+
+      ref.a.b.value = 42;
+
+      expect(held.value).toBe(42);
+    });
+
+    it('CI-09: symbol paths no longer need a global id registry', () => {
+      const key = Symbol('dynamic');
+      const watch = createStore<Record<symbol, number>>({ [key]: 1 });
+      const ref = watch();
+      let seen = 0;
+
+      watch(s => {
+        seen = (s as any)[key].value;
+      });
+
+      (ref as any)[key].value = 7;
+      expect(seen).toBe(7);
+      expect((ref as any)[key][NAVI]).toBe('root.Symbol(dynamic)');
     });
   });
 

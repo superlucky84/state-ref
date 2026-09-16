@@ -153,16 +153,17 @@ export function makeDisplayProxyValue(depthList, getValue: () => unknown) {
 
 > 경로 `P`에 쓰기가 일어나면, 참조가 바뀌는 노드는 **`P`의 조상 전부 + `P` 자신 + `P`의 서브트리 전부**뿐이다. 그 외 노드는 구조 공유로 참조가 보존된다.
 
-`set` 트랩은 이미 자기 `depthList`를 안다. 따라서:
+`DC-10`의 경로 트리가 그대로 이 역인덱스다. 별도 `keyIndex`나 문자열 접두사 매칭이 필요 없다:
+
 ```
-keyIndex: Map<string /* key */, Set<Run>>   // collector가 등록 시 함께 채움
-dirty(writtenKey):
-  후보 = ⋃ { keyIndex[prefix] | prefix ∈ writtenKey의 모든 조상 key }
-       ∪ { keyIndex[k] | k가 writtenKey를 접두사로 가짐 }
+affectedRuns(node):
+  조상 + 자신 → node.parent 체인을 따라 subs 수집     O(depth)
+  서브트리     → node.children DFS로 subs 수집
 ```
-접두사 매칭은 `keyFromDepthList`의 `|` 구분 포맷이 이미 지원한다(`s:a|s:b`는 `s:a|s:b|s:c`의 접두사). 조상 집합은 쓰기 경로 길이 d에 대해 O(d)개이므로 조상 방향은 해시 조회 d회로 끝난다. 서브트리 방향만 스캔이 필요하며, 이를 위해 `keyIndex`를 정렬된 키 배열 또는 접두사 트리로 유지한다.
-- 폴백: 후보 집합을 구한 뒤의 값 비교 로직은 현행과 동일하게 둔다. 즉 **정확성은 기존 참조 비교가 계속 보장**하고, 인덱스는 후보를 줄이는 역할만 한다. 인덱스 버그가 과다 알림은 만들 수 있어도 오탐 누락은 값 비교 단계에서 걸러진다 — 안전한 방향의 실패다.
-- `DC-02`가 채택되면 `keyIndex`는 dep 재수집과 수명을 공유한다.
+
+`runner(storeRenderList, writtenNode?)`는 `writtenNode`가 있으면 후보만, 없으면(manual `sync()`) 전체를 검사한다.
+- **정확성 안전망**: 트리는 후보를 좁히기만 하고, 실제 변경 판정은 기존 참조 비교가 계속 수행한다. 트리 버그는 과다 알림 방향으로만 실패하고, 누락은 copy-on-write 불변식상 불가능하다.
+- 구독 해제 시 `removeRun`이 해당 run을 각 노드의 `subs`에서도 제거한다.
 
 **CI-13** — 배칭. `runner` 호출을 microtask로 합치는 스케줄러를 둔다.
 ```ts
@@ -244,6 +245,14 @@ if (!Object.is(next, result)) { result = next; notify(); }
   - 늘어난 454 B는 전부 "프록시가 평범한 JS 객체처럼 동작하게 만드는" 값이며, 그것이 이 라이브러리의 DX 핵심이다
   - 에러 메시지 축약은 20 B만 회수되어(실측) 메시지 품질을 깎을 가치가 없다
   - 잔여 예산 860 B를 Phase 3~6이 나눠 쓴다. 검증: Phase 4 종료 시 재측정, Phase 8 최종 확정
+- [x] **DC-10** 구독 식별자 → **해소 (2026-09-16): 문자열 key를 버리고 경로 노드(PathNode) 트리의 객체 identity를 쓴다**
+  - 추적 결과 문자열 key의 용도는 **중복 제거 하나뿐**이었다(`collector.ts:26`). 변경 감지는 `getNextValue()` 참조 비교가 전담한다. `RunInfo.key` 필드는 Phase 1 이후 아무도 읽지 않는 죽은 필드였다
+  - 문자열을 만들려다 딸려온 것들: `escapeString`(구분자 충돌 회피), `symbolIdMap`(**CI-09 누수의 실체** — Symbol을 문자열로 표현하려는 목적 하나로 존재), `[...depthList, prop]` 복사(CI-19)
+  - 노드 identity를 쓰면 이들이 **고쳐지는 게 아니라 삭제된다.** Symbol은 평범한 세그먼트가 되고, 이스케이프할 대상 자체가 없어진다
+  - 트리가 곧 CI-12의 역인덱스다. 조상은 `parent` 체인, 하위는 `children` DFS — 별도 `keyIndex`도 문자열 접두사 매칭도 불필요
+  - 함정: 숫자/문자열 세그먼트 정규화 필수(`ref.items[0]`과 iterator가 같은 노드여야 함). `childOf`가 처리
+  - 결과: **Phase 3가 CI-09·CI-12·CI-19를 흡수**하고, Phase 4는 CI-13(배칭)만 남는다. Phase 6에서 CI-09 제거
+
 - [ ] **DC-08** semver 등급. CI-01/13/14/16이 동작을 바꾼다. 2.2.0(opt-in 전부) vs 3.0.0(기본값 전환) → **TBD**
   - `DC-02`, `DC-03` 확정 후 결정
 

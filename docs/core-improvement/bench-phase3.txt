@@ -1,0 +1,23 @@
+# bench-phase3 — after DC-10 path tree
+# commit base: 29c7367
+# date: 2026-09-16T09:43:23Z
+
+
+READ — 50,000 leaf .value reads by path depth  [NFR-1]
+depth  2                                            4.5 ms
+depth  8                                           12.1 ms  (target <= 200 ms)  PASS
+depth 32                                           39.6 ms
+
+WRITE — 500 writes to one field, N idle subscribers  [NFR-2]
+ 100 idle subscribers                               0.3 ms
+ 400 idle subscribers                               0.2 ms
+1600 idle subscribers                               0.6 ms  (target <= 10 ms)  PASS
+
+WRITE — subscriber scaling factor (want: sub-linear)
+  100 -> 400:  0.54x   (subscriber count 4x)
+  400 -> 1600: 3.47x   (subscriber count 4x)
+
+Gates: 2/2 pass
+
+mjs gzip: 3258 B (cap 4000)
+umd gzip: 2603 B

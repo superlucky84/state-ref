@@ -1,6 +1,8 @@
 import { lens } from '@/lens';
 import type { Lens } from '@/lens';
-import { NAVI, TYPE, NODE_INSPECT, getType, keyFromDepthList } from '@/helper';
+import { NAVI, TYPE, NODE_INSPECT, getType } from '@/helper';
+import { childOf, pathToString } from '@/path';
+import type { PathNode } from '@/path';
 import { collector } from '@/connectors/collector';
 import { runner } from '@/connectors/runner';
 import type { Run, WithRoot, StoreRenderList } from '@/types';
@@ -9,41 +11,46 @@ import type { Run, WithRoot, StoreRenderList } from '@/types';
  * Use proxies to secure values and match them to lens.
  */
 export function makeProxy<S extends WithRoot, T extends object>(
-  value: unknown,
   storeRenderList: StoreRenderList<any>,
   run: Run,
   autoSync: boolean,
   editable: boolean,
   rootValue: S,
-  lensValue: Lens<S, any> = lens<S>(),
-  depth: number = 0,
-  depthList: (string | number | symbol)[] = []
+  pathNode: PathNode,
+  lensValue: Lens<S, any> = lens<S>()
 ): T {
   /**
-   * `lensProp` walks the lens, `depthProp` builds the subscription key. They
-   * differ only for iteration, where the lens indexes an array numerically but
-   * the key must match the string form produced by `ref.items[0]`.
+   * A proxy holds a path, never a value, so a child proxy stays correct however
+   * often the state underneath it changes. Memoising them keeps `ref.a === ref.a`
+   * true and stops every property access from allocating a proxy and a lens.
    */
-  const childProxy = (
-    lensProp: string | number | symbol,
-    childValue: unknown,
-    depthProp: string | number | symbol = lensProp
-  ) =>
-    makeProxy(
-      childValue,
+  const childProxies = new Map<string | symbol, unknown>();
+
+  const childProxy = (segment: string | symbol) => {
+    const cached = childProxies.get(segment);
+
+    if (cached) {
+      return cached;
+    }
+
+    const created = makeProxy(
       storeRenderList,
       run,
       autoSync,
       editable,
       rootValue,
-      lensValue.chain(lensProp),
-      depth + 1,
-      [...depthList, depthProp]
+      childOf(pathNode, segment),
+      lensValue.chain(segment)
     );
 
+    childProxies.set(segment, created);
+
+    return created;
+  };
+
   const inspect = () => ({
-    navi: keyFromDepthList(depthList),
-    type: getType(value),
+    navi: pathToString(pathNode),
+    type: getType(lensValue.get(rootValue)),
     value: lensValue.get(rootValue),
   });
 
@@ -78,7 +85,7 @@ export function makeProxy<S extends WithRoot, T extends object>(
         collector(
           currentValue,
           () => lensValue.get(rootValue),
-          [...depthList],
+          pathNode,
           run,
           storeRenderList
         );
@@ -90,10 +97,10 @@ export function makeProxy<S extends WithRoot, T extends object>(
        * Debug handles. Symbols, so they cannot collide with state keys.
        */
       if (prop === NAVI) {
-        return keyFromDepthList(depthList);
+        return pathToString(pathNode);
       }
       if (prop === TYPE) {
-        return getType(value);
+        return getType(lensValue.get(rootValue));
       }
 
       /**
@@ -122,7 +129,7 @@ export function makeProxy<S extends WithRoot, T extends object>(
         return () => {
           throw new Error(
             `Cannot convert a stateRef to a primitive. Read it with ".value" (e.g. ${
-              keyFromDepthList(depthList) || 'ref'
+              pathToString(pathNode) || 'ref'
             } -> .value).`
           );
         };
@@ -140,10 +147,8 @@ export function makeProxy<S extends WithRoot, T extends object>(
           ) {
             return;
           }
-          for (const [index, itemValue] of (
-            iterableValue as unknown as any[]
-          ).entries()) {
-            yield childProxy(index, itemValue, String(index));
+          for (const index of (iterableValue as unknown as any[]).keys()) {
+            yield childProxy(String(index));
           }
         };
       }
@@ -151,9 +156,7 @@ export function makeProxy<S extends WithRoot, T extends object>(
       /**
        * When accessing child object types from a proxy
        */
-      const childLens = lensValue.chain(prop);
-
-      return childProxy(prop, childLens.get(rootValue));
+      return childProxy(prop);
     },
 
     /**
@@ -174,9 +177,8 @@ export function makeProxy<S extends WithRoot, T extends object>(
     },
 
     getOwnPropertyDescriptor(_: T, prop: string | symbol) {
-      const currentValue = lensValue.get(rootValue);
       const descriptor = Reflect.getOwnPropertyDescriptor(
-        Object(currentValue),
+        Object(lensValue.get(rootValue)),
         prop
       );
 
@@ -195,7 +197,7 @@ export function makeProxy<S extends WithRoot, T extends object>(
         enumerable: descriptor.enumerable,
         configurable: true,
         writable: true,
-        value: childProxy(prop, (currentValue as any)?.[prop]),
+        value: childProxy(prop),
       };
     },
 
@@ -225,10 +227,11 @@ export function makeProxy<S extends WithRoot, T extends object>(
         rootValue.root = newTree.root;
 
         /**
-         * Run dependency subscription callbacks.
+         * Run dependency subscription callbacks, limited to the subscriptions
+         * this path can have invalidated.
          */
         if (autoSync) {
-          runner(storeRenderList);
+          runner(storeRenderList, pathNode);
         }
       }
       return true;
