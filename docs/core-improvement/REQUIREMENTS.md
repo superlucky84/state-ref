@@ -111,9 +111,9 @@ ref.other.value = 1;           // → catch 진입, console.warn 발생
 ### 4.2 비기능 요구 (NFR)
 - **NFR-1** 깊이 8 경로의 리프 읽기 처리량을 현재 대비 1.5x 이상 개선한다. (목표: 301 ms → 200 ms 이하 / 50k회)
 - **NFR-2** 쓰기 비용이 **무관한** 구독자 수에 선형 비례하지 않아야 한다. (목표: 1,600 구독자 시나리오 35.1 ms → 10 ms 이하)
-- **NFR-3** 번들 크기 증가는 gzip 기준 +15% 이내.
+- **NFR-3** 번들 크기 상한: `state-ref.mjs` gzip ≤ **4,000 B**.
   - baseline (Phase 0 실측): `state-ref.mjs` gzip **2,686 B** / `state-ref.umd.js` gzip **2,127 B**
-  - 상한: `state-ref.mjs` gzip ≤ **3,089 B**
+  - 최초 `+15%`(3,089 B)는 작업 범위를 모르는 상태에서 정한 수치였고 Phase 2에서 3,140 B로 초과했다. `DC-09`에서 절대값 4,000 B로 재설정 (2026-09-16). 근거는 `DESIGN.md` §4 `DC-09`
 - **NFR-4** 커넥터 5종(`react`/`preact`/`vue`/`svelte`/`solid`)의 기존 테스트가 무수정 통과해야 한다.
 
 ### 4.3 제약 (Constraints)
