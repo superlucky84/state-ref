@@ -11,15 +11,43 @@ export type Renew<G> = (
 export type Run = null | ((isFirst?: boolean) => boolean | AbortSignal | void);
 export type StoreType<V> = { root: V };
 export type WithRoot = { root: unknown } & { [key: string | symbol]: unknown };
-export type StateRefStore<S> = S extends object
+/**
+ * A stateRef mirrors the shape of the value it points at, with `.value` at
+ * every node.
+ *
+ * Arrays get their own branch. A proxy only ever holds a path, so it cannot
+ * carry real array methods - `ref.items.map(fn)` used to type-check and then
+ * fail at runtime. Indexing, `length` and iteration are all genuine paths, so
+ * those are what the type exposes:
+ *
+ *   ref.items[0].value        // element
+ *   ref.items.length.value    // reactive, re-runs when the array is replaced
+ *   ref.items.value.length    // plain snapshot
+ *   [...ref.items]            // Iterable
+ *
+ * Tuples keep their positional types; only variable-length arrays collapse to
+ * an index signature.
+ */
+export type StateRefStore<S> = S extends readonly any[]
+  ? number extends S['length']
+    ? {
+        [index: number]: StateRefStore<S[number]>;
+      } & {
+        length: StateRefStore<number>;
+        value: S;
+      } & Iterable<StateRefStore<S[number]>>
+    : {
+        -readonly [K in keyof S]: StateRefStore<S[K]>;
+      } & {
+        value: S;
+      }
+  : S extends object
   ? {
       [K in keyof S]: StateRefStore<S[K]>;
     } & {
       value: S;
     }
   : { value: S };
-// [K in keyof S]: StateRefStore<S[K]> & { value: S[K] };
-// value: { [K in keyof S]: StateRefStore<S[K]> } & { value: S };
 
 export type Watch<V> = (
   renew?: Renew<StateRefStore<V>>,

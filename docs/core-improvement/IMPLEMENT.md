@@ -100,38 +100,68 @@
 
 ---
 
-## Phase 2 — 프록시 프로토콜 (CI-02, CI-03, CI-10)
+## Phase 2 — 프록시 프로토콜 (CI-02, CI-03, CI-10)  ✅ 완료 (2026-09-16) / ⚠️ NFR-3 초과
 
 **진입 조건:** Phase 1 종료 조건 충족
 
 **체크리스트**
-- [ ] get 트랩 선두 분기 추가: `DISPLAY_KEYS` → `Reflect.get(target, prop)` (`DESIGN.md` §3.2)
-- [ ] `toJSON` 트랩 → `() => lensValue.get(rootValue)`
-- [ ] `Symbol.toPrimitive` / `valueOf` / `toString` 처리
-- [ ] `has` 트랩 추가
-- [ ] `ownKeys` 트랩 추가
-- [ ] `getOwnPropertyDescriptor` 트랩 추가 — **`configurable: true` 필수** (프록시 불변식 위반 방지)
-- [ ] `deleteProperty` 트랩 → 명시적 throw
-- [ ] `DC-04` 확정 후 `src/types/index.ts`의 `StateRefStore<S>`에 배열 분기 추가
-- [ ] `tsc --noEmit`으로 배열 타입 변경의 영향 범위 측정 → `DC-04` 근거로 기록
+- [x] 표시 키를 Symbol로 이전 (`DC-05`). `NAVI`/`TYPE` = `Symbol.for('state-ref.navi' | 'state-ref.type')`
+- [x] 프록시 타깃을 비움 → CI-02의 `_value` → `_value` 재귀 체인이 **원천 소멸**
+- [x] `toJSON` 트랩 → `() => lensValue.get(rootValue)`
+- [x] `Symbol.toPrimitive` 트랩 → ".value를 빠뜨렸다"는 실행 가능한 에러
+- [x] `has` / `ownKeys` / `getOwnPropertyDescriptor` / `deleteProperty` 트랩 추가
+- [x] `getOwnPropertyDescriptor`가 `configurable: true` 반환 (불변식), `enumerable`은 실제 값에서 미러링
+- [x] `StateRefStore<S>`에 배열 분기 추가 (`DC-04`) — 튜플은 위치 타입 보존
+- [x] `tsc --noEmit`으로 6개 패키지 영향 측정 → **에러 0건**
+
+**계획 대비 변경**
+1. **`valueOf`/`toString`은 트랩하지 않는다.** 설계 원안은 셋 다 트랩하려 했으나, `Symbol.toPrimitive`만 정의하면 원시 변환이 전부 그쪽으로 먼저 가므로 나머지 둘은 불필요하다. 문자열 키를 하나도 가리지 않게 되어 `DC-05`의 취지에 더 맞는다.
+2. **Node용 inspect 훅을 프록시 타깃에 얹었다.** 타깃을 비우니 `console.log(ref)`가 `{}`로 나왔다. Node의 `util.inspect`는 프록시를 만나면 **트랩을 건너뛰고 타깃으로 교체**하므로 get 트랩 분기로는 해결되지 않는다. 타깃에 `Symbol.for('nodejs.util.inspect.custom')`를 직접 얹어 해결했고, 결과는 종전보다 낫다:
+   ```
+   before: { _navi: 's:root|s:a', _type: 'number', _value: '..' }
+   after : { navi: 's:root|s:a', type: 'number', value: 1 }
+   ```
 
 **기준 테스트**
-- [ ] `JSON.stringify(ref)`가 RangeError 없이 해당 경로의 실제 값을 반환 (FR-2)
-- [ ] `JSON.stringify(ref.a.b)`가 중첩 경로에서도 동작
-- [ ] `Object.keys(ref)`가 실제 상태 키를 반환 (`_navi` 등 미포함)
-- [ ] `'a' in ref === true`, `'zzz' in ref === false`
-- [ ] `{ ...ref }` 구조분해가 자식 프록시를 반환하고 무한 재귀하지 않음
-- [ ] `delete ref.a`가 명시적 에러 메시지로 throw
-- [ ] `console.log(ref)`가 `_navi`/`_type`을 여전히 노출 (A-1 회귀 방지)
-- [ ] `[...ref.items]`, `for..of` 계속 동작
-- [ ] 타입 테스트: `ref.items.map(...)`이 **컴파일 에러** / `ref.items.value.length`가 `number`
+- [x] `JSON.stringify(ref)` / `JSON.stringify(ref.a.b)` 가 실제 값 반환 (FR-2)
+- [x] `Object.keys(ref)` 가 실제 상태 키 반환
+- [x] `'a' in ref === true`, `'missing' in ref === false`, `'value' in ref === true`
+- [x] `{ ...ref }` 가 자식 ref 맵 반환, 무한 재귀 없음
+- [x] `delete ref.a` 가 실행 가능한 메시지로 throw
+- [x] `` `${ref.a}` `` 가 ".value를 쓰라"는 메시지로 throw
+- [x] `ref.a.b[NAVI]` / `[TYPE]` 정상 조회
+- [x] **사용자 상태가 `_value`/`_navi`/`_type` 키를 소유해도 가려지지 않음** (`DC-05` 핵심 근거)
+- [x] `valueOf` / `toString` 이 평범한 상태 경로로 동작
+- [x] `[...ref.items]`, `for..of` 유지
+- [x] `ref.items[0].value` / `ref.items.length.value`(반응형) / `ref.items.value.length` 전부 동작
+- [x] `Object.keys(ref.items)` → `['0','1','2']` (`length`는 비열거)
+- [x] 타입: `ref.items.map(...)` 컴파일 에러
+
+**실측**
+
+| 항목 | baseline | Phase 1 | Phase 2 | 판정 |
+|---|---|---|---|---|
+| 코어 테스트 | 49 | 77 | **82** | |
+| 전체 테스트 | 통과 | 통과 | **통과** (커넥터 무수정) | NFR-4 ✅ |
+| `tsc --noEmit` (6패키지) | 0 | 0 | **0** | |
+| 읽기 깊이 8 (50k) | 325.6 ms | 324.3 ms | **114.2 ms** | **NFR-1 ✅ 조기 달성** |
+| 읽기 깊이 32 (50k) | 2,769 ms | 2,784 ms | **502 ms** | 5.5x |
+| 쓰기 1,600 구독자 | 35.6 ms | 35.8 ms | 40.5 ms | NFR-2 ❌ (Phase 4) |
+| 번들 gzip (mjs) | 2,686 B | 2,738 B | **3,140 B** | **NFR-3 ❌ 초과 (상한 3,089 B)** |
+
+**NFR-1이 Phase 3보다 먼저 통과한 이유**
+
+`makeDisplayProxyValue`가 프록시 생성마다 `keyFromDepthList`로 경로 문자열을 조립하고 있었다. 표시 키를 Symbol로 옮기면서 그 호출이 통째로 사라졌고, 이것이 읽기 비용의 지배적 요인이었다. Phase 3에 남은 것은 `proxy/index.ts`의 자식 경로 `lens.get`(CI-11)과 프록시 memoize(CI-15)이며, 게이트는 이미 통과했으므로 Phase 3의 목표를 **"게이트 달성"에서 "추가 개선 + identity 안정화"로 재조정**한다.
+
+**NFR-3 초과 — 결정 필요 (`DC-09`)**
+
++454 B (+16.9%)로 +15% 상한을 넘었다. 에러 메시지를 줄여도 3,120 B로 20 B밖에 회수되지 않아(측정함) 메시지 품질을 깎을 가치가 없다. Phase 4는 `keyIndex`와 배칭으로 **더 늘어난다**. `DESIGN.md` §4 `DC-09` 참조.
 
 **종료 조건**
-- FR-2, FR-7 충족
-- `DC-04`, `DC-05` 해소
-- `pnpm test` 전체 통과, 커넥터 5종 무수정 통과
-
----
+- [x] FR-2, FR-7 충족
+- [x] `DC-04`, `DC-05` 해소
+- [x] `pnpm test` 전체 통과, 커넥터 5종 무수정 통과
+- [ ] **NFR-3 미충족** — `DC-09` 확정 전까지 열어 둔다
 
 ## Phase 3 — 읽기 경로 성능 (CI-11, CI-15, CI-19)
 
@@ -388,3 +418,21 @@
 - **분석 정정**
   - CI-18은 dead code가 아니었다. 사용자 상태의 throw 하는 getter가 실제로 도달한다 (`REQUIREMENTS.md` §3.5). 도달 불가인 것은 주석이 서술하는 "값 제거" 시나리오뿐
 - **commit** `65f63a9` (Phase 0 baseline) 기준, 본 Phase 1 커밋이 그 위에 쌓임
+
+### 2026-09-16 — Phase 2 완료 (NFR-3 미결)
+- **done**
+  - 표시 키를 Symbol로 이전. 프록시 타깃이 비면서 CI-02 재귀가 원천 소멸
+  - `toJSON` / `Symbol.toPrimitive` / `has` / `ownKeys` / `getOwnPropertyDescriptor` / `deleteProperty` 트랩 추가
+  - `StateRefStore` 배열 분기 (`length`를 `StateRefStore<number>`로 유지, 튜플은 위치 타입 보존) — 6개 패키지 `tsc` 에러 0건
+  - 회귀 28 → 33건. CI-02/CI-03/표시키/CI-10 스냅샷 4건 전환 + 신규 7건
+  - NFR-1 조기 달성 (325.6 → 114.2 ms)
+- **next**
+  - **`DC-09`(번들 예산) 확정이 먼저다.** Phase 4가 코드를 더 늘리므로 Phase 3 착수 전에 정해야 예산 배분이 가능하다
+  - 그 다음 **Phase 3** — 목표 재조정됨: 게이트는 이미 통과했으므로 CI-11(자식 `lens.get` 제거)·CI-15(프록시 memoize, `ref.a === ref.a`)·CI-19가 남은 작업
+- **blockers**
+  - `DC-09` 미확정 (NFR-3 초과 3,140 B > 3,089 B)
+- **발견**
+  - Node의 `util.inspect`는 프록시의 트랩을 타지 않고 타깃으로 교체한다. 타깃을 비우는 설계는 Node용 inspect 훅을 **타깃에 직접** 얹어야 한다
+  - `Symbol.toPrimitive`만 정의하면 `valueOf`/`toString`을 가리지 않고도 원시 변환을 전부 잡는다
+  - `{ ...ref }`의 선언 타입에는 `value`가 남지만 런타임에는 없다. TS가 `ownKeys` 트랩을 볼 수 없는 데서 오는 한계로, 테스트에 주석으로 고정
+- **commit** `697f84b` (DC-04/DC-05 결정) 기준, 본 Phase 2 커밋이 그 위에 쌓임

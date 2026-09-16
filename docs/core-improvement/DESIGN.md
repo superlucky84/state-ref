@@ -239,6 +239,11 @@ if (!Object.is(next, result)) { result = next; notify(); }
   - 검증: Phase 2 — `tsc --noEmit`, M-02, M-03(devtools 육안)
 - [ ] **DC-06** 공식 `dispose()` API를 추가할 것인가, `AbortSignal` 단일 경로를 유지할 것인가 → **TBD (초기값: AbortSignal 유지)**
 - [ ] **DC-07** `cloneDeep`을 `structuredClone` 위임으로 갈 것인가 → **TBD (초기값: 위임 + 폴백)**
+- [ ] **DC-09** 번들 예산 (NFR-3). Phase 2에서 3,140 B로 상한 3,089 B 초과 → **TBD**
+  - `+15%`는 작업 범위를 모르는 상태에서 정한 수치다. Phase 2만으로 +16.9%이고, Phase 4(`keyIndex` + 배칭)가 더 늘린다
+  - 선택지: (a) 상한을 재설정 (예: 4,000 B) / (b) 신규 트랩 일부를 opt-in으로 내려 기본 번들에서 제외 / (c) 기능을 축소
+  - 에러 메시지 축약은 20 B만 회수되어(실측) 비용 대비 의미 없음
+  - 검증: Phase 4 종료 시 재측정, Phase 8에서 최종 확정
 - [ ] **DC-08** semver 등급. CI-01/13/14/16이 동작을 바꾼다. 2.2.0(opt-in 전부) vs 3.0.0(기본값 전환) → **TBD**
   - `DC-02`, `DC-03` 확정 후 결정
 

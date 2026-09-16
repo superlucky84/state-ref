@@ -17,6 +17,7 @@ import {
   combineWatch,
 } from '@/index';
 import type { Watch } from '@/types';
+import { NAVI, TYPE } from '@/helper';
 
 const noop = (_?: unknown) => {};
 
@@ -65,43 +66,102 @@ if (import.meta.vitest) {
   });
 
   describe('CI-02 / CI-03 proxy protocol coverage', () => {
-    it('SNAPSHOT (wrong): JSON.stringify(ref) blows the stack — Phase 2 must flip this', () => {
-      const watch = createStore<{ a: number }>({ a: 1 });
+    it('FIXED (Phase 2): JSON.stringify returns the value at this path', () => {
+      const watch = createStore<{ a: number; b: { c: number } }>({
+        a: 1,
+        b: { c: 2 },
+      });
       const ref = watch();
 
-      expect(() => JSON.stringify(ref)).toThrow(RangeError);
+      expect(JSON.stringify(ref)).toBe('{"a":1,"b":{"c":2}}');
+      expect(JSON.stringify(ref.b)).toBe('{"c":2}');
     });
 
-    it('SNAPSHOT (wrong): Object.keys leaks the display target — Phase 2 must flip this', () => {
+    it('FIXED (Phase 2): Object.keys reflects real state', () => {
       const watch = createStore<{ a: number; b: number }>({ a: 1, b: 2 });
       const ref = watch();
 
-      expect(Object.keys(ref)).toEqual(['_navi', '_type', '_value']);
+      expect(Object.keys(ref)).toEqual(['a', 'b']);
     });
 
-    it('SNAPSHOT (wrong): "in" does not see real keys — Phase 2 must flip this', () => {
+    it('FIXED (Phase 2): "in" sees real keys', () => {
       const watch = createStore<{ a: number }>({ a: 1 });
       const ref = watch();
 
-      expect('a' in ref).toBe(false);
+      expect('a' in ref).toBe(true);
+      expect('missing' in ref).toBe(false);
+      expect('value' in ref).toBe(true);
     });
 
-    it('SNAPSHOT (wrong): display keys are unreadable through the proxy — Phase 2 must flip this', () => {
+    it('FIXED (Phase 2): spreading yields child refs, not display junk', () => {
+      const watch = createStore<{ a: number; b: number }>({ a: 1, b: 2 });
+      const ref = watch();
+      const spread = { ...ref };
+
+      /**
+       * Only real state keys are enumerable, so "value" is absent at runtime
+       * even though the declared type of the spread still carries it - TS
+       * cannot see through an ownKeys trap.
+       */
+      expect(Object.keys(spread)).toEqual(['a', 'b']);
+      expect(spread.a.value).toBe(1);
+    });
+
+    it('FIXED (Phase 2): debug handles moved to symbols and read correctly', () => {
       const watch = createStore<{ a: { b: number } }>({ a: { b: 1 } });
       const ref = watch();
 
+      expect((ref.a.b as any)[NAVI]).toBe('s:root|s:a|s:b');
+      expect((ref.a.b as any)[TYPE]).toBe('number');
+      expect((ref.a as any)[TYPE]).toBe('object');
+    });
+
+    it('FIXED (Phase 2): state may own keys named _value / _navi / _type', () => {
       /**
-       * Devtools only ever sees _navi/_type because ownKeys and
-       * getOwnPropertyDescriptor are untrapped and fall through to the display
-       * target. Any actual [[Get]] returns yet another child proxy, which is
-       * the same root cause as the JSON.stringify overflow above.
+       * This is why the debug handles are symbols. Passing the old string keys
+       * through the get trap would have shadowed state like this.
        */
-      const navi = (ref.a.b as unknown as { _navi: unknown })._navi;
-      expect(typeof navi).toBe('object');
-      expect(Object.keys(ref.a.b)).toEqual(['_navi', '_type', '_value']);
-      expect(Object.getOwnPropertyDescriptor(ref.a.b, '_navi')?.value).toBe(
-        's:root|s:a|s:b'
+      const watch = createStore<{
+        _value: string;
+        _navi: string;
+        _type: string;
+      }>({ _value: 'user-owned', _navi: 'mine', _type: 'also mine' });
+      const ref = watch();
+
+      expect(ref._value.value).toBe('user-owned');
+      expect(ref._navi.value).toBe('mine');
+      expect(ref._type.value).toBe('also mine');
+      expect(Object.keys(ref)).toEqual(['_value', '_navi', '_type']);
+      expect(JSON.stringify(ref)).toContain('user-owned');
+    });
+
+    it('deleting through a ref throws with an actionable message', () => {
+      const watch = createStore<{ a: number }>({ a: 1 });
+      const ref = watch();
+
+      expect(() => {
+        delete (ref as any).a;
+      }).toThrow('Assign a new value to ".value" instead.');
+    });
+
+    it('coercing a ref to a primitive names the missing ".value"', () => {
+      const watch = createStore<{ a: number }>({ a: 1 });
+      const ref = watch();
+
+      expect(() => `${ref.a}`).toThrow(
+        'Cannot convert a stateRef to a primitive'
       );
+    });
+
+    it('"valueOf" and "toString" stay ordinary state paths', () => {
+      const watch = createStore<{ toString: string; valueOf: number }>({
+        toString: 'not a method',
+        valueOf: 7,
+      });
+      const ref = watch();
+
+      expect(ref.toString.value).toBe('not a method');
+      expect(ref.valueOf.value).toBe(7);
     });
   });
 
@@ -302,21 +362,30 @@ if (import.meta.vitest) {
   });
 
   describe('CI-10 array type/runtime mismatch', () => {
-    it('SNAPSHOT (wrong): array methods are absent at runtime — Phase 2 must flip this (via types)', () => {
+    it('FIXED (Phase 2): the type now matches what the runtime provides', () => {
       const watch = createStore<{ items: number[] }>({ items: [1, 2, 3] });
       const ref = watch();
 
-      expect(typeof (ref.items as any).map).not.toBe('function');
-      expect(typeof (ref.items as any).length).toBe('object');
-      expect(Array.isArray(ref.items)).toBe(false);
+      // `ref.items.map(...)` is a compile error now; these are the real paths.
+      expect(ref.items[0].value).toBe(1);
+      expect(ref.items.length.value).toBe(3);
+      expect(ref.items.value.length).toBe(3);
+      expect([...ref.items].map(item => item.value)).toEqual([1, 2, 3]);
+      expect(Object.keys(ref.items)).toEqual(['0', '1', '2']);
+      expect(JSON.stringify(ref.items)).toBe('[1,2,3]');
     });
 
-    it('iteration works and stays supported', () => {
+    it('FIXED (Phase 2): "length" is a reactive path', () => {
       const watch = createStore<{ items: number[] }>({ items: [1, 2, 3] });
       const ref = watch();
+      let seen = 0;
 
-      expect([...ref.items].map(item => item.value)).toEqual([1, 2, 3]);
-      expect(ref.items.value.length).toBe(3);
+      watch(store => {
+        seen = store.items.length.value;
+      });
+
+      ref.items.value = [1, 2, 3, 4];
+      expect(seen).toBe(4);
     });
   });
 

@@ -29,20 +29,25 @@ const symbolIdMap = new Map<symbol, number>();
 let symbolCounter = 0;
 
 /**
- * Create information about the proxy that can be viewed in the developer console.
+ * Debug handles on a stateRef, readable as `ref.a.b[NAVI]` / `ref.a.b[TYPE]`.
+ *
+ * They are symbols rather than the string keys they replaced ("_navi", "_type",
+ * "_value"): a string key would shadow state that happens to own a property of
+ * the same name, and it would surface in `ownKeys`. Registered symbols
+ * (`Symbol.for`) so the same handles resolve across bundle boundaries -
+ * `Symbol.for('state-ref.navi')` works without importing anything.
  */
-export function makeDisplayProxyValue(
-  depthList: (string | number | symbol)[],
-  value: unknown
-) {
-  return {
-    _navi: keyFromDepthList(depthList),
-    _type: getType(value),
-    _value: '..',
-  };
-}
+export const NAVI = Symbol.for('state-ref.navi');
+export const TYPE = Symbol.for('state-ref.type');
 
-function getType(value: unknown) {
+/**
+ * Node's util.inspect reads a proxy's target directly instead of running its
+ * traps, so an empty target would print as "{}". This hook gives console.log
+ * something to show. Browsers ignore it and render via the traps instead.
+ */
+export const NODE_INSPECT = Symbol.for('nodejs.util.inspect.custom');
+
+export function getType(value: unknown) {
   if (value === null) {
     return 'null';
   } else if (Array.isArray(value)) {
