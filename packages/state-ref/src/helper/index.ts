@@ -9,6 +9,14 @@ import type {
 import type { Lens } from '@/lens';
 import { lens } from '@/lens';
 
+/**
+ * Defaults for `watch(renew, userOption)`.
+ *
+ * Resolution order is DEFAULT_WATCH_OPTION < store mode < userOption, so
+ * `editable` follows the store's `autoSync` flag unless the caller states it
+ * explicitly. `editable: true` here is only the fallback for a store that
+ * never declares a mode.
+ */
 export const DEFAULT_WATCH_OPTION = { cache: true, editable: true };
 export const DEFAULT_CREATE_OPTION = { autoSync: true };
 

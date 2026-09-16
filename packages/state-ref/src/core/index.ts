@@ -23,16 +23,19 @@ import type {
  *   console.log(stateRef.value));
  * });
  */
-export function createStore<V>(orignalValue: V) {
-  const { watch } = create(orignalValue, { autoSync: true });
+export function createStore<V>(originalValue: V) {
+  const { watch } = create(originalValue, { autoSync: true });
 
   return watch;
 }
-export function createStoreManualSync<V>(orignalValue: V): ManualSyncStore<V> {
-  return create(orignalValue, { autoSync: false });
+export function createStoreManualSync<V>(originalValue: V): ManualSyncStore<V> {
+  return create(originalValue, { autoSync: false });
 }
 
-function create<V>(orignalValue: V, userCreateOption?: { autoSync?: boolean }) {
+function create<V>(
+  originalValue: V,
+  userCreateOption?: { autoSync?: boolean }
+) {
   const storeRenderList: StoreRenderList<any> = new Map();
   const cacheMap = new WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>();
   const { autoSync } = Object.assign(
@@ -40,16 +43,23 @@ function create<V>(orignalValue: V, userCreateOption?: { autoSync?: boolean }) {
     DEFAULT_CREATE_OPTION,
     userCreateOption || {}
   );
-  const rootValue: StoreType<V> = { root: orignalValue };
+  const rootValue: StoreType<V> = { root: originalValue };
 
   const watch = (
     renew: Renew<StateRefStore<V>> = () => {},
     userOption?: { cache?: boolean; editable?: boolean }
   ): StateRefStore<V> => {
+    /**
+     * Resolved as: DEFAULT_WATCH_OPTION < store mode < userOption.
+     * The store mode must be applied unconditionally, otherwise passing any
+     * unrelated option (say `{ cache: false }`) would drop it and silently
+     * make a manual-sync store writable through `watch`.
+     */
     const watchOption = Object.assign(
       {},
       DEFAULT_WATCH_OPTION,
-      userOption || { editable: autoSync }
+      { editable: autoSync },
+      userOption || {}
     );
     const { cache, editable } = watchOption;
 

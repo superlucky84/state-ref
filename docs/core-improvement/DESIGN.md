@@ -136,7 +136,11 @@ createStore(v, { batch?: 'sync' | 'microtask' })   // 기본 'sync' (현행 유�
 ```
 `'microtask'`에서는 `queueMicrotask`로 1회만 예약하고, 같은 틱의 N회 대입을 1회 `runner`로 합친다. `sync()`(manual mode)는 항상 즉시 실행으로 남는다 — 이미 사용자가 시점을 통제하는 API이므로 배칭할 이유가 없다.
 
-**CI-05 / CI-18** — 각 `run()` 호출을 개별 try/catch로 감싸 한 구독자의 예외가 나머지를 막지 못하게 한다. 수집된 예외는 마지막에 `AggregateError`로 리포트하되, **쓰기 연산 자체는 실패시키지 않는다**(상태는 이미 커밋됨). `runner.ts:20-30`의 기존 catch는 `lens.get`이 `currentObject?.[prop]` 옵셔널 체이닝이라 도달 불가 — 제거하고 주석도 함께 지운다.
+**CI-05 / CI-18** — 각 `run()` 호출을 개별 try/catch로 감싸 한 구독자의 예외가 나머지를 막지 못하게 한다. 수집된 예외는 마지막에 `AggregateError`로 리포트하되, **쓰기 연산 자체는 실패시키지 않는다**(상태는 이미 커밋됨).
+
+> **CI-18 정정 (Phase 1 구현 중 확인).** `runner.ts:20-30`의 기존 catch를 "도달 불가"로 판단했으나 틀렸다. 옵셔널 체이닝 때문에 도달 불가인 것은 주석이 서술하는 "값 제거" 시나리오뿐이고, 사용자 상태의 throw 하는 getter는 실제로 이 경로에 도달한다(`REQUIREMENTS.md` §3.5). 따라서 **격리는 유지하고** 틀린 주석과 원인을 오진하는 `console.warn` 메시지를 제거하여, 같은 `AggregateError` 리포트로 합류시킨다.
+
+`firstRunner`의 첫 실행은 격리하지 않는다. 그 예외는 `watch(...)` 호출부에서 터지는데, 그곳이 바로 문제 코드가 있는 자리이므로 전파되는 편이 옳다.
 
 ### 3.5 구독 수명 (CI-06, CI-07, CI-14, CI-16, CI-17)
 

@@ -32,7 +32,7 @@
 | CI-15 | 프록시 identity 불안정 (`ref.a !== ref.a`), 접근마다 신규 할당 | `src/proxy/index.ts:88-98` | 성능 |
 | CI-16 | `cache:false`가 구독을 중복 증식시키고 `cacheMap`에는 계속 write | `src/core/ref.ts:43` | API |
 | CI-17 | `storeRenderList` 강참조 `Map`, 공식 해제 API 부재 | `src/core/index.ts:36` | 누수 |
-| CI-18 | `runner`의 try/catch가 도달 불가 (dead code) | `src/connectors/runner.ts:20-30` | 정리 |
+| CI-18 | ~~`runner`의 try/catch가 도달 불가 (dead code)~~ → **정정: 도달 가능. 주석과 메시지가 틀렸다** | `src/connectors/runner.ts:20-30` | 정리 |
 | CI-19 | `newDepthList`가 사용되지 않는 분기에서도 매 접근 할당 | `src/proxy/index.ts:33` | 성능 |
 | CI-20 | public 시그니처 오타 `orignalValue` (d.ts 노출) | `src/core/index.ts:26,31,35` | API |
 
@@ -82,6 +82,20 @@ Phase 0에서 빌드 산출물(`dist/state-ref.mjs`) 기준으로 재측정하�
 | `createComputed` | 2 (누수) |
 
 커넥터 5종은 전부 `AbortSignal`을 올바로 반환·abort 하지만, `combineWatch`/`createComputed`가 그 반환값을 코어로 전달하지 않아 신호가 소실된다. CI-06/CI-07은 헬퍼 버그가 아니라 **프레임워크 5종 공통의 사용자 대면 메모리 누수**다.
+
+## 3.5 CI-18 정정 (Phase 1)
+
+최초 분석에서 "`lens.get`이 옵셔널 체이닝이라 throw하지 않으므로 dead code"라고 적었으나 **틀렸다.** 사용자 상태에 throw 하는 getter가 있으면 도달한다:
+
+```js
+let armed = false;
+const watch = createStore({ a: { get flaky() { if (armed) throw new Error('boom'); return 1; } }, other: 0 });
+watch(s => s.a.flaky.value);   // a|flaky 경로 구독 등록
+armed = true;
+ref.other.value = 1;           // → catch 진입, console.warn 발생
+```
+
+도달 불가인 것은 **주석이 설명하는 시나리오**("값이 제거됨")뿐이다. 제거된 값은 옵셔널 체이닝으로 `undefined`가 되므로 throw하지 않는다. 따라서 CI-18의 처리는 "제거"가 아니라 **"격리는 유지하고 틀린 주석·메시지를 고친다"** 로 변경했다. `console.warn("Value for key ... has been removed")`는 원인을 오진하는 메시지였다.
 
 ## 4. 요구사항
 

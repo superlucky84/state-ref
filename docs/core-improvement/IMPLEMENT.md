@@ -60,29 +60,43 @@
 
 ---
 
-## Phase 1 — 계약 정합성 (CI-01, CI-05, CI-18, CI-20)
+## Phase 1 — 계약 정합성 (CI-01, CI-05, CI-18, CI-20)  ✅ 완료 (2026-09-16)
 
 **진입 조건:** Phase 0 종료 조건 충족
 
 **체크리스트**
-- [ ] `src/core/index.ts:49-53` 옵션 병합 순서 수정 (`DESIGN.md` §3.1)
-- [ ] `orignalValue` → `originalValue` 리네임 (`src/core/index.ts:26,31,35`)
-- [ ] `src/connectors/runner.ts:34-38` — 각 `run()`을 개별 try/catch로 격리, 수집된 예외는 `AggregateError`로 리포트, 쓰기 연산은 실패시키지 않음
-- [ ] `src/connectors/runner.ts:20-30` 도달 불가 try/catch + 주석 제거 (`lens.get`의 옵셔널 체이닝 때문에 throw 불가)
-- [ ] `DEFAULT_WATCH_OPTION`에 JSDoc으로 우선순위 명시: `default < store mode < userOption`
+- [x] `src/core/index.ts` 옵션 병합 순서 수정 — `DEFAULT_WATCH_OPTION < { editable: autoSync } < userOption` (`DESIGN.md` §3.1)
+- [x] `orignalValue` → `originalValue` 리네임 (`createStore` / `createStoreManualSync` / `create`)
+- [x] `src/connectors/runner.ts` — 각 `run()`을 개별 try/catch로 격리, 수집된 예외를 `AggregateError` 하나로 `console.error` 리포트, 쓰기 연산은 실패시키지 않음
+- [x] ~~`runner.ts:20-30` 도달 불가 try/catch 제거~~ → **격리 유지 + 틀린 주석/메시지 교체.** 판단 근거가 틀렸다 (`REQUIREMENTS.md` §3.5)
+- [x] `DEFAULT_WATCH_OPTION`에 JSDoc으로 우선순위 명시
+- [x] `firstRunner`의 첫 실행은 **의도적으로 격리하지 않음** — 그 예외는 `watch(...)` 호출부, 즉 문제 코드가 있는 자리에서 터져야 한다
 
 **기준 테스트**
-- [ ] `createStoreManualSync` + `watch(cb, { cache: false })` → `.value` 대입이 throw (FR-1)
-- [ ] `createStoreManualSync` + `watch(cb, { editable: true })` → 명시적 탈출구는 여전히 허용
-- [ ] `createStore` (autoSync) + `watch(cb, { cache: false })` → 대입 허용 (회귀 없음)
-- [ ] 구독자 A가 throw해도 구독자 B가 실행됨 (FR-6)
-- [ ] 구독자 throw가 `ref.x.value = v` 대입문으로 전파되지 않음
-- [ ] 기존 `src/tests/core/fluxlike.ts` 전량 통과
+- [x] `createStoreManualSync` + `watch(cb, { cache: false })` → `.value` 대입이 throw (FR-1)
+- [x] `createStoreManualSync` + `watch(cb, { editable: true })` → 명시적 탈출구 유지
+- [x] `createStore` (autoSync) + `watch(cb, { cache: false })` → 대입 허용 (회귀 없음)
+- [x] 구독자 A가 throw해도 구독자 B가 실행됨 (FR-6)
+- [x] 구독자 throw가 `ref.x.value = v` 대입문으로 전파되지 않음
+- [x] 여러 구독자가 throw하면 `AggregateError` 하나로 합쳐져 1회 리포트
+- [x] throw 하는 getter가 있는 경로도 스캔을 중단시키지 않음 (CI-18)
+- [x] 기존 `src/tests/core/fluxlike.ts` 전량 통과
+
+**실측**
+
+| 항목 | 값 |
+|---|---|
+| 코어 테스트 | 74 → **77** (CI-01 스냅샷 1건 전환 + 신규 5건) |
+| 전체 테스트 | 전량 통과 (커넥터 무수정, NFR-4 충족) |
+| `tsc --noEmit` / `eslint` | 0 error |
+| 번들 gzip (mjs) | 2,686 → **2,738 B** (+1.9%, 상한 3,089 B) |
+| 읽기 벤치 깊이 8 | 325.6 → 324.3 ms (변화 없음, Phase 3 대상) |
+| 쓰기 벤치 1,600 구독자 | 35.6 → 35.8 ms (변화 없음, Phase 4 대상) |
 
 **종료 조건**
-- FR-1, FR-6 충족
-- `pnpm test` 전체 통과
-- 커넥터 5종 무수정 통과 (NFR-4)
+- [x] FR-1, FR-6 충족
+- [x] `pnpm test` 전체 통과
+- [x] 커넥터 5종 무수정 통과 (NFR-4)
 
 ---
 
@@ -357,3 +371,20 @@
   - CI-06/CI-07 ↑ (5종 공통 메모리 누수로 확인)
   - CI-16 ↓ (실사용처 0건)
 - **commit** `ca7b045` (docs: add core improvement plan) 기준, 본 Phase 0 커밋이 그 위에 쌓임
+
+### 2026-09-16 — Phase 1 완료
+- **done**
+  - CI-01 옵션 병합 수정. `Object.assign({}, DEFAULT_WATCH_OPTION, { editable: autoSync }, userOption || {})` — 스토어 모드를 무조건 적용해 `userOption` 전달이 그것을 삼키지 못하게 함
+  - CI-20 `orignalValue` → `originalValue`
+  - CI-05 `runner`가 각 구독자를 개별 격리. 수집된 예외는 `AggregateError` 하나로 `console.error`. 쓰기는 성공 처리 — 상태는 이미 커밋되었고, 대입 지점은 문제 코드가 있는 자리가 아니기 때문
+  - CI-18 재판단. 격리 유지 + 원인을 오진하던 주석/메시지 제거
+  - 회귀 25 → 28건. CI-01 "SNAPSHOT (wrong)" 1건을 "FIXED (Phase 1)"로 전환
+  - 코어 77 / 전체 통과. 번들 +1.9%
+- **next**
+  - **Phase 2 — 프록시 프로토콜.** 착수 전 `DC-04`(초기값: 배열 타입 축소)·`DC-05`(초기값: lazy getter) 확정 필요
+  - Phase 2 완료 판정: `regression.ts`의 CI-02 / CI-03 / 표시키 스냅샷 4건 전환
+- **blockers**
+  - `DC-04`, `DC-05` 미확정. 둘 다 초기값이 있어 그대로 진행해도 되지만, `DC-05`는 devtools 육안 확인(M-03)이 필요해 사용자 판단이 유효하다
+- **분석 정정**
+  - CI-18은 dead code가 아니었다. 사용자 상태의 throw 하는 getter가 실제로 도달한다 (`REQUIREMENTS.md` §3.5). 도달 불가인 것은 주석이 서술하는 "값 제거" 시나리오뿐
+- **commit** `65f63a9` (Phase 0 baseline) 기준, 본 Phase 1 커밋이 그 위에 쌓임

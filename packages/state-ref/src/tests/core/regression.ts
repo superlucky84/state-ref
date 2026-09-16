@@ -35,9 +35,21 @@ if (import.meta.vitest) {
       );
     });
 
-    it('SNAPSHOT (wrong): watch(cb, {cache:false}) in manual-sync mode ALLOWS writes — Phase 1 must flip this', () => {
+    it('FIXED (Phase 1): watch(cb, {cache:false}) in manual-sync mode also blocks writes', () => {
       const { watch } = createStoreManualSync<{ a: number }>({ a: 1 });
       const ref = watch(s => noop(s.a.value), { cache: false });
+
+      expect(() => {
+        ref.a.value = 99;
+      }).toThrow(
+        'With the current settings, direct modification is not allowed.'
+      );
+      expect(ref.a.value).toBe(1);
+    });
+
+    it('an explicit {editable:true} is still honoured as an escape hatch', () => {
+      const { watch } = createStoreManualSync<{ a: number }>({ a: 1 });
+      const ref = watch(s => noop(s.a.value), { editable: true });
 
       ref.a.value = 99;
       expect(ref.a.value).toBe(99);
@@ -106,25 +118,110 @@ if (import.meta.vitest) {
     });
   });
 
-  describe('CI-05 a throwing subscriber must not stop the others', () => {
-    it('SNAPSHOT (wrong): later subscribers are skipped and the write throws — Phase 1 must flip this', () => {
+  describe('CI-05 / CI-18 a throwing subscriber must not stop the others', () => {
+    it('FIXED (Phase 1): later subscribers still run and the write does not throw', () => {
       const watch = createStore<{ a: number }>({ a: 0 });
       const ref = watch();
+      const reported: unknown[] = [];
+      const original = console.error;
+      console.error = (...args: unknown[]) => reported.push(args[0]);
       let second = 0;
 
-      watch(s => {
-        if (s.a.value === 1) throw new Error('boom');
-      });
-      watch(s => {
-        noop(s.a.value);
-        second += 1;
-      });
+      try {
+        watch(s => {
+          if (s.a.value === 1) throw new Error('boom');
+        });
+        watch(s => {
+          noop(s.a.value);
+          second += 1;
+        });
 
-      const before = second;
-      expect(() => {
+        second = 0;
         ref.a.value = 1;
-      }).toThrow('boom');
-      expect(second).toBe(before);
+      } finally {
+        console.error = original;
+      }
+
+      expect(second).toBe(1);
+      expect(ref.a.value).toBe(1);
+      expect(reported).toHaveLength(1);
+      expect(reported[0]).toBeInstanceOf(AggregateError);
+      expect((reported[0] as AggregateError).errors).toHaveLength(1);
+      expect((reported[0] as AggregateError).errors[0].message).toBe('boom');
+    });
+
+    it('FIXED (Phase 1): several throwing subscribers are aggregated into one report', () => {
+      const watch = createStore<{ a: number }>({ a: 0 });
+      const ref = watch();
+      const reported: unknown[] = [];
+      const original = console.error;
+      console.error = (...args: unknown[]) => reported.push(args[0]);
+      let survivor = 0;
+
+      try {
+        watch(s => {
+          if (s.a.value === 1) throw new Error('first');
+        });
+        watch(s => {
+          if (s.a.value === 1) throw new Error('second');
+        });
+        watch(s => {
+          noop(s.a.value);
+          survivor += 1;
+        });
+
+        survivor = 0;
+        ref.a.value = 1;
+      } finally {
+        console.error = original;
+      }
+
+      expect(survivor).toBe(1);
+      expect(reported).toHaveLength(1);
+      expect((reported[0] as AggregateError).errors).toHaveLength(2);
+    });
+
+    it('FIXED (Phase 1): a throwing accessor on a subscribed path does not abort the scan', () => {
+      /**
+       * CI-18 was filed as dead code. It is not: the lens walks with optional
+       * chaining, so a removed value yields undefined, but a throwing getter in
+       * the user's own state does reach this path.
+       */
+      let armed = false;
+      const watch = createStore<{ a: { flaky: number }; other: number }>({
+        a: {
+          get flaky() {
+            if (armed) throw new Error('getter exploded');
+            return 1;
+          },
+        },
+        other: 0,
+      });
+      const ref = watch();
+      const reported: unknown[] = [];
+      const original = console.error;
+      console.error = (...args: unknown[]) => reported.push(args[0]);
+      let survivor = 0;
+
+      try {
+        watch(s => noop(s.a.flaky.value));
+        watch(s => {
+          noop(s.other.value);
+          survivor += 1;
+        });
+
+        armed = true;
+        survivor = 0;
+        ref.other.value = 1;
+      } finally {
+        console.error = original;
+      }
+
+      expect(survivor).toBe(1);
+      expect(ref.other.value).toBe(1);
+      expect((reported[0] as AggregateError).errors[0].message).toBe(
+        'getter exploded'
+      );
     });
   });
 
