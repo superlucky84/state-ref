@@ -1,0 +1,147 @@
+# MANUAL TEST CHECKLIST — state-ref 코어 개선
+
+릴리스 전 수동 검증. 자동 테스트로 덮이지 않는 **DX·devtools·소비자 관점** 항목만 담는다.
+수행 시점: `IMPLEMENT.md` Phase 8 종료 직전.
+
+## 실행 환경
+- Node: `20.3.0` (volta 핀)
+- 설치: `pnpm install`
+- 빌드: `pnpm build:core && pnpm build:!core`
+- 테스트 러너: **`pnpm test:core`만 사용**. 베어 `npx vitest`는 vitest 5를 받아 Node 20.3.0에서 `SyntaxError: ... 'styleText'`로 즉시 실패한다.
+
+기록 형식: 각 항목에 `PASS` / `FAIL` + 관측 결과 1줄.
+
+---
+
+## M-01 — manual-sync 쓰기 차단 (FR-1 / CI-01)
+
+| # | 절차 | 기대 | 결과 |
+|---|---|---|---|
+| 1 | `const { watch } = createStoreManualSync({a:1}); const r = watch(cb); r.a.value = 9` | `throw "With the current settings, direct modification is not allowed."` | |
+| 2 | `const r = watch(cb, { cache: false }); r.a.value = 9` | **동일하게 throw** (수정 전에는 통과했음) | |
+| 3 | `const r = watch(cb, { editable: true }); r.a.value = 9` | 통과 (명시적 탈출구는 유지) | |
+| 4 | `updateRef.a.value = 9` → `sync()` | `sync()` 전 구독자 미발화, 후 1회 발화 | |
+| 5 | `createStore({a:1})` (autoSync) + `watch(cb, { cache: false })` → 대입 | 통과 (회귀 없음) | |
+
+**PASS 기준:** 1·2·4·5 전부 기대와 일치하고, 3이 여전히 허용될 것.
+
+---
+
+## M-02 — 프록시 프로토콜 (FR-2, FR-7 / CI-02, CI-03, CI-10)
+
+| # | 절차 | 기대 | 결과 |
+|---|---|---|---|
+| 1 | `JSON.stringify(ref)` | 상태 값의 JSON. **RangeError 없음** | |
+| 2 | `JSON.stringify(ref.a.b)` | 해당 경로 하위 값의 JSON | |
+| 3 | `Object.keys(ref)` | 실제 상태 키. `_navi`/`_type`/`_value` 미포함 | |
+| 4 | `'a' in ref` / `'없는키' in ref` | `true` / `false` | |
+| 5 | `{ ...ref }` | 자식 프록시 맵. 무한 재귀·스택오버플로 없음 | |
+| 6 | `delete ref.a` | 명시적 에러 메시지로 throw | |
+| 7 | `[...ref.items]` / `for (const it of ref.items)` | 각 요소가 프록시, `.value`로 값 접근 가능 | |
+| 8 | `ref.items.map(x => x)` (TS 편집기) | **에디터에서 컴파일 에러로 표시** (수정 전에는 통과 후 런타임 폭발) | |
+| 9 | `ref.items.value.length` | `number` 타입 + 정확한 길이 | |
+| 10 | `` `${ref.a}` `` 문자열 보간 | 예측 가능한 값 또는 명시적 에러. `[object Object]` 무한루프 없음 | |
+
+**PASS 기준:** 전 항목. 특히 1과 8이 이번 릴리스의 핵심 DX 변화다.
+
+---
+
+## M-03 — devtools 표시 회귀 (A-1 / DC-05)
+
+Phase 3의 lazy getter 전환이 개발 경험을 깎지 않았는지 육안 확인.
+
+| # | 환경 | 절차 | 기대 | 결과 |
+|---|---|---|---|---|
+| 1 | Chrome devtools | `console.log(ref.a.b)` | `_navi`(경로 문자열), `_type`(값 타입) 확인 가능 | |
+| 2 | Chrome devtools | 콘솔에서 프록시 노드를 펼침 | 자식 경로 탐색 가능, 펼침 시 무한 재귀 없음 | |
+| 3 | Node CLI | `console.log(ref.a.b)` | getter 형태로라도 `_navi`/`_type` 확인 가능 | |
+| 4 | VS Code 디버거 | 브레이크포인트에서 `ref` watch | 패널이 멈추거나 스택오버플로하지 않음 | |
+
+**PASS 기준:** 1·2·4 필수. 3이 FAIL이면 `DC-05`를 Symbol 키 안으로 재검토한다.
+
+---
+
+## M-04 — 구독 수명 (FR-3, FR-4 / CI-06, CI-07, CI-16)
+
+| # | 절차 | 기대 | 결과 |
+|---|---|---|---|
+| 1 | `combineWatch([w1,w2])` 콜백이 `AbortSignal` 반환 → `abort()` → `w1` 수정 | 콜백 **0회** (수정 전에는 계속 발화) | |
+| 2 | `combineWatch` 콜백이 `false` 반환 → 이후 수정 | 구독 제거됨 | |
+| 3 | `w1`, `w2`를 같은 틱에 수정 | `combineWatch` 콜백 1회 | |
+| 4 | `createComputed([w1,w2], ([a,b]) => Math.max(a.n.value, b.n.value))`, `max`는 불변인 채 `a`만 수정 | 콜백 **0회** (수정 전에는 1회 발화) | |
+| 5 | 위에서 `max`가 실제로 바뀌게 수정 | 콜백 정확히 1회 | |
+| 6 | `createComputed` 반환 proxy에 `.value = x` 대입 | 경고 후 무시 (읽기 전용 유지) | |
+| 7 | 같은 콜백으로 `watch(cb, {cache:false})` 5회 → 1회 쓰기 | 콜백 5회 (정의된 동작) + JSDoc에 이 의미가 명시되어 있음 | |
+| 8 | 7 직후 `watch(cb)` 호출 | 캐시가 `cache:false` 참조로 오염되지 않음 | |
+
+**PASS 기준:** 1·2·4·5 필수. 3은 `DC-03` 결과에 따름.
+
+---
+
+## M-05 — 커넥터 소비자 검증 (NFR-4 / Phase 8)
+
+각 커넥터 dev 앱을 띄워 육안 확인. `pnpm dev:react` / `dev:preact` / `dev:vue` / `dev:svelte` / `dev:solid`.
+
+| # | 프레임워크 | 절차 | 기대 | 결과 |
+|---|---|---|---|---|
+| 1 | React | 값 수정 → 렌더 | 화면 갱신, 콘솔 경고·에러 0 | |
+| 2 | React | 컴포넌트 언마운트 반복 20회 | 구독 누수 없음(경고 없음), 메모리 정체 | |
+| 3 | Preact | 1·2 동일 | | |
+| 4 | Vue | 1·2 동일 | | |
+| 5 | Svelte | 1·2 동일 | | |
+| 6 | Solid | 1·2 동일 | | |
+| 7 | 전체 | 배열 상태 렌더(추가/삭제/정렬) | 인덱스 기반 구독이 예상대로 동작 (A-2) | |
+| 8 | 전체 | `batch:'microtask'` 활성 시 한 틱 다중 수정 | 렌더 1회로 합쳐짐, 화면 정합 유지 | |
+| 9 | 전체 | `trackDeps:true` 활성 시 조건 분기 상태 | 안 읽는 값 수정에도 리렌더 없음 | |
+
+**PASS 기준:** 1~7 필수. 8·9는 해당 옵션을 릴리스에 포함할 때만.
+
+---
+
+## M-06 — 헬퍼 (FR-5 / CI-04, CI-08)
+
+| # | 절차 | 기대 | 결과 |
+|---|---|---|---|
+| 1 | `cloneDeep({ [Symbol('k')]: 1 })` | Symbol 키 보존 | |
+| 2 | `cloneDeep({ d: new Date(), m: new Map(), s: new Set(), r: /x/ })` | 4종 `instanceof` 유지 | |
+| 3 | 순환 참조 객체 `cloneDeep` | RangeError 없이 완료 | |
+| 4 | 함수 포함 객체 `cloneDeep` | `structuredClone` 실패 후 폴백으로 완료 | |
+| 5 | `cloneDeep` 결과 수정 | 원본 불변 | |
+| 6 | `copyable(o).a.b.writeCopy(v)` | 경로 외 속성이 원본과 참조 공유 (`out.b === orig.b`) | |
+| 7 | 중간 노드 부재 경로에 `.value` 대입 | `DC-01` 결정대로 동작. `Cannot set properties of undefined` 없음 | |
+
+---
+
+## M-07 — 성능 게이트 (NFR-1, NFR-2, NFR-3)
+
+| # | 측정 | baseline | 목표 | 실측 | 결과 |
+|---|---|---|---|---|---|
+| 1 | 깊이 8 리프 읽기 50k회 | 301 ms | ≤ 200 ms | | |
+| 2 | 깊이 32 리프 읽기 50k회 | 2,719 ms | ≤ 800 ms | | |
+| 3 | 유휴 구독자 1,600 / 쓰기 500회 | 35.1 ms | ≤ 10 ms | | |
+| 4 | 구독자 100 / 400 / 1,600 시간 추이 | 3.6 / 8.4 / 35.1 ms | 선형 증가 아님 | | |
+| 5 | `state-ref.mjs` gzip 크기 | (Phase 0 측정) | +15% 이내 | | |
+
+**PASS 기준:** 1·3·5 필수. 2·4는 참고 지표.
+
+---
+
+## M-08 — 배포 전 산출물
+
+| # | 항목 | 기대 | 결과 |
+|---|---|---|---|
+| 1 | `pnpm build` 클린 빌드 | 에러·경고 0 | |
+| 2 | `dist/index.d.ts` | `originalValue` 리네임 반영, 배열 타입 분기 반영 | |
+| 3 | `pnpm test` (루트 전체) | 전량 통과 | |
+| 4 | `tsc --noEmit` | 에러 0 | |
+| 5 | CHANGELOG | CI-01~CI-20 ↔ 사용자 영향 매핑 존재 | |
+| 6 | `README.md` / `stateRefDocs` / `skills` / `state-ref-agent-addon.md` | 배열 API·computed 발화 조건·구독 해제 방법 서술이 구현과 일치 (IC-03) | |
+| 7 | `package.json` version | `DC-08` 결정과 일치 | |
+| 8 | 문서 4종 | 최종 구현과 모순 없음, 미해결 `DC`/`IC` 없음 | |
+
+---
+
+## 실패 처리
+- FAIL 항목은 `IMPLEMENT.md` 핸드오프 로그에 **항목 번호 + 관측 결과 + 원인 추정**을 기록한다.
+- M-01, M-02, M-04, M-05, M-08의 FAIL은 **릴리스 차단**이다.
+- M-03, M-07의 FAIL은 해당 `DC` 재검토 후 재수행한다.
