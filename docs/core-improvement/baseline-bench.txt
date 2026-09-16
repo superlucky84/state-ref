@@ -1,0 +1,45 @@
+# baseline-bench — state-ref core improvement Phase 0
+# base commit: ca7b045
+# node: v20.3.0 / artifact: packages/state-ref/dist/state-ref.mjs
+# date: 2026-09-16T07:56:49Z
+
+== run 1 ==
+
+READ — 50,000 leaf .value reads by path depth  [NFR-1]
+depth  2                                           74.4 ms
+depth  8                                          318.9 ms  (target <= 200 ms)  FAIL
+depth 32                                         2754.7 ms
+
+WRITE — 500 writes to one field, N idle subscribers  [NFR-2]
+ 100 idle subscribers                               2.4 ms
+ 400 idle subscribers                               8.9 ms
+1600 idle subscribers                              35.5 ms  (target <= 10 ms)  FAIL
+
+WRITE — subscriber scaling factor (want: sub-linear)
+  100 -> 400:  3.68x   (subscriber count 4x)
+  400 -> 1600: 4.00x   (subscriber count 4x)
+
+Gates: 0/2 pass — FAILING: depth  8, 1600 idle subscribers
+
+== run 2 (reproducibility check) ==
+
+READ — 50,000 leaf .value reads by path depth  [NFR-1]
+depth  2                                           77.3 ms
+depth  8                                          320.8 ms  (target <= 200 ms)  FAIL
+depth 32                                         2798.1 ms
+
+WRITE — 500 writes to one field, N idle subscribers  [NFR-2]
+ 100 idle subscribers                               2.4 ms
+ 400 idle subscribers                               9.0 ms
+1600 idle subscribers                              35.5 ms  (target <= 10 ms)  FAIL
+
+WRITE — subscriber scaling factor (want: sub-linear)
+  100 -> 400:  3.74x   (subscriber count 4x)
+  400 -> 1600: 3.94x   (subscriber count 4x)
+
+Gates: 0/2 pass — FAILING: depth  8, 1600 idle subscribers
+
+== bundle size ==
+packages/state-ref/dist/state-ref.mjs 7381 bytes
+packages/state-ref/dist/state-ref.umd.js 4652 bytes
+gzip: state-ref.mjs 2686 bytes / state-ref.umd.js 2127 bytes

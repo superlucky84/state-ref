@@ -192,7 +192,7 @@ if (!Object.is(next, result)) { result = next; notify(); }
   - 검증: Phase 8 커넥터 통합 테스트에서 렌더 횟수 비교
 - [ ] **DC-03** CI-13 배칭 기본값: `'sync'` 유지 vs `'microtask'` 전환 → **TBD (초기값: `'sync'`)**
   - 검증: Phase 8
-- [ ] **DC-04** CI-10 배열 타입을 좁힐 것인가(컴파일 에러 발생 가능) vs `@deprecated` 주석만 달 것인가 → **TBD**
+- [ ] **DC-04** CI-10 배열 타입을 좁힐 것인가(컴파일 에러 발생 가능) vs `@deprecated` 주석만 달 것인가 → **TBD (초기값: 축소. `IC-03`에서 리스크 낮음 확인)**
   - 검증: Phase 2에서 `tsc --noEmit`으로 기존 테스트/샘플 영향 측정
 - [ ] **DC-05** 표시 키 `_navi`/`_type`/`_value`를 lazy getter로 둘 것인가, Symbol 키로 옮길 것인가 → **TBD (초기값: lazy getter)**
   - Symbol 이전은 `ownKeys` 오염을 근본 제거하지만 devtools 표시가 약해진다.
@@ -204,11 +204,24 @@ if (!Object.is(next, result)) { result = next; notify(); }
 
 ## 5. 통합 결정 (Integration Decisions)
 
-- [ ] **IC-01** 커넥터 5종 중 `AbortSignal`로 실제 해제하는 패키지 감사 → **TBD**
-  - 해제하지 않는 커넥터가 있으면 CI-17은 코어가 아니라 그 커넥터의 버그다. Phase 8 선행 조사.
-- [ ] **IC-02** `cache:false` 사용처가 커넥터/문서에 있는지 확인 → **TBD**
-- [ ] **IC-03** `stateRefDocs` / `skills` / `state-ref-agent-addon.md`에 갱신이 필요한 API 서술이 있는지 → **TBD**
-  - 특히 CI-10(배열)과 CI-07(computed 발화 조건)은 문서 서술과 어긋날 가능성이 높다.
+- [x] **IC-01** 커넥터 5종의 `AbortSignal` 해제 감사 → **해소 (Phase 0, 2026-09-16)**
+  - **결론: 커넥터 5종 전부 정상적으로 해제한다.** react/preact는 `useEffect` 클린업, vue는 `onUnmounted`, svelte는 `onDestroy`, solid는 `onCleanup`에서 `abortController.abort()`를 호출하고, renew에서 `abortController.signal`을 반환한다. 따라서 **CI-17은 커넥터 버그가 아니다.**
+  - **그러나 이 감사에서 CI-06/CI-07의 심각도가 올라갔다.** 5종 전부가 테스트에서 `connectX(combineWatch([...]))` / `connectX(createComputed([...]))` 형태로 쓰는데, `combineWatch`와 `createComputed`는 내부 `watch(...)` 콜백의 반환값을 코어로 돌려주지 않는다. 그 결과 **커넥터가 반환한 `AbortSignal`이 코어에 도달하지 못하고, 해당 컴포넌트는 언마운트 후에도 구독이 영구히 남는다.**
+  - 실측 (React, `packages/connect-react/src/tests/react/unmount-leak.tsx`):
+    | 경로 | 언마운트 후 2회 쓰기 시 renew 호출 | 판정 |
+    |---|---|---|
+    | 일반 `watch` | 0 | 정상 |
+    | `combineWatch` | 2 | **누수** |
+    | `createComputed` | 2 | **누수** |
+  - 영향: 프레임워크 5종 전부. 단순 헬퍼 버그가 아니라 **사용자 대면 메모리 누수**다. → CI-06/CI-07을 Phase 5의 최우선 항목으로 유지하고, Phase 8에서 커넥터별로 동일 테스트를 복제한다.
+- [x] **IC-02** `cache:false` 사용처 확인 → **해소 (Phase 0, 2026-09-16)**
+  - 커넥터·테스트·예제·`skills` 어디에도 `cache:false` 실사용이 없다. `stateRefDocs`의 API 레퍼런스에서 옵션으로만 서술된다(`ApiCore.tsx:289`, `ApiCore_ko.tsx:287`, `ApiTypes*.tsx:122`).
+  - 결론: CI-16의 실제 노출면은 문서뿐이다. **Phase 5에서 우선순위 하향**, `core/ref.ts:43`의 `cacheMap` 오염 수정 + JSDoc 명시만 수행한다.
+- [x] **IC-03** 문서의 API 서술 정합성 → **해소 (Phase 0, 2026-09-16)**
+  - 배열: 문서가 전부 **`.value`를 먼저 거치는 올바른 패턴**을 쓴다 — `cart.items.value.length` (`CombineWatch.tsx:233`), `[...store.items.value]` (`CreateStore.tsx:218`), `store.todos.value = [...currentTodos]` (`StateRefStore.tsx:168`). `ref.items.map(...)` 같은 잘못된 용례는 없다.
+  - **따라서 `DC-04`(배열 타입 축소)의 리스크가 낮다.** 문서가 가르치는 패턴은 축소된 타입에서 그대로 통과한다.
+  - computed: `Computed.tsx:300`이 "Computed values are cached — The callback only runs when source values change"라고 서술한다. CI-07 수정은 이 서술을 **어기는 게 아니라 비로소 참으로 만든다**.
+  - 갱신 필요: 구독 해제 방법(`AbortSignal` / `false` 반환)이 `combineWatch`·`createComputed` 페이지에 명시돼 있지 않다 → Phase 8에서 추가.
 
 ## 6. 설계–검증 연결
 

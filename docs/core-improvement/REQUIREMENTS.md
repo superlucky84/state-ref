@@ -72,6 +72,17 @@ CI-16  같은 콜백을 cache:false로 5회 구독 → 1회 쓰기에 콜백 5�
 
 구독자 수에 선형 비례. 쓰기 경로와 무관한 구독자까지 전부 스캔하기 때문.
 
+Phase 0에서 빌드 산출물(`dist/state-ref.mjs`) 기준으로 재측정하여 하네스 `packages/state-ref/bench/read-write.mjs`로 고정했다. 스케일링 계수 실측: 구독자 4배당 **3.7~4.1배** — 정확히 선형.
+
+### 3.4 언마운트 후 구독 잔존 (IC-01, Phase 0 추가 발견)
+| 경로 | 언마운트 후 2회 쓰기 시 renew 호출 |
+|---|---|
+| 일반 `watch` | 0 (정상) |
+| `combineWatch` | 2 (누수) |
+| `createComputed` | 2 (누수) |
+
+커넥터 5종은 전부 `AbortSignal`을 올바로 반환·abort 하지만, `combineWatch`/`createComputed`가 그 반환값을 코어로 전달하지 않아 신호가 소실된다. CI-06/CI-07은 헬퍼 버그가 아니라 **프레임워크 5종 공통의 사용자 대면 메모리 누수**다.
+
 ## 4. 요구사항
 
 ### 4.1 기능 요구 (FR)
@@ -87,6 +98,8 @@ CI-16  같은 콜백을 cache:false로 5회 구독 → 1회 쓰기에 콜백 5�
 - **NFR-1** 깊이 8 경로의 리프 읽기 처리량을 현재 대비 1.5x 이상 개선한다. (목표: 301 ms → 200 ms 이하 / 50k회)
 - **NFR-2** 쓰기 비용이 **무관한** 구독자 수에 선형 비례하지 않아야 한다. (목표: 1,600 구독자 시나리오 35.1 ms → 10 ms 이하)
 - **NFR-3** 번들 크기 증가는 gzip 기준 +15% 이내.
+  - baseline (Phase 0 실측): `state-ref.mjs` gzip **2,686 B** / `state-ref.umd.js` gzip **2,127 B**
+  - 상한: `state-ref.mjs` gzip ≤ **3,089 B**
 - **NFR-4** 커넥터 5종(`react`/`preact`/`vue`/`svelte`/`solid`)의 기존 테스트가 무수정 통과해야 한다.
 
 ### 4.3 제약 (Constraints)
@@ -119,4 +132,5 @@ CI-16  같은 콜백을 cache:false로 5회 구독 → 1회 쓰기에 콜백 5�
 
 ## 8. 상태
 - 작성: 2026-09-16 / 기준 `8836095`
-- 다음 단계: `DESIGN.md`의 DC/IC 결정 항목 확정
+- Phase 0 완료 (2026-09-16): baseline 테스트·벤치 확보, `IC-01`~`IC-03` 해소, 회귀 스냅샷 고정
+- 다음 단계: Phase 1 (계약 정합성) — `DESIGN.md`의 `DC-01`~`DC-08`은 여전히 TBD이나 Phase 1에는 불필요

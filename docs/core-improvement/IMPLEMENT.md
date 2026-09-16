@@ -10,31 +10,53 @@
 
 ---
 
-## Phase 0 — 베이스라인 확보
+## Phase 0 — 베이스라인 확보  ✅ 완료 (2026-09-16)
 
 **진입 조건:** 없음 (시작점)
 
 **체크리스트**
-- [ ] `pnpm install` (P-1: 현재 작업 트리에 `node_modules` 없음)
-- [ ] `pnpm build:core && pnpm build:!core` 성공 확인
-- [ ] `pnpm test` 전체 통과 확인, 결과를 `docs/core-improvement/baseline-test.txt`로 저장
-- [ ] 베어 `npx vitest` 금지를 `CLAUDE.md`에 1줄 추가 (P-2: vitest 5가 Node 20.3.0에서 `styleText`로 즉사)
-- [ ] `REQUIREMENTS.md` §3.1의 재현 시나리오를 `src/tests/core/regression.ts`로 이관 (전부 **실패/現동작 스냅샷** 상태로 커밋)
-- [ ] 벤치 하네스 `src/tests/bench/read-write.bench.ts` 작성 — §3.2/§3.3의 두 표를 재생산
-- [ ] 벤치 baseline 수치를 `docs/core-improvement/baseline-bench.txt`로 저장
-- [ ] `IC-01` 조사: 커넥터 5종의 `AbortSignal` 해제 여부 감사 → `DESIGN.md`에 결과 기록
-- [ ] `IC-02` 조사: `cache:false` 사용처 grep
-- [ ] `IC-03` 조사: `stateRefDocs`/`skills`/`state-ref-agent-addon.md`의 배열·computed 서술 확인
+- [x] `pnpm install` (P-1 해소)
+- [x] `pnpm build:core && pnpm build:!core` 성공 확인
+- [x] `pnpm test` 전체 통과 확인, 결과를 `docs/core-improvement/baseline-test.txt`로 저장
+- [x] 베어 `npx vitest` 금지를 `CLAUDE.md` Testing 절에 추가 (P-2) — **주의: 이 저장소는 `CLAUDE.md`를 gitignore 한다**(`.gitignore:5`). 커밋되지 않으므로 같은 경고를 `REQUIREMENTS.md` §7(P-2)과 `MANUAL_TEST_CHECKLIST.md` 실행 환경 절에도 남겨 두었다
+- [x] `REQUIREMENTS.md` §3.1의 재현 시나리오를 `packages/state-ref/src/tests/core/regression.ts`로 이관 (25건, 現동작 스냅샷)
+- [x] 벤치 하네스 작성 — **`packages/state-ref/bench/read-write.mjs`** (계획의 `src/tests/bench/…` 에서 위치 변경, 사유는 아래 주석 참조)
+- [x] 벤치 baseline 수치를 `docs/core-improvement/baseline-bench.txt`로 저장
+- [x] `IC-01` 조사 → `DESIGN.md` §5에 기록. 추가로 `packages/connect-react/src/tests/react/unmount-leak.tsx` 회귀 스냅샷 3건 작성
+- [x] `IC-02` 조사 → `DESIGN.md` §5에 기록
+- [x] `IC-03` 조사 → `DESIGN.md` §5에 기록
+
+> **위치 변경 사유:** 벤치를 `src/tests/**` 아래 두면 vite config의 `includeSource` 글롭에 잡혀 `pnpm test`마다 50,000회 루프가 돌아간다. 빌드 산출물(`dist/state-ref.mjs`)을 직접 import 하는 독립 스크립트로 분리했다 — 개발 중 TS가 컴파일되는 모양이 아니라 **실제 배포되는 코드**를 측정한다.
 
 **기준 테스트**
-- `pnpm test:core` 통과
-- `pnpm test` (커넥터 포함) 통과
-- 벤치가 2회 연속 실행에서 ±15% 이내 재현
+- [x] `pnpm test:core` 통과 — 49 → **74** (회귀 25건 추가)
+- [x] `pnpm test` (커넥터 포함) 통과 — react 8 → **11** (누수 스냅샷 3건 추가)
+- [x] `pnpm exec tsc --noEmit` 통과 / `pnpm exec eslint` 통과
+- [x] 벤치 2회 연속 실행 편차 ±15% 이내 (실측 최대 6%)
+
+**baseline 실측치**
+
+| 구분 | 항목 | 값 |
+|---|---|---|
+| 테스트 | 코어 / 커넥터 | 49 / 39 (vue 1 skipped) |
+| 읽기 | 깊이 2 / 8 / 32, 50k회 | 73.0 / 325.6 / 2,769.2 ms |
+| 쓰기 | 유휴 구독자 100 / 400 / 1,600, 500회 | 2.3 / 8.7 / 35.6 ms |
+| 쓰기 | 스케일링 계수 (구독자 4배당) | 3.7~4.1x (정확히 선형) |
+| 번들 | `state-ref.mjs` gzip | 2,686 B |
+| 번들 | `state-ref.umd.js` gzip | 2,127 B |
+| 게이트 | NFR-1 (깊이 8 ≤ 200 ms) | **FAIL** (325.6 ms) — 예정된 상태 |
+| 게이트 | NFR-2 (1,600 구독자 ≤ 10 ms) | **FAIL** (35.6 ms) — 예정된 상태 |
 
 **종료 조건**
-- baseline 테스트/벤치 산출물 2개가 커밋되어 있다
-- `IC-01`~`IC-03`이 TBD에서 해소되었다
-- 회귀 테스트 파일이 現동작을 고정하고 있다 (이후 Phase가 이 스냅샷을 의도적으로 깬다)
+- [x] baseline 산출물 2개(`baseline-test.txt`, `baseline-bench.txt`) 커밋
+- [x] `IC-01`~`IC-03` 해소
+- [x] 회귀 테스트가 現동작을 고정 (각 스냅샷에 "Phase N must flip this" 주석 부착)
+
+**Phase 0에서 추가로 밝혀진 것**
+1. **CI-06/CI-07이 프레임워크 5종 공통의 사용자 대면 메모리 누수다** (IC-01). 커넥터는 전부 정상적으로 `AbortSignal`을 반환·abort 하지만 `combineWatch`/`createComputed`가 그 반환값을 삼킨다. → Phase 5 최우선.
+2. **`_navi`/`_type`은 프록시를 통해 읽을 수 없다.** `ref.a.b._navi`는 문자열이 아니라 또 다른 자식 프록시를 반환한다. devtools가 값을 보여주는 건 `ownKeys`/`getOwnPropertyDescriptor`가 트랩되지 않아 표시 타깃으로 폴백하기 때문이다 — CI-02의 무한 재귀와 같은 뿌리. → Phase 2의 `DISPLAY_KEYS` 패스스루가 재귀를 끊는 동시에 이 키들을 **비로소 동작하게** 만든다.
+3. **`DC-04`의 리스크가 낮다** (IC-03). 문서가 이미 `.value`를 먼저 거치는 올바른 패턴만 가르친다.
+4. **CI-16의 우선순위를 낮춘다** (IC-02). `cache:false` 실사용이 코드베이스 어디에도 없다.
 
 ---
 
@@ -314,3 +336,24 @@
   - `node_modules` 미설치 (P-1). Phase 0 첫 항목에서 해소
   - `DC-01`~`DC-08` 전부 TBD. Phase 1 착수에는 `DC` 불필요하나, Phase 2는 `DC-04`/`DC-05` 선행 필요
 - **commit** `8836095` (chore: version up 2.1.0) — 코드 변경 없음, 문서만 추가
+
+### 2026-09-16 — Phase 0 완료
+- **done**
+  - `pnpm install` / 전체 빌드 / 전체 테스트 통과. baseline 산출물 2종 커밋
+  - 코어 회귀 스냅샷 25건 (`packages/state-ref/src/tests/core/regression.ts`) — CI-01~CI-16 커버, 각 항목에 "Phase N must flip this" 주석
+  - React 언마운트 누수 스냅샷 3건 (`packages/connect-react/src/tests/react/unmount-leak.tsx`)
+  - 벤치 하네스 (`packages/state-ref/bench/read-write.mjs`) — NFR-1/NFR-2 게이트 내장, 빌드 산출물 대상
+  - `CLAUDE.md`에 베어 `npx vitest` 금지 명시 (로컬 전용 — `.gitignore:5`에 걸려 커밋되지 않음. 커밋되는 사본은 `REQUIREMENTS.md` §7과 `MANUAL_TEST_CHECKLIST.md`에 있음)
+  - `IC-01`/`IC-02`/`IC-03` 전부 해소 → `DESIGN.md` §5
+  - `DC-04` 초기값을 "축소"로 상향 (IC-03 근거)
+  - 테스트 74 (코어) + 11 (react) + 32 (기타 커넥터) 전량 통과
+- **next**
+  - **Phase 1 — 계약 정합성.** `DC` 결정 없이 착수 가능한 유일한 Phase다
+  - 착수 시 `regression.ts`의 CI-01 스냅샷("SNAPSHOT (wrong)")과 CI-05 스냅샷을 뒤집는 것이 완료 판정
+  - Phase 2 착수 전 `DC-04`(초기값 축소)·`DC-05`(초기값 lazy getter) 확정 필요
+- **blockers**
+  - 없음. `DC-01`~`DC-03`, `DC-06`~`DC-08`은 TBD이나 각각 필요 Phase가 뒤에 있다
+- **우선순위 변경**
+  - CI-06/CI-07 ↑ (5종 공통 메모리 누수로 확인)
+  - CI-16 ↓ (실사용처 0건)
+- **commit** `ca7b045` (docs: add core improvement plan) 기준, 본 Phase 0 커밋이 그 위에 쌓임
