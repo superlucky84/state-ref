@@ -696,3 +696,17 @@
   - **`IC-01`의 감사 결론은 맞았고 누수는 헬퍼에 있었다.** 커넥터 5종은 `AbortSignal`을 제대로 반환·abort하고 있었고, `combineWatch`/`createComputed`가 그걸 삼켰다. 출시된 2.1.0에는 이 누수가 있다
   - **커넥터 패키지에도 Phase 0 스냅샷이 있다.** `pnpm test:core`만 돌리면 안 보인다 — Phase 5 완료 판정의 일부가 `connect-react`에 있었다
 - **commit** `4852191` 기준, 본 Phase 5 커밋이 그 위에 쌓임
+
+### 2026-09-17 — 저장소 정리 (개선 범위 외, 사용자 승인)
+- **done**
+  - `packages/state-ref/src/sample.ts` **삭제** (705줄). 라이브러리 전체의 낡은 사본이었고 참조가 0이다 (마지막 수정이 `18cb99c chore: update readme`). 번들에는 들어가지 않았지만 `package.json`의 `files: ["src", ...]`로 **npm에 배포되고 있었고** `tsconfig.include: ["src"]`로 tsc 검사까지 받고 있었다
+  - `packages/connect-vue/vite.config.js.timestamp-1768986809748-e25c09f05cfcb.mjs` **삭제**. vite가 빌드 중 만드는 임시 파일인데 커밋 `bd1aa18`(2026-01-21)에 딸려 들어가 `main`에서 계속 추적되고 있었다. `.gitignore:10`의 `vite.config.*.timestamp-*` 패턴은 신규 발생만 막으므로 추적 해제가 필요했다
+- **효과** — 번들 크기는 무변경(3,668 B)이다. `sample.ts`는 import되지 않아 애초에 번들에 없었다. 바뀌는 것은 **배포 산출물**이다:
+
+  | | 이전 | 이후 |
+  |---|---|---|
+  | npm package | 88.6 kB | **83.1 kB** |
+  | unpacked | 324.7 kB | **305.9 kB** |
+  | 파일 수 | 48 | **47** |
+
+- 검증: `pnpm build` / `pnpm test`(코어 117 + 커넥터 42) / 6패키지 `tsc --noEmit` 0건 / 벤치 게이트 3/3
