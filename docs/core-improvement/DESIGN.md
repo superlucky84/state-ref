@@ -232,11 +232,14 @@ forEachAffectedNode(writtenNode, node =>
 - 뮤테이션 검증: 형제 규칙 제거 → 4건 실패 / `length` 쓰기를 `length`만으로 좁힘 → 1건 실패 / 노드 단위 검사를 전 경로 재조회로 되돌림 → 1건 실패
 - **과다 방문(인덱스 쓰기에서 형제 전부 순회)은 의미가 동일해 유닛 테스트로 잡히지 않는다.** 벤치 게이트(`1000 live index nodes ≤ 5 ms`)가 그 가드다
 
-**CI-13** — 배칭. `runner` 호출을 microtask로 합치는 스케줄러를 둔다.
-```ts
-createStore(v, { batch?: 'sync' | 'microtask' })   // 기본 'sync' (현행 유지)
-```
-`'microtask'`에서는 `queueMicrotask`로 1회만 예약하고, 같은 틱의 N회 대입을 1회 `runner`로 합친다. `sync()`(manual mode)는 항상 즉시 실행으로 남는다 — 이미 사용자가 시점을 통제하는 API이므로 배칭할 이유가 없다.
+**CI-13** — ~~배칭. `runner` 호출을 microtask로 합치는 스케줄러를 둔다.~~ → **기각 (`DC-03`, `INV-4`). 아래는 기각된 원안이다.**
+
+> ~~```ts
+> createStore(v, { batch?: 'sync' | 'microtask' })   // 기본 'sync' (현행 유지)
+> ```
+> `'microtask'`에서는 `queueMicrotask`로 1회만 예약하고, 같은 틱의 N회 대입을 1회 `runner`로 합친다.~~
+>
+> **구현해 측정한 뒤 되돌렸다** (`20ffb36`, `8990fd1` — reflog). 지연 전파를 두지 않는 것은 누락이 아니라 **예측가능성을 위한 의도된 설계**이고, 이를 `INV-4`로 승격했다. 이득의 정체·`IC-04`(vue 쓰기 유실)·Phase 3 이후 원래 동기가 소멸한 사정은 `DC-03` 참조. 시점을 묶어야 하는 사용자에게는 `createStoreManualSync()` + `sync()`가 명시적 답이다.
 
 **CI-05 / CI-18** — 각 `run()` 호출을 개별 try/catch로 감싸 한 구독자의 예외가 나머지를 막지 못하게 한다. 수집된 예외는 마지막에 `AggregateError`로 리포트하되, **쓰기 연산 자체는 실패시키지 않는다**(상태는 이미 커밋됨).
 
