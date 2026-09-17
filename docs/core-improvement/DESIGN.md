@@ -294,9 +294,26 @@ if (!Object.is(next, result)) { result = next; notify(); }
 
 ## 4. 결정 체크리스트 (Design Decisions)
 
-- [ ] **DC-01** CI-04 중간 경로 부재 처리: (a) 자동 생성 / (b) 명시적 에러 → **TBD**
-  - 근거 필요: 자동 생성은 오타를 조용히 삼킨다. 명시적 에러는 동적 스키마에서 불편하다.
-  - 검증: Phase 6 baseline test
+- [x] **DC-01** CI-04 중간 경로 부재 처리 → **해소 (2026-09-17): (b) 명시적 에러. 자동 생성하지 않는다**
+  - 자동 생성은 오타를 조용히 삼킨다. `ref.usre.name.value = 'x'`가 성공하면 상태에 새 가지가 하나 생기고, 화면은 그냥 안 바뀐다 — 에러도 경고도 없이. 이 라이브러리에서 가장 고약한 실패 부류다(`CI-21`에서 같은 종류를 겪었다)
+  - **현재 동작은 "자동 생성 안 함"이 아니라 절반만 그렇다.** 실측:
+
+    | 쓰기 | 현재 |
+    |---|---|
+    | `ref.a.value = 1` (`a` 없음, root는 객체) | `{a:1}` **성공** |
+    | `ref.a.b.value = 1` (`a` 없음) | `TypeError: Cannot set properties of undefined` |
+    | `ref.a.b.value = 1` (`a === null`) | `TypeError: Cannot set properties of null` |
+    | `ref.a.b.c.d.value = 1` | `TypeError: Cannot read properties of undefined` |
+    | `ref.a.b.value = 1` (`a === 5`) | `TypeError: Cannot create property 'b' on number` |
+    | `ref.a.b.value` **읽기** (`a` 없음) | `undefined` (lens가 옵셔널 체이닝) |
+
+  - **경계 정의: 없는 것이 *부모*면 에러, 없는 것이 *대상 자신*이면 성공.**
+    `ref.a.value = 1`은 부모(root)가 존재하는 객체이고 `a`는 쓰기 대상이다 — 기존 객체에 새 키를 넣는 평범한 쓰기이므로 **그대로 성공시킨다**. 위 표의 1행은 동작 변경이 아니다. 나머지 4행이 우리 에러로 바뀐다
+  - **던지는 에러를 우리 것으로 바꾼다.** 지금은 전부 엔진의 `TypeError`라 어느 경로의 어느 세그먼트가 왜 실패했는지가 메시지에 없다. `root.a.b`에 쓰려는데 `root.a`가 `undefined`라는 걸 메시지가 말해야 한다 — Phase 2의 `Symbol.toPrimitive` 에러와 같은 방침
+  - 원시값 중간(`a === 5`)도 같은 에러로 합류시킨다. "덮어쓸지"를 라이브러리가 정하면 데이터 손실을 조용히 저지르는 쪽이다
+  - 읽기/쓰기 비대칭(읽기는 `undefined`, 쓰기는 에러)은 **유지한다.** 읽기의 관대함은 옵셔널 체이닝과 같은 관용구이고, 쓰기는 의도를 확정하는 연산이라 기준이 다른 게 맞다
+  - 기각한 대안: `createStore(v, { strictPath })` opt-in. 분기가 늘고 상황별 토글이 하나 더 생기는데, 자동 생성을 원할 근거가 아직 제시된 바 없다. 필요해지면 그때 여는 편이 되돌리기 쉽다
+  - 검증: Phase 6 baseline test — 위 표 4행이 각각 실행 가능한 메시지로 throw, 1행은 무변경, 읽기는 `undefined` 유지
 - [x] **DC-02** CI-14 dep 재수집 기본값 → **해소 (2026-09-17): 2.x는 opt-in `trackDeps`로 확정. 기본값 전환은 `DC-08`(major) 사안**
   - `DC-03`과 같은 성질이다. 켜면 알림 횟수가 줄어드는데, 그건 **버그 수정이 아니라 계약 변경**이다. 조건 분기로 안 읽게 된 값을 수정해도 콜백이 안 불리는 건 옳지만, 그 동작에 기대고 있던 코드는 깨진다
   - 실측한 trade-off (500회 쓰기 / 구독자 50):
@@ -329,12 +346,16 @@ if (!Object.is(next, result)) { result = next; notify(); }
   - 반환값이 프록시라는 점도 걸림돌이다. `createComputed`의 반환은 `{ value }`이고 `combineWatch`의 반환은 상태 모양을 미러링하는 프록시다. 거기에 `dispose`를 얹으면 사용자 상태의 `dispose` 키를 가리게 된다 — `DC-05`에서 표시 키를 Symbol로 옮긴 것과 같은 함정이다
   - 해제 수단이 둘이 되면 "어느 쪽이 정본인가"를 문서가 계속 설명해야 한다. 하나로 둔다
   - 검증: `lifecycle.ts`의 teardown 5건 (abort / 후속 `false` / 첫 호출 `false` 무시 / computed abort), `connect-react/src/tests/react/unmount-leak.tsx`
-- [ ] **DC-07** `cloneDeep`을 `structuredClone` 위임으로 갈 것인가 → **TBD (초기값: 위임 + 폴백)**
+- [ ] **DC-07** `cloneDeep`을 `structuredClone` 위임으로 갈 것인가 → **TBD (초기값: 위임 + 폴백). 예산 확인됨 (2026-09-17)**
+  - `DC-09` 상한과 충돌하는지 프로토타입으로 측정했다: `DC-01`(명시적 에러) + 위임 + 폴백(`Reflect.ownKeys`, `WeakMap` seen, `Date`/`RegExp`/`Map`/`Set`)을 다 넣고 **gzip 3,889 B**. 상한 4,000 B 대비 **잔여 111 B**
+  - 따라서 **`DC-09` 재검토는 불필요하다.** Phase 7(테스트 하드닝)은 번들에 영향이 없고 Phase 8(커넥터)은 별도 번들이므로, Phase 6이 코어 번들의 사실상 마지막 증가분이다
+  - 측정은 프로토타입 품질 코드 기준이므로 최종본은 수십 B 오차가 있을 수 있다. 여유가 얇으니 Phase 6 종료 시 재측정한다
 - [x] **DC-09** 번들 예산 (NFR-3) → **해소 (2026-09-16): 상한을 절대값 gzip 4,000 B로 재설정**
   - 최초 `+15%`(3,089 B)는 작업 범위를 모르는 상태에서 정한 수치였다. Phase 2만으로 3,140 B(+16.9%)이고 Phase 4가 더 늘린다
   - 늘어난 454 B는 전부 "프록시가 평범한 JS 객체처럼 동작하게 만드는" 값이며, 그것이 이 라이브러리의 DX 핵심이다
   - 에러 메시지 축약은 20 B만 회수되어(실측) 메시지 품질을 깎을 가치가 없다
   - 잔여 예산 860 B를 Phase 3~6이 나눠 쓴다. 검증: Phase 4 종료 시 재측정, Phase 8 최종 확정
+  - **경과 (2026-09-17).** Phase 5 종료 시 3,668 B. Phase 6을 프로토타입으로 측정하니 3,889 B로 상한 안에 들어간다(`DC-07` 참조). **상한 4,000 B는 유지한다** — 재조정 불필요
 - [x] **DC-10** 구독 식별자 → **해소 (2026-09-16): 문자열 key를 버리고 경로 노드(PathNode) 트리의 객체 identity를 쓴다**
   - 추적 결과 문자열 key의 용도는 **중복 제거 하나뿐**이었다(`collector.ts:26`). 변경 감지는 `getNextValue()` 참조 비교가 전담한다. `RunInfo.key` 필드는 Phase 1 이후 아무도 읽지 않는 죽은 필드였다
   - 문자열을 만들려다 딸려온 것들: `escapeString`(구분자 충돌 회피), `symbolIdMap`(**CI-09 누수의 실체** — Symbol을 문자열로 표현하려는 목적 하나로 존재), `[...depthList, prop]` 복사(CI-19)
