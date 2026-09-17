@@ -5,6 +5,20 @@ import type { PathNode } from '@/path';
  * G StateRefStore<V>; // Add "value" to the ending  point with “root” unattached.
  * T StateRefStore<StoreType<V>>; // Attach a "value" to the ending point in the state where the root exists.
  */
+/**
+ * A subscription callback.
+ *
+ * Its return value is how a subscription ends - there is no `dispose()`:
+ *
+ * - an `AbortSignal` returned from the **first** run (`isFirst === true`) is
+ *   registered, and aborting it later drops the subscription
+ * - `false` returned from any **later** run drops it immediately
+ *
+ * A signal returned from a later run is not registered, and `false` on the
+ * first run is ignored - the store is not yet listening for either. The same
+ * rules hold through `combineWatch` and `createComputed`, where teardown
+ * reaches every subscription the helper made.
+ */
 export type Renew<G> = (
   store: G,
   isFirst: boolean
@@ -51,6 +65,17 @@ export type StateRefStore<S> = S extends readonly any[]
     }
   : { value: S };
 
+/**
+ * Subscribes, or hands back a reference when called with no callback.
+ *
+ * `cache` (default `true`) de-duplicates by callback identity: calling
+ * `watch(fn)` twice with the same `fn` returns the same reference and
+ * subscribes once. `cache: false` asks for a subscription of its own every
+ * time, so N calls mean N subscriptions and N invocations per change - that is
+ * the point of the option, not a leak. Such a subscription can only be ended
+ * through its callback's return value (see `Renew`), and it no longer occupies
+ * the cache slot, so a later cached `watch(fn)` still makes its own.
+ */
 export type Watch<V> = (
   renew?: Renew<StateRefStore<V>>,
   userOption?: { cache?: boolean; editable?: boolean }
@@ -86,3 +111,13 @@ export type ManualSyncStore<V> = {
   updateRef: StateRefStore<V>;
   sync: () => void;
 };
+
+/**
+ * Options for `createStore` / `createStoreManualSync`.
+ *
+ * `trackDeps` re-collects a subscriber's dependencies on every run: a path the
+ * callback no longer reads stops waking it. It is off by default because it
+ * changes how often subscribers are called, which is a behaviour change for
+ * existing code rather than a fix.
+ */
+export type CreateStoreOption = { trackDeps?: boolean };

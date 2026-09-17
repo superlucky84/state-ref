@@ -2,13 +2,15 @@
  * IC-01 regression snapshot for docs/core-improvement.
  *
  * All five connectors return `abortController.signal` from their renew and
- * abort it on unmount, so the plain-watch path unsubscribes correctly.
- * `combineWatch` and `createComputed` never forward that return value to the
- * core, so a component connected through either of them keeps its subscription
- * (and its closure over setState) forever.
+ * abort it on unmount, so the plain-watch path has always unsubscribed
+ * correctly. `combineWatch` and `createComputed` used to drop that return
+ * value, so a component connected through either of them kept its
+ * subscription - and its closure over setState - forever.
  *
- * The two "SNAPSHOT (wrong)" tests below pin that leak. Phase 5 of
- * docs/core-improvement/IMPLEMENT.md must flip both to 0.
+ * Phase 5 fixed both (CI-06, CI-07): each helper now hands the core a
+ * controller of its own per inner subscription and chains the caller's
+ * teardown onto them, so an unmount reaches every one. The two tests below
+ * were the snapshots of that leak; they are the completion criterion.
  */
 import { render as trender, cleanup } from '@testing-library/react';
 import { createStore, combineWatch, createComputed } from 'state-ref';
@@ -53,7 +55,7 @@ if (import.meta.vitest) {
       expect(renews).toBe(0);
     });
 
-    it('SNAPSHOT (wrong): combineWatch keeps firing after unmount — Phase 5 must flip this to 0', () => {
+    it('FIXED (Phase 5): combineWatch stops firing after unmount', () => {
       const watch = createStore<Counter>({ n: 0 });
       const watch2 = createStore<number>(0);
       const ref = watch();
@@ -75,10 +77,10 @@ if (import.meta.vitest) {
       ref.n.value = 1;
       ref.n.value = 2;
 
-      expect(renews).toBe(2);
+      expect(renews).toBe(0);
     });
 
-    it('SNAPSHOT (wrong): createComputed keeps firing after unmount — Phase 5 must flip this to 0', () => {
+    it('FIXED (Phase 5): createComputed stops firing after unmount', () => {
       const watch = createStore<Counter>({ n: 0 });
       const watch2 = createStore<number>(0);
       const ref = watch();
@@ -103,7 +105,7 @@ if (import.meta.vitest) {
       ref.n.value = 1;
       ref.n.value = 2;
 
-      expect(renews).toBe(2);
+      expect(renews).toBe(0);
     });
   });
 }

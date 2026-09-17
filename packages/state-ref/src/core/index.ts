@@ -4,6 +4,7 @@ import { runner } from '@/connectors/runner';
 import { createPathRoot } from '@/path';
 
 import type {
+  CreateStoreOption,
   Renew,
   StoreType,
   StateRefStore,
@@ -23,24 +24,40 @@ import type {
  * const stateRef = watch(stateRef => {
  *   console.log(stateRef.value));
  * });
+ *
+ * `{ trackDeps: true }` re-collects each subscriber's dependencies on every
+ * run, so a path the callback has stopped reading stops waking it. Off by
+ * default, because it changes how often subscribers are called.
  */
-export function createStore<V>(originalValue: V) {
-  const { watch } = create(originalValue, { autoSync: true });
+export function createStore<V>(
+  originalValue: V,
+  userCreateOption?: CreateStoreOption
+) {
+  const { watch } = create(originalValue, {
+    ...(userCreateOption || {}),
+    autoSync: true,
+  });
 
   return watch;
 }
-export function createStoreManualSync<V>(originalValue: V): ManualSyncStore<V> {
-  return create(originalValue, { autoSync: false });
+export function createStoreManualSync<V>(
+  originalValue: V,
+  userCreateOption?: CreateStoreOption
+): ManualSyncStore<V> {
+  return create(originalValue, {
+    ...(userCreateOption || {}),
+    autoSync: false,
+  });
 }
 
 function create<V>(
   originalValue: V,
-  userCreateOption?: { autoSync?: boolean }
+  userCreateOption?: { autoSync?: boolean; trackDeps?: boolean }
 ) {
   const storeRenderList: StoreRenderList<any> = new Map();
   const pathRoot = createPathRoot();
   const cacheMap = new WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>();
-  const { autoSync } = Object.assign(
+  const { autoSync, trackDeps } = Object.assign(
     {},
     DEFAULT_CREATE_OPTION,
     userCreateOption || {}
@@ -81,7 +98,9 @@ function create<V>(
       storeRenderList,
       cacheMap,
       autoSync,
+      cache,
       editable,
+      trackDeps,
       pathRoot,
     });
   };

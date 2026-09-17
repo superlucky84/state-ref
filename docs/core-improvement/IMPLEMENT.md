@@ -330,43 +330,124 @@
 
 ---
 
-## Phase 5 — 구독 수명 (CI-06, CI-07, CI-14, CI-16, CI-17)
+## Phase 5 — 구독 수명 (CI-06, CI-07, CI-14, CI-16, CI-17)  ✅ 완료 (2026-09-17)
 
-> **전파 의미를 건드리는 Phase다** (`CI-14` dep 재수집, `CI-16` 중복 구독). Phase 3의 `CI-21`이 성능 게이트를 그대로 통과했으므로, 이 Phase의 종료 조건에는 **출시 빌드(`main`) 대비 차분 스윕 무차이**가 포함된다. `CI-14`는 의도된 알림 감소이므로 스윕은 `trackDeps` **비활성** 기준으로 돌린다.
+> **전파 의미를 건드리는 Phase다** (`CI-14` dep 재수집, `CI-16` 캐시). Phase 3의 `CI-21`이 성능 게이트를 그대로 통과했으므로 종료 조건에 **출시 빌드(`main`) 대비 차분 스윕 무차이**를 넣었다. `CI-14`는 의도된 알림 감소이므로 스윕은 `trackDeps` **비활성**(기본값) 기준으로 돌린다.
 
-**진입 조건:** Phase 4 종료 조건 충족 ✅ — dep 재수집(CI-14)이 `PathNode.subs`와 수명을 공유해야 한다 (원안의 `keyIndex`는 `DC-10`으로 경로 트리가 대체했다)
+**진입 조건:** Phase 4 종료 조건 충족 ✅
 
-**체크리스트**
-- [ ] `combineWatch` 내부 구독이 사용자 콜백 반환값을 `return` (한 줄, `src/helper/index.ts:225-234`)
-- [ ] `combineWatch` 다중 변경 시 콜백 합치기 → **`DC-11` 결정 필요.** Phase 4의 배칭 스케줄러는 되돌려졌고 `INV-4`가 지연을 금지하므로, 합치기 대신 **N회를 정의된 동작으로 문서화**하는 쪽이 유력하다
-- [ ] `createComputed`에 `Object.is` 기반 이전값 비교 추가
-- [ ] `createComputed(watches, fn, { equals? })` 3번째 인자 개방
-- [ ] `createComputed`의 `watch(() => false)` 초기화 제거 → `watch()` 무인자로 대체 (`false`는 코어에서 "구독 삭제" 신호라 의미 충돌)
-- [ ] `createComputed` 콜백의 `AbortSignal` 반환 통로 개방
-- [ ] `src/core/ref.ts:43`의 `cacheMap.set`을 `cache` 옵션 뒤로 이동
-- [ ] `cache:false`의 중복 구독 의미를 JSDoc에 명시 (해제는 `AbortSignal`뿐)
-- [ ] dep 재수집 구현 — `run` 직전 스냅샷/클리어, 실행 중 재수집, 사라진 key를 `keyIndex`에서 제거
-- [ ] dep 재수집을 `createStore(v, { trackDeps: true })` opt-in으로 게이팅 (`DC-02`)
-- [ ] `storeRenderList` 해제 경로(`false` 반환 / `AbortSignal`)를 README + 타입 JSDoc에 문서화
+### 체크리스트
 
-**기준 테스트**
-- [ ] `combineWatch` + `AbortController.abort()` → 이후 콜백 0회 (FR-3)
-- [ ] `combineWatch` 콜백이 `false` 반환 → 구독 제거
-- [ ] `combineWatch` 2개 watch 동시 변경 → 콜백 1회
-- [ ] `createComputed` 파생값 불변 시 콜백 0회 (FR-4) — `max(a,b)`에서 `a`만 변경
-- [ ] `createComputed` 파생값 변경 시 정확히 1회
-- [ ] `createComputed` 다중 dep 동시 변경 → 1회
-- [ ] `createComputed` + `AbortSignal` → 해제 동작
-- [ ] `equals` 커스텀 비교자로 객체 반환 computed 검증
-- [ ] `cache:false` 구독 후 `watch(cb)` 호출이 오염된 캐시를 반환하지 않음
-- [ ] `trackDeps: true` — 조건 분기로 더 이상 읽지 않는 경로 수정 시 콜백 0회
-- [ ] `trackDeps` 기본(false) — Phase 0 스냅샷 무변경
+**A. 헬퍼 teardown (CI-06, CI-07)**
+- [x] `relayTeardown` 신설 — 내부 구독별 `AbortController`를 코어에 주고 사용자 teardown을 그 컨트롤러들에 연결
+- [x] teardown 의미를 평범한 `watch`와 **정확히 일치**시킴 — 첫 호출은 `AbortSignal`만, 이후는 `false`만 (엄격해지는 방향도, 관대해지는 방향도 막았다)
+- [x] 해제 경로를 `Renew` / `Watch` JSDoc과 README에 문서화 (CI-17)
+- [x] `combineWatch`의 임시 구독 제거 (`watches.map(w => w(() => {}, opt))`)
+- [x] `createComputed`의 `watch(() => false)` 초기화 **통째 제거** — 배선 후 1회 계산으로 대체
+- [x] `createComputed`에 `Object.is` 기반 이전값 비교
+- [x] `createComputed(watches, fn, { equals })` 3번째 인자 개방
+- [x] `createComputed` 콜백의 `boolean | AbortSignal` 반환 통로 개방
 
-**종료 조건**
-- [ ] **출시 빌드 대비 차분 스윕 무차이** (`trackDeps` 비활성): `BASE=<main dist> node packages/state-ref/bench/diff-vs-released.mjs` (4 시드 이상)
-- FR-3, FR-4 충족
-- `DC-02`, `DC-06` 해소
-- `pnpm test` 전체 통과
+**B. 캐시 (CI-16)**
+- [x] `cacheMap.set`을 `cache` 옵션 뒤로 이동 (`core/ref.ts`). `cache`를 `makeReference`까지 전달
+- [x] 중복 증식 자체는 `cache:false`의 정의된 의미로 유지
+
+**C. dep 재수집 (CI-14)**
+- [x] `forgetDeps` / `restoreDeps` 신설 (`connectors/collector.ts`)
+- [x] **`runner`가 아니라 `run` 클로저에 배치** — 재수집은 구독의 성질이다. `runner`는 무변경
+- [x] `createStore(v, { trackDeps: true })` / `createStoreManualSync(v, { trackDeps: true })` opt-in (`DC-02`)
+- [x] 콜백 throw 시 이전 dep을 되돌려 **합침** — 구독이 조용히 죽지 않게
+- [x] `CreateStoreOption` 공개 export
+
+**D. 문서 (CI-17)**
+- [x] 해제 경로를 `DC-06`으로 확정 — `AbortSignal` / `false` 단일 경로, `dispose()` 미추가
+- [x] `DC-11` 해소 — 소스 변경당 1회가 정의된 동작
+
+**계획 대비 변경**
+
+1. **`CI-06`은 `return` 한 줄로 고쳐지지 않는다.** 코어는 `AbortSignal`을 첫 실행에서만(`firstRunner`), 이후에는 `false`만(`runner`) 처리한다. 그런데 `combineWatch`의 사용자 콜백 첫 호출은 내부 구독 N개가 모두 생긴 **뒤**여야 한다 — 아니면 읽기가 곧 교체될 임시 프록시에 수집되어 아무도 깨우지 못한다. 즉 첫 반환값은 어떤 `firstRunner`에도 도달할 수 없다. 내부 구독마다 우리 쪽 컨트롤러를 코어에 주고, 사용자 teardown을 거기에 연결하는 구조로 바꿨다.
+2. **`createComputed`의 초기화는 교체가 아니라 삭제였다.** 원안은 `watch(() => false)` → `watch()`였지만, 그 호출 자체가 소스마다 해제되지 않는 구독을 만들고 있었다. 내부 구독의 첫 실행이 `refs`를 채우게 하고 파생값은 배선 후 1회 계산한다.
+3. **`CI-14`를 `runner`가 아니라 `run` 클로저에 넣었다.** 무엇을 읽는지는 콜백이 정하므로 재수집은 구독의 성질이다. 덕분에 Phase 4에서 손댄 `runner`를 다시 건드리지 않았다.
+4. **throw 시 dep 복원을 추가했다** (원안에 없음). 콜백이 경로 한두 개를 읽고 실패하면 재수집 결과가 불완전해 구독이 조용히 죽는다. 합치기는 구독을 넓힐 뿐 좁히지 않으므로 안전한 방향이다.
+5. **`DC-11` 분리.** 원안의 "다중 변경 시 콜백 합치기"는 `DC-03`/`INV-4` 하에서 불가능하다. N회를 정의된 동작으로 확정했다.
+
+### 기준 테스트 — `src/tests/core/lifecycle.ts` (신규 19개, 코어 98 → 117)
+
+**combineWatch teardown**
+- [x] abort가 **내부 구독 전부**를 멈춘다 (발화한 하나만이 아니라)
+- [x] 후속 패스의 `false` 반환 → 해제
+- [x] **첫 패스의 `false`는 해제하지 않는다** (코어 `firstRunner`와 일치)
+- [x] **후속 패스에만 나타난 `AbortSignal`은 등록되지 않는다** (코어 `runner`와 일치)
+- [x] 한 틱에 소스 2개 변경 → 콜백 2회 (`DC-11`)
+
+**createComputed**
+- [x] 파생값 불변 → 0회 (`max(a,b)`에서 `a`만 변경)
+- [x] 파생값 변경 → 정확히 1회
+- [x] 구독 없이도 첫 파생값이 보임
+- [x] 한 틱에 소스 2개 변경 → 2회 (`DC-11`)
+- [x] `AbortSignal` teardown
+- [x] `equals` 커스텀 비교자로 객체 반환 computed 검증
+- [x] `equals` 없으면 매번 발화 — `Object.is`는 새 객체 둘을 같다고 하지 않는다 (기본값이 더 영리해질 수 없는 이유)
+
+**캐시**
+- [x] `cache:false` 5회 + `watch(renew)` → 6회 발화 (수정 전에는 5회: 캐시된 호출이 마지막 uncached 구독의 참조를 받고 자기 구독을 만들지 않았다)
+- [x] 캐시된 반복 호출은 여전히 같은 참조
+
+**trackDeps**
+- [x] 더 이상 읽지 않는 경로가 깨우지 않음
+- [x] 새로 읽기 시작한 경로가 깨움
+- [x] **콜백 throw 후에도 구독이 살아 있음**
+- [x] manual-sync 모드에서도 동작
+- [x] 요청하지 않으면 꺼져 있음
+
+**커넥터 (기존 스냅샷 전환)**
+- [x] `connect-react/src/tests/react/unmount-leak.tsx`의 `SNAPSHOT (wrong)` 2건이 **0으로 전환** — `combineWatch`/`createComputed`로 연결된 컴포넌트의 언마운트 후 구독 누수가 실제로 닫혔다 (`IC-01` 후속)
+
+### 뮤테이션 검증
+
+| 주입한 결함 | 잡힌 테스트 |
+|---|---|
+| `relayTeardown`이 아무것도 안 함 | **4건** (combineWatch abort/false, computed abort, regression CI-06) |
+| `equals` 비교 제거 | **3건** (computed 2건 + regression CI-07) |
+| `cache` 가드 제거 | 1건 |
+| `forgetDeps` 호출 제거 | 2건 (auto/manual) |
+| `restoreDeps` 제거 | 1건 (throw 케이스) |
+| 첫 호출의 `false`도 해제 | 2건 |
+| 후속 패스의 signal도 등록 | 2건 |
+
+### 실측
+
+| 항목 | baseline | Phase 4 | **Phase 5** | 판정 |
+|---|---|---|---|---|
+| 코어 테스트 | 49 | 98 | **117** | |
+| 커넥터 테스트 | 39 | 42 | **42** (스냅샷 2건 전환, 소스 무수정) | NFR-4 ✅ |
+| `tsc --noEmit` (6패키지) | 0 | 0 | **0** | |
+| 읽기 깊이 8 (50k) | 325.6 ms | 12.6 ms | **12.4 ms** | NFR-1 ✅ |
+| 쓰기 1,600 유휴 구독자 | 35.6 ms | 0.4 ms | **0.5 ms** | NFR-2 ✅ |
+| 번들 gzip (mjs) | 2,686 B | 3,372 B | **3,668 B** | 상한 4,000 B ✅ (**잔여 332 B**) |
+| 게이트 | 0/2 | 3/3 | **3/3 PASS** | |
+| 차분 스윕 vs `main` | — | 차이 0 | **차이 0** (4 시드 × 4,800 스텝) | |
+
+**`trackDeps` trade-off** (500회 쓰기 / 구독자 50)
+
+| 시나리오 | off | on |
+|---|---|---|
+| 모든 경로를 계속 읽음 (K=1 / 8 / 32) | 8.8 / 31.4 / 118.8 ms | 12.1 / 46.3 / 164.5 ms (**+29~47%**) |
+| 버린 경로에 쓰기 (K=32→1) | 콜백 25,000회, 7.2 ms | **콜백 0회, 0.3 ms** |
+
+아무것도 안 버리면 순손해, 버린 경로를 건드릴 때만 이득이다. 어느 쪽인지는 애플리케이션에 달렸으므로 opt-in이 맞다 (`DC-02`).
+
+`docs/core-improvement/bench-phase5.txt`
+
+> ⚠️ **번들 예산 경고.** 잔여 330 B다. Phase 6은 `cloneDeep`의 `structuredClone` 위임(`DC-07`)과 중간 경로 처리(`DC-01`)를 다루는데, 전자는 폴백 경로를 남기면 코드가 늘어난다. Phase 6 착수 전에 `DC-09`(상한 4,000 B)를 재검토할지 판단이 필요하다.
+
+### 종료 조건
+- [x] **출시 빌드 대비 차분 스윕 무차이** (`trackDeps` 비활성) — 4 시드, `exit=0`
+- [x] FR-3, FR-4 충족
+- [x] `DC-02`, `DC-06` 해소 (+ 계획 외 `DC-11`도 해소)
+- [x] `pnpm test` 전체 통과 (코어 117 + 커넥터 42)
+
+> **스윕이 덮지 않는 범위 (명시).** 스윕은 기본 옵션의 평범한 `watch` 전파만 비교한다. `createComputed`·`combineWatch`·`cache:false`·`trackDeps:true`는 **의도적으로 동작이 바뀌었으므로** 출시 빌드와 발산하는 것이 정상이고, 스윕으로 게이팅할 수 없다. 그쪽은 위 유닛 테스트와 뮤테이션이 담당한다. 스윕의 역할은 "고치려던 것 외에는 아무것도 안 바뀌었다"의 확인이다.
 
 ---
 
@@ -590,3 +671,28 @@
   - **getter를 최상위에 둔 프로브 테스트는 엉뚱한 이유로 통과한다.** `copyOnWrite`의 spread가 spine의 getter를 직접 평가하기 때문이다. 카운터는 한 단계 내려 부모가 참조째 복사되는 위치에 둬야 한다
   - 배칭 측정 중 `IC-04` 발견 — `connect-vue`의 비동기 재진입 가드가 지연 전파와 인터리빙해 vue 쪽 쓰기를 삼켰다. 되돌려서 소멸했으나, **지연이 커넥터 계약과 충돌한다는 증거**로 `INV-4`를 뒷받침한다
 - **commit** `db5dc66` (Phase 3) 기준, 본 Phase 4 커밋이 그 위에 쌓임
+
+### 2026-09-17 — Phase 5 완료
+- **done**
+  - **CI-06/CI-07 — 헬퍼 teardown이 실제로 작동한다.** `relayTeardown` 신설: 내부 구독마다 우리 쪽 `AbortController`를 코어에 주고 사용자 teardown을 거기에 연결. teardown 의미는 평범한 `watch`와 정확히 일치(첫 호출은 signal만, 이후는 `false`만)
+  - `createComputed`에 `Object.is` 비교 + `equals` 옵션. 파생값이 안 바뀌면 안 부른다
+  - 두 헬퍼의 **임시 구독 제거** — ref를 얻으려 소스마다 만들던 해제 안 되는 구독이 사라졌다
+  - **CI-16** — `cacheMap.set`을 `cache` 옵션 뒤로. `cache:false`가 캐시를 오염시키지 않는다
+  - **CI-14** — `trackDeps` opt-in. `forgetDeps`/`restoreDeps`를 `run` 클로저에 배치(`runner` 무변경). throw 시 이전 dep 복원
+  - `DC-02`(opt-in 확정), `DC-06`(`dispose()` 미추가), `DC-11`(소스 변경당 1회) 해소
+  - 코어 98 → 117. 뮤테이션 7방향 전부 잡힘. 차분 스윕 4 시드 차이 0
+  - **커넥터 스냅샷 2건 전환** — `connect-react`의 `unmount-leak.tsx`가 고정해둔 언마운트 후 구독 누수가 닫혔다
+- **next**
+  - **Phase 6 — Lens / 헬퍼 (CI-04, CI-08).** `DC-01`(중간 경로 부재: 자동 생성 vs 명시적 에러), `DC-07`(`cloneDeep`의 `structuredClone` 위임) 필요
+  - **착수 전 `DC-09` 재검토 판단.** 번들 잔여 330 B이고 Phase 6은 `structuredClone` 폴백 경로로 늘어난다
+  - 완료 판정: `regression.ts`의 CI-08 스냅샷 3건(Symbol 키 소실 / Date·Map·Set·RegExp 붕괴 / 순환참조 `RangeError`) 전환
+- **blockers**
+  - 없음
+- **발견**
+  - **`CI-06`은 `return` 한 줄로 고쳐지지 않는다.** 코어가 `AbortSignal`을 **첫 실행에서만** 처리하는데, 헬퍼의 사용자 콜백 첫 호출은 내부 구독이 다 생긴 뒤여야 한다(아니면 읽기가 임시 프록시에 수집된다). 즉 그 반환값은 구조적으로 `firstRunner`에 도달할 수 없다. 설계 문서의 한 줄 패치는 이 타이밍을 보지 못했다
+  - **헬퍼가 코어보다 엄격해지면 안 된다.** 처음 구현에서 첫 호출의 `false`도 해제로 처리했는데, 코어의 `firstRunner`는 `false`를 무시한다. `watch`에서는 살아남는 콜백이 `combineWatch`에서는 죽는 불일치가 생긴다 → `relayTeardown`이 `isFirst`를 받게 했다
+  - **`createComputed`의 초기화는 교체가 아니라 삭제가 맞았다.** `watch(() => false)` → `watch()`로 바꾸면 `false` 충돌은 없어지지만 해제 안 되는 구독은 그대로 남는다
+  - **`trackDeps`는 공짜가 아니다.** 아무것도 안 버리면 +29~47%. 버린 경로를 건드릴 때만 이득(콜백 25,000 → 0회). 기본값으로 정해줄 수 없는 종류의 trade-off라 `DC-02`를 opt-in으로 확정했다
+  - **`IC-01`의 감사 결론은 맞았고 누수는 헬퍼에 있었다.** 커넥터 5종은 `AbortSignal`을 제대로 반환·abort하고 있었고, `combineWatch`/`createComputed`가 그걸 삼켰다. 출시된 2.1.0에는 이 누수가 있다
+  - **커넥터 패키지에도 Phase 0 스냅샷이 있다.** `pnpm test:core`만 돌리면 안 보인다 — Phase 5 완료 판정의 일부가 `connect-react`에 있었다
+- **commit** `4852191` 기준, 본 Phase 5 커밋이 그 위에 쌓임

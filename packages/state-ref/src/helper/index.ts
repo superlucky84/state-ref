@@ -18,7 +18,7 @@ import { lens } from '@/lens';
  * never declares a mode.
  */
 export const DEFAULT_WATCH_OPTION = { cache: true, editable: true };
-export const DEFAULT_CREATE_OPTION = { autoSync: true };
+export const DEFAULT_CREATE_OPTION = { autoSync: true, trackDeps: false };
 
 /**
  * Debug handles on a stateRef, readable as `ref.a.b[NAVI]` / `ref.a.b[TYPE]`.
@@ -107,10 +107,69 @@ export function cloneDeep<T>(value: T): T {
  * Combines multiple state watchers to produce a derived (computed) value,
  * and invokes the provided callback whenever the computed value changes.
  */
+/**
+ * Wires a helper's own subscriptions to whatever teardown the user's callback
+ * asked for.
+ *
+ * The core honours an `AbortSignal` only on a subscription's *first* run
+ * (`firstRunner`); `runner` only understands `false`. A helper that fans one
+ * user callback out over N stores cannot use that channel directly - its
+ * callback has to run after all N subscriptions exist, otherwise the paths it
+ * reads are collected against throwaway proxies and nothing ever wakes it. So
+ * the first run of each inner subscription hands the core a controller of our
+ * own, and the user's teardown is chained onto those controllers here.
+ *
+ * The channel mirrors a plain `watch` callback exactly, which is why `isFirst`
+ * matters. The core registers an `AbortSignal` only on a first run
+ * (`firstRunner`) and honours only `false` afterwards (`runner`), so that is
+ * all a helper may honour either. Being stricter would kill callbacks that
+ * survive a plain `watch`; being more permissive would mean two teardown rules
+ * for the library to explain, which is the same reason `dispose()` was turned
+ * down (DC-06).
+ *
+ * `false` from a later pass also removes that one inner subscription through
+ * the core, which is harmless - `removeRun` is idempotent and the other N-1
+ * come down with the controllers.
+ */
+function relayTeardown(
+  result: boolean | AbortSignal | void,
+  controllers: AbortController[],
+  isFirst: boolean
+) {
+  const stop = () => controllers.forEach(controller => controller.abort());
+
+  if (isFirst) {
+    if (result instanceof AbortSignal) {
+      if (result.aborted) {
+        stop();
+      } else {
+        result.addEventListener('abort', stop, { once: true });
+      }
+    }
+  } else if (result === false) {
+    stop();
+  }
+
+  return result;
+}
+
+/**
+ * Derives a read-only value from several watches.
+ *
+ * The callback re-runs whenever a source changes, but subscribers are told only
+ * when the derived value actually moves - `max(a, b)` does not notify because
+ * `a` changed below `b`. Comparison is `Object.is`; pass `equals` for a
+ * computed that returns a fresh object each time.
+ *
+ * The subscriber may return `false` or an `AbortSignal` to unsubscribe, the
+ * same as a plain `watch` callback.
+ */
 export function createComputed<W extends readonly Watch<any>[], R>(
   watches: W,
-  callback: (a: StateRefsTuple<W>) => R
+  callback: (a: StateRefsTuple<W>) => R,
+  option?: { equals?: (next: R, previous: R) => boolean }
 ) {
+  const equals = option?.equals ?? Object.is;
   let result: R;
   const proxy: { value: R } = {
     get value(): R {
@@ -122,22 +181,58 @@ export function createComputed<W extends readonly Watch<any>[], R>(
   };
 
   return (
-    computedCallback?: (proxy: { value: R }, isFirst: boolean) => void
+    computedCallback?: (
+      proxy: { value: R },
+      isFirst: boolean
+    ) => boolean | AbortSignal | void
   ) => {
-    const refs = watches.map(watch => watch(() => false)) as StateRefsTuple<W>;
+    /**
+     * Filled by each inner subscription's first run. The initial
+     * `watch(() => false)` this used to do is gone: it created a subscription
+     * per source that nothing ever released, and `false` is the core's signal
+     * for "drop this subscription", so returning it from an initialiser was a
+     * collision waiting to happen.
+     */
+    const refs = [] as unknown as StateRefsTuple<W>;
+    const controllers = watches.map(() => new AbortController());
 
     watches.forEach((watch, index) => {
-      watch((ref, init) => {
+      watch((ref, isFirst) => {
         (refs as any)[index] = ref;
-        result = callback(refs);
-        if (!init && computedCallback) {
-          computedCallback(proxy, false);
+
+        /**
+         * During setup the other refs are not in place yet, so the derived
+         * value cannot be computed here - it is computed once below, after
+         * every source is wired. The controller handed back is what makes the
+         * user's teardown reachable (see relayTeardown).
+         */
+        if (isFirst) {
+          return controllers[index].signal;
         }
+
+        const next = callback(refs);
+
+        if (equals(next, result)) {
+          return;
+        }
+
+        result = next;
+
+        return computedCallback
+          ? relayTeardown(computedCallback(proxy, false), controllers, false)
+          : undefined;
       });
     });
 
+    /**
+     * Reading through `refs` collects against each source's real subscription,
+     * because a proxy carries the run it belongs to - it does not matter that
+     * this happens outside a run.
+     */
+    result = callback(refs);
+
     if (computedCallback) {
-      computedCallback(proxy, true);
+      relayTeardown(computedCallback(proxy, true), controllers, true);
     }
 
     return proxy;
@@ -160,9 +255,13 @@ export function combineWatch<W extends readonly Watch<any>[]>(
     callback?: Renew<StateRefStore<R>>,
     userOption?: { cache?: boolean }
   ): StateRefStore<R> => {
-    const refs: RefsTuple = watches.map(w =>
-      w(() => {}, userOption)
-    ) as RefsTuple;
+    /**
+     * Filled by each inner subscription's first run, below. Mapping the
+     * watches here used to create an extra subscription per source whose only
+     * job was to hand back a ref, and nothing released them.
+     */
+    const refs = [] as unknown as RefsTuple;
+    const controllers = watches.map(() => new AbortController());
 
     const combinedStore: StateRefStore<R> = new Proxy({} as StateRefStore<R>, {
       get(_, prop) {
@@ -197,14 +296,25 @@ export function combineWatch<W extends readonly Watch<any>[]>(
       watch((ref, isFirst) => {
         refs[index] = ref as RefsTuple[number];
 
-        if (!isFirst && callback) {
-          callback(combinedStore, false);
+        /**
+         * The user callback cannot run here on a first pass: the other refs
+         * are not wired yet, so the paths it reads would be collected against
+         * proxies that are about to be replaced. It runs once below instead,
+         * which is why teardown has to be relayed through a controller of ours
+         * rather than returned to the core (see relayTeardown).
+         */
+        if (isFirst) {
+          return controllers[i].signal;
         }
+
+        return callback
+          ? relayTeardown(callback(combinedStore, false), controllers, false)
+          : undefined;
       }, userOption);
     });
 
     if (callback) {
-      callback(combinedStore, true);
+      relayTeardown(callback(combinedStore, true), controllers, true);
     }
 
     return combinedStore;

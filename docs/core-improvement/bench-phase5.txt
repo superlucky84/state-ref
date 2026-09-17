@@ -1,0 +1,21 @@
+
+READ — 50,000 leaf .value reads by path depth  [NFR-1]
+depth  2                                            4.6 ms
+depth  8                                           13.0 ms  (target <= 200 ms)  PASS
+depth 32                                           41.3 ms
+
+WRITE — 500 writes to one field, N idle subscribers  [NFR-2]
+ 100 idle subscribers                               0.3 ms
+ 400 idle subscribers                               0.2 ms
+1600 idle subscribers                               0.4 ms  (target <= 10 ms)  PASS
+
+WRITE — 500 writes to items[0], N live index nodes  [sibling narrowing]
+  10 live index nodes                               0.4 ms
+ 100 live index nodes                               0.4 ms
+1000 live index nodes                               0.5 ms  (target <= 5 ms)  PASS
+
+WRITE — subscriber scaling factor (want: sub-linear)
+  100 -> 400:  0.62x   (subscriber count 4x)
+  400 -> 1600: 2.70x   (subscriber count 4x)
+
+Gates: 3/3 pass

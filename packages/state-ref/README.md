@@ -152,6 +152,25 @@ watch((stateRef) => {
 abortController.abort(); // run abort
 ```
 
+The signal has to be returned from the callback's **first** run — that is when
+the store registers it. Returning `false` from any later run also removes the
+subscription:
+
+```typescript
+watch((stateRef) => {
+    if (stateRef.john.age.value > 40) {
+        return false; // stop watching from here on
+    }
+
+    console.log(stateRef.john.age.value);
+});
+```
+
+These two are the only ways a subscription ends; there is no `dispose()`. The
+same channel works through `combineWatch` and `createComputed` — a signal
+returned from their callback tears down every subscription the helper made, not
+just the one that happened to fire.
+
 **Primitive types** like numbers or strings can also be handled easily. Here's how:
 
 ```typescript

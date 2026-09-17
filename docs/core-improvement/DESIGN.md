@@ -231,13 +231,28 @@ createStore(v, { batch?: 'sync' | 'microtask' })   // 기본 'sync' (현행 유�
 ### 3.5 구독 수명 (CI-06, CI-07, CI-14, CI-16, CI-17)
 
 **CI-06** — `combineWatch`의 내부 구독이 사용자 콜백의 반환값을 삼킨다.
-```ts
-watch((ref, isFirst) => {
-  refs[index] = ref;
-  if (!isFirst && callback) return callback(combinedStore, false);  // ← return 추가
-}, userOption);
-```
-이것만으로 `AbortSignal` / `false` 반환이 코어까지 전달된다. 추가로 여러 watch가 같은 틱에 변하면 콜백이 N회 발화하는 문제는 CI-13의 배칭 스케줄러를 재사용해 1회로 합친다.
+
+> **구현 정정 (Phase 5).** 원안은 `return` 한 줄이었다. **그것으로는 안 고쳐진다.** 코어는 `AbortSignal`을 **첫 실행에서만** 처리하고(`firstRunner`), 이후에는 `false`만 본다(`runner`). 그런데 `combineWatch`의 사용자 콜백 첫 호출은 **내부 구독 N개가 모두 생성된 뒤**에 일어나야 한다 — 그렇지 않으면 콜백이 읽는 경로가 곧 교체될 임시 프록시에 수집되어 아무도 깨우지 못한다. 즉 그 첫 반환값은 어떤 `firstRunner`에도 도달할 수 없다.
+>
+> 해결: 내부 구독 i의 **첫 실행이 우리 쪽 `AbortController`의 signal을 반환**하고, 사용자 teardown을 그 컨트롤러들에 연결한다(`relayTeardown`).
+> ```ts
+> const controllers = watches.map(() => new AbortController());
+>
+> watch((ref, isFirst) => {
+>   refs[i] = ref;
+>   if (isFirst) return controllers[i].signal;          // 코어에 해제 통로를 준다
+>   return relayTeardown(callback(combinedStore, false), controllers, false);
+> }, userOption);
+>
+> relayTeardown(callback(combinedStore, true), controllers, true);
+> ```
+> **teardown 의미는 평범한 `watch`와 정확히 일치시킨다.** 첫 호출은 `AbortSignal`만, 이후는 `false`만 유효하다. 첫 호출의 `false`로 해제하면 헬퍼가 감싸는 대상보다 엄격해진다 — `relayTeardown`이 `isFirst`를 받는 이유다.
+>
+> `false`가 뒤늦게 오면 코어가 그 내부 구독 하나를 제거하고, 컨트롤러들이 나머지 N-1을 내린다. `removeRun`이 멱등이라 중복 제거는 무해하다.
+>
+> 부수 효과로 **임시 구독이 사라졌다.** 기존 `refs = watches.map(w => w(() => {}, opt))`는 ref를 얻으려고 소스마다 구독을 하나씩 만들었고 아무도 해제하지 않았다. 내부 구독의 첫 실행이 `refs`를 채우므로 그 줄이 불필요하다.
+
+같은 틱에 여러 watch가 변하면 콜백이 N회 발화하는 문제는 **`DC-11`로 분리했다.** 원안은 CI-13의 배칭 스케줄러로 합치려 했으나 `DC-03`이 배칭을 기각하고 `INV-4`가 지연을 금지했으므로, N회가 정의된 동작이다.
 
 **CI-07** — `createComputed`에 이전 결과 비교를 넣는다.
 ```ts
@@ -245,11 +260,15 @@ const next = callback(refs);
 if (!Object.is(next, result)) { result = next; notify(); }
 ```
 - 기본 비교자는 `Object.is`. 객체를 반환하는 computed를 위해 `createComputed(watches, fn, { equals })` 3번째 인자를 연다.
-- 초기 refs 확보용 `watch(() => false)` 호출은 제거한다. `false` 반환은 코어에서 "구독 삭제" 신호라 의미가 충돌한다. 대신 `watch()` 무인자 호출로 참조만 얻는다.
-- 해제: 반환 proxy에 `dispose()`를 추가하는 대신, 구독 콜백이 `AbortSignal`을 반환할 수 있도록 통로를 연다 (CI-06과 동일 패턴).
+- 초기 refs 확보용 `watch(() => false)` 호출은 **`watch()`로 바꾸는 게 아니라 통째로 제거한다.** `false` 반환이 코어의 "구독 삭제" 신호와 충돌하는 것도 문제지만, 더 큰 문제는 그 호출이 소스마다 해제되지 않는 구독을 하나씩 만든다는 점이다. 내부 구독의 첫 실행이 `refs`를 채우게 하고, 파생값은 전원 배선이 끝난 뒤 **한 번** 계산한다.
+  > 첫 실행에서 `callback(refs)`를 부르면 안 된다. 그 시점에 다른 refs가 아직 없어 사용자 콜백이 `undefined`를 만진다 (원안 구조에서 실제로 임시 프록시에 구독이 수집되고 있었다).
+  > 배선이 끝난 뒤 `result = callback(refs)`를 부르면 읽기가 **진짜 구독에 수집된다.** 프록시는 자신이 속한 run을 들고 다니므로 "run 실행 중"인지와 무관하다.
+- 해제: 반환 proxy에 `dispose()`를 추가하는 대신, 구독 콜백이 `AbortSignal`을 반환할 수 있도록 통로를 연다 (CI-06과 동일한 `relayTeardown` 패턴).
 
-**CI-14** — dep 재수집. `run` 실행 직전에 해당 구독자의 `RenderListSub`를 스냅샷 후 비우고, 콜백 실행 중 `collector`가 다시 채우게 한다. 실행 후 사라진 key는 `keyIndex`에서도 제거한다.
-- **동작 변경**이므로 `createStore(v, { trackDeps: true })` opt-in으로 시작한다 (`DC-02`).
+**CI-14** — dep 재수집. `run` 실행 직전에 해당 구독자의 `RenderListSub`를 비우고, 콜백 실행 중 `collector`가 다시 채우게 한다.
+- **`runner`가 아니라 `run` 클로저(`core/ref.ts`)에 넣는다.** 무엇을 읽는지는 콜백이 정하므로 재수집은 **구독의 성질**이고 쓰기의 성질이 아니다. 덕분에 `runner`는 손대지 않는다. (원안의 "`keyIndex`에서 제거"는 `DC-10` 이후 `pathNode.subs.delete(run)`이다.)
+- **동작 변경**이므로 `createStore(v, { trackDeps: true })` opt-in으로 시작한다 (`DC-02`). `createStoreManualSync`도 같은 옵션을 받는다 — 같은 메커니즘이고 배제할 이유가 없다.
+- **콜백이 throw하면 이전 dep을 되돌려 합친다.** 콜백이 경로 한두 개를 읽고 실패하면 재수집 결과가 불완전하다. 그대로 두면 구독이 조용히 죽는다. 합치기(merge)는 구독을 과하게 넓힐 뿐 좁히지 않으므로 안전한 방향이다.
 - 리스크: 콜백이 조건부로 읽는 값에 대해 커넥터 렌더 횟수가 줄어든다. 커넥터 테스트가 렌더 횟수를 단언하고 있으면 깨진다 → Phase 8에서 확인.
 
 **CI-16** — `core/ref.ts:43`의 `cacheMap.set(renew, ...)`을 `cache` 옵션 뒤로 옮긴다. `cache:false`가 캐시를 오염시키지 않게 한다. 중복 구독 증식 자체는 `cache:false`의 정의된 의미이므로 유지하되, JSDoc에 "해제 수단은 `AbortSignal`뿐"임을 명시한다.
@@ -278,8 +297,17 @@ if (!Object.is(next, result)) { result = next; notify(); }
 - [ ] **DC-01** CI-04 중간 경로 부재 처리: (a) 자동 생성 / (b) 명시적 에러 → **TBD**
   - 근거 필요: 자동 생성은 오타를 조용히 삼킨다. 명시적 에러는 동적 스키마에서 불편하다.
   - 검증: Phase 6 baseline test
-- [ ] **DC-02** CI-14 dep 재수집을 기본값으로 켤 것인가 → **TBD (초기값: opt-in `trackDeps`)**
-  - 검증: Phase 8 커넥터 통합 테스트에서 렌더 횟수 비교
+- [x] **DC-02** CI-14 dep 재수집 기본값 → **해소 (2026-09-17): 2.x는 opt-in `trackDeps`로 확정. 기본값 전환은 `DC-08`(major) 사안**
+  - `DC-03`과 같은 성질이다. 켜면 알림 횟수가 줄어드는데, 그건 **버그 수정이 아니라 계약 변경**이다. 조건 분기로 안 읽게 된 값을 수정해도 콜백이 안 불리는 건 옳지만, 그 동작에 기대고 있던 코드는 깨진다
+  - 실측한 trade-off (500회 쓰기 / 구독자 50):
+
+    | 시나리오 | `trackDeps` off | on |
+    |---|---|---|
+    | 모든 경로를 계속 읽음 (K=1/8/32) | 8.8 / 31.4 / 118.8 ms | 12.1 / 46.3 / 164.5 ms (**+29~47%**) |
+    | 버린 경로에 쓰기 (K=32→1) | 콜백 25,000회, 7.2 ms | **콜백 0회, 0.3 ms** |
+
+  - 즉 **아무것도 안 버리면 순손해**이고, 버린 경로를 건드릴 때만 이득이다. 어느 쪽인지는 애플리케이션의 콜백 모양에 달렸으므로 라이브러리가 기본값으로 정해줄 수 없다 → opt-in
+  - 검증: `src/tests/core/lifecycle.ts`(재수집 5건 + 기본값 off 1건), `regression.ts` CI-14 스냅샷 무변경, 차분 스윕(기본값 기준) 무차이. 커넥터 렌더 횟수는 Phase 8 (M-05 #9)
 - [x] **DC-03** CI-13 배칭 → **해소 (2026-09-17): 배칭을 도입하지 않는다. `INV-4`로 승격**
   - CI-13은 결함이 아니었다. 지연 전파를 두지 않은 것은 **예측가능성을 위한 의도된 설계 결정**이다. `REQUIREMENTS.md`가 이를 "성능" 항목으로 올린 것이 오분류였고, CI-13을 비목표로 재분류했다
   - 구현해 측정한 뒤 되돌렸다(`20ffb36`, `8990fd1` — reflog). 측정치는 남긴다:
@@ -296,7 +324,11 @@ if (!Object.is(next, result)) { result = next; notify(); }
   - 근거: 문자열 패스스루 안은 `_value`/`_navi`/`_type`을 키로 쓰는 사용자 상태를 가리는 **새 회귀**를 만든다(§3.2 실측). Symbol은 충돌 원천 차단. `ownKeys` 트랩이 devtools에 실제 상태 키를 보여주므로 표시 키의 콘솔 역할도 불필요해짐
   - 부수 효과: 타깃이 빈 객체가 되어 CI-02의 무한 재귀가 원천 소멸
   - 검증: Phase 2 — `tsc --noEmit`, M-02, M-03(devtools 육안)
-- [ ] **DC-06** 공식 `dispose()` API를 추가할 것인가, `AbortSignal` 단일 경로를 유지할 것인가 → **TBD (초기값: AbortSignal 유지)**
+- [x] **DC-06** 공식 `dispose()` API → **해소 (2026-09-17): 추가하지 않는다. `AbortSignal` / `false` 단일 경로 유지**
+  - `dispose()`가 필요했던 이유는 "`combineWatch`·`createComputed`에서는 `AbortSignal`이 안 통한다"였다. **CI-06/CI-07이 그 통로를 열었으므로 이유가 없어졌다** — 이제 헬퍼의 teardown은 평범한 `watch`와 동일하게 동작한다
+  - 반환값이 프록시라는 점도 걸림돌이다. `createComputed`의 반환은 `{ value }`이고 `combineWatch`의 반환은 상태 모양을 미러링하는 프록시다. 거기에 `dispose`를 얹으면 사용자 상태의 `dispose` 키를 가리게 된다 — `DC-05`에서 표시 키를 Symbol로 옮긴 것과 같은 함정이다
+  - 해제 수단이 둘이 되면 "어느 쪽이 정본인가"를 문서가 계속 설명해야 한다. 하나로 둔다
+  - 검증: `lifecycle.ts`의 teardown 5건 (abort / 후속 `false` / 첫 호출 `false` 무시 / computed abort), `connect-react/src/tests/react/unmount-leak.tsx`
 - [ ] **DC-07** `cloneDeep`을 `structuredClone` 위임으로 갈 것인가 → **TBD (초기값: 위임 + 폴백)**
 - [x] **DC-09** 번들 예산 (NFR-3) → **해소 (2026-09-16): 상한을 절대값 gzip 4,000 B로 재설정**
   - 최초 `+15%`(3,089 B)는 작업 범위를 모르는 상태에서 정한 수치였다. Phase 2만으로 3,140 B(+16.9%)이고 Phase 4가 더 늘린다
@@ -318,17 +350,21 @@ if (!Object.is(next, result)) { result = next; notify(); }
   - 검사 단위를 구독자에서 노드로 내리는 최적화는 **이 수정에 의존한다.** 전 경로 재조회가 버그의 낡은 저장값을 우연히 복구하고 있었기 때문이다
   - 검증: `src/tests/core/narrowing.ts`(차분 오라클 750 비교 + 양방향 단정), 벤치 게이트 `1000 live index nodes ≤ 5 ms`, 뮤테이션 3방향. §3.4-1
 
-- [ ] **DC-11** `combineWatch`의 같은 틱 다중 변경 → **TBD (Phase 5). `INV-4` 하에서는 (a)로 기울어짐**
-  - `combineWatch`는 watch N개를 각각 구독하므로 한 틱에 둘이 바뀌면 콜백이 N회 발화한다(`CI-06` 주변). 이를 1회로 합치려면 `combineWatch` 자신이 지연해야 하고, 그것은 `INV-4` 위반이다 — 이 헬퍼만 비동기가 되어 라이브러리 안에 타이밍 모델이 둘 생긴다
-  - 선택지: **(a) N회를 정의된 동작으로 문서화** / (b) `combineWatch`만 지연 (`INV-4` 위반, 기각 유력) / (c) 사용자가 `createStoreManualSync`로 시점을 묶게 안내
-  - 검증: M-04 #3
+- [x] **DC-11** `combineWatch` / `createComputed`의 같은 틱 다중 변경 → **해소 (2026-09-17): (a) 소스 변경당 1회가 정의된 동작. 문서화한다**
+  - 합치려면 지연해야 하고 그건 `INV-4` 위반이다. 헬퍼만 비동기가 되어 라이브러리 안에 타이밍 모델이 둘 생긴다
+  - 실측으로 확인: `r1.n.value = 2; r2.n.value = 2;` → `combineWatch` 콜백 **2회**, `createComputed` 콜백 **2회**. 쓰기 2회는 전파 패스 2회다
+  - 시점을 묶어야 하는 사용자에게는 `createStoreManualSync` + `sync()`가 있다 (`INV-4`와 동일한 안내)
+  - `createComputed`는 그래도 **파생값이 안 바뀌면 안 부른다**(CI-07). 소스 2개가 변해도 `max`가 그대로면 0회다. 즉 "소스 변경당 1회"의 상한 안에서 값 기준으로 더 줄어든다
+  - 검증: `lifecycle.ts`의 "fires once per source change in a tick" 2건, M-04 #3
 
 - [ ] **DC-08** semver 등급. CI-01/13/14/16이 동작을 바꾼다. 2.2.0(opt-in 전부) vs 3.0.0(기본값 전환) → **TBD**
   - `DC-03` 해소(2026-09-17)로 CI-13이 **비목표가 되어 등급 산정에서 빠진다**. 남은 변수는 `DC-02`(CI-14)와 CI-01·CI-16의 동작 변경 등급. `CI-21`(narrowing 누락 수정)은 버그 수정이므로 patch 등급
 
 ## 5. 통합 결정 (Integration Decisions)
 
-- [x] **IC-01** 커넥터 5종의 `AbortSignal` 해제 감사 → **해소 (Phase 0, 2026-09-16)**
+- [x] **IC-01** 커넥터 5종의 `AbortSignal` 해제 감사 → **해소 (Phase 0, 2026-09-16) / 누수 실체는 Phase 5에서 수정**
+
+  > **후속 (2026-09-17).** 감사 결론("커넥터는 제 몫을 한다")은 맞았고, 누수는 **헬퍼 쪽**이었다. 커넥터가 반환한 `AbortSignal`을 `combineWatch`·`createComputed`가 코어에 전달하지 않아, 그 둘로 연결된 컴포넌트는 언마운트 후에도 구독과 `setState` 클로저를 영구 보유했다. `connect-react/src/tests/react/unmount-leak.tsx`가 그 누수를 스냅샷으로 고정해 뒀고, **Phase 5(CI-06/CI-07)가 두 스냅샷을 0으로 뒤집었다.** 출시된 2.1.0에는 이 누수가 있다.
   - **결론: 커넥터 5종 전부 정상적으로 해제한다.** react/preact는 `useEffect` 클린업, vue는 `onUnmounted`, svelte는 `onDestroy`, solid는 `onCleanup`에서 `abortController.abort()`를 호출하고, renew에서 `abortController.signal`을 반환한다. 따라서 **CI-17은 커넥터 버그가 아니다.**
   - **그러나 이 감사에서 CI-06/CI-07의 심각도가 올라갔다.** 5종 전부가 테스트에서 `connectX(combineWatch([...]))` / `connectX(createComputed([...]))` 형태로 쓰는데, `combineWatch`와 `createComputed`는 내부 `watch(...)` 콜백의 반환값을 코어로 돌려주지 않는다. 그 결과 **커넥터가 반환한 `AbortSignal`이 코어에 도달하지 못하고, 해당 컴포넌트는 언마운트 후에도 구독이 영구히 남는다.**
   - 실측 (React, `packages/connect-react/src/tests/react/unmount-leak.tsx`):

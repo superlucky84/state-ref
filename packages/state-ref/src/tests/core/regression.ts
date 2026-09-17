@@ -395,7 +395,7 @@ if (import.meta.vitest) {
   });
 
   describe('CI-06 combineWatch swallows the AbortSignal', () => {
-    it('SNAPSHOT (wrong): the subscription survives abort() — Phase 5 must flip this', () => {
+    it('FIXED (Phase 5): abort() on the returned signal stops the callback', () => {
       const w1 = createStore<{ n: number }>({ n: 1 });
       const w2 = createStore<number>(2);
       const r1 = w1();
@@ -412,12 +412,12 @@ if (import.meta.vitest) {
       fires = 0;
       r1.n.value = 10;
 
-      expect(fires).toBe(1);
+      expect(fires).toBe(0);
     });
   });
 
   describe('CI-07 createComputed fires on unchanged derived values', () => {
-    it('SNAPSHOT (wrong): fires although max() did not change — Phase 5 must flip this', () => {
+    it('FIXED (Phase 5): does not fire when max() did not change', () => {
       const w1 = createStore<{ n: number }>({ n: 1 });
       const w2 = createStore<{ n: number }>({ n: 9 });
       const r1 = w1();
@@ -435,7 +435,7 @@ if (import.meta.vitest) {
       r1.n.value = 2;
 
       expect(store.value).toBe(9);
-      expect(fires).toBe(1);
+      expect(fires).toBe(0);
     });
   });
 
