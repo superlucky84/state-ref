@@ -173,7 +173,7 @@ git worktree remove /tmp/released
 | 3 | `pnpm test` (루트 전체) | 전량 통과 | |
 | 4 | `tsc --noEmit` | 에러 0 | |
 | 5 | CHANGELOG | CI-01~CI-20 ↔ 사용자 영향 매핑 존재 | |
-| 6 | `README.md` / `stateRefDocs` / `skills` / `state-ref-agent-addon.md` | 배열 API·computed 발화 조건·구독 해제 방법 서술이 구현과 일치 (IC-03) | |
+| 6 | `README.md` / `stateRefDocs` / `skills` / `state-ref-agent-addon.md` | 배열 API·computed 발화 조건·구독 해제 방법 서술이 구현과 일치 (IC-03). **`CI-22` 계약이 있어야 한다** — 열린 키 공간(긴 배열 인덱스, uuid 키)에서 경로 노드가 무한히 누적되므로 스토어를 분리하거나 주기적으로 재생성하라 (`DC-13`) | |
 | 7 | `package.json` version | `DC-08` 결정과 일치 | |
 | 8 | 문서 4종 | 최종 구현과 모순 없음, 미해결 `DC`/`IC` 없음 | |
 

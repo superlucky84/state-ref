@@ -29,6 +29,7 @@
 | CI-12 | 쓰기마다 전 구독자 × 전 경로 풀스캔 → **Phase 3에서 경로 트리로 해결** | `src/connectors/runner.ts:10-32` | 성능 |
 | CI-13 | ~~배칭 없음 — `.value` 대입 1회당 `runner` 1회~~ → **비목표(non-goal)로 재분류.** 지연 전파를 두지 않는 것은 예측가능성을 위한 **의도된 설계**다 (`INV-4`, `DC-03`) | `src/proxy/index.ts:121-123` | ~~성능~~ 설계 |
 | CI-21 | **narrowing이 배열 `length` 변경을 누락한다** — `items[2]`에 쓰면 길이가 늘어나지만 `length`는 쓰기 노드의 형제라 영향 집합 밖이다. `items.length` 구독자가 통보받지 못한다. Phase 3(`db5dc66`)이 들여왔고 출시 전 발견 | `src/path/index.ts` (`affectedRuns`) | 정확성 |
+| CI-22 | **경로 트리가 회수되지 않는다** — `childOf`가 만든 `PathNode`는 스토어 수명 동안 남는다. 해제는 `subs`에서 `run`을 빼는 것뿐이고(`runner.ts:39`, `collector.ts:53`) `children.delete`는 없다. 배열 인덱스·동적 키처럼 **열린 키 공간**에서 노드가 무한 증가하고, 죽은 형제를 `length` 쓰기가 계속 순회한다. Phase 3(`db5dc66`)이 들여왔고 출시 전 발견. main에는 없다 → **`DC-13`: 정확성 문제가 아니므로 코드는 그대로 두고 계약 문서화 + 경계 테스트로 고정** (`tree-lifetime.ts`) | `src/path/index.ts:42` (`childOf`) | 누수/성능 |
 | CI-14 | 의존성 재수집 없음 — 더 이상 읽지 않는 경로도 영구 구독 → **Phase 5에서 `trackDeps` opt-in으로 제공** (`DC-02`: 기본값 전환은 major 사안) | `src/connectors/collector.ts:26` | 정확성/성능 |
 | CI-15 | 프록시 identity 불안정 (`ref.a !== ref.a`), 접근마다 신규 할당 | `src/proxy/index.ts:88-98` | 성능 |
 | CI-16 | `cache:false`가 구독을 중복 증식시키고 `cacheMap`에는 계속 write → **Phase 5에서 캐시 오염만 수정.** 중복 증식은 `cache:false`의 정의된 의미로 유지 | `src/core/ref.ts:43` | API |
@@ -98,6 +99,68 @@ ref.other.value = 1;           // → catch 진입, console.warn 발생
 
 도달 불가인 것은 **주석이 설명하는 시나리오**("값이 제거됨")뿐이다. 제거된 값은 옵셔널 체이닝으로 `undefined`가 되므로 throw하지 않는다. 따라서 CI-18의 처리는 "제거"가 아니라 **"격리는 유지하고 틀린 주석·메시지를 고친다"** 로 변경했다. `console.warn("Value for key ... has been removed")`는 원인을 오진하는 메시지였다.
 
+### 3.6 경로 트리 누적 (CI-22, Phase 6 추가 발견)
+
+`createStore`의 `pathRoot`(`core/index.ts:58`)는 스토어 클로저에 잡혀 있고, 노드는 프록시에서 **프로퍼티에 접근하는 순간** 생긴다(`proxy/index.ts:160` → `childProxy` → `childOf`). `.value` 읽기가 아니라 접근 자체가 기준이므로, 쓰기만 한 경로·오타 경로도 노드를 남긴다.
+
+측정 (Node 20.3.0, `core/index.ts`에 `__pathRoot`를 임시 노출해 노드 수를 직접 셈):
+
+| 시나리오 | 실제 데이터 | 트리 노드 | 구독 있는 노드 |
+|---|---|---|---|
+| A. `items[i]`에 10,000회 쓴 뒤 `items.value = [0,1]` | 원소 **2개** | **10,003** | 1 |
+| B. `byId['id-'+i]`에 10,000회 쓰되 매번 `byId.value = {}` | 키 **0개** | **10,003** | 1 |
+
+메모리보다 순회 비용이 먼저 드러난다. 죽은 인덱스 노드는 `subs`가 비어 하는 일이 없지만, `length` 쓰기의 형제 분기가 **전부 순회한다**:
+
+| `items.length` 쓰기 100회 | 시간 |
+|---|---|
+| 죽은 인덱스 노드 10,000개 | **10.8 ms** |
+| 깨끗한 스토어 | 0.1 ms |
+
+§3.3이 "형제를 좁히지 않으면 O(N)"이라 적은 비용이, 살아있는 노드가 아니라 **회수되지 않은 노드**에서 되살아난다. 좁히기(§3.4 `DC-12`)는 이 경로를 못 막는다 — `length` 쓰기는 정의상 형제 전부를 봐야 하기 때문이다.
+
+재현:
+
+```js
+const watch = createStore({ items: [] });
+const ref = watch();
+for (let i = 0; i < 10000; i++) ref.items[i].value = i;
+ref.items.value = [0, 1];        // 배열은 원소 2개
+// 트리에는 인덱스 노드 10,000개가 그대로 남아 있다
+for (let i = 0; i < 100; i++) ref.items.length.value = (i % 2) + 1;   // 10.8 ms
+```
+
+**main에는 없는 문제다.** `main:src/connectors/collector.ts`는 `.value` 읽기 때 문자열 key를 만들어 그 구독자의 subList에만 넣으므로, `storeRenderList.delete(run)` 한 번으로 전부 사라진다. 경로별 영속 구조가 없어 죽은 경로가 쌓일 곳이 없다. `PathNode` 트리는 Phase 3(`db5dc66`)이 들여온 **새 영속 자료구조**이고, 수명이 구독이 아니라 **스토어**에 묶인다.
+
+`DC-10`이 제거한 `symbolIdMap`(CI-09)과 방향이 반대다:
+
+| | CI-09 (main, 제거됨) | CI-22 (이 브랜치) |
+|---|---|---|
+| 누적 대상 | Symbol 키만 | **접근된 모든 경로** |
+| 범위 | 모듈 전역 | 스토어 단위 |
+| 촉발 조건 | 동적 Symbol 키 — 드묾 | 배열 인덱스 / 동적 문자열 키 — **흔함** |
+| 성능 영향 | 없음 | 형제 순회가 죽은 노드까지 훑음 |
+
+#### 누적 구조는 하나가 아니다 (추가 측정, 2026-09-17)
+
+`PathNode.children`만이 아니라 **`childProxies`(`proxy/index.ts:27`)도 회수되지 않는다.** 강참조 `Map`이라 한 번 접근된 세그먼트의 프록시를 영구 보유하고, 그 프록시가 자기 `PathNode`를 클로저로 든다.
+
+```js
+const watch = createStore({ items: [] });
+const ref = watch();
+for (let i = 0; i < 5000; i++) ref.items[i].value = i;
+const before = ref.items[2500];
+ref.items.value = [0, 1];
+ref.items[2500] === before;        // true — 값이 사라져도 프록시는 남는다
+```
+
+| 측정 | 결과 |
+|---|---|
+| 동적 키 50,000회 접근 후 힙 (실제 키 0개) | **+73 MB** |
+| 배열 교체 후 `ref.items[2500]` identity | 교체 전과 동일 |
+
+이것이 `DC-13`에서 "`children`만 약참조화하는 안"을 기각한 근거다 — 캐시가 노드를 계속 붙들기 때문에 **아무것도 회수되지 않는다.** 그리고 이 유지는 `CI-15`(프록시 identity 안정)가 **설계대로 동작하는 것**이기도 하다. 즉 메모리와 identity 보장이 같은 구조에 묶여 있다.
+
 ## 4. 요구사항
 
 ### 4.1 기능 요구 (FR)
@@ -150,3 +213,5 @@ ref.other.value = 1;           // → catch 진입, console.warn 발생
 - 작성: 2026-09-16 / 기준 `8836095`
 - Phase 0 완료 (2026-09-16): baseline 테스트·벤치 확보, `IC-01`~`IC-03` 해소, 회귀 스냅샷 고정
 - 다음 단계: Phase 1 (계약 정합성) — `DESIGN.md`의 `DC-01`~`DC-08`은 여전히 TBD이나 Phase 1에는 불필요
+- **CI-22 추가 (2026-09-17, Phase 6 중 발견).** 경로 트리가 회수되지 않는다 — §3.6. 정확성 문제가 아니므로 릴리스를 막지 않는다
+- **CI-22 / DC-13 해소 (2026-09-17).** 누적 구조가 트리와 프록시 캐시 **둘**임을 확인하고(§3.6), 회수 후보들을 실측으로 좁혀 **(a) 문서화 + 경계 테스트**로 닫았다. 경계 테스트는 `src/tests/core/tree-lifetime.ts`. 미해결 결정은 `DC-08` 하나뿐이다
