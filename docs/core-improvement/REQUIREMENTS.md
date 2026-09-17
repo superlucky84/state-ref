@@ -27,7 +27,8 @@
 | CI-10 | `StateRefStore<T[]>` 타입/런타임 불일치 (`.map`, `.length`) | `src/types/index.ts:14-20` | 타입 |
 | CI-11 | 읽기 O(depth²) — `lens.get`이 devtools 표시용으로만 호출됨 | `src/proxy/index.ts:86` | 성능 |
 | CI-12 | 쓰기마다 전 구독자 × 전 경로 풀스캔 → **Phase 3에서 경로 트리로 해결** | `src/connectors/runner.ts:10-32` | 성능 |
-| CI-13 | 배칭 없음 — `.value` 대입 1회당 `runner` 1회 | `src/proxy/index.ts:121-123` | 성능 |
+| CI-13 | ~~배칭 없음 — `.value` 대입 1회당 `runner` 1회~~ → **비목표(non-goal)로 재분류.** 지연 전파를 두지 않는 것은 예측가능성을 위한 **의도된 설계**다 (`INV-4`, `DC-03`) | `src/proxy/index.ts:121-123` | ~~성능~~ 설계 |
+| CI-21 | **narrowing이 배열 `length` 변경을 누락한다** — `items[2]`에 쓰면 길이가 늘어나지만 `length`는 쓰기 노드의 형제라 영향 집합 밖이다. `items.length` 구독자가 통보받지 못한다. Phase 3(`db5dc66`)이 들여왔고 출시 전 발견 | `src/path/index.ts` (`affectedRuns`) | 정확성 |
 | CI-14 | 의존성 재수집 없음 — 더 이상 읽지 않는 경로도 영구 구독 | `src/connectors/collector.ts:26` | 정확성/성능 |
 | CI-15 | 프록시 identity 불안정 (`ref.a !== ref.a`), 접근마다 신규 할당 | `src/proxy/index.ts:88-98` | 성능 |
 | CI-16 | `cache:false`가 구독을 중복 증식시키고 `cacheMap`에는 계속 write | `src/core/ref.ts:43` | API |

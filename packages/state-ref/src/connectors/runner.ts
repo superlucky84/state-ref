@@ -1,6 +1,12 @@
-import type { Run, Renew, StateRefStore, StoreRenderList } from '@/types';
+import type {
+  Run,
+  RunInfo,
+  Renew,
+  StateRefStore,
+  StoreRenderList,
+} from '@/types';
 import type { PathNode } from '@/path';
-import { affectedRuns } from '@/path';
+import { forEachAffectedNode } from '@/path';
 
 /**
  * Reports the errors user code threw during a single propagation pass.
@@ -48,40 +54,56 @@ export function runner(
   storeRenderList: StoreRenderList<any>,
   writtenNode?: PathNode
 ) {
-  const candidates: Iterable<Run> = writtenNode
-    ? affectedRuns(writtenNode)
-    : storeRenderList.keys();
   const runableRenewList: Set<Run> = new Set();
   const errors: unknown[] = [];
 
-  for (const run of candidates) {
-    const defs = storeRenderList.get(run);
+  /**
+   * Re-reads one subscribed path and records the subscriber if it moved.
+   *
+   * Reading a subscribed path only throws when the user's state exposes a
+   * throwing accessor somewhere along it. A value that was merely removed
+   * yields "undefined" instead, because the lens walks with optional chaining.
+   * Either way, one bad path must not abort the scan for every other
+   * subscriber.
+   */
+  const check = (run: Run, item: RunInfo<any>) => {
+    try {
+      const nextValue = item.getNextValue();
 
-    if (!defs) {
-      continue;
-    }
-
-    defs.forEach(item => {
-      const { value, getNextValue } = item;
-
-      try {
-        const nextValue = getNextValue();
-
-        if (value !== nextValue) {
-          runableRenewList.add(run);
-          item.value = nextValue;
-        }
-      } catch (error) {
-        /**
-         * Reading a subscribed path only throws when the user's state exposes a
-         * throwing accessor somewhere along it. A value that was merely removed
-         * yields "undefined" instead, because the lens walks with optional
-         * chaining. Either way, one bad path must not abort the scan for every
-         * other subscriber.
-         */
-        errors.push(error);
+      if (item.value !== nextValue) {
+        runableRenewList.add(run);
+        item.value = nextValue;
       }
-    });
+    } catch (error) {
+      errors.push(error);
+    }
+  };
+
+  if (writtenNode) {
+    /**
+     * A write moves references only along its own path and through the subtree
+     * it replaced, so those are the only nodes worth re-reading - and at each
+     * one, only the subscribers registered on that exact node. A subscriber
+     * watching twenty paths is checked on the one that moved rather than on all
+     * twenty.
+     */
+    forEachAffectedNode(writtenNode, node =>
+      node.subs.forEach(run => {
+        const item = storeRenderList.get(run)?.get(node);
+
+        if (item) {
+          check(run, item);
+        }
+      })
+    );
+  } else {
+    /**
+     * A manual `sync()` knows nothing about where the writes landed, so every
+     * subscribed path is re-read.
+     */
+    storeRenderList.forEach((defs, run) =>
+      defs.forEach(item => check(run, item))
+    );
   }
 
   runableRenewList.forEach(run => {

@@ -74,6 +74,30 @@ for (const n of [100, 400, 1600]) {
 }
 
 /* ------------------------------------------------------------------ */
+console.log(
+  '\nWRITE — 500 writes to items[0], N live index nodes  [sibling narrowing]'
+);
+
+/**
+ * Writing an array index has to consider one sibling - `length`, which the
+ * assignment can move - but not the other indices, which the array copy
+ * carries across. Visiting them all instead costs O(N) per write: this same
+ * row measured 38.2 ms at N = 1000 while that was happening.
+ */
+for (const n of [10, 100, 1000]) {
+  const watch = createStore({
+    items: Array.from({ length: n }, (_, i) => i),
+  });
+  const ref = watch();
+  for (let i = 0; i < n; i += 1) watch(store => sink(store.items[i].value));
+
+  const ms = measure(() => {
+    for (let i = 0; i < 500; i += 1) ref.items[0].value = i;
+  });
+  record('array', `${String(n).padStart(4)} live index nodes`, ms, n === 1000 ? 5 : null);
+}
+
+/* ------------------------------------------------------------------ */
 console.log('\nWRITE — subscriber scaling factor (want: sub-linear)');
 const w = rows.filter(r => r.group === 'write').map(r => r.ms);
 console.log(
