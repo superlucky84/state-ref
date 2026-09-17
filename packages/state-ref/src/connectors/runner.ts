@@ -36,7 +36,7 @@ export function removeRun(storeRenderList: StoreRenderList<any>, run: Run) {
   const subList = storeRenderList.get(run);
 
   if (subList) {
-    subList.forEach((_, pathNode) => pathNode.subs.delete(run));
+    subList.forEach((_, pathNode) => pathNode.subs?.delete(run));
   }
 
   storeRenderList.delete(run);
@@ -88,7 +88,7 @@ export function runner(
      * twenty.
      */
     forEachAffectedNode(writtenNode, node =>
-      node.subs.forEach(run => {
+      node.subs?.forEach(run => {
         const item = storeRenderList.get(run)?.get(node);
 
         if (item) {

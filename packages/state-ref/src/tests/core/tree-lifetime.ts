@@ -30,17 +30,30 @@ if (import.meta.vitest) {
   describe('the tree accumulates and is never pruned (CI-22)', () => {
     it('keeps a node after its last subscription is dropped', () => {
       const root = createPathRoot();
-      const node = childOf(childOf(root, 'a'), 'b');
+      const a = childOf(root, 'a');
+      const node = childOf(a, 'b');
       const run: Run = () => {};
 
-      node.subs.add(run);
+      (node.subs ??= new Set()).add(run);
       /**
        * What `removeRun` and `forgetDeps` do - the only teardown there is.
        */
-      node.subs.delete(run);
+      node.subs?.delete(run);
 
-      expect(node.subs.size).toBe(0);
-      expect(childOf(root, 'a').children.has('b')).toBe(true);
+      expect(node.subs?.size ?? 0).toBe(0);
+      expect(a.children?.has('b')).toBe(true);
+    });
+
+    it('allocates no containers for a node nobody subscribes to', () => {
+      /**
+       * 6.5-A: an empty Map and an empty Set are 83% of a bare node, and a
+       * path that is only written through never needs either.
+       */
+      const root = createPathRoot();
+      const leaf = childOf(childOf(root, 'a'), 'b');
+
+      expect(leaf.children).toBeUndefined();
+      expect(leaf.subs).toBeUndefined();
     });
 
     it('keeps one node per distinct segment ever asked for', () => {
@@ -49,7 +62,7 @@ if (import.meta.vitest) {
 
       for (let i = 0; i < 50; i += 1) childOf(items, String(i));
 
-      expect(items.children.size).toBe(50);
+      expect(items.children?.size).toBe(50);
     });
 
     it('walks dead siblings on a length write, which is where the cost is', () => {

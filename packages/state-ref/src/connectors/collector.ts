@@ -32,7 +32,7 @@ export function collector(
   }
 
   subList.set(pathNode, { value, getNextValue });
-  pathNode.subs.add(run);
+  (pathNode.subs ??= new Set()).add(run);
 }
 
 /**
@@ -50,7 +50,7 @@ export function forgetDeps(
   const previous = storeRenderList.get(run);
 
   if (previous) {
-    previous.forEach((_, pathNode) => pathNode.subs.delete(run));
+    previous.forEach((_, pathNode) => pathNode.subs?.delete(run));
     storeRenderList.delete(run);
   }
 
@@ -83,7 +83,7 @@ export function restoreDeps(
   previous.forEach((info, pathNode) => {
     if (!subList!.has(pathNode)) {
       subList!.set(pathNode, info);
-      pathNode.subs.add(run);
+      (pathNode.subs ??= new Set()).add(run);
     }
   });
 }
