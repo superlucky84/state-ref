@@ -81,27 +81,100 @@ export function copyable<T extends { [key: string | symbol]: unknown }>(
 /**
  * Provides a convenience utility to make deep copying easier in special cases.
  */
+/**
+ * Deep clone, written rather than delegated to `structuredClone` (`DC-07`).
+ *
+ * Carried across: own enumerable properties under **string and symbol** keys,
+ * `Date`, `RegExp`, `Map`, `Set`, arrays (holes and length included), and
+ * circular references.
+ *
+ * Passed through by reference, because they are not data to copy: primitives,
+ * symbols, and functions.
+ *
+ * Not reconstructed: class prototypes (a clone is a plain object), property
+ * descriptors (getters are read once and stored as values, non-enumerable
+ * properties are skipped), and the typed-array / ArrayBuffer family.
+ */
 export function cloneDeep<T>(value: T): T {
-  if (value == null) {
+  return cloneValue(value, new WeakMap());
+}
+
+function cloneValue<T>(value: T, seen: WeakMap<object, unknown>): T {
+  if (value === null || typeof value !== 'object') {
     return value;
   }
 
-  if (typeof value !== 'object') {
-    return value;
+  const source = value as unknown as object;
+
+  /**
+   * A clone is always an object, so a hit is always truthy - this is what stops
+   * a circular reference from recursing until the stack gives out, and it also
+   * keeps shared subtrees shared in the copy.
+   */
+  const started = seen.get(source);
+
+  if (started) {
+    return started as T;
   }
 
-  const isArray = Array.isArray(value);
-  const Ctor = isArray ? Array : Object;
+  if (source instanceof Date) {
+    return new Date(source.getTime()) as T;
+  }
 
-  const result = new Ctor() as T; // 새로운 객체 또는 배열 생성
+  if (source instanceof RegExp) {
+    const cloned = new RegExp(source.source, source.flags);
+    cloned.lastIndex = source.lastIndex;
 
-  for (const key in value) {
-    if (Object.prototype.hasOwnProperty.call(value, key)) {
-      result[key] = cloneDeep(value[key]); // 재귀적으로 깊은 복사
+    return cloned as T;
+  }
+
+  if (source instanceof Map) {
+    const cloned = new Map();
+    seen.set(source, cloned);
+    source.forEach((entry, key) =>
+      cloned.set(cloneValue(key, seen), cloneValue(entry, seen))
+    );
+
+    return cloned as T;
+  }
+
+  if (source instanceof Set) {
+    const cloned = new Set();
+    seen.set(source, cloned);
+    source.forEach(entry => cloned.add(cloneValue(entry, seen)));
+
+    return cloned as T;
+  }
+
+  const isArray = Array.isArray(source);
+  const cloned: any = isArray ? [] : {};
+
+  /**
+   * Registered before the children are walked, so a child pointing back here
+   * finds the clone in progress rather than starting another one.
+   */
+  seen.set(source, cloned);
+
+  /**
+   * `Reflect.ownKeys` is what carries symbol keys across; the descriptor check
+   * is what keeps an array's "length" and any other non-enumerable property
+   * from being copied as if it were state.
+   */
+  Reflect.ownKeys(source).forEach(key => {
+    if (Object.getOwnPropertyDescriptor(source, key)?.enumerable) {
+      cloned[key] = cloneValue((source as any)[key], seen);
     }
+  });
+
+  if (isArray) {
+    /**
+     * Assigning the present indices cannot restore a trailing hole, so the
+     * length is set from the source.
+     */
+    cloned.length = (source as unknown[]).length;
   }
 
-  return result;
+  return cloned as T;
 }
 /**
  * Combines multiple state watchers to produce a derived (computed) value,

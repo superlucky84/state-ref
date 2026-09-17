@@ -451,34 +451,108 @@
 
 ---
 
-## Phase 6 — Lens / 헬퍼 (CI-04, CI-08)
+## Phase 6 — Lens / 헬퍼 (CI-04, CI-08)  ✅ 완료 (2026-09-17)
 
 > **범위 축소.** CI-09는 Phase 3에서 원인(`symbolIdMap`)이 삭제되며 소멸했다.
 
-**진입 조건:** Phase 5 종료 조건 충족
+**진입 조건:** Phase 5 종료 조건 충족 ✅
 
-**체크리스트**
-- [ ] `DC-01` 확정 후 `src/lens/index.ts:44-55` `copyOnWrite` 처리 구현
-- [ ] `cloneDeep` — `structuredClone` 위임 + 실패 시 재귀 폴백 (`DC-07`)
-- [ ] 폴백 경로에 `Reflect.ownKeys` (Symbol 키 포함)
-- [ ] 폴백 경로에 `WeakMap` seen 세트 (순환 차단)
-- [ ] `cloneDeep` JSDoc에 지원 타입 명시
+### 체크리스트
+- [x] `DC-01` 확정 후 `copyOnWrite` 처리 구현 — 명시적 에러, 자동 생성 없음
+- [x] ~~`cloneDeep` — `structuredClone` 위임 + 실패 시 재귀 폴백~~ → **위임 기각 (`DC-07`).** `structuredClone`이 Symbol 키를 **조용히** 버리므로 폴백이 발동하지 않는다. 재귀 구현을 직접 씀
+- [x] `Reflect.ownKeys` (Symbol 키 포함) + `enumerable` 디스크립터 검사
+- [x] `WeakMap` seen 세트 (순환 차단 + 공유 서브트리 공유 유지)
+- [x] `Date` / `RegExp`(`lastIndex` 포함) / `Map` / `Set` 분기
+- [x] 배열의 홀과 length 보존
+- [x] `cloneDeep` JSDoc에 지원 범위 3분류 명시 (옮김 / 참조 통과 / 복원 안 함)
+- [x] **계획 외**: `DC-09` 재정의 + `bench/bundle-size.mjs` 신설 (아래)
 
-**기준 테스트**
-- [ ] `DC-01` 선택지에 대응하는 동작 검증 (자동 생성 결과 또는 에러 메시지)
-- [ ] 중간 경로 부재 시 `TypeError: Cannot set properties of undefined`가 더 이상 발생하지 않음
-- [ ] `cloneDeep`: Symbol 키 보존 (FR-5)
-- [ ] `cloneDeep`: `Date`/`Map`/`Set`/`RegExp` `instanceof` 유지
-- [ ] `cloneDeep`: 순환 참조에서 RangeError 없음 (FR-5)
-- [ ] `cloneDeep`: 원본 미변경 (deep 독립성)
-- [ ] `structuredClone` 불가 입력(함수 포함 객체)에서 폴백 동작
-- [ ] `Symbol.for('x')` 경로 구독/쓰기 정상 동작
-- [ ] 기존 `src/tests/core/symbol.ts` 전량 통과
+### 계획 대비 변경
 
-**종료 조건**
-- FR-5 충족
-- `DC-01`, `DC-07` 해소
-- `pnpm test` 전체 통과
+1. **`DC-07`의 초기값이 요구사항과 모순이었다.** "위임 + 폴백"은 FR-5(Symbol 키 보존)를 만족할 수 없다. `structuredClone`은 Symbol 키와 비열거 속성을 **모든 깊이에서 에러 없이** 버리고, 함수·Symbol 값·Proxy·`WeakMap`에서만 throw한다. 폴백은 throw할 때만 도니까 정작 고칠 대상에서는 실행되지 않는다. 게다가 폴백은 어차피 필요하므로 위임은 코드를 **추가**하는 선택이고, 경로가 둘이면 같은 입력이 다르게 복제된다 — `INV-4`와 같은 성질의 예측 불가능성이다.
+2. **`DC-01`의 경계를 실측 후에 정의했다.** 현재 동작이 "자동 생성 안 함"이 아니라 절반만 그랬다(1단계 부재는 성공, 2단계부터 throw). 그래서 "**부모** 부재는 에러, **대상 자신** 부재는 평범한 쓰기"로 경계를 명시했고, 1단계 성공은 동작 변경이 아니다.
+3. **`DC-09`를 재정의했다 (계획 외, 필수).** 아래 별도 절.
+
+### `NFR-3` 측정 오류 정정 — Phase 0~5가 잘못된 산출물을 재고 있었다
+
+Phase 6 코드를 넣으니 `state-ref.mjs` gzip이 4,374 B로 상한 4,000 B를 넘었다. 단계별로 재보니 `DC-01`만으로 +528 B였는데, 코드 몇 줄로 그럴 수 없어 빌드 산출물을 직접 봤다.
+
+**vite는 ES 라이브러리 빌드에서 `minifyWhitespace: false`를 의도적으로 강제한다** (`isEsLibBuild` 분기). 소비자 번들러가 최종 minify하고 pure 주석을 보존하도록 한 설계다. 그 결과 `dist/state-ref.mjs`에는 들여쓰기와 **우리가 쓴 JSDoc이 그대로** 들어 있다. 같은 빌드의 `state-ref.umd.js`는 2줄·주석 0개로 정상 minify된다 — 그런데 `exports.import`/`module`이 가리키는 쪽은 `.mjs`다.
+
+| | as-published (재던 값) | **minified (앱이 싣는 값)** |
+|---|---|---|
+| main 2.1.0 | 2,686 B | **1,945 B** |
+| Phase 5 | 3,663 B | **2,777 B** |
+| Phase 6 | 4,355 B | **3,068 B** |
+
+주석만 716 B, 서식까지 1,287 B가 **앱에 도달하지 않으면서** 예산을 먹고 있었다. 즉 초과는 Phase 6의 코드가 아니라 **지표의 결함**이었다.
+
+- 새 정의: `dist/state-ref.mjs`를 esbuild로 minify한 뒤 gzip ≤ **3,200 B**
+- 게이트 신설: `packages/state-ref/bench/bundle-size.mjs` (비영점 종료). esbuild는 우리 의존성이 아니라 vite를 통해 해석한다
+- 상한 3,200 B의 근거: Phase 6이 코어 번들의 마지막 증가분이므로(Phase 7은 테스트, Phase 8은 별도 번들) 상한의 역할은 예산 배분이 아니라 **회귀 방지**다. 실측 3,068 B 바로 위에 둔다
+- **주석을 깎지 않는다** — 앱에 가지 않는다
+
+### 기준 테스트 — `src/tests/core/clone-and-paths.ts` (신규 26개, 코어 117 → 143)
+
+**CI-04 / DC-01**
+- [x] 대상 자신의 부재는 그대로 성공 (`ref.a.value = 1` on `{}`)
+- [x] 경로와 누락 세그먼트를 이름으로 지목
+- [x] **첫 번째** 비객체 세그먼트를 보고한다 (마지막이 아니라)
+- [x] `null`과 `undefined` 구분
+- [x] 원시값 중간은 덮어쓰지 않고 거부 (값 보존 확인)
+- [x] throw 시 스토어 무변경 (참조 동일성까지)
+- [x] throw 시 구독자 미발화
+- [x] 읽기는 여전히 `undefined`
+- [x] manual-sync 스토어에도 적용
+- [x] `copyable().writeCopy`에도 적용 (같은 lens 공유)
+- [x] bare `lens()`는 가짜 `root` 없이 `a.b`로 보고
+- [x] Symbol 세그먼트를 `Symbol(gate)`로 읽을 수 있게 보고
+
+**CI-08 / DC-07**
+- [x] Symbol 키를 모든 깊이에서 보존
+- [x] `Date`/`RegExp`(source·flags)/`Map`/`Set` 타입 유지 + 새 인스턴스
+- [x] 객체인 Map 키도 복제
+- [x] 순환참조 → 순환하는 복제본
+- [x] **공유 서브트리는 복제본에서도 공유** (`left === right`)
+- [x] 배열과 Map을 관통하는 순환
+- [x] 배열의 홀과 length 보존, 홀로 끝나는 배열의 length도
+- [x] 배열 `length`를 상태처럼 복사하지 않음
+- [x] 비열거 속성 건너뜀
+- [x] 함수·Symbol은 참조로 통과
+- [x] `undefined` 값은 키로 존재
+- [x] 원본 미변경, 원시값은 그대로
+
+### 뮤테이션 검증
+
+| 주입한 결함 | 잡힌 테스트 |
+|---|---|
+| `DC-01` 검사 제거 | **7건** |
+| `Reflect.ownKeys` → `Object.keys` | 2건 (Symbol 키) |
+| `enumerable` 검사 제거 | 1건 |
+| `seen` 조회 제거 | **4건** (순환 + 공유 서브트리) |
+| `seen.set`을 자식 순회 뒤로 | 3건 |
+| 배열 length 보정 제거 | 1건 |
+
+### 실측
+
+| 항목 | baseline | Phase 5 | **Phase 6** | 판정 |
+|---|---|---|---|---|
+| 코어 테스트 | 49 | 117 | **143** | |
+| 커넥터 테스트 | 39 | 42 | **42** (소스 무수정) | NFR-4 ✅ |
+| `tsc --noEmit` (6패키지) | 0 | 0 | **0** | |
+| 읽기 깊이 8 (50k) | 325.6 ms | 12.4 ms | **12.4 ms** | NFR-1 ✅ |
+| 쓰기 1,600 유휴 구독자 | 35.6 ms | 0.5 ms | **0.5 ms** | NFR-2 ✅ |
+| 번들 **minified** gzip | 1,945 B | 2,777 B | **3,068 B** | NFR-3 ✅ (상한 3,200 B) |
+| 벤치 게이트 | 0/2 | 3/3 | **4/4 PASS** | |
+| 차분 스윕 vs `main` | — | 차이 0 | **차이 0** (4 시드) | |
+
+`docs/core-improvement/bench-phase6.txt`
+
+### 종료 조건
+- [x] FR-5 충족
+- [x] `DC-01`, `DC-07` 해소 (+ 계획 외 `DC-09` 재정의)
+- [x] `pnpm test` 전체 통과 (코어 143 + 커넥터 42)
+- [x] 출시 빌드 대비 차분 스윕 무차이
 
 ---
 
@@ -710,3 +784,23 @@
   | 파일 수 | 48 | **47** |
 
 - 검증: `pnpm build` / `pnpm test`(코어 117 + 커넥터 42) / 6패키지 `tsc --noEmit` 0건 / 벤치 게이트 3/3
+
+### 2026-09-17 — Phase 6 완료
+- **done**
+  - **`DC-01`** 구현 — 중간 경로 부재는 경로와 실패 세그먼트를 담은 우리 에러. "부모 부재는 에러, 대상 자신 부재는 평범한 쓰기" 경계. `copyable`도 같은 lens를 쓰므로 자동 적용
+  - **`DC-07` 기각** — `structuredClone` 위임을 하지 않는다. Symbol 키를 **조용히** 버리므로 폴백이 발동하지 않고, 폴백은 어차피 필요해서 위임은 코드를 추가하는 선택이다. 재귀 구현을 직접 씀
+  - `cloneDeep` 재작성 — `Reflect.ownKeys` + `enumerable` 검사, `WeakMap` seen(순환 + 공유 서브트리), `Date`/`RegExp`/`Map`/`Set`, 배열 홀·length
+  - **`NFR-3` 측정 오류 정정** — Phase 0~5가 잘못된 산출물을 재고 있었다. `DC-09`를 "minify 후 gzip ≤ 3,200 B"로 재정의하고 `bench/bundle-size.mjs` 게이트 신설
+  - 코어 117 → 143. 뮤테이션 6방향 전부 잡힘. 게이트 3/3 → 4/4. 차분 스윕 4 시드 차이 0
+- **next**
+  - **Phase 7 — 테스트 하드닝.** 번들에 영향 없음
+  - 그 다음 Phase 8(커넥터 통합) — `DC-08`(semver 등급) 확정, `IC-04`(vue 양방향 가드)는 배칭 기각으로 소멸했으므로 재확인만
+- **blockers**
+  - 없음. **미해결 DC는 `DC-08` 하나뿐이다**
+- **발견**
+  - **`structuredClone`은 Symbol 키를 에러 없이 버린다** (모든 깊이에서). 비열거 속성도 같다. throw하는 것은 함수·Symbol 값·Proxy·`WeakMap`뿐이다. 즉 "위임하고 실패하면 폴백" 설계는 **정작 고칠 실패를 놓친다**. 설계 문서의 초기값이 요구사항(FR-5)과 모순이었다
+  - **vite는 ES 라이브러리 빌드의 공백을 의도적으로 남긴다** (`isEsLibBuild` → `minifyWhitespace: false`). 그래서 `dist/state-ref.mjs`에 우리 JSDoc이 그대로 실려 있고, **Phase 0부터 예산이 문서 분량을 추적하고 있었다.** 같은 빌드의 `.umd.js`는 정상 minify된다. 주석 716 B + 서식 571 B = 1,287 B가 앱에 가지 않으면서 상한을 먹었다
+  - 이 때문에 "Phase 6 예산 확인됨 3,889 B"라는 직전 판단이 **틀렸다.** 프로토타입은 주석이 짧아 작게 나왔던 것이고, 최종본은 as-published 4,355 B / minified 3,068 B다. 추정을 프로토타입 품질 코드로 하면 안 되는 이유가 이것이다
+  - `DC-01`의 경계는 실측 후에야 정할 수 있었다. 기존 동작이 "자동 생성 안 함"이 아니라 1단계는 생성·2단계부터 throw인 절반 상태였다
+  - esbuild는 이 저장소의 직접 의존성이 아니다(vite의 전이 의존성). `bundle-size.mjs`는 vite를 통해 해석한다 — 측정 하나를 위해 `package.json`에 넣지 않았다
+- **commit** `cb61749` 기준, 본 Phase 6 커밋이 그 위에 쌓임

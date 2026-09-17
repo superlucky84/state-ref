@@ -166,7 +166,7 @@ if (import.meta.vitest) {
   });
 
   describe('CI-04 copyOnWrite through a missing intermediate path', () => {
-    it('SNAPSHOT (wrong): throws a cryptic TypeError — Phase 6 must flip this', () => {
+    it('FIXED (Phase 6): names the path and the segment that is not an object', () => {
       const watch = createStore<{ a: Record<string, any> }>({ a: {} });
       const ref = watch(s => noop(s.a.value));
 
@@ -174,7 +174,9 @@ if (import.meta.vitest) {
         // Types cannot express "a path that does not exist yet"; the point is
         // the runtime failure mode.
         (ref.a as any).b.c.value = 1;
-      }).toThrow(TypeError);
+      }).toThrow(
+        'Cannot write to "root.a.b.c": "root.a.b" is undefined, not an object. state-ref does not create missing intermediate paths.'
+      );
     });
   });
 
@@ -440,15 +442,15 @@ if (import.meta.vitest) {
   });
 
   describe('CI-08 cloneDeep fidelity', () => {
-    it('SNAPSHOT (wrong): symbol keys are dropped — Phase 6 must flip this', () => {
+    it('FIXED (Phase 6): symbol keys are carried across', () => {
       const key = Symbol('k');
       const cloned = cloneDeep({ [key]: 1, plain: 2 });
 
-      expect(cloned[key as unknown as keyof typeof cloned]).toBeUndefined();
+      expect(cloned[key as unknown as keyof typeof cloned]).toBe(1);
       expect(cloned.plain).toBe(2);
     });
 
-    it('SNAPSHOT (wrong): Date / Map / Set / RegExp collapse to plain objects — Phase 6 must flip this', () => {
+    it('FIXED (Phase 6): Date / Map / Set / RegExp keep their type', () => {
       const cloned = cloneDeep({
         d: new Date(0),
         m: new Map([[1, 2]]),
@@ -456,17 +458,21 @@ if (import.meta.vitest) {
         r: /x/g,
       });
 
-      expect(cloned.d instanceof Date).toBe(false);
-      expect(cloned.m instanceof Map).toBe(false);
-      expect(cloned.s instanceof Set).toBe(false);
-      expect(cloned.r instanceof RegExp).toBe(false);
+      expect(cloned.d instanceof Date).toBe(true);
+      expect(cloned.m instanceof Map).toBe(true);
+      expect(cloned.s instanceof Set).toBe(true);
+      expect(cloned.r instanceof RegExp).toBe(true);
     });
 
-    it('SNAPSHOT (wrong): circular references overflow the stack — Phase 6 must flip this', () => {
+    it('FIXED (Phase 6): a circular reference clones instead of overflowing', () => {
       const circular: Record<string, unknown> = { n: 1 };
       circular.self = circular;
 
-      expect(() => cloneDeep(circular)).toThrow(RangeError);
+      const cloned = cloneDeep(circular);
+
+      expect(cloned.n).toBe(1);
+      expect(cloned.self).toBe(cloned);
+      expect(cloned).not.toBe(circular);
     });
   });
 

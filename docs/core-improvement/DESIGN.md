@@ -346,11 +346,41 @@ if (!Object.is(next, result)) { result = next; notify(); }
   - 반환값이 프록시라는 점도 걸림돌이다. `createComputed`의 반환은 `{ value }`이고 `combineWatch`의 반환은 상태 모양을 미러링하는 프록시다. 거기에 `dispose`를 얹으면 사용자 상태의 `dispose` 키를 가리게 된다 — `DC-05`에서 표시 키를 Symbol로 옮긴 것과 같은 함정이다
   - 해제 수단이 둘이 되면 "어느 쪽이 정본인가"를 문서가 계속 설명해야 한다. 하나로 둔다
   - 검증: `lifecycle.ts`의 teardown 5건 (abort / 후속 `false` / 첫 호출 `false` 무시 / computed abort), `connect-react/src/tests/react/unmount-leak.tsx`
-- [ ] **DC-07** `cloneDeep`을 `structuredClone` 위임으로 갈 것인가 → **TBD (초기값: 위임 + 폴백). 예산 확인됨 (2026-09-17)**
-  - `DC-09` 상한과 충돌하는지 프로토타입으로 측정했다: `DC-01`(명시적 에러) + 위임 + 폴백(`Reflect.ownKeys`, `WeakMap` seen, `Date`/`RegExp`/`Map`/`Set`)을 다 넣고 **gzip 3,889 B**. 상한 4,000 B 대비 **잔여 111 B**
-  - 따라서 **`DC-09` 재검토는 불필요하다.** Phase 7(테스트 하드닝)은 번들에 영향이 없고 Phase 8(커넥터)은 별도 번들이므로, Phase 6이 코어 번들의 사실상 마지막 증가분이다
-  - 측정은 프로토타입 품질 코드 기준이므로 최종본은 수십 B 오차가 있을 수 있다. 여유가 얇으니 Phase 6 종료 시 재측정한다
-- [x] **DC-09** 번들 예산 (NFR-3) → **해소 (2026-09-16): 상한을 절대값 gzip 4,000 B로 재설정**
+- [x] **DC-07** `cloneDeep`의 `structuredClone` 위임 → **해소 (2026-09-17): 위임하지 않는다. 재귀 구현을 직접 쓴다**
+  - **초기값("위임 + 폴백")은 FR-5를 만족할 수 없다.** `structuredClone`은 **Symbol 키를 조용히 버린다.** 실측(Node 20.3.0):
+
+    | 입력 | `structuredClone` 결과 |
+    |---|---|
+    | `{ a: 1, [Symbol('s')]: 'x' }` | `keys=["a"]` — **Symbol 키 소실, 에러 없음** |
+    | `{ nested: { [sym]: 1, keep: 2 } }` | 중첩에서도 소실 (`keys=["keep"]`) |
+    | 비열거 속성 | 소실, 에러 없음 |
+    | `Date` / `Map` / `Set` / `RegExp` / 순환 | 정상 |
+    | 함수 / Symbol 값 / Proxy / `WeakMap` | `DataCloneError` throw |
+
+  - 즉 **정작 고쳐야 할 실패(Symbol 키)가 조용하다.** try/catch 폴백은 throw할 때만 도는데 Symbol 키 소실은 throw하지 않으므로 폴백이 **절대 실행되지 않는다.** CI-08의 Symbol 키 스냅샷은 그대로 남는다
+  - 위임을 하더라도 폴백은 **어차피 필요하다**(함수·Symbol 값에서 throw). 따라서 위임은 코드를 줄이는 게 아니라 **추가**하는 선택이다
+  - 그리고 경로가 둘이면 **같은 입력이 트리 안 어딘가에서 throw가 나는지에 따라 다르게 복제된다.** 예측 불가능성을 이유로 지연 스케줄러를 기각한 `INV-4`와 같은 성질의 문제다
+  - 지원 범위를 JSDoc에 명시한다: 옮기는 것(own enumerable 문자열·**Symbol** 키, `Date`/`RegExp`/`Map`/`Set`, 배열의 홀·length, 순환참조) / 참조로 통과시키는 것(원시값·Symbol·함수) / 복원하지 않는 것(클래스 프로토타입, 속성 디스크립터, TypedArray·ArrayBuffer 계열)
+  - 검증: `src/tests/core/clone-and-paths.ts` 16건 + `regression.ts` CI-08 스냅샷 3건 전환. 뮤테이션 5방향
+- [x] **DC-09** 번들 예산 (NFR-3) → **재해소 (2026-09-17): 측정 대상이 틀렸다. `state-ref.mjs`를 minify한 뒤 gzip ≤ 3,200 B로 재정의**
+
+  > **Phase 0~5는 잘못된 산출물을 재고 있었다.** vite는 ES 라이브러리 빌드에서 `minifyWhitespace: false`를 **의도적으로** 강제한다(소비자 번들러가 최종 minify하고 pure 주석을 보존하도록 — `vite/dist/node/chunks/*.js`의 `isEsLibBuild` 분기). 그래서 `dist/state-ref.mjs`는 들여쓰기와 **우리가 쓴 JSDoc이 그대로 들어 있는** 파일이고, 그걸 재면 예산이 **문서 분량을 추적**한다. 같은 빌드의 `state-ref.umd.js`는 2줄·주석 0개로 정상 minify된다.
+  >
+  > | | as-published (재던 값) | **minified (앱이 싣는 값)** |
+  > |---|---|---|
+  > | main 2.1.0 | 2,686 B | **1,945 B** |
+  > | Phase 5 | 3,663 B | **2,777 B** |
+  > | Phase 6 | 4,355 B | **3,068 B** |
+  >
+  > 주석만 716 B, 서식까지 합치면 1,287 B가 **앱에 도달하지 않는데도** 예산을 먹고 있었다. Phase 6이 "상한 초과(4,374 > 4,000)"로 보인 것이 이 때문이다.
+
+  - **새 정의**: `dist/state-ref.mjs`를 esbuild로 minify한 뒤 gzip. 게이트는 `packages/state-ref/bench/bundle-size.mjs`가 비영점 종료로 판정한다
+  - **새 상한 3,200 B의 근거**: Phase 6이 코어 번들의 마지막 증가분이다(Phase 7은 테스트, Phase 8은 별도 번들). 이 시점의 상한이 할 일은 미래 예산 배분이 아니라 **회귀 방지**이므로, 실측 3,068 B 바로 위에 둔다. 잔여 132 B
+  - 출시 대비 증가는 1,945 → 3,068 B (**+58%**)다. as-published 기준(+62%)보다 작다
+  - **문서 주석을 깎을 이유는 없다** — 앱에 가지 않는다. Phase 2의 DC-09가 "에러 메시지를 줄여도 20 B"라며 메시지 품질을 지킨 판단은 옳았고, 같은 논리가 주석에도 적용된다
+  - 이전 해소 내용은 아래에 남긴다
+
+- [x] ~~**DC-09** 번들 예산 (NFR-3) → **해소 (2026-09-16): 상한을 절대값 gzip 4,000 B로 재설정**~~ (위에서 재정의됨)
   - 최초 `+15%`(3,089 B)는 작업 범위를 모르는 상태에서 정한 수치였다. Phase 2만으로 3,140 B(+16.9%)이고 Phase 4가 더 늘린다
   - 늘어난 454 B는 전부 "프록시가 평범한 JS 객체처럼 동작하게 만드는" 값이며, 그것이 이 라이브러리의 DX 핵심이다
   - 에러 메시지 축약은 20 B만 회수되어(실측) 메시지 품질을 깎을 가치가 없다

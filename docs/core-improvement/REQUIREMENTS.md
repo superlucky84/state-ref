@@ -18,11 +18,11 @@
 | CI-01 | `editable` 옵션이 `userOption` 전달 시 우회됨 | `src/core/index.ts:49-53` | 계약 위반 |
 | CI-02 | `JSON.stringify(stateRef)` → `RangeError` 무한 재귀 | `src/proxy/index.ts:23,88` + `src/helper/index.ts:26-35` | 버그 |
 | CI-03 | `has`/`ownKeys`/`getOwnPropertyDescriptor`/`deleteProperty` 트랩 부재 | `src/proxy/index.ts:22-127` | 버그 |
-| CI-04 | 중간 경로 부재 시 `TypeError: Cannot set properties of undefined` | `src/lens/index.ts:44-55` | 버그 |
+| CI-04 | 중간 경로 부재 시 `TypeError: Cannot set properties of undefined` → **Phase 6 수정.** 경로와 실패 세그먼트를 담은 우리 에러로 교체. 자동 생성하지 않음(`DC-01`), 대상 자신의 부재는 그대로 성공 | `src/lens/index.ts:44-55` | 버그 |
 | CI-05 | 구독자 1개가 throw하면 나머지 구독자 전부 스킵 + 대입문으로 예외 전파 | `src/connectors/runner.ts:34-38` | 견고성 |
 | CI-06 | `combineWatch`가 `AbortSignal`을 코어로 반환하지 않아 해제 불가 → **Phase 5 수정.** `return` 한 줄로는 부족했다(코어는 첫 실행에서만 signal을 본다) — 내부 구독별 `AbortController`로 통로를 만듦 | `src/helper/index.ts:225-234` | 누수 |
 | CI-07 | `createComputed`이 파생값 불변인데도 발화 + 중복 발화 + 해제 수단 없음 → **Phase 5 수정.** `Object.is` 비교 + `equals` 옵션 + teardown 통로. 중복 발화는 `DC-11`로 분리(소스 변경당 1회가 정의된 동작) | `src/helper/index.ts:140-175` | 계약 위반 |
-| CI-08 | `cloneDeep`이 Symbol 키/Date/Map/Set/RegExp 손실, 순환참조 `RangeError` | `src/helper/index.ts:114-135` | 버그 |
+| CI-08 | `cloneDeep`이 Symbol 키/Date/Map/Set/RegExp 손실, 순환참조 `RangeError` → **Phase 6 수정.** `structuredClone` 위임은 기각(Symbol 키를 조용히 버린다 — `DC-07`), 재귀 구현을 직접 씀 | `src/helper/index.ts:114-135` | 버그 |
 | CI-09 | `symbolIdMap` 전역 강참조 `Map`, 영구 미해제 → **`DC-10`으로 원인 자체가 제거됨 (Phase 3)** | `src/helper/index.ts:20-21` | 누수 |
 | CI-10 | `StateRefStore<T[]>` 타입/런타임 불일치 (`.map`, `.length`) | `src/types/index.ts:14-20` | 타입 |
 | CI-11 | 읽기 O(depth²) — `lens.get`이 devtools 표시용으로만 호출됨 | `src/proxy/index.ts:86` | 성능 |
@@ -112,7 +112,8 @@ ref.other.value = 1;           // → catch 진입, console.warn 발생
 ### 4.2 비기능 요구 (NFR)
 - **NFR-1** 깊이 8 경로의 리프 읽기 처리량을 현재 대비 1.5x 이상 개선한다. (목표: 301 ms → 200 ms 이하 / 50k회)
 - **NFR-2** 쓰기 비용이 **무관한** 구독자 수에 선형 비례하지 않아야 한다. (목표: 1,600 구독자 시나리오 35.1 ms → 10 ms 이하)
-- **NFR-3** 번들 크기 상한: `state-ref.mjs` gzip ≤ **4,000 B**.
+- **NFR-3** 번들 크기 상한: `state-ref.mjs`를 **minify한 뒤** gzip ≤ **3,200 B** (`DC-09` 재정의, 2026-09-17). 게이트: `node packages/state-ref/bench/bundle-size.mjs`.
+  > 이전 정의("`state-ref.mjs` gzip ≤ 4,000 B")는 **산출물을 잘못 지목했다.** vite는 ES 라이브러리 빌드의 공백을 의도적으로 남기므로 그 파일에는 들여쓰기와 JSDoc이 전부 들어 있다(1,287 B gzip). 앱에 도달하지 않는 분량이 예산을 먹고 있었다.
   - baseline (Phase 0 실측): `state-ref.mjs` gzip **2,686 B** / `state-ref.umd.js` gzip **2,127 B**
   - 최초 `+15%`(3,089 B)는 작업 범위를 모르는 상태에서 정한 수치였고 Phase 2에서 3,140 B로 초과했다. `DC-09`에서 절대값 4,000 B로 재설정 (2026-09-16). 근거는 `DESIGN.md` §4 `DC-09`
 - **NFR-4** 커넥터 5종(`react`/`preact`/`vue`/`svelte`/`solid`)의 기존 테스트가 무수정 통과해야 한다.

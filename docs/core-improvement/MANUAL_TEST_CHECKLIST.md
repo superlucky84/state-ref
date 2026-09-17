@@ -117,10 +117,14 @@ Phase 3의 lazy getter 전환이 개발 경험을 깎지 않았는지 육안 확
 | 1 | `cloneDeep({ [Symbol('k')]: 1 })` | Symbol 키 보존 | |
 | 2 | `cloneDeep({ d: new Date(), m: new Map(), s: new Set(), r: /x/ })` | 4종 `instanceof` 유지 | |
 | 3 | 순환 참조 객체 `cloneDeep` | RangeError 없이 완료 | |
-| 4 | 함수 포함 객체 `cloneDeep` | `structuredClone` 실패 후 폴백으로 완료 | |
+| 4 | 함수 포함 객체 `cloneDeep` | 함수는 **참조로 통과**, 나머지는 복제 (`structuredClone`을 쓰지 않으므로 throw도 폴백도 없다 — `DC-07`) | |
 | 5 | `cloneDeep` 결과 수정 | 원본 불변 | |
 | 6 | `copyable(o).a.b.writeCopy(v)` | 경로 외 속성이 원본과 참조 공유 (`out.b === orig.b`) | |
-| 7 | 중간 노드 부재 경로에 `.value` 대입 | `DC-01` 결정대로 동작. `Cannot set properties of undefined` 없음 | |
+| 7 | 중간 노드 부재 경로에 `.value` 대입 (`ref.a.b.value = 1`, `a` 없음) | `Cannot write to "root.a.b": "root.a" is undefined, ...` — 경로와 세그먼트가 메시지에 있다 | |
+| 8 | 대상 자신만 없는 경로 (`ref.a.value = 1`, root는 객체) | **성공** — 자동 생성 금지는 부모에만 적용 (`DC-01`) | |
+| 9 | 7번 직후 스토어 상태 | 무변경, 구독자 미발화 | |
+| 10 | `ref.a.b.value` **읽기** (`a` 없음) | `undefined` — 읽기는 관대함 유지 | |
+| 11 | 공유 서브트리(`{left: o, right: o}`) `cloneDeep` | `out.left === out.right`, 둘 다 원본과 다름 | |
 
 ---
 
@@ -132,7 +136,7 @@ Phase 3의 lazy getter 전환이 개발 경험을 깎지 않았는지 육안 확
 | 2 | 깊이 32 리프 읽기 50k회 | 2,719 ms | ≤ 800 ms | | |
 | 3 | 유휴 구독자 1,600 / 쓰기 500회 | 35.1 ms | ≤ 10 ms | | |
 | 4 | 구독자 100 / 400 / 1,600 시간 추이 | 3.6 / 8.4 / 35.1 ms | 선형 증가 아님 | | |
-| 5 | `state-ref.mjs` gzip 크기 | 2,686 B | ≤ 4,000 B (`DC-09`) | | |
+| 5 | `state-ref.mjs`를 **minify한 뒤** gzip | 1,945 B | ≤ 3,200 B (`DC-09` 재정의) | | |
 | 6 | 살아있는 인덱스 노드 1,000 / `items[0]` 쓰기 500회 | — | ≤ 5 ms (`DC-12` 형제 좁히기) | | |
 | 7 | 무관 경로 K=64를 구독에 남긴 구독자 / 쓰기 500회 | 75.6 ms | K에 평탄 | | |
 | 8 | **출시 빌드 대비 차분 스윕** — 알림 횟수·관측값 | — | **차이 0** | | |
@@ -154,7 +158,9 @@ git worktree remove /tmp/released
 
 차이가 있으면 비영점 종료한다. `CI-14`의 `trackDeps`처럼 **의도된** 알림 감소가 켜져 있으면 당연히 발산하므로, 그 옵션들을 끈 기본 설정으로 돌린다.
 
-> 1~6은 `pnpm build:core && node packages/state-ref/bench/read-write.mjs`가 자동 측정하고, 게이트(1·3·6)는 스크립트가 PASS/FAIL로 직접 판정한다. 6은 유닛 테스트로 잡을 수 없는 **과다 방문**의 유일한 가드다 — 의미가 동일해 알림 횟수로는 구분되지 않는다.
+> 1~4·6은 `node packages/state-ref/bench/read-write.mjs`, 5는 `node packages/state-ref/bench/bundle-size.mjs`가 자동 측정한다(둘 다 `pnpm build:core` 선행). 게이트(1·3·5·6)는 각 스크립트가 PASS/FAIL로 판정하고 비영점 종료한다.
+>
+> **5번은 `state-ref.mjs`를 그대로 재면 안 된다.** vite가 ES 라이브러리 빌드의 공백을 의도적으로 남기므로 그 파일에는 들여쓰기와 JSDoc이 전부 들어 있다(1,287 B gzip). 앱에 도달하지 않는 분량이다 — `bundle-size.mjs`가 minify 후 측정한다. 6은 유닛 테스트로 잡을 수 없는 **과다 방문**의 유일한 가드다 — 의미가 동일해 알림 횟수로는 구분되지 않는다.
 
 ---
 
