@@ -9,7 +9,9 @@
  * Deliberately not placed under src/tests/**: vitest's `includeSource` glob
  * would pick it up and run these loops on every `pnpm test`.
  */
-import { createStore } from '../dist/state-ref.mjs';
+import { createStore, create } from '../dist/state-ref.mjs';
+
+let failedAccumulation = false;
 
 const REPEAT = 5;
 const sink = () => {};
@@ -53,7 +55,12 @@ for (const depth of [2, 8, 32]) {
       sink(node.v.value);
     }
   });
-  record('read', `depth ${String(depth).padStart(2)}`, ms, depth === 8 ? 200 : null);
+  record(
+    'read',
+    `depth ${String(depth).padStart(2)}`,
+    ms,
+    depth === 8 ? 200 : null
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -70,7 +77,12 @@ for (const n of [100, 400, 1600]) {
   const ms = measure(() => {
     for (let i = 0; i < 500; i += 1) ref.hot.value = i;
   });
-  record('write', `${String(n).padStart(4)} idle subscribers`, ms, n === 1600 ? 10 : null);
+  record(
+    'write',
+    `${String(n).padStart(4)} idle subscribers`,
+    ms,
+    n === 1600 ? 10 : null
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -94,7 +106,52 @@ for (const n of [10, 100, 1000]) {
   const ms = measure(() => {
     for (let i = 0; i < 500; i += 1) ref.items[0].value = i;
   });
-  record('array', `${String(n).padStart(4)} live index nodes`, ms, n === 1000 ? 5 : null);
+  record(
+    'array',
+    `${String(n).padStart(4)} live index nodes`,
+    ms,
+    n === 1000 ? 5 : null
+  );
+}
+
+/* ------------------------------------------------------------------ */
+console.log(
+  '\nACCUMULATION — a write-only path must cost no node  [CI-22 / DC-14]'
+);
+
+/**
+ * The gate nothing had before CI-22, and the reason it was missed: every other
+ * measurement here is per-write, and none of them looks at state that piles up
+ * across writes. A node is materialised only for a path a subscription reached,
+ * so an open key space - uuids, growing indices - must not grow the tree.
+ */
+const countNodes = node => {
+  let total = 1;
+  node.children?.forEach(child => (total += countNodes(child)));
+
+  return total;
+};
+
+for (const n of [1000, 16000]) {
+  const { pathRoot, watch } = create({ byId: {} }, { autoSync: true });
+  const ref = watch();
+  watch(store => sink(store.byId.value));
+
+  for (let i = 0; i < n; i += 1) ref.byId[`id-${i}`].value = i;
+
+  const nodes = countNodes(pathRoot);
+  const ms = measure(() => {
+    for (let i = 0; i < 20; i += 1) ref.byId.value = { n: i };
+  });
+
+  record('accum', `${String(n).padStart(5)} write-only keys`, ms, 1);
+  console.log(
+    `        tree nodes: ${nodes}` +
+      `   (target <= 4)  ${nodes <= 4 ? 'PASS' : 'FAIL'}`
+  );
+  if (nodes > 4) {
+    failedAccumulation = true;
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -108,7 +165,13 @@ console.log(
 /* ------------------------------------------------------------------ */
 const gates = rows.filter(r => r.target != null);
 const failed = gates.filter(r => r.ms > r.target);
+const passing = gates.length - failed.length + (failedAccumulation ? 0 : 1);
 console.log(
-  `\nGates: ${gates.length - failed.length}/${gates.length} pass` +
-    (failed.length ? ` — FAILING: ${failed.map(r => r.label).join(', ')}` : '')
+  `\nGates: ${passing}/${gates.length + 1} pass` +
+    (failed.length
+      ? ` — FAILING: ${failed.map(r => r.label).join(', ')}`
+      : '') +
+    (failedAccumulation ? ' — FAILING: tree nodes' : '')
 );
+
+process.exit(failed.length || failedAccumulation ? 1 : 0);

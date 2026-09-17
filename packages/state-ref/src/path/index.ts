@@ -47,21 +47,18 @@ export function createPathRoot(): PathNode {
 }
 
 /**
- * Numeric segments are normalised to strings so that `ref.items[0]` and the
- * index handed out by iteration land on the same node. JS property keys are
- * strings anyway; only the iterator ever supplies a number.
+ * Segments are property keys - strings or symbols, never numbers - so that
+ * `ref.items[0]` and the index handed out by iteration land on the same node.
+ * The iterator stringifies its index at the call site, and the type keeps
+ * anything else from getting in; there is no runtime normalisation to pay for.
  */
-export function childOf(
-  node: PathNode,
-  segment: string | number | symbol
-): PathNode {
-  const key = typeof segment === 'number' ? String(segment) : segment;
+export function childOf(node: PathNode, segment: string | symbol): PathNode {
   const children = (node.children ??= new Map());
-  let child = children.get(key);
+  let child = children.get(segment);
 
   if (!child) {
-    child = makeNode(key, node);
-    children.set(key, child);
+    child = makeNode(segment, node);
+    children.set(segment, child);
   }
 
   return child;
@@ -115,30 +112,67 @@ export function childOf(
  * comparison. An under-broad one drops a notification, which is why the set
  * above is pinned by a differential test against the full scan.
  */
-export function forEachAffectedNode(
-  node: PathNode,
+function visitSiblings(
+  parent: PathNode,
+  segment: string | symbol,
+  self: PathNode | undefined,
   visit: (node: PathNode) => void
 ) {
-  for (let current: PathNode | null = node; current; current = current.parent) {
-    visit(current);
+  if (typeof segment !== 'string') {
+    return;
   }
 
-  const { parent, segment } = node;
-
-  if (parent && typeof segment === 'string') {
-    if (segment === LENGTH) {
-      parent.children?.forEach(sibling => {
-        if (sibling !== node) {
-          visit(sibling);
-        }
-      });
-    } else if (INDEX.test(segment)) {
-      const length = parent.children?.get(LENGTH);
-
-      if (length) {
-        visit(length);
+  if (segment === LENGTH) {
+    parent.children?.forEach(sibling => {
+      if (sibling !== self) {
+        visit(sibling);
       }
+    });
+  } else if (INDEX.test(segment)) {
+    const length = parent.children?.get(LENGTH);
+
+    if (length) {
+      visit(length);
     }
+  }
+}
+
+/**
+ * Every node a write can have invalidated, visited once.
+ *
+ * A write is addressed as "the parent's node plus the segment written" rather
+ * than as a node, because the written path may have no node: nodes exist only
+ * for paths a subscription reached (`CI-22`). `segment` is `null` when the
+ * write landed on `parent` itself - the store's root.
+ *
+ * When the path has no node of its own, three of the four cases collapse:
+ *
+ *   - **self**: no node means nothing subscribed to it
+ *   - **subtree**: subscribing materialises the whole chain from the root, so a
+ *     node with subscribed descendants exists. No node, no descendants
+ *   - **ancestors**: `parent` and up, all present
+ *   - **siblings**: still needed. `items.2` may have no node while
+ *     `items.length` is subscribed, and that subscriber must be told - the very
+ *     path `CI-21` missed
+ */
+export function forEachAffected(
+  parent: PathNode,
+  segment: string | symbol | null | undefined,
+  visit: (node: PathNode) => void
+) {
+  const node = segment == null ? parent : parent.children?.get(segment);
+
+  if (!node) {
+    visitAncestors(parent, visit);
+    visitSiblings(parent, segment!, undefined, visit);
+
+    return;
+  }
+
+  visitAncestors(node, visit);
+
+  if (node.parent) {
+    visitSiblings(node.parent, node.segment, node, visit);
   }
 
   const pending: PathNode[] = node.children ? [...node.children.values()] : [];
@@ -149,12 +183,25 @@ export function forEachAffectedNode(
   }
 }
 
+function visitAncestors(node: PathNode, visit: (node: PathNode) => void) {
+  for (let current: PathNode | null = node; current; current = current.parent) {
+    visit(current);
+  }
+}
+
 /**
  * Human-readable path, for the NAVI debug handle only. Never used for
  * identity, so ambiguity around a segment containing a dot does not matter.
  */
-export function pathToString(node: PathNode): string {
-  const parts: string[] = [];
+export function pathToString(
+  node: PathNode,
+  /**
+   * A proxy may have no node of its own yet, so it names itself by its
+   * parent's node plus its own segment (`null` when the proxy *is* the node).
+   */
+  segment?: string | symbol | null
+): string {
+  const parts: string[] = segment == null ? [] : [String(segment)];
 
   for (
     let current: PathNode | null = node;

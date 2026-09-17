@@ -50,7 +50,15 @@ export function createStoreManualSync<V>(
   });
 }
 
-function create<V>(
+/**
+ * Exported for tests and the bench, not from the package index.
+ *
+ * `pathRoot` is the only way to observe how many nodes a store actually has,
+ * and Phase 6.5's whole point is that most paths no longer get one - a property
+ * that is otherwise unobservable by construction, so there would be no way to
+ * gate it (`DC-14`).
+ */
+export function create<V>(
   originalValue: V,
   userCreateOption?: { autoSync?: boolean; trackDeps?: boolean }
 ) {
@@ -106,6 +114,7 @@ function create<V>(
   };
 
   return {
+    pathRoot,
     watch,
     updateRef: watch(() => {}, { editable: true }),
     sync: () => {

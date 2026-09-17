@@ -16,9 +16,24 @@ export function makeProxy<S extends WithRoot, T extends object>(
   autoSync: boolean,
   editable: boolean,
   rootValue: S,
-  pathNode: PathNode,
+  parentNode: PathNode,
+  /**
+   * This proxy's own segment, or `null` when it *is* `parentNode` - the root
+   * proxy of a store.
+   */
+  segment: string | symbol | null = null,
   lensValue: Lens<S, any> = lens<S>()
 ): T {
+  /**
+   * A node is materialised when a proxy is passed *through*, not when one is
+   * landed on: `childProxy` asks for `ownNode()` to parent its child, and
+   * `collector` asks for it to register a subscription. A path that is only
+   * written to never asks, so it costs no node at all - which is what keeps an
+   * open key space (array indices, uuids) from growing the tree (`CI-22`).
+   */
+  let node: PathNode | undefined = segment === null ? parentNode : undefined;
+
+  const ownNode = () => (node ??= childOf(parentNode, segment!));
   /**
    * A proxy holds a path, never a value, so a child proxy stays correct however
    * often the state underneath it changes. Memoising them keeps `ref.a === ref.a`
@@ -39,7 +54,8 @@ export function makeProxy<S extends WithRoot, T extends object>(
       autoSync,
       editable,
       rootValue,
-      childOf(pathNode, segment),
+      ownNode(),
+      segment,
       lensValue.chain(segment)
     );
 
@@ -49,7 +65,7 @@ export function makeProxy<S extends WithRoot, T extends object>(
   };
 
   const inspect = () => ({
-    navi: pathToString(pathNode),
+    navi: pathToString(parentNode, segment),
     type: getType(lensValue.get(rootValue)),
     value: lensValue.get(rootValue),
   });
@@ -85,7 +101,7 @@ export function makeProxy<S extends WithRoot, T extends object>(
         collector(
           currentValue,
           () => lensValue.get(rootValue),
-          pathNode,
+          ownNode(),
           run,
           storeRenderList
         );
@@ -97,7 +113,7 @@ export function makeProxy<S extends WithRoot, T extends object>(
        * Debug handles. Symbols, so they cannot collide with state keys.
        */
       if (prop === NAVI) {
-        return pathToString(pathNode);
+        return pathToString(parentNode, segment);
       }
       if (prop === TYPE) {
         return getType(lensValue.get(rootValue));
@@ -129,7 +145,7 @@ export function makeProxy<S extends WithRoot, T extends object>(
         return () => {
           throw new Error(
             `Cannot convert a stateRef to a primitive. Read it with ".value" (e.g. ${
-              pathToString(pathNode) || 'ref'
+              pathToString(parentNode, segment) || 'ref'
             } -> .value).`
           );
         };
@@ -231,7 +247,7 @@ export function makeProxy<S extends WithRoot, T extends object>(
          * this path can have invalidated.
          */
         if (autoSync) {
-          runner(storeRenderList, pathNode);
+          runner(storeRenderList, parentNode, segment);
         }
       }
       return true;

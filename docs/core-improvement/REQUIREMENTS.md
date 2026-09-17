@@ -29,7 +29,7 @@
 | CI-12 | 쓰기마다 전 구독자 × 전 경로 풀스캔 → **Phase 3에서 경로 트리로 해결** | `src/connectors/runner.ts:10-32` | 성능 |
 | CI-13 | ~~배칭 없음 — `.value` 대입 1회당 `runner` 1회~~ → **비목표(non-goal)로 재분류.** 지연 전파를 두지 않는 것은 예측가능성을 위한 **의도된 설계**다 (`INV-4`, `DC-03`) | `src/proxy/index.ts:121-123` | ~~성능~~ 설계 |
 | CI-21 | **narrowing이 배열 `length` 변경을 누락한다** — `items[2]`에 쓰면 길이가 늘어나지만 `length`는 쓰기 노드의 형제라 영향 집합 밖이다. `items.length` 구독자가 통보받지 못한다. Phase 3(`db5dc66`)이 들여왔고 출시 전 발견 | `src/path/index.ts` (`affectedRuns`) | 정확성 |
-| CI-22 | **경로 트리가 회수되지 않는다** — `childOf`가 만든 `PathNode`는 스토어 수명 동안 남는다. 해제는 `subs`에서 `run`을 빼는 것뿐이고(`runner.ts:39`, `collector.ts:53`) `children.delete`는 없다. 배열 인덱스·동적 키처럼 **열린 키 공간**에서 노드가 무한 증가하고, 죽은 형제를 `length` 쓰기가 계속 순회한다. Phase 3(`db5dc66`)이 들여왔고 출시 전 발견. main에는 없다 → **`DC-13`: 정확성 문제가 아니므로 코드는 그대로 두고 계약 문서화 + 경계 테스트로 고정** (`tree-lifetime.ts`) | `src/path/index.ts:42` (`childOf`) | 누수/성능 |
+| CI-22 | **경로 트리가 회수되지 않는다** — `childOf`가 만든 `PathNode`는 스토어 수명 동안 남는다. 해제는 `subs`에서 `run`을 빼는 것뿐이고(`runner.ts:39`, `collector.ts:53`) `children.delete`는 없다. 배열 인덱스·동적 키처럼 **열린 키 공간**에서 노드가 무한 증가하고, 죽은 형제를 `length` 쓰기가 계속 순회한다. Phase 3(`db5dc66`)이 들여왔고 출시 전 발견. main에는 없다 → **해소 (Phase 6.5, `DC-14`).** 노드를 프록시를 *지나갈* 때만 만들도록 바꿔 영속 트리가 "접근된 경로"에서 **"구독된 경로"** 로 축소됐다. 쓰기만 한 경로 10,000개 → 노드 3개, 누적 64,000 뒤 부모 쓰기 22.85 → 0.00 ms | `src/path/index.ts:42` (`childOf`) | 누수/성능 |
 | CI-14 | 의존성 재수집 없음 — 더 이상 읽지 않는 경로도 영구 구독 → **Phase 5에서 `trackDeps` opt-in으로 제공** (`DC-02`: 기본값 전환은 major 사안) | `src/connectors/collector.ts:26` | 정확성/성능 |
 | CI-15 | 프록시 identity 불안정 (`ref.a !== ref.a`), 접근마다 신규 할당 | `src/proxy/index.ts:88-98` | 성능 |
 | CI-16 | `cache:false`가 구독을 중복 증식시키고 `cacheMap`에는 계속 write → **Phase 5에서 캐시 오염만 수정.** 중복 증식은 `cache:false`의 정의된 의미로 유지 | `src/core/ref.ts:43` | API |
@@ -214,4 +214,5 @@ ref.items[2500] === before;        // true — 값이 사라져도 프록시는 
 - Phase 0 완료 (2026-09-16): baseline 테스트·벤치 확보, `IC-01`~`IC-03` 해소, 회귀 스냅샷 고정
 - 다음 단계: Phase 1 (계약 정합성) — `DESIGN.md`의 `DC-01`~`DC-08`은 여전히 TBD이나 Phase 1에는 불필요
 - **CI-22 추가 (2026-09-17, Phase 6 중 발견).** 경로 트리가 회수되지 않는다 — §3.6. 정확성 문제가 아니므로 릴리스를 막지 않는다
-- **CI-22 / DC-13 해소 (2026-09-17).** 누적 구조가 트리와 프록시 캐시 **둘**임을 확인하고(§3.6), 회수 후보들을 실측으로 좁혀 **(a) 문서화 + 경계 테스트**로 닫았다. 경계 테스트는 `src/tests/core/tree-lifetime.ts`. 미해결 결정은 `DC-08` 하나뿐이다
+- **CI-22 해소 (2026-09-17, Phase 6.5 / `DC-14`).** 메모리와 순회 비용을 함께 해결했다 — 영속 트리가 구독된 경로 수로 줄었다. 벤치에 `ACCUMULATION` 게이트가 남는다
+- **CI-22 / DC-13 1차 판단 (철회됨).** 누적 구조가 트리와 프록시 캐시 **둘**임을 확인하고(§3.6), 회수 후보들을 실측으로 좁혀 **(a) 문서화 + 경계 테스트**로 닫았다. 경계 테스트는 `src/tests/core/tree-lifetime.ts`. 미해결 결정은 `DC-08` 하나뿐이다

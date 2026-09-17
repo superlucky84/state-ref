@@ -1,31 +1,160 @@
 /**
  * The path tree's lifetime (CI-22 / DC-13).
  *
- * `childOf` creates a node the first time a property is touched, and nothing
- * ever removes one: teardown clears `subs`, never `children`. The node count of
- * a store is therefore "every distinct path ever accessed", not "every path
- * currently subscribed", and in an open key space - array indices, uuids - that
- * has no upper bound. `REQUIREMENTS.md` §3.6 has the measurements.
+ * Nothing ever removes a node: teardown clears `subs`, never `children`. So
+ * what decides the node count of a store is *which paths get a node at all*,
+ * and Phase 6.5 changed the answer from "every path ever touched" to "every
+ * path a subscription reached" (`DC-14`):
  *
- * These tests do two different jobs:
+ *   - a node is materialised when a proxy is passed *through* (to parent a
+ *     child) or subscribed to, never merely by landing on it
+ *   - so a path that is only written costs no node, which is what stops an open
+ *     key space - array indices, uuids - from growing the tree without bound
  *
- *   - pin the accumulation itself, so it stays a known property rather than
- *     being rediscovered
- *   - pin the invariant any reclamation strategy has to keep, because the
- *     obvious strategy breaks it. Pruning a subtree when its value is replaced
- *     detaches nodes that live proxies and live subscriptions still point at,
- *     and the notification is then lost in silence - measured, not argued: the
- *     replacement that prunes cannot even reach its own subtree, because
- *     pruning happens before the runner does.
+ * These tests do two jobs. They pin that rule, including the part of it that is
+ * easy to get wrong: a write must still reach a sibling subscriber even when
+ * the written path has no node of its own - `items.length` subscribed while
+ * `items.2` is not, the very shape `CI-21` missed.
+ *
+ * And they pin the invariant any reclamation strategy has to keep, because the
+ * obvious strategy breaks it. Pruning a subtree when its value is replaced
+ * detaches nodes that live proxies and live subscriptions still point at, and
+ * the notification is then lost in silence - measured, not argued: the
+ * replacement that prunes cannot even reach its own subtree, because pruning
+ * happens before the runner does.
  */
 import { createStore } from '@/index';
-import { createPathRoot, childOf, forEachAffectedNode } from '@/path';
+import { create } from '@/core';
+import { createPathRoot, childOf, forEachAffected } from '@/path';
+import type { PathNode } from '@/path';
 import type { Run } from '@/types';
 
 const noop = (_?: unknown) => {};
 
+/**
+ * How many nodes a store has. Unobservable from the public surface by
+ * construction - an unmaterialised path leaves no trace - so the store's own
+ * `pathRoot` is the only way to gate the rule (see `create`'s note).
+ */
+const countNodes = (node: PathNode): number => {
+  let total = 1;
+
+  node.children?.forEach(child => {
+    total += countNodes(child);
+  });
+
+  return total;
+};
+
+const store = <V>(value: V) => {
+  const { pathRoot, watch } = create(value, { autoSync: true });
+
+  return { watch, nodes: () => countNodes(pathRoot) };
+};
+
 if (import.meta.vitest) {
   const { describe, it, expect, vi } = import.meta.vitest;
+
+  describe('a node exists only for a path a subscription reached (DC-14)', () => {
+    it('costs no node for a path that is only written', () => {
+      const { watch, nodes } = store<{ byId: Record<string, number> }>({
+        byId: {},
+      });
+      const ref = watch();
+
+      watch(s => noop(s.byId.value));
+
+      for (let i = 0; i < 200; i += 1) ref.byId[`id-${i}`].value = i;
+
+      /**
+       * `byId` is materialised because the proxy is passed through it; the 200
+       * keys are landed on and never subscribed, so none of them is.
+       */
+      expect(Object.keys(ref.byId.value)).toHaveLength(200);
+      expect(nodes()).toBe(3);
+    });
+
+    it('costs no node for array indices that are only written', () => {
+      const { watch, nodes } = store<{ items: number[] }>({ items: [] });
+      const ref = watch();
+
+      watch(s => noop(s.items.length.value));
+
+      for (let i = 0; i < 200; i += 1) ref.items[i].value = i;
+
+      expect(ref.items.value.length).toBe(200);
+      expect(nodes()).toBe(4);
+    });
+
+    it('materialises the whole chain when a path is subscribed', () => {
+      /**
+       * The subtree rule leans on this: a node with subscribed descendants
+       * must itself exist, so "no node" can be read as "no descendants".
+       */
+      const { watch, nodes } = store<{ a: { b: { c: number } } }>({
+        a: { b: { c: 1 } },
+      });
+
+      watch(s => noop(s.a.b.c.value));
+
+      expect(nodes()).toBe(5);
+    });
+
+    it('wakes a sibling subscriber when the written path has no node', () => {
+      const watch = createStore<{ items: number[] }>({ items: [1, 2] });
+      const ref = watch();
+      const mockFn = vi.fn();
+      let seen = -1;
+
+      watch(store => {
+        seen = store.items.length.value;
+        mockFn();
+      });
+
+      /**
+       * `items.2` is written but never subscribed, so it has no node. The
+       * length subscriber still has to be told the array grew.
+       */
+      ref.items[2].value = 3;
+
+      expect(ref.items.value).toEqual([1, 2, 3]);
+      expect(seen).toBe(3);
+      expect(mockFn).toHaveBeenCalledTimes(2);
+    });
+
+    it('wakes index subscribers when a length write truncates', () => {
+      const watch = createStore<{ items: number[] }>({ items: [1, 2, 3, 4] });
+      const ref = watch();
+      let seen: number | undefined = -1;
+
+      watch(store => {
+        seen = store.items[3].value;
+      });
+
+      ref.items.length.value = 2;
+
+      expect(seen).toBeUndefined();
+    });
+
+    it('leaves an unrelated subscriber alone', () => {
+      const watch = createStore<{ items: number[]; other: number }>({
+        items: [1, 2],
+        other: 0,
+      });
+      const ref = watch();
+      const mockFn = vi.fn();
+
+      watch(store => {
+        noop(store.other.value);
+        mockFn();
+      });
+
+      mockFn.mockClear();
+      ref.items[5].value = 9;
+
+      expect(mockFn).not.toHaveBeenCalled();
+    });
+  });
 
   describe('the tree accumulates and is never pruned (CI-22)', () => {
     it('keeps a node after its last subscription is dropped', () => {
@@ -65,7 +194,7 @@ if (import.meta.vitest) {
       expect(items.children?.size).toBe(50);
     });
 
-    it('walks dead siblings on a length write, which is where the cost is', () => {
+    it('visits every sibling on a length write, dead or not', () => {
       const root = createPathRoot();
       const items = childOf(root, 'items');
       const length = childOf(items, 'length');
@@ -73,14 +202,15 @@ if (import.meta.vitest) {
       for (let i = 0; i < 50; i += 1) childOf(items, String(i));
 
       let visited = 0;
-      forEachAffectedNode(length, () => {
+      forEachAffected(length.parent!, 'length', () => {
         visited += 1;
       });
 
       /**
        * A `length` write has to consider every sibling by definition (DC-12),
-       * so segment narrowing cannot help here: the 50 index nodes are visited
-       * whether or not anything still subscribes to them.
+       * so segment narrowing cannot help here - which is why it mattered that
+       * Phase 6.5 stopped unsubscribed paths from becoming siblings at all.
+       * The rule itself is unchanged: given nodes, all of them are visited.
        */
       expect(visited).toBeGreaterThanOrEqual(50);
     });

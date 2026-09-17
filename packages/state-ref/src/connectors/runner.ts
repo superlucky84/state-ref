@@ -6,7 +6,7 @@ import type {
   StoreRenderList,
 } from '@/types';
 import type { PathNode } from '@/path';
-import { forEachAffectedNode } from '@/path';
+import { forEachAffected } from '@/path';
 
 /**
  * Reports the errors user code threw during a single propagation pass.
@@ -52,7 +52,16 @@ export function removeRun(storeRenderList: StoreRenderList<any>, run: Run) {
  */
 export function runner(
   storeRenderList: StoreRenderList<any>,
-  writtenNode?: PathNode
+  /**
+   * A write is addressed as "the parent's node plus the segment written", not
+   * as a node, because the written path may have no node at all - nodes exist
+   * only for paths a subscription reached (`CI-22`). `writtenSegment` is `null`
+   * when the write landed on `writtenParent` itself, which is the store's root
+   * proxy. Neither is given for a manual `sync()`, where nothing is known about
+   * where the writes went.
+   */
+  writtenParent?: PathNode,
+  writtenSegment?: string | symbol | null
 ) {
   const runableRenewList: Set<Run> = new Set();
   const errors: unknown[] = [];
@@ -79,7 +88,7 @@ export function runner(
     }
   };
 
-  if (writtenNode) {
+  if (writtenParent) {
     /**
      * A write moves references only along its own path and through the subtree
      * it replaced, so those are the only nodes worth re-reading - and at each
@@ -87,15 +96,16 @@ export function runner(
      * watching twenty paths is checked on the one that moved rather than on all
      * twenty.
      */
-    forEachAffectedNode(writtenNode, node =>
+    const visit = (node: PathNode) =>
       node.subs?.forEach(run => {
         const item = storeRenderList.get(run)?.get(node);
 
         if (item) {
           check(run, item);
         }
-      })
-    );
+      });
+
+    forEachAffected(writtenParent, writtenSegment, visit);
   } else {
     /**
      * A manual `sync()` knows nothing about where the writes landed, so every
