@@ -125,8 +125,24 @@ Phase 3의 lazy getter 전환이 개발 경험을 깎지 않았는지 육안 확
 | 5 | `state-ref.mjs` gzip 크기 | 2,686 B | ≤ 4,000 B (`DC-09`) | | |
 | 6 | 살아있는 인덱스 노드 1,000 / `items[0]` 쓰기 500회 | — | ≤ 5 ms (`DC-12` 형제 좁히기) | | |
 | 7 | 무관 경로 K=64를 구독에 남긴 구독자 / 쓰기 500회 | 75.6 ms | K에 평탄 | | |
+| 8 | **출시 빌드 대비 차분 스윕** — 알림 횟수·관측값 | — | **차이 0** | | |
 
-**PASS 기준:** 1·3·5·6 필수. 2·4·7은 참고 지표.
+**PASS 기준:** 1·3·5·6·8 필수. 2·4·7은 참고 지표.
+
+**8번 절차** — 성능 게이트가 잡지 못하는 **동작 변화**를 본다. `CI-21`(Phase 3)이 테스트 90개·게이트 2/2를 통과해 나간 것이 이 항목이 생긴 이유다.
+
+```bash
+git worktree add /tmp/released main      # 또는 직전 릴리스 태그
+(cd /tmp/released && pnpm install && pnpm build:core)
+pnpm build:core
+for S in 1 4242 777 31337; do
+  SEED=$S BASE=/tmp/released/packages/state-ref/dist/state-ref.mjs \
+    node packages/state-ref/bench/diff-vs-released.mjs
+done
+git worktree remove /tmp/released
+```
+
+차이가 있으면 비영점 종료한다. `CI-14`의 `trackDeps`처럼 **의도된** 알림 감소가 켜져 있으면 당연히 발산하므로, 그 옵션들을 끈 기본 설정으로 돌린다.
 
 > 1~6은 `pnpm build:core && node packages/state-ref/bench/read-write.mjs`가 자동 측정하고, 게이트(1·3·6)는 스크립트가 PASS/FAIL로 직접 판정한다. 6은 유닛 테스트로 잡을 수 없는 **과다 방문**의 유일한 가드다 — 의미가 동일해 알림 횟수로는 구분되지 않는다.
 
