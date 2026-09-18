@@ -14,10 +14,17 @@
   debug junk, which 3.0.0 fixed (`CI-02`, `CI-03`) - and fixing it left the
   browser's default rendering with only real state to show.
 
-  `Symbol.toStringTag` now answers with the path, so the header line reads
-  `root.john.age {…}`. Nothing is added to the object's shape: `Object.keys`,
-  spread, `in` and `JSON.stringify` are untouched. Node console output already
-  worked through its own inspect hook and is unchanged.
+  The fix is a `Symbol.toStringTag` **on the proxy's target**, so Chrome names
+  the reference after its path: `Proxy(root.john.age)`. Neither runtime renders
+  a proxy through its traps - Node swaps a proxy for its target, Chrome names
+  it after the target and previews the target's properties - so a display
+  affordance has to live there or it does not exist.
+
+  Nothing is added to the object's shape. With the `ownKeys` and
+  `getOwnPropertyDescriptor` traps in place, the target is invisible to every
+  shape question, which is what 2.x could not manage: `Object.keys`, spread,
+  `in` and `JSON.stringify` are unchanged, verified in both runtimes. Node
+  console output already worked through its own inspect hook and is unchanged.
 
 ## 3.0.1
 
