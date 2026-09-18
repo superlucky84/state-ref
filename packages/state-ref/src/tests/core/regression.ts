@@ -536,19 +536,17 @@ if (import.meta.vitest) {
     });
   });
 
-  describe('CI-14 dependencies are re-collected only when asked', () => {
+  describe('CI-14 dependencies are re-collected', () => {
     /**
-     * The default stayed as it was (`DC-02`, Phase 5): re-collecting changes
-     * how often a subscriber is called, which is a behaviour change, so it is
-     * opt-in through `trackDeps` until a major (`DC-08`). `lifecycle.ts`
-     * covers the opted-in side.
+     * Opt-in through 2.x and the default from 3.0.0 (`DC-02`, settled in
+     * Phase 8 on measurements taken through a real React component). The 2.x
+     * behaviour is still one option away, which is what this pins.
      */
-    it('DEFINED (Phase 5, DC-02): without trackDeps a no-longer-read path still wakes the subscriber', () => {
-      const watch = createStore<{ flag: boolean; a: number; b: number }>({
-        flag: true,
-        a: 0,
-        b: 0,
-      });
+    it('DEFINED (Phase 8, DC-02): with trackDeps off, a no-longer-read path still wakes the subscriber', () => {
+      const watch = createStore<{ flag: boolean; a: number; b: number }>(
+        { flag: true, a: 0, b: 0 },
+        { trackDeps: false }
+      );
       let calls = 0;
       const ref = watch(s => {
         calls += 1;

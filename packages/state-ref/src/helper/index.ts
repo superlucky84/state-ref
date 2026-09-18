@@ -18,7 +18,19 @@ import { lens } from '@/lens';
  * never declares a mode.
  */
 export const DEFAULT_WATCH_OPTION = { cache: true, editable: true };
-export const DEFAULT_CREATE_OPTION = { autoSync: true, trackDeps: false };
+/**
+ * `trackDeps` is on from 3.0.0 (`DC-02`).
+ *
+ * It re-collects what a callback reads on every run, so a path the callback
+ * has stopped reading stops waking it. Off through 2.x because it changes how
+ * often subscribers are called, which is a behaviour change and had to wait
+ * for a major. Phase 8 measured it on real components: a conditional read that
+ * took the other branch went from waking its component on every write of the
+ * abandoned path to not waking it at all.
+ *
+ * `createStore(value, { trackDeps: false })` restores the 2.x behaviour.
+ */
+export const DEFAULT_CREATE_OPTION = { autoSync: true, trackDeps: true };
 
 /**
  * Debug handles on a stateRef, readable as `ref.a.b[NAVI]` / `ref.a.b[TYPE]`.

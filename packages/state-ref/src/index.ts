@@ -6,6 +6,14 @@ export { createStore, createStoreManualSync } from '@/core';
 export { create } from '@/core';
 export { lens } from '@/lens';
 export { copyable, cloneDeep, createComputed, combineWatch } from '@/helper';
+/**
+ * The debug handles, readable as `ref.a.b[NAVI]` / `ref.a.b[TYPE]`.
+ *
+ * They are registered symbols, so `Symbol.for('state-ref.navi')` reaches the
+ * same handle without an import - but a name to import is what makes them a
+ * documented surface rather than a magic string.
+ */
+export { NAVI, TYPE } from '@/helper';
 export type {
   StateRefStore,
   Renew,

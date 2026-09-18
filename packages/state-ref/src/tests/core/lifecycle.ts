@@ -445,8 +445,25 @@ if (import.meta.vitest) {
       expect(mockFn).not.toHaveBeenCalled();
     });
 
-    it('is off unless asked for', () => {
+    it('is on by default from 3.0.0 (DC-02)', () => {
       const watch = createStore<Branch>(initial());
+      const mockFn = vi.fn();
+      const ref = watch(store => {
+        mockFn();
+        if (store.flag.value) noop(store.a.value);
+        else noop(store.b.value);
+      });
+
+      ref.flag.value = false;
+      mockFn.mockClear();
+
+      ref.a.value = 123;
+
+      expect(mockFn).not.toHaveBeenCalled();
+    });
+
+    it('can be turned back off, which is the 2.x behaviour', () => {
+      const watch = createStore<Branch>(initial(), { trackDeps: false });
       const mockFn = vi.fn();
       const ref = watch(store => {
         mockFn();
