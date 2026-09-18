@@ -183,6 +183,32 @@ the store.
 See [CHANGELOG.md](./CHANGELOG.md) for everything 3.0.0 changes, including the four
 changes that can break 2.x code.
 
+### debugging a reference
+
+Every reference carries two debug handles, so you can see where one points without
+reading it. They are symbols, so they cannot collide with your own state and do not
+show up in `Object.keys`:
+
+```typescript
+import { createStore, NAVI, TYPE } from "state-ref";
+
+const watch = createStore({ john: { age: 20, tags: ["a"] } });
+const ref = watch();
+
+ref.john.age[NAVI];  // 'root.john.age'  - the path this reference points at
+ref.john.age[TYPE];  // 'number'         - the type of the value there
+ref.john.tags[TYPE]; // 'array'
+
+Object.keys(ref.john); // ['age', 'tags']  - the handles stay out of the way
+```
+
+In 2.x these were the string keys `_navi` and `_type`. A store that owned a property
+of either name got the handle back instead of its own value, and both keys surfaced
+in `Object.keys`, which is why they moved.
+
+They are registered symbols, so `Symbol.for("state-ref.navi")` reaches the same
+handle in a context where importing is awkward - a devtools console, for one.
+
 **Primitive types** like numbers or strings can also be handled easily. Here's how:
 
 ```typescript
