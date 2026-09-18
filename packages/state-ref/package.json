@@ -24,6 +24,7 @@
   "types": "./dist/index.d.ts",
   "files": [
     "src",
+    "!src/tests",
     "dist",
     "dist/skills",
     "dist/ai-addons"
