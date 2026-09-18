@@ -2,13 +2,14 @@
 
 - 작성일: 2026-09-18
 - 기준: `main`, `c599a018ac39b24bd908d40a6edb2686aa1fb983`, `state-ref@3.0.1`
+- 범위 개정 기준: `a476d0a6f589d89b3adb07fbd1419106b33bbf41` — 부분 저장·Live Draft·변경 검토를 이번 릴리스에 포함
 - 상태: 구현 전 설계 문서. 아래 API는 아직 제공되지 않는다.
 - 작성 방식: ctxbin의 `doc-driven-designer-v1` agent rule 및 skill 적용
 - 연계 문서: [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md)
 
 ## 1. 목적과 사용자 합의
 
-state-ref의 경로 기반 ref와 불변 갱신을 유지하면서, 조회 캐시와 서버 저장을 실무에서 사용할 수 있는 별도 확장으로 제공한다.
+state-ref의 경로 기반 ref와 불변 갱신을 유지하면서, 조회 캐시와 서버 저장을 실무에서 사용할 수 있는 별도 확장으로 제공한다. 대표 사용 경험은 하위 ref별 부분 저장, 서버 갱신과 공존하는 Live Draft, 저장 전 변경 검토다. 세 기능은 별개 복사본/diff 엔진이 아니라 같은 변경 기록을 사용한다.
 
 대화에서 합의한 요구사항:
 
@@ -18,7 +19,11 @@ state-ref의 경로 기반 ref와 불변 갱신을 유지하면서, 조회 캐�
 - **U-04** `.value` 할당 뒤 `save()`가 실패했을 때 해당 작업의 변경을 되돌리는 옵션이 필요하다. 이후 입력과 무관한 변경은 보존한다.
 - **U-05** 서버 기준 상태와 미확정 클라이언트 변경을 분리한다. 기준은 최초 load에 고정하지 않고 서버에서 확인한 상태로 갱신한다.
 - **U-06** `target`으로 기존 스토어의 하위 경로에 연결하는 안은 기본 API에서 제외한다. resource가 자기 데이터를 관리하고 ref를 제공한다.
-- **U-07** 공개 draft API는 서버 동기화의 선행 조건이 아니다. 변경 기록 기반은 공유할 수 있으며, 격리된 draft 편집은 후속 확장이다.
+- **U-07** 공개 Live Draft를 이번 릴리스에 포함한다. 이전의 draft 후속 분류를 대체하며, 공통 변경 기록 기반과 기본 동기화를 먼저 구현하는 순서는 유지한다.
+- **U-08** 하위 ref를 범위로 지정해 해당 영역만 저장·초기화하고 dirty/pending/오류를 확인한다. 범위 밖의 미저장 입력은 유지한다.
+- **U-09** draft는 독립 편집을 제공하되 미수정 영역의 서버 갱신은 받아들인다. 겹친 변경은 충돌로 보존한다.
+- **U-10** 변경 전후 값과 상태를 검토하고, 선택한 변경만 저장하거나 취소할 수 있게 한다.
+- **U-11** 이번 대화의 ③ 공통 입력 컴포넌트/필드 어댑터와 ⑤ 다중 선택 일괄 편집은 포함하지 않는다. 기존 5종 프레임워크 커넥터 검증은 계속 포함한다. 이 번호는 기존 아이디어 문서의 IDEA 번호와 별개다.
 
 캐시 엔진, 기본 설정값, 패키지 경계, 최초 지원 데이터 범위는 위 합의를 구현하기 위한 **설계 선택**이다. 사용자가 각각을 직접 지정한 것으로 취급하지 않는다. 선택 이유와 검증은 DESIGN의 `DC-*`에 기록한다.
 
@@ -34,12 +39,16 @@ state-ref의 경로 기반 ref와 불변 갱신을 유지하면서, 조회 캐�
 - 명시적 mutation의 성공 후 ref 갱신 및 선택적 낙관적 업데이트.
 - 저장 작업별 롤백, 이후 입력 보존, 충돌 표시와 명시적 해결.
 - 같은 resource를 사용하는 여러 소비자의 데이터·미저장 편집 공유.
+- `resource.scope(ref)`의 범위별 저장·reset·상태. 별도 캐시나 서버 데이터 배치 target은 만들지 않는다.
+- `resource.draft()`의 독립 편집, live rebase, 충돌 해결, 저장 및 명시적 폐기.
+- resource/draft/scope의 변경 목록, 변경 전후 비교, 검토한 항목의 선택 저장·취소.
 - 기존 5종 프레임워크 커넥터의 연동 검증.
 
 ### 첫 릴리스에서 제외
 
 - `target`, 기존 스토어에 대한 attach, 자동으로 서버 경로를 추측하는 기능.
-- 공개 `fork`/draft, 편집기별 독립 초안, undo/redo, 일괄 선택 편집.
+- 임의의 로컬 store를 대상으로 하는 범용 `fork`, draft의 중첩 분기, undo/redo, 다중 선택 일괄 편집.
+- 공통 입력 컴포넌트, 필드 바인딩 어댑터, 완성형 폼/변경 비교 UI 라이브러리. 이번 검토 기능은 headless 데이터 API와 검증용 데모로 제공한다.
 - 자동 저장/debounce, 오프라인 쓰기 큐, 디스크 영속화, 멀티탭 동기화.
 - entity 정규화, 쿼리 사이의 자동 데이터 병합, `byKey`, 배열 재정렬의 항목별 병합.
 - 무한 쿼리, Suspense, SSR hydration 통합, 실시간 협업/CRDT, 교차 resource 원자적 저장.
@@ -58,6 +67,7 @@ const profile = client.resource({
   read: ({ signal }) => api.readProfile(userId, { signal }),
   write: ({ changes, revision, operationId }) =>
     api.writeProfile(userId, { changes, revision, operationId }),
+  partialSave: true, // 어댑터가 선택된 변경만 적용한다는 계약
   afterSave: { mode: 'refetch' },
 });
 
@@ -71,6 +81,29 @@ await profile.save({ rollbackOnError: true });
 ```
 
 `profile.watch()`는 payload의 루트를 반환한다. 소비자는 별도 빈 스토어를 먼저 만들 필요가 없다. 같은 resource의 직접 편집은 모든 소비자에게 즉시 보이며, `save()`는 그 변경을 서버에 보낸다. 성공 전 공유 화면을 바꾸고 싶지 않은 작업은 명시적 mutation을 사용한다.
+
+이번에 추가한 대표 편집 흐름:
+
+```ts
+// profile.load() 성공 이후. 아래 흐름은 각각 독립적인 사용 예다.
+const address = profile.scope(profile.watch().address);
+address.ref.city.value = '서울';
+await address.save(); // 다른 영역의 미저장 변경은 전송하지 않는다.
+
+const editor = profile.draft();
+editor.ref.name.value = '새 이름'; // 공유 화면에는 아직 보이지 않는다.
+editor.ref.address.city.value = '대전';
+
+const review = editor.changes();
+const nameChange = review.items.find(item =>
+  item.path.length === 1 && item.path[0] === 'name'
+)!;
+await editor.save({ review, only: [nameChange.id] });
+// 주소는 이 draft의 미저장 변경으로 남는다.
+editor.discard(); // 남은 초안을 버리고 세션 종료. 이미 저장한 이름은 되돌리지 않음.
+```
+
+저장 제출 후 draft의 해당 작업은 공유 낙관적 상태로 표시한다. 제출 전 격리와 제출 후 표시를 구분한다. 서버 기준값 B는 성공 정책이 완료될 때 갱신하며, 다른 draft의 미전송 입력을 가져와 함께 저장하지 않는다.
 
 ## 4. 기능 요구사항과 검증 연결
 
@@ -90,7 +123,7 @@ await profile.save({ rollbackOnError: true });
 | SR-10 | 성공 후 응답 반영 | 서버 보정값을 반영하며 추가 READ 0회, 이후 입력은 보존 | T-10, M-07 |
 | SR-11 | 선택적 롤백 | 실패한 작업만 제거하고 B 위의 다른 변경을 재구성 | T-11, M-08 |
 | SR-12 | 실패 입력 유지 | rollback 비활성 시 입력과 미저장 상태 유지, 재시도 가능 | T-12, M-08 |
-| SR-13 | 직렬 저장과 중복 save | 같은 resource WRITE는 직렬, 새 변경 없는 중복 save는 진행 작업 공유 | T-13, M-06 |
+| SR-13 | 직렬 저장과 중복 save | 같은 resource WRITE는 직렬, 새 변경 없는 중복 save는 동일 owner/범위/선택 작업만 공유 | T-13, M-06 |
 | SR-14 | 재조회 실패 분리 | WRITE 성공 뒤 READ 실패를 저장 실패로 롤백하거나 WRITE 재시도하지 않음 | T-14, M-09 |
 | SR-15 | 늦은 응답 차단 | 저장 이전에 시작한 오래된 READ가 저장 결과를 덮지 않음 | T-15, M-10 |
 | SR-16 | 편집 중 서버 갱신 | 다른 경로의 서버 변경 보존, 겹친 경로 충돌 표시 및 자동 저장 차단 | T-16, M-11 |
@@ -102,6 +135,15 @@ await profile.save({ rollbackOnError: true });
 | SR-22 | client 격리 | 서로 다른 client의 같은 key가 데이터·편집·요청을 공유하지 않음 | T-22, M-17 |
 | SR-23 | 로컬/서버 쓰기 구분 | READ·ack·rollback·cache update가 다시 dirty/WRITE를 발생시키지 않음 | T-23, M-07 |
 | SR-24 | 코어 호환성 | 기존 동기 전파, Watch 해제, readonly, ref identity 계약 유지 | T-24, M-14 |
+| SR-25 | 하위 ref 부분 저장 | scope 안의 변경만 전송·확정, 바깥 dirty 유지, 같은 entry 조회/큐 재사용 | T-25, M-18 |
+| SR-26 | 범위 경계와 서버 계약 | 다른 owner ref·분할 불가 부모/배열 변경·미지원 partialSave는 WRITE 전에 무변경 오류 | T-26, M-19 |
+| SR-27 | 독립 Live Draft | 서로 다른 draft 및 공유 화면에 미제출 입력이 유출되지 않음, B만 공유 | T-27, M-20 |
+| SR-28 | Draft live rebase | 미수정 필드는 최신 B 추종, 겹친 입력은 보존·충돌 표시, 취소 시 최신 기준 유지 | T-28, M-21 |
+| SR-29 | Draft 저장과 복구 | owner를 가진 작업만 확정/롤백, 실패 입력은 원래 draft에 복구, 다음 입력 보존 | T-29, M-22 |
+| SR-30 | 변경 검토 | readonly 전후 값·resource 기준 경로·작업 상태 제공, 목록 확인 자체는 READ/WRITE 0회 | T-30, M-23 |
+| SR-31 | 선택 저장·취소 | 검토 버전과 선택 ID 검증, 선택 외 편집 보존, 오래된 검토로 새 입력을 저장/취소하지 않음 | T-31, M-24 |
+| SR-32 | Draft 수명 | 열린 draft는 기준 보존, discard/dispose와 ref 만료가 명시적, 진행 WRITE를 취소한 것으로 위장하지 않음 | T-32, M-25 |
+| SR-33 | 편집 owner 간 경쟁 | 공유 편집과 draft 및 여러 draft의 겹친 제출을 검사하고 같은 resource WRITE 직렬화 | T-33, M-22 |
 
 ## 5. 비기능 요구사항
 
@@ -120,7 +162,9 @@ await profile.save({ rollbackOnError: true });
 - `.value`로 얻은 일반 객체를 직접 변경하는 것은 지원하는 쓰기 경로가 아니다. 타입·문서·개발 모드 검사로 안내한다.
 - 기존 `createStore` 소비자에게 API 이전을 요구하지 않는다. 새 확장과 최소 opt-in 연결 지점을 추가한다.
 - `write`가 성공하면 작업 전체가 성공했다는 계약을 요구한다. 부분 성공 API는 앱 어댑터에서 별도 작업으로 모델링한다.
-- 같은 key의 소비자는 미저장 편집까지 공유한다. 독립 편집은 후속 draft 기능의 영역이다.
+- 같은 key의 직접 편집 소비자는 미저장 편집까지 공유한다. 명시적으로 만든 draft만 독립된 owner와 미저장 입력을 가진다.
+- 부분 저장은 `partialSave: true`로 계약한 어댑터에서만 허용한다. 전체 PUT을 자동 PATCH로 바꾸지 않고, 범위 밖의 편집을 숨겨서 함께 보내지 않는다.
+- 변경 검토는 현재의 편집 정보이며 영구 이력·보안 감사 로그가 아니다. 자동 전송·로그 출력 없이 앱이 표시할 정보를 선택한다.
 - 서로 다른 query key의 같은 엔티티를 자동 동기화하지 않는다. 앱이 관련 key를 무효화한다.
 
 ## 7. 완료 판정과 현 상태
@@ -129,4 +173,4 @@ await profile.save({ rollbackOnError: true });
 
 기능의 출시 조건은 IMPLEMENT의 전 단계 종료 기준과 수동 체크리스트 통과다. 현재 구현·런타임 검증은 수행되지 않았다. 구현 전에 확인할 항목은 DESIGN의 `IC-*`로 관리하며 문서 작성을 막는 사용자 질문은 없다.
 
-인계 기준 SHA: `c599a018ac39b24bd908d40a6edb2686aa1fb983`. 다음 작업은 [IMPLEMENT](./IMPLEMENT.md)의 Phase 0이다.
+개정 인계 기준 SHA: `a476d0a6f589d89b3adb07fbd1419106b33bbf41`. 다음 작업은 [IMPLEMENT](./IMPLEMENT.md)의 Phase 0이다. 이번 개정은 구현 방향 반영이며 코드 구현이나 추가 커밋은 포함하지 않는다.

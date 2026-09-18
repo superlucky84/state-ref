@@ -1,6 +1,7 @@
 # DESIGN — state-ref 서버 상태 동기화
 
 - 기준: [REQUIREMENTS](./REQUIREMENTS.md), `c599a018ac39b24bd908d40a6edb2686aa1fb983`
+- 범위 개정: `a476d0a6f589d89b3adb07fbd1419106b33bbf41`. ① 부분 저장, ② Live Draft, ④ 변경 검토를 첫 릴리스에 포함한다.
 - 상태: 구현 전 계약. 코드 예시는 설계 API이며 현재 패키지에서 실행되지 않는다.
 - 결정의 `[x]`는 설계 선택 완료를 의미하며 구현·테스트 완료를 뜻하지 않는다.
 
@@ -12,18 +13,23 @@
 | DC-02 | [x] 별도 `packages/sync`, 패키지 후보 `@stateref/sync` | 코어 소비자의 의존성과 번들 분리 | NFR-01, T-24 |
 | DC-03 | [x] 첫 캐시 엔진은 `@tanstack/query-core` v5 | 키, 캐시, 조회 수명 기능을 활용하고 편집 계약에 집중 | SR-02/03, T-02/03, IC-01 |
 | DC-04 | [x] 서버 기준 B + 작업 Q + 미전송 편집 E | 최초 load 전체 스냅샷 롤백으로 이후 입력을 지우는 문제 방지 | SR-06/11, T-06/11 |
-| DC-05 | [x] 같은 client+key는 편집까지 공유 | 하나의 resource에 독립된 원본을 여러 개 두지 않음 | SR-02/22, T-02/22 |
+| DC-05 | [x] 같은 client+key의 직접 편집은 공유, draft는 격리 | 서버 기준은 하나로 두고 명시적 편집 owner만 분리 | SR-02/22/27, T-02/22/27 |
 | DC-06 | [x] save 성공 처리는 refetch/changes/response | 서버 응답 계약과 추가 조회 필요에 따라 선택 | SR-08~10, T-08~10 |
 | DC-07 | [x] save는 수동, 직접 편집은 즉시 노출 | 사용자의 load/watch/edit/save 흐름 유지 | SR-06/07, T-06/07 |
 | DC-08 | [x] 같은 resource의 WRITE 직렬화 | 서버 도착 순서와 기준 버전 관리를 단순화 | SR-13, T-13 |
 | DC-09 | [x] 실패 롤백과 입력 유지 모두 제공 | 토글과 긴 입력의 실패 UX가 다름 | SR-11/12, T-11/12 |
 | DC-10 | [x] WRITE 실패와 후속 READ 실패 분리 | 성공한 저장을 재실행하거나 취소했다고 표시하지 않음 | SR-14, T-14 |
 | DC-11 | [x] JSON 트리, 배열은 원자적 변경 단위 | 인덱스 이동을 항목 identity로 오인하지 않음 | SR-20, T-20 |
-| DC-12 | [x] 공개 draft는 후속, 내부 변경 엔진 공유 | 서버 조회·저장 기능을 draft 출시와 결합하지 않음 | U-07, T-07/17 |
+| DC-12 | [x] 공개 Live Draft를 첫 릴리스에 포함 | 사용자 선택으로 이전 후속 결정을 대체. 기반 구현 후 같은 릴리스에서 제공 | U-07/09, T-27/28/29 |
 | DC-13 | [x] 기본값은 §3의 명시적 표로 고정 | Query 엔진의 옵션을 무의식적으로 상속하지 않음 | SR-03, T-03 |
 | DC-14 | [x] 코어의 opt-in 쓰기/수명 연결 지점 검토 | 전체 트리 watch 후 diff는 변경 출처·정확한 작업 경계를 잃음 | SR-23/24, T-23/24, IC-02 |
 | DC-15 | [x] 단일 기준 캐시와 변경 적용 뷰 | Query 캐시와 state-ref가 각자 독립 원본이 되는 문제 방지 | SR-05/23, T-05/23 |
 | DC-16 | [x] 오래된 READ 차단과 저장 전 충돌 검사 | 조회 응답 순서가 저장·입력을 덮어쓰지 않도록 함 | SR-15/16, T-15/16 |
+| DC-17 | [x] scope는 owner의 경로 필터, 별도 resource 아님 | 부분 저장·reset·상태의 경계를 일치시키고 기존 key/큐 재사용 | SR-25/26, T-25/26 |
+| DC-18 | [x] draft는 B + 자기 작업/입력, 제출 시 공유 optimistic 작업 | 공유 미저장 입력과 독립성을 유지하면서 기존 저장 엔진 사용 | SR-27/28/29/33, T-27/28/29/33 |
+| DC-19 | [x] 변경 검토에 owner·버전·항목 ID 연결 | 화면에서 검토한 변경과 실제 저장/취소할 변경을 일치시킴 | SR-30/31, T-30/31 |
+| DC-20 | [x] 부분 저장 어댑터 계약과 원자적 경계 검증 | 상위 객체·배열 변경을 임의 분할하거나 범위 밖 값을 보내지 않음 | SR-26, T-26 |
+| DC-21 | [x] 열린 draft의 명시적 수명 관리 | 미저장 입력 유실과 무기한 숨은 구독을 함께 방지 | SR-32, T-32 |
 
 ## 2. 구성과 소유권
 
@@ -33,17 +39,19 @@ SyncClient (앱 또는 SSR 요청별)
   └─ ResourceEntry (key당 하나)
        ├─ 조회 연결: QueryObserver / 캐시 이벤트
        ├─ 쓰기 작업 Q: queued → sending → acknowledged
-       ├─ 미전송 편집 E: 새 입력 또는 보존한 실패 입력
-       └─ state-ref 뷰 V: B 위에 유효한 Q와 E를 순서대로 적용
-            ├─ watch(): payload ref
-            ├─ watchStatus(): resource 상태 ref
-            └─ watchFieldStatus(ref): 필드 상태 ref
+       ├─ 공유 편집 owner: E_shared, 화면 V_shared
+       ├─ DraftSession*: E_draft, 자기 작업, 화면 V_draft
+       └─ owner별 state-ref / 변경 기록
+            ├─ watch(), watchStatus(), watchFieldStatus(ref)
+            ├─ scope(ref): 동일 owner의 부분 저장·reset·상태
+            └─ changes(), watchChanges(): 검토·선택 저장/취소
 ```
 
 - B는 마지막으로 수용한 서버 기준값이다. `changes` 모드에서는 서버 성공 확인 뒤 전송값을 적용한 결과도 기준으로 수용한다.
 - V는 재구성 가능한 화면 상태다. 독립적으로 재조회·캐시 만료를 결정하는 두 번째 서버 캐시가 아니다.
 - B와 V는 copy-on-write로 구조를 공유한다. 모든 쓰기가 지원되는 ref 경로를 따른다는 전제가 필요하다.
 - 아직 확인되지 않은 값을 Query 기준 캐시에 낙관적으로 써 넣지 않는다. 낙관적 상태는 Q/E에 보관한다.
+- scope는 새 캐시/편집 사본을 만들지 않는다. draft만 별도 E와 화면을 가지며 B/QueryClient와 resource별 WRITE 큐는 공유한다.
 - 다른 Query 소비자는 같은 QueryClient의 B를 볼 수 있지만 state-ref의 미확정 Q/E까지 자동으로 보지는 않는다. 그 화면도 resource를 구독해야 편집을 공유한다.
 - v1에서는 client가 QueryClient를 소유한다. 기존 앱의 QueryClient 주입·양방향 캐시 쓰기 호환은 후속 범위다. 같은 key에 외부 optimistic 캐시 쓰기를 섞는 상황까지 자동 조정한다고 약속하지 않는다.
 
@@ -70,6 +78,7 @@ const profile = client.resource({
   read: ({ key, signal }) => api.readProfile(userId, { signal }),
   write: ({ changes, value, revision, operationId }) =>
     api.writeProfile(userId, { changes, revision, operationId }),
+  partialSave: true,
   afterSave: { mode: 'refetch' },
   staleTime: 30_000,
   gcTime: 300_000,
@@ -92,6 +101,7 @@ const result = await profile.save({ rollbackOnError: true });
 | 저장 재시도 | 0 | 요청 성공 여부가 불명확한 상태에서 WRITE를 자동 반복하지 않음 |
 | `afterSave` | `refetch` | 서버 최종 상태를 확인 |
 | `save.rollbackOnError` | false | 작성 내용을 유지. true를 명시하면 실패 작업을 복구 |
+| `partialSave` | false | true인 어댑터만 하위 scope/선택 항목 저장 허용. root 전체 save는 기존대로 가능 |
 | 명시적 mutation의 optimistic | 없음 | 성공 전 공유 화면을 변경하지 않음 |
 | optimistic mutation의 rollback | true | 실패 작업 제거가 기본. false는 재시도 가능한 미전송 편집으로 유지 |
 | focus/reconnect 재조회 | 활성·stale resource에 true | 최초 load를 시작하지 않은 resource는 자동 활성화하지 않음 |
@@ -115,7 +125,7 @@ const result = await profile.save({ rollbackOnError: true });
 | `invalidate(): Promise<void>` | stale로 표시하고 활성 resource를 재조회. inactive는 다음 load에서 조회 |
 | `watch: Watch<T>` | payload 루트 ref. 첫 성공 load 전에는 `ResourceNotLoadedError` |
 | `watchStatus: Watch<ResourceStatus>` | load 이전부터 사용 가능. `.value` 읽기만으로 네트워크 요청을 시작하지 않음 |
-| `watchFieldStatus(ref): Watch<FieldStatus>` | 같은 entry 소속 ref의 경로별 집계. 다른 entry ref는 오류 |
+| `watchFieldStatus(ref): Watch<FieldStatus>` | 같은 entry와 편집 owner 소속 ref의 경로별 집계. 다른 소속은 오류 |
 
 `watch`를 기존 커넥터에 전달하는 패턴을 유지한다. 최초 로딩 중에는 status UI를 표시하고 데이터 컴포넌트는 load 성공 후 마운트한다. `undefined as T` 또는 빈 객체를 실제 payload처럼 제공하지 않는다.
 
@@ -156,6 +166,78 @@ await renameUser.run({ name: '새 이름' });
 - `run` 호출은 별도 명령이다. 값이 같다는 이유로 mutation을 자동 dedupe하지 않는다. 같은 resource의 save와 동일한 직렬 큐에 넣으며 결과/오류 분류는 §5.3과 같다(`noop` 제외).
 - public `resource.update(fn)`도 cache-only 갱신으로 제공한다. 서버 저장 효과는 없으며 호출자가 기준으로 수용할 값임을 선언하는 행위다. 명시적 mutation 안에서는 위 cache context 사용을 우선한다.
 
+### 3.5 scope — 부분 저장·초기화
+
+```ts
+const ref = profile.watch();
+const address = profile.scope(ref.address);
+address.ref.city.value = '서울';
+
+const status = address.watchStatus();
+status.dirty.value;
+status.pending.value;
+
+await address.save({ rollbackOnError: true });
+// 다른 영역의 미전송 변경은 남는다.
+address.reset(); // 이 범위의 미전송 입력 취소. 서버 저장 취소/undo가 아님.
+```
+
+- scope는 `ref`, `watch`, `watchStatus`, `watchFieldStatus`, `changes`, `watchChanges`, `save`, `reset`, `resolve`를 같은 owner의 경로에 제한해 제공한다. `.ref` 획득만으로 구독이 생기지는 않는다.
+- `profile.scope(ref.address)`는 공유 편집 scope다. `editor.scope(editor.ref.address)`는 해당 draft의 scope다. 다른 client/resource/draft ref, 폐기된 ref는 명시적으로 거부한다. NAVI 문자열 대신 구조화된 소속/경로를 사용한다.
+- 선택 경로 아래에 완전히 포함된 정규화 변경만 제출한다. 이름과 주소를 편집한 뒤 주소만 저장하면 write의 changes에는 주소만 있고 이름은 E에 남는다.
+- 원자적 변경이 경계를 가로지르면 `ScopeBoundaryError`다. 전체 profile 대입 뒤 주소만 저장하거나, 배열 전체 변경 중 한 항목만 저장/취소하는 요청을 임의로 분해·확대하지 않는다. 적절한 상위 scope 또는 원자적 변경 전체를 선택해야 한다.
+- `partialSave: true`는 어댑터가 선택된 변경만 적용한다는 선언이다. 기본 false에서 좁힌 scope/명시적 항목 선택 save는 `PartialSaveUnsupportedError`로 WRITE 전에 거절한다. HTTP PATCH/endpoint를 자동 추측하지 않는다.
+- `write.value`는 전송 직전 B에 선택 job만 적용한 resource 전체 snapshot이다. 범위 밖 E, 다른 draft 또는 후속 입력이 섞인 V가 아니다. 전체 PUT을 쓰는 어댑터가 부분 저장 지원을 선언하려면 이 snapshot과 서버 조건부 버전 갱신 등으로 안전성을 보장해야 한다.
+- save/reset은 선택 검증을 먼저 끝낸 뒤 원자적으로 변경한다. 범위 안 충돌은 해당 save를 막지만 무관한 범위의 충돌이 부분 저장을 막지는 않는다. `needsReconcile` 등 resource 전체 저장 장벽은 계속 적용한다.
+- reset은 미전송 변경만 제거한다. 선택 범위에 자기 owner의 queued/sending/acknowledged 작업이 겹치면 거절한다. 무관한 범위의 작업은 유지하며, 초기 load snapshot으로 되돌리지 않는다.
+- scope는 별도 서버 정의나 endpoint를 갖지 않고 소유 resource의 정책을 따른다. UI 연결용 필드 어댑터나 다중 선택을 포함하는 API가 아니다.
+
+### 3.6 Live Draft — 독립 편집과 최신 서버 기준
+
+```ts
+const editor = profile.draft(); // 성공 load 이후. 호출마다 새 편집 owner.
+editor.ref.name.value = '새 이름';
+const address = editor.scope(editor.ref.address);
+address.ref.city.value = '서울';
+
+await address.save(); // 주소만 제출. 이름은 draft 안에 남음.
+editor.discard();     // 남은 입력을 버리고 세션 종료.
+```
+
+- draft 생성은 현재 B에서 시작한다. 공유 E나 다른 draft의 미전송/낙관적 입력을 복사하지 않는다. draft 생성 자체로 새 READ/key/QueryClient를 만들지 않는다.
+- `ref`, `watch`, `watchStatus`, `watchFieldStatus`, `scope`, `changes`, `watchChanges`, `save`, `reset`, `resolve`, `discard`, `dispose`를 제공한다. 미로드 resource 및 write 없는 resource의 editable draft 생성은 거절한다. 중첩 draft는 v1에서 제공하지 않는다.
+- 제출 전 입력은 해당 세션에만 보인다. 제출한 작업은 기존 Q에 owner ID와 함께 넣고 공유 화면에 낙관적으로 표시한다. 다른 draft는 이 미확정 작업을 자기 화면에 섞지 않고 B의 확정을 기다린다.
+- 새로운 B를 받으면 수정하지 않은 필드는 즉시 따라간다. 수정한 경로는 기준/내 입력/새 서버값을 비교하며 다른 값의 겹침은 conflict로 보관한다. 값이 같으면 수렴할 수 있다. 자기 저장의 서버 보정값과 후속 입력은 작업 인과관계를 적용해 처리한다.
+- 다른 draft의 미전송 입력은 저장을 막지 않는다. 다만 제출 범위가 다른 owner의 진행 job과 겹치면 `EditBusyError`, 공유 owner의 미전송 입력과 겹치면 `EditConflictError`로 거절한다. save 호출 및 전송 직전에 재검사한다. 같은 owner의 후속 입력은 기존 직렬 저장/복구 계약을 따른다.
+- 전송이 시작된 뒤 생긴 다른 owner의 입력은 해당 서버 요청을 취소하지 않는다. 결과 확정 시 입력을 보존하고 충돌을 표시한다. 서로 다른 draft가 같은 필드를 저장하면 첫 결과에 대한 rebase/명시적 해결 없이 둘째 값을 조용히 덮어쓰지 않는다.
+- save 성공 시 해당 세션의 제출 변경만 확정한다. 이후 입력/미선택 입력은 남고 세션을 계속 사용할 수 있다. 실패 시 rollback=false면 원래 draft의 E로 돌려놓으며 공유 E에 유출하지 않는다. true면 실패 작업만 제거하고 다음 입력은 남긴다.
+- WRITE 성공 후 READ 실패는 기존 `saved/reconciliation: failed` 계약을 사용한다. acknowledged overlay와 owner를 보존하고 재조회로 복구하며 중복 WRITE하지 않는다.
+- reset은 세션을 유지하며 미전송 입력을 버린다. discard는 명시적으로 남은 미전송 입력을 버리고 세션을 닫는다. dispose는 clean 세션만 닫는다. 세션 소유의 미확정 job이 남아 있으면 discard/dispose를 거절한다.
+- 열린 세션은 B/runtime을 pin한다. 종료 시 구독·journal·pin을 정리하고 세션 ref와 scope는 `DraftDisposedError`가 된다. 일반 서버 응답 교체는 held ref를 폐기하지 않는다.
+
+### 3.7 변경 검토와 선택 저장·취소
+
+```ts
+const review = editor.changes(); // 동기·readonly snapshot. 네트워크 동작 없음.
+// review.items: 경로, before/after/server 값, dirty/pending/conflict 등
+const selectedIds = review.items
+  .filter(item => item.path[0] === 'address' && item.state === 'dirty')
+  .map(item => item.id);
+
+await editor.save({ review, only: selectedIds });
+// 취소 경로는 같은 입력에서 save 대신 editor.reset({ review, only: selectedIds })
+```
+
+- resource/draft/scope에 동일한 검토 API를 둔다. `changes()`는 snapshot, `watchChanges()`는 기존 Watch 방식의 readonly 반응형 목록이다. 서버 재조회나 저장은 수행하지 않는다.
+- review는 `{ ownerId, scopePath, version, items }`다. 항목은 `id`, resource 루트 기준 구조화 `path`, 존재 여부를 포함한 `before/after/server`, `state`, 필요 시 `operationId`와 conflict 정보를 제공한다. 상태는 `dirty`, `pending`, `awaiting-reconcile`, `conflict`를 구분한다. 서버 오류는 작업에 연결한다.
+- dirty 항목의 before는 해당 intent의 비교 기준, after는 내 입력, server는 현재 B다. pending 항목의 after는 전송 고정값이다. 같은 경로에 전송 중 B와 후속 C 입력이 있으면 서로 다른 항목으로 표현한다. 반환값을 수정해 journal/B를 바꿀 수 없어야 한다.
+- 완료 이력을 무한 보존하는 API가 아니다. 확정한 항목은 정리하며, 실패 후 보존한 입력은 오류가 연결된 dirty 항목으로 다시 나타난다. UI 문구·민감값 마스킹은 앱 책임이며 값을 자동 로그/외부 전송하지 않는다.
+- `only`는 같은 호출에 `review`를 요구한다. 정확한 owner/scope/version/항목 ID를 검사한다. 항목 ID는 다른 변경에 재사용하지 않고, owner 편집·관련 작업 상태·B 수용으로 검토 버전을 갱신한다. v1은 무관한 B 갱신에도 보수적으로 오래된 review를 거절할 수 있다.
+- 검토 후 값이 바뀌면 `StaleChangeReviewError`로 무변경 거절하고 다시 검토한다. `only: []`는 noop이며 전체 저장으로 해석하지 않는다. 알 수 없거나 중복된 ID, 범위 밖 항목도 명시적으로 거절한다.
+- 선택 save는 충돌 없는 미전송 항목만, 선택 reset은 취소 가능한 미전송 항목만 받는다. pending/acknowledged 항목을 선택해 재전송하거나 서버 저장을 취소한 것으로 표시하지 않는다. 부모/배열 원자적 경계는 scope와 동일하다.
+- save 제출 시 review 검증과 변경 추출을 원자적으로 수행한다. 이후 queued job은 고정된 intent와 최신 B를 재검증하지, 최신 입력으로 payload를 바꾸거나 옛 review를 새 검토로 가장하지 않는다.
+- 전체 변경을 저장/초기화하려는 기존 `save()`/`reset()`에는 review가 필수가 아니다. 검토 API는 완성형 폼/입력 컴포넌트/다중 편집 UI를 요구하지 않는다.
+
 ## 4. 내부 변경 모델
 
 ```ts
@@ -168,6 +250,9 @@ type Change = {
 };
 type WriteJob = {
   id: string;
+  ownerId: string; // 공유 owner 또는 특정 draft. mutation은 공유 owner.
+  scopePath: Path;
+  selectionId: string; // 제출 범위/선택 식별. 다른 scope와 Promise 혼동 금지.
   sequence: number;
   changes: readonly Change[];
   baseGeneration: number;
@@ -185,10 +270,11 @@ type WriteJob = {
 
 - **B**: 마지막 수용한 기준 payload와 revision. 첫 load뿐 아니라 저장 확정, 재조회, 명시적 cache update로 갱신한다.
 - **Q**: save/mutation으로 제출한 작업. 같은 resource는 한 WRITE만 sending 상태다.
-- **E**: 마지막 작업 제출 이후의 미전송 편집, 또는 실패 후 유지한 편집.
-- **V**: B에 표시 대상 Q와 E를 순서대로 적용한 값. 전파되는 state-ref payload다.
+- **E**: owner별 미전송 편집, 또는 실패 후 해당 owner로 돌려놓은 편집. 부분 제출 뒤 미선택 입력도 포함한다.
+- **V_shared**: B 위에 공유 표시 대상 Q와 E_shared를 적용한 화면.
+- **V_draft**: B 위에 그 draft가 제출한 Q와 E_draft만 적용한 화면. 다른 owner의 미확정 입력은 포함하지 않는다.
 
-성공 전 반영을 사용하지 않는 명시적 mutation에는 표시용 변경이 없다. 직접 ref 할당은 즉시 보이는 E이므로 `save({ optimistic: false })` 같은 옵션을 두지 않는다. 성공 전 화면을 유지하려면 명시적 mutation 경로를 사용한다.
+이하 V/E 표기는 문맥의 owner를 의미한다. 성공 전 반영을 사용하지 않는 명시적 mutation에는 표시용 변경이 없다. 직접 ref 할당은 해당 owner 화면의 E를 즉시 바꾸므로 `save({ optimistic: false })` 같은 옵션을 두지 않는다. 제출 전 공유 화면과 분리하려면 draft, 요청 성공 전까지 공유 낙관적 표시도 원하지 않으면 명시적 mutation을 사용한다.
 
 ### 4.2 할당 기록과 정규화
 
@@ -207,12 +293,13 @@ type WriteJob = {
 
 ### 5.1 호출과 큐
 
-- `save()` 호출 시 E를 immutable job으로 고정하고 새 E를 연다. 최신 V를 나중에 직렬화해서 이전 작업의 payload를 바꾸지 않는다.
+- `save()` 호출 시 owner/scope/선택 항목을 검증한 뒤 선택된 E만 immutable job으로 고정한다. 미선택 E와 이후 입력은 남긴다. 최신 V를 나중에 직렬화해서 이전 작업의 payload를 바꾸지 않는다.
 - 전송할 `changes`, 기준에 그 변경만 적용한 `value`, 서버 `revision`, 안정적인 `operationId`를 write에 넘긴다.
 - queued job은 전송 직전에 최신 B와 이전 작업 결과에 맞춰 검증한다. 사용자의 intent/after 값은 유지하고 적합한 최신 revision을 사용한다. 새 충돌이 있으면 전송하지 않는다.
-- E가 비어 있고 미완료 save가 있으면 마지막으로 제출한 save의 Promise를 공유한다. 옵션이 서로 다르면 기존 정책을 바꾸지 않고 호출 오류를 낸다. 미완료 save가 없으면 `noop` 결과다.
+- 선택 범위의 E가 비어 있으면 같은 owner·scope·선택 정체성의 미완료 save만 Promise를 공유한다. 여러 개면 마지막 제출 작업을 사용하며 서로 다른 옵션은 호출 오류다. 다른 scope/draft의 작업을 대신 반환하지 않는다. 매칭 작업이 없으면 `noop`이다. 명시적 review는 먼저 유효성을 검사하므로 이미 소비한 review를 재사용하면 stale 오류다.
 - 명시적 mutation만 진행 중인 경우에는 그것을 save한 것으로 간주하지 않으며 E가 없으면 `noop`이다. `save`와 `mutation.run`의 반환 응답을 혼동하지 않는다.
 - 다른 resource의 WRITE는 병렬일 수 있다. 하나의 resource에서는 전송과 성공 후 기준 확정까지 순서를 지킨다.
+- draft/scope save도 같은 Q를 사용한다. 실패/충돌 입력의 복귀 위치는 job.ownerId이며, 다른 owner의 E를 합쳐 저장하거나 비우지 않는다. mutation 응답은 B를 갱신하고 모든 열린 draft에 live rebase를 수행한다.
 
 ### 5.2 세 가지 기준 확정 정책
 
@@ -276,6 +363,8 @@ type SaveResult<R> =
 
 `resource.resolve(path, 'server' | 'local')`을 명시적 해결 API로 둔다. server는 겹친 미전송 intent를 버리고 최신 B를 따른다. local은 보존한 입력을 현재 B에 대한 새 intent로 만든다. 진행 중인 WRITE를 이미 취소한 것으로 취급하지 않으며, 그 응답이 정리된 뒤 해결을 적용한다.
 
+draft/scope의 resolve도 동일한 owner 규칙을 따른다. path는 변경 검토 항목과 같은 resource 루트 기준 경로이며 scope 밖 경로는 거절한다. 다른 owner의 미전송 편집을 resolve로 버리거나 승인할 수 없다.
+
 타입상 서버 revision은 불투명 값이다. 서버가 조건부 갱신을 지원해야 다른 사용자와의 저장 충돌도 확실히 방지할 수 있다. 클라이언트 generation은 서버의 revision을 대신하지 않는다.
 
 ### 6.3 성공 여부가 불명확한 네트워크 실패
@@ -297,12 +386,13 @@ unknown 이후에는 자동 WRITE 재시도를 하지 않고 기준 확인을 �
 ### 7.2 수명과 GC
 
 - callback이 있는 watch/watchStatus/field status 구독, 진행 load, Q/E, 미해결 conflict/reconciliation이 entry를 유지한다.
+- watchChanges 구독과 열린 draft도 유지 조건이다. scope만 생성하는 행위는 독립 pin이 아니며 owner의 수명을 따른다. draft 종료와 client.dispose에서 모든 owner의 pin/작업을 확인한다.
 - 인자 없는 `watch()`는 ref를 얻는 기능이며 영구적인 활성 구독은 아니다.
 - 하나의 구독 해제는 다른 구독자의 요청을 취소하지 않는다. `AbortSignal`/false 해제와 callback cache 정책을 유지한다.
 - clean/inactive entry는 gcTime 후 payload와 내부 작업 저장소를 해제한다. dirty/queued/미확정 entry는 pin하고 `retained` 사유를 status에 표시한다.
 - GC 후 기존 resource handle의 load는 다시 데이터를 준비할 수 있다. GC로 폐기된 runtime에서 얻었던 ref는 `ResourceExpiredError`로 실패하며 다시 watch해야 한다. 일반 refetch/서버 객체 교체에서는 기존 ref가 유지된다.
-- `resource.discard()`는 미전송 편집과 해결 가능한 보존 오류를 명시적으로 제거한다. sending/acknowledged 작업이 있으면 거부한다.
-- `client.dispose()`는 구독과 조회 수명을 정리한다. 미확정 작업이 있으면 기본적으로 거부하고, 명시적인 discard 옵션에서만 포기한다. 서버의 진행 WRITE까지 되돌린다는 의미는 아니다.
+- `resource.discard()`는 공유 owner의 미전송 편집과 해결 가능한 보존 오류를 명시적으로 제거하며 draft를 닫거나 비우지 않는다. 자기 queued/sending/acknowledged 작업이 있으면 거부한다. resource.reset은 같은 owner의 입력 초기화 API이며 resource handle을 종료하지 않는다.
+- `client.dispose()`는 구독과 조회 수명을 정리한다. 어떤 owner든 미저장 입력·미확정 작업이 있으면 기본적으로 거부하고, 명시적인 discard 옵션에서만 포기한다. clean draft도 함께 종료한다. 서버의 진행 WRITE까지 되돌린다는 의미는 아니다.
 - registry, observer, status view가 서로를 붙잡아 GC를 막지 않는지는 IC-02 및 T-19에서 확인한다.
 
 ### 7.3 상태 정보
@@ -310,6 +400,8 @@ unknown 이후에는 자동 WRITE 재시도를 하지 않고 기준 확인을 �
 `ResourceStatus`에는 `loadStatus`, `isFetching`, `dirty`, `pendingCount`, `isReconciling`, `readError`, `writeError`, `reconcileError`, `conflicts`, `needsReconcile`, `retained`를 둔다. dirty는 미전송 E를, pendingCount는 queued/sending 작업을 의미한다. 이미 성공한 acknowledged 작업은 pending WRITE가 아니다.
 
 `FieldStatus`는 dirty/pending/error/conflict를 경로의 조상·자손 겹침 기준으로 집계한다. 요청 전체가 실패하면 그 작업에 포함된 경로들에 오류를 연결한다. 서버의 필드 검증 오류 문자열을 자동으로 경로라고 해석하지 않는다.
+
+resource dirty는 E_shared, resource pendingCount는 resource 전체 Q를 나타낸다. draft/scope의 dirty·pendingCount·오류는 해당 owner/범위로 제한하며 `pending`은 그 pendingCount가 0보다 큰지다. 열린 draft 수와 미저장 draft 수를 resource 상태에 별도로 제공해 화면 이탈 판단에서 숨겨진 초안을 놓치지 않게 한다. draft 생성만으로 resource dirty를 true로 만들지 않는다.
 
 오류와 pending 정보는 작업 ID 및 편집 sequence에 귀속한다. 과거 작업의 완료로 최신 작업의 pending/error를 일괄 초기화하지 않는다. 재편집으로 오류 표시를 갱신하더라도 원격 작업의 실제 결과 기록과 구분한다.
 
@@ -338,6 +430,9 @@ packages/sync/src/
   resource.ts         load/watch/save/status API
   query-adapter.ts    QueryObserver, QueryCache, generation, GC
   changes.ts          경로 변경 기록, 정규화, 재적용
+  scope.ts            owner/경로별 선택과 저장·reset 경계
+  draft.ts            독립 편집 세션, live rebase, 수명
+  review.ts           readonly 변경 목록, 검토 버전·선택 검증
   operations.ts       직렬 작업 큐, save/mutation 결과
   reconciliation.ts   성공 정책, 충돌, acknowledged 작업
   types.ts            공개 계약 및 오류
@@ -353,10 +448,11 @@ packages/sync/src/
 - [ ] **IC-01 / Phase 0** Query core v5의 정확한 버전 고정, Node/TS 조건, QueryObserver/캐시 이벤트/취소의 실제 순서 확인. epoch 차단, focus 수명, GC를 최소 spike로 검증하고 사용 버전과 결과를 기록한다.
 - [ ] **IC-02 / Phase 0~1** 코어 opt-in hook 및 lifecycle 경계 확정. 일반 코어 번들/성능 예산과 GC 시 ref guard를 검증한다. 예산을 넘으면 wrapper 대안의 비용과 의미를 비교하고 DC-14를 갱신한다.
 - [ ] **IC-03 / Phase 0** readonly resource, loaded guard, Watch 투영, 기존 5종 커넥터와 TypeScript 5.6 계열 호환성 spike. 최종 공개 선언과 오류 타입을 고정한다.
+- [ ] **IC-04 / Phase 0~5** owner별 journal/뷰, scope 경계와 검토 토큰을 최소 모델로 확인. 별도 전체 복사 없이 draft를 유지하는 비용과 rebase/부분 PUT 안전 계약을 검증한다. Phase 0에서 접근법을 기록하고 Phase 5의 범위·draft 구현 종료 전에 닫는다.
 
 ## 10. 인계
 
-- done: 사용자 요구사항과 설계 선택을 분리하고 상태 모델·성공 정책·롤백·경쟁·수명 계약을 문서화.
-- next: [IMPLEMENT](./IMPLEMENT.md) Phase 0에서 IC-01~03 검증. 공개 draft/target을 먼저 구현하지 않는다.
+- done: 사용자 요구사항과 설계 선택을 분리하고 상태 모델·성공 정책·롤백·경쟁·수명 계약을 문서화. 이번 개정에서 부분 저장·Live Draft·변경 검토 및 공통 owner 모델을 첫 릴리스로 승격.
+- next: [IMPLEMENT](./IMPLEMENT.md) Phase 0에서 IC-01~04 검증 시작. 기본 조회/변경 엔진 뒤 Phase 5에서 세 기능을 구현하고 hardening/integration을 진행한다. target·입력 컴포넌트 통합·일괄 편집은 포함하지 않는다.
 - blockers: 문서 작업 차단 없음. 런타임/버전/성능 검증은 미수행이며 위 IC로 추적.
-- latest commit: `c599a018ac39b24bd908d40a6edb2686aa1fb983`. 이 설계 문서 자체는 아직 커밋하지 않음.
+- latest commit: `a476d0a6f589d89b3adb07fbd1419106b33bbf41`. 최초 문서는 커밋되었고 이번 범위 개정은 아직 커밋하지 않음.
