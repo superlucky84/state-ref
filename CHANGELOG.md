@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.0.1
+
+### Fixed
+
+- **`createComputed` notified only the first subscriber** (`CI-27`). `result`
+  and the proxy reading it lived in `createComputed`'s own closure, so every
+  subscription to the same computed shared them. The first subscription to run
+  wrote `result`; every later one then compared the same new value against it,
+  found no change, and returned without notifying. A computed shared by nine
+  components woke one of them.
+
+  The shared closure is as old as the helper, but it was invisible until
+  3.0.0 added the `equals` comparison that made a stale `result` mean "nothing
+  changed" — so this is a 3.0.0 regression, not a 2.x defect. Each
+  subscription now keeps its own `result` and its own proxy, which is what the
+  comparison needs: what *that* subscriber last saw.
+
+  Reported against 3.0.0 in application code where several components shared
+  one computed.
+
 ## 3.0.0
 
 The first release off the core improvement work. Twenty-six issues were filed

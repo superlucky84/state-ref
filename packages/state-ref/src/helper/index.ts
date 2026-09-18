@@ -260,15 +260,6 @@ export function createComputed<W extends readonly Watch<any>[], R>(
   option?: { equals?: (next: R, previous: R) => boolean }
 ) {
   const equals = option?.equals ?? Object.is;
-  let result: R;
-  const proxy: { value: R } = {
-    get value(): R {
-      return result;
-    },
-    set value(_setter) {
-      console.warn('Can not setting');
-    },
-  };
 
   return (
     computedCallback?: (
@@ -285,6 +276,30 @@ export function createComputed<W extends readonly Watch<any>[], R>(
      */
     const refs = [] as unknown as StateRefsTuple<W>;
     const controllers = watches.map(() => new AbortController());
+
+    /**
+     * Per subscription, not per computed.
+     *
+     * These lived in `createComputed`'s own closure until 3.0.1, so every
+     * subscription shared one `result` and one proxy. That was invisible while
+     * the helper notified unconditionally; `equals` made it a lost
+     * notification (`CI-27`). The first subscription to run wrote `result`,
+     * and every later one compared the same new value against it, found no
+     * change, and returned - so a computed shared by nine components woke one
+     * of them.
+     *
+     * The comparison has to be against what *this* subscriber last saw, which
+     * means one of each per subscription.
+     */
+    let result: R;
+    const proxy: { value: R } = {
+      get value(): R {
+        return result;
+      },
+      set value(_setter) {
+        console.warn('Can not setting');
+      },
+    };
 
     watches.forEach((watch, index) => {
       watch((ref, isFirst) => {
