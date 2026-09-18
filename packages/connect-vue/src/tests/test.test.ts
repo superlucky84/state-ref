@@ -111,10 +111,14 @@ describe('Connect Vue', () => {
   });
 
   /**
-   * "@testing-library/vue" isolates the testing environment by creating a new instance of the store with each render, instead of using a singleton. As a result, this test does not work.
-   * (Manual testing is required with `npm run dev:vue`.)
+   * Skipped until Phase 8 with the note that "@testing-library/vue isolates
+   * the testing environment by creating a new instance of the store with each
+   * render". That diagnosis was wrong, and skipping on it hid a real defect
+   * for as long as it stood: the three `render` calls happen in one turn, and
+   * `CI-25` dropped every store write that landed while a component's mount
+   * still held the connector's echo guard up. Fixing `CI-25` made this pass.
    */
-  it.skip('Components with different roots from different render functions should be able to share values.', async () => {
+  it('Components with different roots from different render functions should be able to share values.', async () => {
     render(Age);
     render(Age1);
     render(Age2);
