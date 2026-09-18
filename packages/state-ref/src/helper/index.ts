@@ -19,11 +19,12 @@ import { lens } from '@/lens';
  */
 export const DEFAULT_WATCH_OPTION = { cache: true, editable: true };
 /**
- * `trackDeps` is on from 3.0.0 (`DC-02`).
+ * `trackDeps` is new in 3.0.0, and on (`DC-02`).
  *
  * It re-collects what a callback reads on every run, so a path the callback
- * has stopped reading stops waking it. Off through 2.x because it changes how
- * often subscribers are called, which is a behaviour change and had to wait
+ * has stopped reading stops waking it. 2.x has no such option and no way to
+ * get this behaviour: a subscription there only ever grew. Turning it on by
+ * default changes how often subscribers are called, which is why it waited
  * for a major. Phase 8 measured it on real components: a conditional read that
  * took the other branch went from waking its component on every write of the
  * abandoned path to not waking it at all.

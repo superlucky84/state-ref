@@ -157,8 +157,9 @@ useful when the stopping condition is in the state itself. Both work through
 
 ### tracking what a subscriber reads
 
-Since 3.0.0 a subscriber's dependencies are re-collected on every run, so a path it
-has stopped reading stops waking it:
+3.0.0 adds a second argument to `createStore`, `{ trackDeps }`, on by default. A
+subscriber's dependencies are re-collected on every run, so a path it has stopped
+reading stops waking it:
 
 ```typescript
 const watch = createStore({ flag: true, a: 0, b: 0 });
@@ -173,8 +174,9 @@ ref.flag.value = false;
 ref.a.value = 99; // does not wake the subscriber any more
 ```
 
-Pass `createStore(value, { trackDeps: false })` to get the 2.x behaviour back, where
-every path a callback has ever read keeps waking it.
+2.x had no such option - `createStore` took no second argument - and every path a
+callback had ever read kept waking it. Pass `createStore(value, { trackDeps: false })`
+for that behaviour.
 
 See [CHANGELOG.md](./CHANGELOG.md) for everything 3.0.0 changes, including the four
 changes that can break 2.x code.

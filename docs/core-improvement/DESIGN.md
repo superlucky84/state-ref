@@ -407,6 +407,8 @@ if (!Object.is(next, result)) { result = next; notify(); }
   - 검증: Phase 6 baseline test — 위 표 4행이 각각 실행 가능한 메시지로 throw, 1행은 무변경, 읽기는 `undefined` 유지
 - [x] **DC-02** CI-14 dep 재수집 기본값 → **재해소 (2026-09-18, Phase 8): 3.0.0에서 기본값 ON. `trackDeps: false`로 2.x 동작 복구 가능**
 
+  > **용어 정정 (2026-09-18).** Phase 5의 "2.x는 opt-in으로 확정"은 *출시된 2.x가 이 옵션을 끈 채 나갔다*는 뜻이 아니다. **출시된 2.1.0에는 이 옵션이 없다** — `main`의 `createStore<V>(orignalValue: V)`는 두 번째 인자 자체를 받지 않고 `CreateStoreOption` 타입도 없다. `trackDeps`는 이 브랜치 Phase 5에서 신설됐고 한 번도 출시되지 않았다. 사용자 관점에서 3.0.0은 **옵션 신설 + 기본값 ON**이지 기본값 전환이 아니다. 이 오해를 담고 있던 서술을 코드 주석·README·문서 사이트(양쪽 언어)·skills·addon·CHANGELOG에서 정정했다.
+
   Phase 8이 기다리던 측정을 실제 React 컴포넌트에서 했다. 조건부 읽기가 있는 컴포넌트에서 `flag`가 뒤집힌 뒤 버려진 분기의 경로에 쓰면 — **OFF: 리렌더 1회 / ON: 0회**. 켠 쪽이 정확하고, 끈 쪽은 읽지도 않는 값 때문에 렌더한다.
 
   - 커넥터 5종 **68건 전부 무수정 통과** — 기본값을 뒤집어도 커넥터 코드는 손댈 것이 없다(NFR-4)

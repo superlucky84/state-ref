@@ -35,11 +35,12 @@ export const ApiCore = mount(() => {
           (number, string, boolean) or an object/array.
         </li>
         <li>
-          <code>createOption.trackDeps</code> (optional, default: <code>true</code> since
-          3.0.0) - Re-collects what each subscriber reads on every run, so a path a
-          callback has stopped reading stops waking it. Set it to <code>false</code> for
-          the 2.x behaviour, where a subscriber keeps being woken by every path it has
-          ever read.
+          <code>createOption.trackDeps</code> (optional, default: <code>true</code>;
+          new in 3.0.0) - Re-collects what each subscriber reads on every run, so a
+          path a callback has stopped reading stops waking it. 2.x had no such option:
+          a subscription there only ever grew. Set it to <code>false</code> for that
+          behaviour, where a subscriber keeps being woken by every path it has ever
+          read.
         </li>
       </ul>
 

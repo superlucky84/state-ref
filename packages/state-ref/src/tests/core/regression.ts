@@ -538,9 +538,10 @@ if (import.meta.vitest) {
 
   describe('CI-14 dependencies are re-collected', () => {
     /**
-     * Opt-in through 2.x and the default from 3.0.0 (`DC-02`, settled in
-     * Phase 8 on measurements taken through a real React component). The 2.x
-     * behaviour is still one option away, which is what this pins.
+     * New in 3.0.0 and on by default (`DC-02`, settled in Phase 8 on
+     * measurements taken through a real React component). 2.x had no such
+     * option - `createStore` took no second argument at all - so what this
+     * pins is that the 2.x behaviour is still reachable, one option away.
      */
     it('DEFINED (Phase 8, DC-02): with trackDeps off, a no-longer-read path still wakes the subscriber', () => {
       const watch = createStore<{ flag: boolean; a: number; b: number }>(

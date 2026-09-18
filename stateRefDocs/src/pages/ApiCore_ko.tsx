@@ -31,10 +31,11 @@ export const ApiCoreKo = mount(() => {
 
       <ul>
         <li>
-          <code>createOption.trackDeps</code> (선택, 3.0.0부터 기본값 <code>true</code>) -
-          실행할 때마다 각 구독자가 읽은 경로를 다시 수집합니다. 콜백이 더 이상 읽지 않는
-          경로는 그 구독자를 깨우지 않습니다. <code>false</code>로 두면 한 번이라도 읽은
-          경로가 계속 깨우던 2.x 동작이 됩니다.
+          <code>createOption.trackDeps</code> (선택, 기본값 <code>true</code>;
+          3.0.0에서 신설) - 실행할 때마다 각 구독자가 읽은 경로를 다시 수집합니다.
+          콜백이 더 이상 읽지 않는 경로는 그 구독자를 깨우지 않습니다. 2.x에는 이 옵션이
+          없었고 구독 목록은 늘어나기만 했습니다. <code>false</code>로 두면 그 동작이
+          됩니다.
         </li>
         <li>
           <code>initialValue: V</code> - 스토어의 초기값. 원시 타입(number, string, boolean)
