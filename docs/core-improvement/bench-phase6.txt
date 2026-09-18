@@ -1,0 +1,29 @@
+
+READ — 50,000 leaf .value reads by path depth  [NFR-1]
+depth  2                                            4.9 ms
+depth  8                                           12.8 ms  (target <= 200 ms)  PASS
+depth 32                                           40.7 ms
+
+WRITE — 500 writes to one field, N idle subscribers  [NFR-2]
+ 100 idle subscribers                               0.2 ms
+ 400 idle subscribers                               0.1 ms
+1600 idle subscribers                               0.4 ms  (target <= 10 ms)  PASS
+
+WRITE — 500 writes to items[0], N live index nodes  [sibling narrowing]
+  10 live index nodes                               0.4 ms
+ 100 live index nodes                               0.4 ms
+1000 live index nodes                               0.5 ms  (target <= 5 ms)  PASS
+
+WRITE — subscriber scaling factor (want: sub-linear)
+  100 -> 400:  0.60x   (subscriber count 4x)
+  400 -> 1600: 2.96x   (subscriber count 4x)
+
+Gates: 3/3 pass
+
+BUNDLE — dist/state-ref.mjs  [NFR-3]
+
+  as published    12301 B raw    4355 B gzip   (vite leaves ESM whitespace in)
+  minified         7350 B raw    3068 B gzip   (target <= 3200 B)  PASS
+
+  never reaches an application: 1287 B gzip of formatting and documentation
+

@@ -1,8 +1,10 @@
 import { DEFAULT_WATCH_OPTION, DEFAULT_CREATE_OPTION } from '@/helper';
 import { makeReference } from '@/core/ref';
 import { runner } from '@/connectors/runner';
+import { createPathRoot } from '@/path';
 
 import type {
+  CreateStoreOption,
   Renew,
   StoreType,
   StateRefStore,
@@ -22,34 +24,69 @@ import type {
  * const stateRef = watch(stateRef => {
  *   console.log(stateRef.value));
  * });
+ *
+ * `{ trackDeps: true }` re-collects each subscriber's dependencies on every
+ * run, so a path the callback has stopped reading stops waking it. Off by
+ * default, because it changes how often subscribers are called.
  */
-export function createStore<V>(orignalValue: V) {
-  const { watch } = create(orignalValue, { autoSync: true });
+export function createStore<V>(
+  originalValue: V,
+  userCreateOption?: CreateStoreOption
+) {
+  const { watch } = create(originalValue, {
+    ...(userCreateOption || {}),
+    autoSync: true,
+  });
 
   return watch;
 }
-export function createStoreManualSync<V>(orignalValue: V): ManualSyncStore<V> {
-  return create(orignalValue, { autoSync: false });
+export function createStoreManualSync<V>(
+  originalValue: V,
+  userCreateOption?: CreateStoreOption
+): ManualSyncStore<V> {
+  return create(originalValue, {
+    ...(userCreateOption || {}),
+    autoSync: false,
+  });
 }
 
-function create<V>(orignalValue: V, userCreateOption?: { autoSync?: boolean }) {
+/**
+ * Exported for tests and the bench, not from the package index.
+ *
+ * `pathRoot` is the only way to observe how many nodes a store actually has,
+ * and Phase 6.5's whole point is that most paths no longer get one - a property
+ * that is otherwise unobservable by construction, so there would be no way to
+ * gate it (`DC-14`).
+ */
+export function create<V>(
+  originalValue: V,
+  userCreateOption?: { autoSync?: boolean; trackDeps?: boolean }
+) {
   const storeRenderList: StoreRenderList<any> = new Map();
+  const pathRoot = createPathRoot();
   const cacheMap = new WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>();
-  const { autoSync } = Object.assign(
+  const { autoSync, trackDeps } = Object.assign(
     {},
     DEFAULT_CREATE_OPTION,
     userCreateOption || {}
   );
-  const rootValue: StoreType<V> = { root: orignalValue };
+  const rootValue: StoreType<V> = { root: originalValue };
 
   const watch = (
     renew: Renew<StateRefStore<V>> = () => {},
     userOption?: { cache?: boolean; editable?: boolean }
   ): StateRefStore<V> => {
+    /**
+     * Resolved as: DEFAULT_WATCH_OPTION < store mode < userOption.
+     * The store mode must be applied unconditionally, otherwise passing any
+     * unrelated option (say `{ cache: false }`) would drop it and silently
+     * make a manual-sync store writable through `watch`.
+     */
     const watchOption = Object.assign(
       {},
       DEFAULT_WATCH_OPTION,
-      userOption || { editable: autoSync }
+      { editable: autoSync },
+      userOption || {}
     );
     const { cache, editable } = watchOption;
 
@@ -69,11 +106,15 @@ function create<V>(orignalValue: V, userCreateOption?: { autoSync?: boolean }) {
       storeRenderList,
       cacheMap,
       autoSync,
+      cache,
       editable,
+      trackDeps,
+      pathRoot,
     });
   };
 
   return {
+    pathRoot,
     watch,
     updateRef: watch(() => {}, { editable: true }),
     sync: () => {

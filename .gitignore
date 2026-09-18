@@ -5,3 +5,6 @@ coverage
 CLAUDE.md
 AGENTS.md
 .claude
+
+# vite writes these next to the config during build and removes them again
+vite.config.*.timestamp-*

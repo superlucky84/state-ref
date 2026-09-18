@@ -77,6 +77,32 @@ console.log(sumRef.value);  // 35`}
         </li>
       </ul>
 
+      <h2>구독 해제</h2>
+
+      <p>
+        여기서 만든 구독도 해제 방법은 같습니다. 콜백에서{' '}
+        <code>AbortSignal</code>을 반환한 뒤 abort하거나, <code>false</code>를 반환해
+        그 실행 이후 구독을 끊습니다. 두 방법 모두 이 헬퍼가 내부적으로 연 구독까지
+        함께 정리합니다.
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`const abortController = new AbortController();
+
+computedWatch((refs, isFirst) => {
+  read(refs);
+  return abortController.signal;
+});
+
+abortController.abort();  // 내부 구독까지 모두 해제된다
+
+// 조건이 충족되면 멈추고 싶다면:
+computedWatch((refs, isFirst) => {
+  if (done(refs)) return false;
+});`}
+      />
+
       <h2>계산된 값 구독</h2>
 
       <p>

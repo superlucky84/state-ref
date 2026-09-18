@@ -1,0 +1,232 @@
+# baseline-test — state-ref core improvement Phase 0
+# base commit: ca7b045  (docs: add core improvement plan (requirements/design/implement/test))
+# node: v20.3.0 / pnpm: 9.12.3 / vitest: 2.1.2
+# date: 2026-09-16T07:52:43Z
+
+
+> state-ref-root@0.0.1 test /Users/n250109005/project/state-ref
+> pnpm -r test
+
+Scope: 7 of 8 workspace projects
+packages/state-ref test$ vitest run --reporter verbose
+packages/state-ref test:  RUN  v2.1.2 /Users/n250109005/project/state-ref/packages/state-ref
+packages/state-ref test: (node:3235) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+packages/state-ref test: (Use `node --trace-deprecation ...` to show where the warning was created)
+packages/state-ref test: (node:3236) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+packages/state-ref test: (Use `node --trace-deprecation ...` to show where the warning was created)
+packages/state-ref test: (node:3241) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+packages/state-ref test: (Use `node --trace-deprecation ...` to show where the warning was created)
+packages/state-ref test: (node:3239) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+packages/state-ref test: (Use `node --trace-deprecation ...` to show where the warning was created)
+packages/state-ref test: (node:3237) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+packages/state-ref test: (Use `node --trace-deprecation ...` to show where the warning was created)
+packages/state-ref test: (node:3240) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+packages/state-ref test: (Use `node --trace-deprecation ...` to show where the warning was created)
+packages/state-ref test: (node:3238) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+packages/state-ref test: (Use `node --trace-deprecation ...` to show where the warning was created)
+packages/state-ref test: stdout | src/tests/core/Root.ts
+packages/state-ref test: numberChange 3
+packages/state-ref test: stdout | src/tests/core/proxy.ts
+packages/state-ref test: red
+packages/state-ref test: stdout | src/tests/core/fluxlike.ts > FluxLike - 'createStoreManualSync' makes it easier to apply similar flux patterns. > The reference created with "watch" should throw an error when modified..
+packages/state-ref test: 20
+packages/state-ref test: stdout | src/tests/core/fluxlike.ts > FluxLike - 'createStoreManualSync' makes it easier to apply similar flux patterns. > It should be possible to modify the reference with 'updateRef'
+packages/state-ref test: 20
+packages/state-ref test: stdout | src/tests/core/fluxlike.ts > FluxLike - 'createStoreManualSync' makes it easier to apply similar flux patterns. > updateRef로 수정 후 sync함수를 사용하면 구독함수가 실행되어야 한다.
+packages/state-ref test: 20
+packages/state-ref test: 42
+packages/state-ref test: stdout | src/tests/core/fluxlike.ts > FluxLike - 'createStoreManualSync' makes it easier to apply similar flux patterns. > After modifying with 'updateRef', the subscription function should be triggered when the sync function is used.
+packages/state-ref test: 20
+packages/state-ref test: red
+packages/state-ref test: red
+packages/state-ref test: 43
+packages/state-ref test: blue
+packages/state-ref test: green
+packages/state-ref test: stdout | src/tests/core/fluxlike.ts > FluxLike - 'createStoreManualSync' makes it easier to apply similar flux patterns. > Even when the sync function is used, the subscription function should not be triggered if it does not actually reference the value.
+packages/state-ref test: 20
+packages/state-ref test: red
+packages/state-ref test: red
+packages/state-ref test: stdout | src/tests/core/symbol.ts > Symbol - Handles Symbol keys correctly > Should react when a Symbol key in the middle of the path changes
+packages/state-ref test: initial
+packages/state-ref test: updated
+packages/state-ref test: stdout | src/tests/core/symbol.ts > Symbol - Handles Symbol keys correctly > Should react when a Symbol key at the last node changes
+packages/state-ref test: red
+packages/state-ref test: blue
+packages/state-ref test: stdout | src/tests/core/symbol.ts > Symbol - Handles Symbol keys correctly > Should distinguish multiple different Symbols in the middle of the path
+packages/state-ref test: first
+packages/state-ref test: second
+packages/state-ref test: updatedB
+packages/state-ref test: updatedC
+packages/state-ref test:  ✓ src/tests/core/fluxlike.ts > FluxLike - 'createStoreManualSync' makes it easier to apply similar flux patterns. > The reference created with "watch" should throw an error when modified..
+packages/state-ref test:  ✓ src/tests/core/fluxlike.ts > FluxLike - 'createStoreManualSync' makes it easier to apply similar flux patterns. > It should be possible to modify the reference with 'updateRef'
+packages/state-ref test:  ✓ src/tests/core/fluxlike.ts > FluxLike - 'createStoreManualSync' makes it easier to apply similar flux patterns. > Even when modified with 'updateRef', the dependent subscription function should not be triggered immediately.
+packages/state-ref test:  ✓ src/tests/core/fluxlike.ts > FluxLike - 'createStoreManualSync' makes it easier to apply similar flux patterns. > updateRef로 수정 후 sync함수를 사용하면 구독함수가 실행되어야 한다.
+packages/state-ref test:  ✓ src/tests/core/fluxlike.ts > FluxLike - 'createStoreManualSync' makes it easier to apply similar flux patterns. > After modifying with 'updateRef', the subscription function should be triggered when the sync function is used.
+packages/state-ref test:  ✓ src/tests/core/fluxlike.ts > FluxLike - 'createStoreManualSync' makes it easier to apply similar flux patterns. > Even when the sync function is used, the subscription function should not be triggered if it does not actually reference the value.
+packages/state-ref test:  ✓ src/tests/core/symbol.ts > Symbol - Handles Symbol keys correctly > Should react when a Symbol key in the middle of the path changes
+packages/state-ref test:  ✓ src/tests/core/symbol.ts > Symbol - Handles Symbol keys correctly > Should react when a Symbol key at the last node changes
+packages/state-ref test:  ✓ src/tests/core/symbol.ts > Symbol - Handles Symbol keys correctly > Should distinguish multiple different Symbols in the middle of the path
+packages/state-ref test:  ✓ src/tests/core/computed.ts > Create computed > The initial value returns the calculated value exactly.
+packages/state-ref test:  ✓ src/tests/core/computed.ts > Create computed > When setting, the callback is executed once initially with isFirst included..
+packages/state-ref test:  ✓ src/tests/core/computed.ts > Create computed > When the value changes, the change should be detected and the callback function should be executed.
+packages/state-ref test:  ✓ src/tests/core/combine.ts > Create combineWatch > should immediately call callback when any watch value changes
+packages/state-ref test:  ✓ src/tests/core/combine.ts > Create combineWatch > should correctly handle nested combineWatch compositions
+packages/state-ref test:  ✓ src/tests/core/Root.ts > Root - When the root of the data you want to subscribe to is of type primitive > On numeric data, the Subscribe function should be executed once immediately after subscribing.
+packages/state-ref test:  ✓ src/tests/core/Root.ts > Root - When the root of the data you want to subscribe to is of type primitive > The subscribe function should be executed once immediately after subscribing to the string data.
+packages/state-ref test:  ✓ src/tests/core/Root.ts > Root - When the root of the data you want to subscribe to is of type primitive > Subscribe on undefined data should be executed once immediately after subscribing..
+packages/state-ref test:  ✓ src/tests/core/Root.ts > Root - When the root of the data you want to subscribe to is of type primitive > The subscribe function should be executed once immediately after subscribing from null data.
+packages/state-ref test:  ✓ src/tests/core/Root.ts > Root - When the root of the data you want to subscribe to is of type primitive > When numeric data changes, the subscription function should detect the change well.
+packages/state-ref test:  ✓ src/tests/core/Root.ts > Root - When the root of the data you want to subscribe to is of type primitive > When null data is changed to non-null data, the subscription function should detect the change well.
+packages/state-ref test:  ✓ src/tests/core/Root.ts > Root - When the root of the data you want to subscribe to is of type primitive > When undefined data is changed to non-undefined data, the subscription function should detect the change well.
+packages/state-ref test:  ✓ src/tests/core/Root.ts > Root - When the root of the data you want to subscribe to is of type primitive > When non-undefined data changes to undefined data, the subscription function should detect the change well.
+packages/state-ref test:  ✓ src/tests/core/Root.ts > Root - When the root of the data you want to subscribe to is of type primitive > The subscription function should be able to detect changes well even if they are consecutive.
+packages/state-ref test:  ✓ src/tests/core/Root.ts > Root - When the root of the data you want to subscribe to is of type primitive > If the character type data changes, the subscription function should detect the change well.
+packages/state-ref test:  ✓ src/tests/core/Root.ts > Root - When the root of the data you want to subscribe to is of type primitive > Should be able to unsubscribe via "abortController".
+packages/state-ref test:  ✓ src/tests/core/Root.ts > Root - When the root of the data you want to subscribe to is of type primitive > If the callback function returns false, you will be notified only the first time and your subscription will be cancelled.
+packages/state-ref test: stdout | src/tests/core/proxy.ts > Proxy - When the data you want to subscribe to is an object., it's handled by the proxy > Should receive subscription notifications for the value retrieved as the ".value" of the stateRef passed in from the subscription function.
+packages/state-ref test: red
+packages/state-ref test: red
+packages/state-ref test: red
+packages/state-ref test: blue
+packages/state-ref test: blue
+packages/state-ref test: green
+packages/state-ref test: stdout | src/tests/core/proxy.ts > Proxy - When the data you want to subscribe to is an object., it's handled by the proxy > Should receive a subscription notification for the value retrieved as the ".value" of the stateRef returned from watch.
+packages/state-ref test: red
+packages/state-ref test: stdout | src/tests/core/proxy.ts > Proxy - When the data you want to subscribe to is an object., it's handled by the proxy > The specified subscription function must be cancelable via the "abortController".
+packages/state-ref test: red
+packages/state-ref test: red
+packages/state-ref test: red
+packages/state-ref test: blue
+packages/state-ref test: yellow
+packages/state-ref test: yellow
+packages/state-ref test: stdout | src/tests/core/proxy.ts > Proxy - When the data you want to subscribe to is an object., it's handled by the proxy > As soon as you subscribe, you must receive the value true as the second argument the first time.
+packages/state-ref test: red
+packages/state-ref test: blue
+packages/state-ref test: stdout | src/tests/core/proxy.ts > Proxy - When the data you want to subscribe to is an object., it's handled by the proxy > "copyOnWrite" must be applied accurately to the changed value.
+packages/state-ref test: red
+packages/state-ref test: red
+packages/state-ref test:  ✓ src/tests/core/Tail.ts > Tail - When the data you want to subscribe to is a primitive type at the end of an object > Subscriptions are guaranteed to run at least once immediately upon subscription.
+packages/state-ref test:  ✓ src/tests/core/Tail.ts > Tail - When the data you want to subscribe to is a primitive type at the end of an object > "copyOnWrite" should change to a well-applied state.
+packages/state-ref test:  ✓ src/tests/core/Tail.ts > Tail - When the data you want to subscribe to is a primitive type at the end of an object > Subscribing from string data should be executed once immediately after subscribing.
+packages/state-ref test:  ✓ src/tests/core/Tail.ts > Tail - When the data you want to subscribe to is a primitive type at the end of an object > Subscribe on undefined data should be executed once immediately after subscribing.
+packages/state-ref test:  ✓ src/tests/core/Tail.ts > Tail - When the data you want to subscribe to is a primitive type at the end of an object > The subscribe function should be executed once immediately after subscribing from null data.
+packages/state-ref test:  ✓ src/tests/core/Tail.ts > Tail - When the data you want to subscribe to is a primitive type at the end of an object > When null data is changed to non-null data, "copyOnWrite" should update successfully.
+packages/state-ref test:  ✓ src/tests/core/Tail.ts > Tail - When the data you want to subscribe to is a primitive type at the end of an object > When undefined data is changed to non-undefined data, "copyOnWrite" should update successfully.
+packages/state-ref test:  ✓ src/tests/core/Tail.ts > Tail - When the data you want to subscribe to is a primitive type at the end of an object > When non-undefined data is changed to undefined data, copyOnWrite should be applied and updated properly.
+packages/state-ref test:  ✓ src/tests/core/Tail.ts > Tail - When the data you want to subscribe to is a primitive type at the end of an object > "copyOnWrite" in the subscription function should work even if it is changed consecutively.
+packages/state-ref test:  ✓ src/tests/core/Tail.ts > Tail - When the data you want to subscribe to is a primitive type at the end of an object > When the character type data changes, copyOnWrite should work well in the subscription function.
+packages/state-ref test:  ✓ src/tests/core/Tail.ts > Tail - When the data you want to subscribe to is a primitive type at the end of an object > Should be able to unsubscribe via "abortController".
+packages/state-ref test:  ✓ src/tests/core/Tail.ts > Tail - When the data you want to subscribe to is a primitive type at the end of an object > If the callback function returns false, you will be notified only the first time and your subscription will be cancelled.
+packages/state-ref test:  ✓ src/tests/core/Tail.ts > Tail - When the data you want to subscribe to is a primitive type at the end of an object > If it is not assigned via .value, an error should be thrown.
+packages/state-ref test:  ✓ src/tests/core/Tail.ts > Tail - When the data you want to subscribe to is a primitive type at the end of an object > If you replace it with the same value, nothing should happen and you should keep the same reference. copyOnWrite should not happen.
+packages/state-ref test:  ✓ src/tests/core/proxy.ts > Proxy - When the data you want to subscribe to is an object., it's handled by the proxy > Should receive subscription notifications for the value retrieved as the ".value" of the stateRef passed in from the subscription function.
+packages/state-ref test:  ✓ src/tests/core/proxy.ts > Proxy - When the data you want to subscribe to is an object., it's handled by the proxy > Should receive a subscription notification for the value retrieved as the ".value" of the stateRef returned from watch.
+packages/state-ref test:  ✓ src/tests/core/proxy.ts > Proxy - When the data you want to subscribe to is an object., it's handled by the proxy > The specified subscription function must be cancelable via the "abortController".
+packages/state-ref test:  ✓ src/tests/core/proxy.ts > Proxy - When the data you want to subscribe to is an object., it's handled by the proxy > The subscription function must be run once immediately after subscription.
+packages/state-ref test:  ✓ src/tests/core/proxy.ts > Proxy - When the data you want to subscribe to is an object., it's handled by the proxy > As soon as you subscribe, you must receive the value true as the second argument the first time.
+packages/state-ref test:  ✓ src/tests/core/proxy.ts > Proxy - When the data you want to subscribe to is an object., it's handled by the proxy > "copyOnWrite" must be applied accurately to the changed value.
+packages/state-ref test:  ✓ src/tests/core/proxy.ts > Proxy - When the data you want to subscribe to is an object., it's handled by the proxy > When you subscribe to a node that is the parent of a specific value, you need to react when the data for that specific value changes.
+packages/state-ref test:  ✓ src/tests/core/proxy.ts > Proxy - When the data you want to subscribe to is an object., it's handled by the proxy > If you subscribe to a specific value for a child of a certain parent node, you need to react when the parent node changes.
+packages/state-ref test:  ✓ src/tests/core/proxy.ts > Proxy - When the data you want to subscribe to is an object., it's handled by the proxy > If you are subscribing to a specific value that corresponds to a child node of a parent node, and the parent node has changed, but the reference to the value has not changed, the subscription function should not react.
+packages/state-ref test:  Test Files  7 passed (7)
+packages/state-ref test:       Tests  49 passed (49)
+packages/state-ref test:    Start at  16:52:44
+packages/state-ref test:    Duration  778ms (transform 145ms, setup 748ms, collect 333ms, tests 28ms, environment 2.59s, prepare 533ms)
+packages/state-ref test: Done
+packages/connect-react test$ vitest run --reporter verbose
+packages/connect-solid test$ vitest run --reporter verbose
+packages/connect-preact test$ vitest run --reporter verbose
+packages/connect-svelte test$ vitest run --reporter verbose
+packages/connect-preact test:  RUN  v2.1.2 /Users/n250109005/project/state-ref/packages/connect-preact
+packages/connect-react test:  RUN  v2.1.2 /Users/n250109005/project/state-ref/packages/connect-react
+packages/connect-svelte test:  RUN  v2.1.2 /Users/n250109005/project/state-ref/packages/connect-svelte
+packages/connect-preact test: (node:3367) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+packages/connect-preact test: (Use `node --trace-deprecation ...` to show where the warning was created)
+packages/connect-react test: (node:3378) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+packages/connect-react test: (Use `node --trace-deprecation ...` to show where the warning was created)
+packages/connect-solid test:  RUN  v2.1.2 /Users/n250109005/project/state-ref/packages/connect-solid
+packages/connect-svelte test: (node:3417) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+packages/connect-svelte test: (Use `node --trace-deprecation ...` to show where the warning was created)
+packages/connect-preact test:  ✓ src/tests/preact/preact.tsx > Connect Preact > It should work well responsively for stateRef value.
+packages/connect-preact test:  ✓ src/tests/preact/preact.tsx > Connect Preact > The computed property should be reflected correctly.
+packages/connect-preact test:  ✓ src/tests/preact/preact.tsx > Connect Preact > Components should only react and act on the values they are subscribed to.
+packages/connect-preact test:  ✓ src/tests/preact/preact.tsx > Connect Preact > Unmounted components should not react.
+packages/connect-preact test:  ✓ src/tests/preact/preact.tsx > Connect Preact > When multiple components are subscribing to a single value, they should all reflect the store value and behave normally.
+packages/connect-preact test:  ✓ src/tests/preact/preact.tsx > Connect Preact > Components with different roots from different render functions should be able to share values.
+packages/connect-preact test:  ✓ src/tests/preact/preact.tsx > Connect Preact > It should properly update in "manualSync" mode.
+packages/connect-preact test:  ✓ src/tests/preact/preact.tsx > Connect Preact > should combine multiple stores and update reactively
+packages/connect-preact test:  Test Files  1 passed (1)
+packages/connect-preact test:       Tests  8 passed (8)
+packages/connect-preact test:    Start at  16:52:46
+packages/connect-preact test:    Duration  1.71s (transform 48ms, setup 175ms, collect 371ms, tests 37ms, environment 621ms, prepare 159ms)
+packages/connect-react test:  ✓ src/tests/react/react.tsx > Connect React > It should work well responsively for stateRef value.
+packages/connect-react test:  ✓ src/tests/react/react.tsx > Connect React > The computed property should be reflected correctly.
+packages/connect-react test:  ✓ src/tests/react/react.tsx > Connect React > Components should only react and act on the values they are subscribed to.
+packages/connect-react test:  ✓ src/tests/react/react.tsx > Connect React > Unmounted components should not react.
+packages/connect-react test:  ✓ src/tests/react/react.tsx > Connect React > When multiple components are subscribing to a single value, they should all reflect the store value and behave normally.
+packages/connect-react test:  ✓ src/tests/react/react.tsx > Connect React > Components with different roots from different render functions should be able to share values.
+packages/connect-react test:  ✓ src/tests/react/react.tsx > Connect React > It should properly update in "manualSync" mode.
+packages/connect-react test:  ✓ src/tests/react/react.tsx > Connect React > should combine multiple stores and update reactively
+packages/connect-react test:  Test Files  1 passed (1)
+packages/connect-react test:       Tests  8 passed (8)
+packages/connect-react test:    Start at  16:52:46
+packages/connect-react test:    Duration  1.75s (transform 57ms, setup 314ms, collect 190ms, tests 111ms, environment 611ms, prepare 86ms)
+packages/connect-preact test: Done
+packages/connect-vue test$ vitest run --reporter verbose
+packages/connect-react test: Done
+packages/connect-solid test: (node:3441) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+packages/connect-solid test: (Use `node --trace-deprecation ...` to show where the warning was created)
+packages/connect-solid test: (node:3440) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+packages/connect-solid test: (Use `node --trace-deprecation ...` to show where the warning was created)
+packages/connect-svelte test: [ESLint] Found 0 error and 0 warning
+packages/connect-svelte test: [TypeScript] Found 0 errors. Watching for file changes.
+packages/connect-svelte test:  ✓ src/tests/test.test.ts > Connect Svelte > It should work well responsively for stateRef value.
+packages/connect-svelte test:  ✓ src/tests/test.test.ts > Connect Svelte > The computed property should be reflected correctly.
+packages/connect-svelte test:  ✓ src/tests/test.test.ts > Connect Svelte > Components should only react and act on the values they are subscribed to.
+packages/connect-svelte test:  ✓ src/tests/test.test.ts > Connect Svelte > Unmounted components should not react.
+packages/connect-svelte test:  ✓ src/tests/test.test.ts > Connect Svelte > When multiple components are subscribing to a single value, they should all reflect the store value and behave normally.
+packages/connect-svelte test:  ✓ src/tests/test.test.ts > Connect Svelte > Components with different roots from different render functions should be able to share values.
+packages/connect-svelte test:  ✓ src/tests/test.test.ts > Connect Svelte > It should properly update in "manualSync" mode.
+packages/connect-svelte test:  ✓ src/tests/test.test.ts > Connect Svelte > Should reflect combined values correctly
+packages/connect-svelte test:  Test Files  1 passed (1)
+packages/connect-svelte test:       Tests  8 passed (8)
+packages/connect-svelte test:    Start at  16:52:46
+packages/connect-svelte test:    Duration  1.60s (transform 280ms, setup 452ms, collect 193ms, tests 21ms, environment 631ms, prepare 66ms)
+packages/connect-svelte test: Done
+packages/connect-solid test:  ✓ src/tests/test.test.tsx > Connect Solid > It should work well responsively for stateRef value.
+packages/connect-solid test:  ✓ src/tests/test.test.tsx > Connect Solid > The computed property should be reflected correctly.
+packages/connect-solid test:  ✓ src/tests/test.test.tsx > Connect Solid > Components should only react and act on the values they are subscribed to.
+packages/connect-solid test:  ✓ src/tests/test.test.tsx > Connect Solid > Unmounted components should not react.
+packages/connect-solid test:  ✓ src/tests/test.test.tsx > Connect Solid > When multiple components are subscribing to a single value, they should all reflect the store value and behave normally.
+packages/connect-solid test:  ✓ src/tests/test.test.tsx > Connect Solid > Components with different roots from different render functions should be able to share values.
+packages/connect-solid test:  ✓ src/tests/test.test.tsx > Connect Solid > It should properly update in "manualSync" mode.
+packages/connect-solid test:  ✓ src/tests/test.test.tsx > Connect Solid > Should reflect combined values correctly
+packages/connect-solid test:  ✓ src/tests/test.test.tsx > Connect Solid > It should work well responsively for stateRef value.
+packages/connect-solid test:  ✓ src/tests/test.test.tsx > Connect Solid > The computed property should be reflected correctly.
+packages/connect-solid test:  ✓ src/tests/test.test.tsx > Connect Solid > Components should only react and act on the values they are subscribed to.
+packages/connect-solid test:  ✓ src/tests/test.test.tsx > Connect Solid > Unmounted components should not react.
+packages/connect-solid test:  ✓ src/tests/test.test.tsx > Connect Solid > When multiple components are subscribing to a single value, they should all reflect the store value and behave normally.
+packages/connect-solid test:  ✓ src/tests/test.test.tsx > Connect Solid > Components with different roots from different render functions should be able to share values.
+packages/connect-solid test:  ✓ src/tests/test.test.tsx > Connect Solid > It should properly update in "manualSync" mode.
+packages/connect-solid test:  ✓ src/tests/test.test.tsx > Connect Solid > Should reflect combined values correctly
+packages/connect-solid test:  Test Files  1 passed (1)
+packages/connect-solid test:       Tests  8 passed (8)
+packages/connect-solid test:    Start at  16:52:47
+packages/connect-solid test:    Duration  1.14s (transform 133ms, setup 109ms, collect 199ms, tests 20ms, environment 465ms, prepare 125ms)
+packages/connect-solid test: Done
+packages/connect-vue test:  RUN  v2.1.2 /Users/n250109005/project/state-ref/packages/connect-vue
+packages/connect-vue test: (node:3497) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+packages/connect-vue test: (Use `node --trace-deprecation ...` to show where the warning was created)
+packages/connect-vue test: [1m[33m[@vue/compiler-sfc][0m[33m `defineProps` is a compiler macro and no longer needs to be imported.[0m
+packages/connect-vue test:  ✓ src/tests/test.test.ts > Connect Vue > It should work well responsively for stateRef value.
+packages/connect-vue test:  ✓ src/tests/test.test.ts > Connect Vue > The computed property should be reflected correctly.
+packages/connect-vue test:  ✓ src/tests/test.test.ts > Connect Vue > Components should only react and act on the values they are subscribed to.
+packages/connect-vue test:  ✓ src/tests/test.test.ts > Connect Vue > Unmounted components should not react.
+packages/connect-vue test:  ✓ src/tests/test.test.ts > Connect Vue > When multiple components are subscribing to a single value, they should all reflect the store value and behave normally.
+packages/connect-vue test:  ✓ src/tests/test.test.ts > Connect Vue > It should properly update in "manualSync" mode.
+packages/connect-vue test:  ✓ src/tests/test.test.ts > Connect Vue > Should reflect combined values correctly
+packages/connect-vue test:  Test Files  1 passed (1)
+packages/connect-vue test:       Tests  7 passed | 1 skipped (8)
+packages/connect-vue test:    Start at  16:52:48
+packages/connect-vue test:    Duration  666ms (transform 81ms, setup 48ms, collect 195ms, tests 27ms, environment 189ms, prepare 46ms)
+packages/connect-vue test: Done

@@ -29,13 +29,25 @@ export function connectVue<T>(refWatch: Watch<T>) {
 
     refWatch(stateInnerRef => {
       stateRef = callback(stateInnerRef);
-      if (reactiveValue?.value !== stateRef.value && !changing) {
+
+      if (!reactiveValue) {
+        /**
+         * Creating the reactive is not an echo of anything, so it must not arm
+         * the guard. It used to: the guard then stayed up until a microtask
+         * ran, and any store write landing in the same turn as the component's
+         * mount was dropped without a sound (`CI-25`).
+         */
+        reactiveValue = reactive({ value: stateRef.value }) as J;
+      } else if (reactiveValue.value !== stateRef.value && !changing) {
+        /**
+         * Whether to update or to create is decided by whether the reactive
+         * exists - not by whether its current value is truthy. On a store
+         * sitting at `0`, `''`, `false` or `null`, the truthiness test took the
+         * create branch on every update and replaced the object the template
+         * was bound to, leaving the component wired to an orphan (`CI-26`).
+         */
         change(() => {
-          if (reactiveValue?.value) {
-            reactiveValue.value = stateRef.value as UnwrapRef<V>;
-          } else {
-            reactiveValue = reactive({ value: stateRef.value }) as J;
-          }
+          reactiveValue.value = stateRef.value as UnwrapRef<V>;
         });
       }
 

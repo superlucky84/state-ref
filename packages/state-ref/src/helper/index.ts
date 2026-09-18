@@ -9,32 +9,54 @@ import type {
 import type { Lens } from '@/lens';
 import { lens } from '@/lens';
 
+/**
+ * Defaults for `watch(renew, userOption)`.
+ *
+ * Resolution order is DEFAULT_WATCH_OPTION < store mode < userOption, so
+ * `editable` follows the store's `autoSync` flag unless the caller states it
+ * explicitly. `editable: true` here is only the fallback for a store that
+ * never declares a mode.
+ */
 export const DEFAULT_WATCH_OPTION = { cache: true, editable: true };
-export const DEFAULT_CREATE_OPTION = { autoSync: true };
+/**
+ * `trackDeps` is new in 3.0.0 and off by default (`DC-02`).
+ *
+ * It re-collects what a callback reads on every run, so a path the callback
+ * has stopped reading stops waking it. 2.x has no such option and no way to
+ * get that behaviour: a subscription there only ever grows.
+ *
+ * Off by default because the trade is narrow. It costs about 1.4x per
+ * notification delivered and saves whole notifications, so it only pays once
+ * it removes roughly 40% of them - and a subscriber with no conditional reads
+ * removes none. Through a framework connector the saving is narrower still:
+ * re-collection is driven by `run`, so a component that branches on its own
+ * state never sheds a path and pays the cost for nothing.
+ *
+ * `createStore(value, { trackDeps: true })` turns it on where it pays: a
+ * subscriber whose branch condition lives in the store.
+ */
+export const DEFAULT_CREATE_OPTION = { autoSync: true, trackDeps: false };
 
 /**
- * Map to assign a unique ID to each Symbol.
- * - WeakMap can't use symbol as key in TS, so we use Map.
- * - This ensures every Symbol in a path is uniquely identified.
+ * Debug handles on a stateRef, readable as `ref.a.b[NAVI]` / `ref.a.b[TYPE]`.
+ *
+ * They are symbols rather than the string keys they replaced ("_navi", "_type",
+ * "_value"): a string key would shadow state that happens to own a property of
+ * the same name, and it would surface in `ownKeys`. Registered symbols
+ * (`Symbol.for`) so the same handles resolve across bundle boundaries -
+ * `Symbol.for('state-ref.navi')` works without importing anything.
  */
-const symbolIdMap = new Map<symbol, number>();
-let symbolCounter = 0;
+export const NAVI = Symbol.for('state-ref.navi');
+export const TYPE = Symbol.for('state-ref.type');
 
 /**
- * Create information about the proxy that can be viewed in the developer console.
+ * Node's util.inspect reads a proxy's target directly instead of running its
+ * traps, so an empty target would print as "{}". This hook gives console.log
+ * something to show. Browsers ignore it and render via the traps instead.
  */
-export function makeDisplayProxyValue(
-  depthList: (string | number | symbol)[],
-  value: unknown
-) {
-  return {
-    _navi: keyFromDepthList(depthList),
-    _type: getType(value),
-    _value: '..',
-  };
-}
+export const NODE_INSPECT = Symbol.for('nodejs.util.inspect.custom');
 
-function getType(value: unknown) {
+export function getType(value: unknown) {
   if (value === null) {
     return 'null';
   } else if (Array.isArray(value)) {
@@ -44,41 +66,6 @@ function getType(value: unknown) {
   } else {
     return typeof value;
   }
-}
-
-/**
- * Escape special characters in strings to make keys bulletproof.
- * - Escapes ':', '|', and '\' to prevent collisions in the final key string.
- */
-function escapeString(str: string): string {
-  return str.replace(/[:|\\]/g, '\\$&');
-}
-
-/**
- * Convert a path array into a unique, collision-resistant string key.
- * - Supports strings, numbers, and Symbols.
- * - Prefixes each element with a type marker:
- *   - 's:' for string
- *   - 'n:' for number
- *   - 'y:' for Symbol (unique ID via Map)
- * - Escapes special characters in strings.
- * - Joins all elements with '|' to form a flat key string.
- *
- * Example:
- *  ["user", Symbol("id"), 42] -> "s:user|y:1|n:42"
- */
-export function keyFromDepthList(path: (string | number | symbol)[]): string {
-  return path
-    .map(k => {
-      if (typeof k === 'string') return 's:' + escapeString(k);
-      if (typeof k === 'number') return 'n:' + k;
-      if (typeof k === 'symbol') {
-        if (!symbolIdMap.has(k)) symbolIdMap.set(k, ++symbolCounter);
-        return 'y:' + symbolIdMap.get(k);
-      }
-      return '?';
-    })
-    .join('|'); // safe separator
 }
 
 /**
@@ -111,36 +98,168 @@ export function copyable<T extends { [key: string | symbol]: unknown }>(
 /**
  * Provides a convenience utility to make deep copying easier in special cases.
  */
+/**
+ * Deep clone, written rather than delegated to `structuredClone` (`DC-07`).
+ *
+ * Carried across: own enumerable properties under **string and symbol** keys,
+ * `Date`, `RegExp`, `Map`, `Set`, arrays (holes and length included), and
+ * circular references.
+ *
+ * Passed through by reference, because they are not data to copy: primitives,
+ * symbols, and functions.
+ *
+ * Not reconstructed: class prototypes (a clone is a plain object), property
+ * descriptors (getters are read once and stored as values, non-enumerable
+ * properties are skipped), and the typed-array / ArrayBuffer family.
+ */
 export function cloneDeep<T>(value: T): T {
-  if (value == null) {
+  return cloneValue(value, new WeakMap());
+}
+
+function cloneValue<T>(value: T, seen: WeakMap<object, unknown>): T {
+  if (value === null || typeof value !== 'object') {
     return value;
   }
 
-  if (typeof value !== 'object') {
-    return value;
+  const source = value as unknown as object;
+
+  /**
+   * A clone is always an object, so a hit is always truthy - this is what stops
+   * a circular reference from recursing until the stack gives out, and it also
+   * keeps shared subtrees shared in the copy.
+   */
+  const started = seen.get(source);
+
+  if (started) {
+    return started as T;
   }
 
-  const isArray = Array.isArray(value);
-  const Ctor = isArray ? Array : Object;
+  if (source instanceof Date) {
+    return new Date(source.getTime()) as T;
+  }
 
-  const result = new Ctor() as T; // 새로운 객체 또는 배열 생성
+  if (source instanceof RegExp) {
+    const cloned = new RegExp(source.source, source.flags);
+    cloned.lastIndex = source.lastIndex;
 
-  for (const key in value) {
-    if (Object.prototype.hasOwnProperty.call(value, key)) {
-      result[key] = cloneDeep(value[key]); // 재귀적으로 깊은 복사
+    return cloned as T;
+  }
+
+  if (source instanceof Map) {
+    const cloned = new Map();
+    seen.set(source, cloned);
+    source.forEach((entry, key) =>
+      cloned.set(cloneValue(key, seen), cloneValue(entry, seen))
+    );
+
+    return cloned as T;
+  }
+
+  if (source instanceof Set) {
+    const cloned = new Set();
+    seen.set(source, cloned);
+    source.forEach(entry => cloned.add(cloneValue(entry, seen)));
+
+    return cloned as T;
+  }
+
+  const isArray = Array.isArray(source);
+  const cloned: any = isArray ? [] : {};
+
+  /**
+   * Registered before the children are walked, so a child pointing back here
+   * finds the clone in progress rather than starting another one.
+   */
+  seen.set(source, cloned);
+
+  /**
+   * `Reflect.ownKeys` is what carries symbol keys across; the descriptor check
+   * is what keeps an array's "length" and any other non-enumerable property
+   * from being copied as if it were state.
+   */
+  Reflect.ownKeys(source).forEach(key => {
+    if (Object.getOwnPropertyDescriptor(source, key)?.enumerable) {
+      cloned[key] = cloneValue((source as any)[key], seen);
     }
+  });
+
+  if (isArray) {
+    /**
+     * Assigning the present indices cannot restore a trailing hole, so the
+     * length is set from the source.
+     */
+    cloned.length = (source as unknown[]).length;
   }
 
-  return result;
+  return cloned as T;
 }
 /**
  * Combines multiple state watchers to produce a derived (computed) value,
  * and invokes the provided callback whenever the computed value changes.
  */
+/**
+ * Wires a helper's own subscriptions to whatever teardown the user's callback
+ * asked for.
+ *
+ * The core honours an `AbortSignal` only on a subscription's *first* run
+ * (`firstRunner`); `runner` only understands `false`. A helper that fans one
+ * user callback out over N stores cannot use that channel directly - its
+ * callback has to run after all N subscriptions exist, otherwise the paths it
+ * reads are collected against throwaway proxies and nothing ever wakes it. So
+ * the first run of each inner subscription hands the core a controller of our
+ * own, and the user's teardown is chained onto those controllers here.
+ *
+ * The channel mirrors a plain `watch` callback exactly, which is why `isFirst`
+ * matters. The core registers an `AbortSignal` only on a first run
+ * (`firstRunner`) and honours only `false` afterwards (`runner`), so that is
+ * all a helper may honour either. Being stricter would kill callbacks that
+ * survive a plain `watch`; being more permissive would mean two teardown rules
+ * for the library to explain, which is the same reason `dispose()` was turned
+ * down (DC-06).
+ *
+ * `false` from a later pass also removes that one inner subscription through
+ * the core, which is harmless - `removeRun` is idempotent and the other N-1
+ * come down with the controllers.
+ */
+function relayTeardown(
+  result: boolean | AbortSignal | void,
+  controllers: AbortController[],
+  isFirst: boolean
+) {
+  const stop = () => controllers.forEach(controller => controller.abort());
+
+  if (isFirst) {
+    if (result instanceof AbortSignal) {
+      if (result.aborted) {
+        stop();
+      } else {
+        result.addEventListener('abort', stop, { once: true });
+      }
+    }
+  } else if (result === false) {
+    stop();
+  }
+
+  return result;
+}
+
+/**
+ * Derives a read-only value from several watches.
+ *
+ * The callback re-runs whenever a source changes, but subscribers are told only
+ * when the derived value actually moves - `max(a, b)` does not notify because
+ * `a` changed below `b`. Comparison is `Object.is`; pass `equals` for a
+ * computed that returns a fresh object each time.
+ *
+ * The subscriber may return `false` or an `AbortSignal` to unsubscribe, the
+ * same as a plain `watch` callback.
+ */
 export function createComputed<W extends readonly Watch<any>[], R>(
   watches: W,
-  callback: (a: StateRefsTuple<W>) => R
+  callback: (a: StateRefsTuple<W>) => R,
+  option?: { equals?: (next: R, previous: R) => boolean }
 ) {
+  const equals = option?.equals ?? Object.is;
   let result: R;
   const proxy: { value: R } = {
     get value(): R {
@@ -152,22 +271,58 @@ export function createComputed<W extends readonly Watch<any>[], R>(
   };
 
   return (
-    computedCallback?: (proxy: { value: R }, isFirst: boolean) => void
+    computedCallback?: (
+      proxy: { value: R },
+      isFirst: boolean
+    ) => boolean | AbortSignal | void
   ) => {
-    const refs = watches.map(watch => watch(() => false)) as StateRefsTuple<W>;
+    /**
+     * Filled by each inner subscription's first run. The initial
+     * `watch(() => false)` this used to do is gone: it created a subscription
+     * per source that nothing ever released, and `false` is the core's signal
+     * for "drop this subscription", so returning it from an initialiser was a
+     * collision waiting to happen.
+     */
+    const refs = [] as unknown as StateRefsTuple<W>;
+    const controllers = watches.map(() => new AbortController());
 
     watches.forEach((watch, index) => {
-      watch((ref, init) => {
+      watch((ref, isFirst) => {
         (refs as any)[index] = ref;
-        result = callback(refs);
-        if (!init && computedCallback) {
-          computedCallback(proxy, false);
+
+        /**
+         * During setup the other refs are not in place yet, so the derived
+         * value cannot be computed here - it is computed once below, after
+         * every source is wired. The controller handed back is what makes the
+         * user's teardown reachable (see relayTeardown).
+         */
+        if (isFirst) {
+          return controllers[index].signal;
         }
+
+        const next = callback(refs);
+
+        if (equals(next, result)) {
+          return;
+        }
+
+        result = next;
+
+        return computedCallback
+          ? relayTeardown(computedCallback(proxy, false), controllers, false)
+          : undefined;
       });
     });
 
+    /**
+     * Reading through `refs` collects against each source's real subscription,
+     * because a proxy carries the run it belongs to - it does not matter that
+     * this happens outside a run.
+     */
+    result = callback(refs);
+
     if (computedCallback) {
-      computedCallback(proxy, true);
+      relayTeardown(computedCallback(proxy, true), controllers, true);
     }
 
     return proxy;
@@ -190,9 +345,13 @@ export function combineWatch<W extends readonly Watch<any>[]>(
     callback?: Renew<StateRefStore<R>>,
     userOption?: { cache?: boolean }
   ): StateRefStore<R> => {
-    const refs: RefsTuple = watches.map(w =>
-      w(() => {}, userOption)
-    ) as RefsTuple;
+    /**
+     * Filled by each inner subscription's first run, below. Mapping the
+     * watches here used to create an extra subscription per source whose only
+     * job was to hand back a ref, and nothing released them.
+     */
+    const refs = [] as unknown as RefsTuple;
+    const controllers = watches.map(() => new AbortController());
 
     const combinedStore: StateRefStore<R> = new Proxy({} as StateRefStore<R>, {
       get(_, prop) {
@@ -227,14 +386,25 @@ export function combineWatch<W extends readonly Watch<any>[]>(
       watch((ref, isFirst) => {
         refs[index] = ref as RefsTuple[number];
 
-        if (!isFirst && callback) {
-          callback(combinedStore, false);
+        /**
+         * The user callback cannot run here on a first pass: the other refs
+         * are not wired yet, so the paths it reads would be collected against
+         * proxies that are about to be replaced. It runs once below instead,
+         * which is why teardown has to be relayed through a controller of ours
+         * rather than returned to the core (see relayTeardown).
+         */
+        if (isFirst) {
+          return controllers[i].signal;
         }
+
+        return callback
+          ? relayTeardown(callback(combinedStore, false), controllers, false)
+          : undefined;
       }, userOption);
     });
 
     if (callback) {
-      callback(combinedStore, true);
+      relayTeardown(callback(combinedStore, true), controllers, true);
     }
 
     return combinedStore;
