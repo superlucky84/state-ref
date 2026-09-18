@@ -1,10 +1,17 @@
 /**
- * Regression snapshot for docs/core-improvement (CI-01 ~ CI-20).
+ * Regression snapshot for docs/core-improvement (CI-01 ~ CI-24).
  *
- * These tests pin the behavior observed at the baseline commit, including the
- * behavior that is currently WRONG. Each "SNAPSHOT (wrong)" assertion is
- * expected to be flipped by the phase named in its comment; flipping it is the
- * proof that the fix landed. Do not "fix" a snapshot without doing the work.
+ * Written at the baseline commit to pin the behaviour as it was then, wrong
+ * behaviour included, so that flipping an assertion would be the proof a fix
+ * had landed. Phase 7 brought it to the finished behaviour: every assertion
+ * here now states what the core is supposed to do, and each one names the
+ * CI-ID it belongs to and the phase that settled it.
+ *
+ * Three of the original snapshots were never going to flip. They pinned
+ * behaviour that turned out to be the design rather than a defect - writes are
+ * not batched (`INV-4`), dependencies are not re-collected unless asked
+ * (`trackDeps`), `cache: false` means a subscription of its own - and they say
+ * so now instead of promising a fix that was decided against.
  *
  * See: docs/core-improvement/REQUIREMENTS.md
  */
@@ -504,8 +511,15 @@ if (import.meta.vitest) {
     });
   });
 
-  describe('CI-13 writes are not batched', () => {
-    it('SNAPSHOT (wrong): two assignments produce two callbacks — Phase 4 makes this opt-in', () => {
+  describe('CI-13 writes are not batched (INV-4, by design)', () => {
+    /**
+     * Filed as a defect, closed as a non-goal (`DC-03`, Phase 4). A write
+     * notifies synchronously and exactly once; two writes are two
+     * notifications. Batching was measured and rejected - it buys less than it
+     * costs in predictability, and every re-entrancy guarantee in the core
+     * leans on a pass being finished before the next one starts.
+     */
+    it('DEFINED (Phase 4, DC-03): two assignments produce two callbacks', () => {
       const watch = createStore<{ a: number; b: number }>({ a: 0, b: 0 });
       let calls = 0;
       const ref = watch(s => {
@@ -522,8 +536,14 @@ if (import.meta.vitest) {
     });
   });
 
-  describe('CI-14 dependencies are never re-collected', () => {
-    it('SNAPSHOT (wrong): a no-longer-read path still wakes the subscriber — Phase 5 makes this opt-in', () => {
+  describe('CI-14 dependencies are re-collected only when asked', () => {
+    /**
+     * The default stayed as it was (`DC-02`, Phase 5): re-collecting changes
+     * how often a subscriber is called, which is a behaviour change, so it is
+     * opt-in through `trackDeps` until a major (`DC-08`). `lifecycle.ts`
+     * covers the opted-in side.
+     */
+    it('DEFINED (Phase 5, DC-02): without trackDeps a no-longer-read path still wakes the subscriber', () => {
       const watch = createStore<{ flag: boolean; a: number; b: number }>({
         flag: true,
         a: 0,
@@ -579,8 +599,14 @@ if (import.meta.vitest) {
     });
   });
 
-  describe('CI-16 cache:false multiplies subscriptions', () => {
-    it('SNAPSHOT: cache:false registers one subscription per call', () => {
+  describe('CI-16 cache:false asks for a subscription of its own', () => {
+    /**
+     * Phase 5 fixed the part that was a defect - a `cache: false` call used to
+     * write to the cache slot anyway, handing the next caller a reference
+     * belonging to one of the extra subscriptions. Registering one
+     * subscription per call is what `cache: false` means and is kept.
+     */
+    it('DEFINED (Phase 5): cache:false registers one subscription per call', () => {
       const watch = createStore<{ a: number }>({ a: 1 });
       let calls = 0;
       const renew = (s: any) => {
