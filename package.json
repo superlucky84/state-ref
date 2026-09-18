@@ -25,6 +25,8 @@
     "build:solid": "pnpm --filter @stateref/connect-solid build",
     "build": "pnpm build:core && pnpm build:!core && node scripts/copy-skills.mjs",
 
+    "gate": "node scripts/gate.mjs",
+
     "test": "pnpm -r test",
     "test:core": "pnpm --filter state-ref test",
     "test:core:dev": "pnpm --filter state-ref test:dev",
