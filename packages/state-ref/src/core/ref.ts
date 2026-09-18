@@ -47,9 +47,16 @@ export function makeReference<V>({
    * refill it from what this pass actually reads, so a path the callback has
    * stopped reading stops waking it.
    *
-   * Off by default - it changes how often subscribers are called, which is a
-   * behaviour change (`DC-02`). The first run is never re-collected: there is
-   * nothing to forget yet.
+   * On by default from 3.0.0 (`DC-02`); 2.x had no such option, and its
+   * subscriptions only ever grew because nothing on the read path removes
+   * anything - `collector` adds and never deletes. That is all this flag
+   * decides: whether the set is empty when the callback starts.
+   *
+   * The first run is never re-collected: there is nothing to forget yet.
+   *
+   * Note where the wipe lives - inside `run`, so only a store change triggers
+   * it. A reader that runs outside `run` (a framework re-rendering for its own
+   * reasons) still reaches `collector` and therefore only ever adds.
    */
   const run: Run = (isFirst?: boolean) => {
     if (!trackDeps || isFirst) {
