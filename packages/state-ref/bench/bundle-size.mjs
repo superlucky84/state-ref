@@ -15,9 +15,23 @@
  * a consumer would and gzips that.
  *
  * Usage:  pnpm build:core && node packages/state-ref/bench/bundle-size.mjs
- * Env:    CAP (default 3200, bytes gzipped)
+ * Env:    CAP (default 3400, bytes gzipped)
  *
- * Exits non-zero over the cap, so CI can gate on it.
+ * The cap was 3,200 through Phase 6.5. Phase 7 raised it to 3,400 to pay for
+ * the two defects it found - the teardown that came back (`CI-24`) and the
+ * recursion with no floor (`CI-23`). 147 B for a leak that cannot be undone
+ * and a stack overflow that reported itself as nothing is a trade the budget
+ * exists to allow (`DC-09`, re-resolved 2026-09-18).
+ *
+ * The gzipped figure depends on the Node that runs this: the same bytes
+ * measure 3,347 B on the pinned Node 20.3.0 and 3,320 B on Node 22.13.0,
+ * because zlib changed underneath. 27 B is the size of a real change at this
+ * budget, so the number is printed with the version that produced it, and the
+ * cap is defined against the pinned one. `pnpm gate` reaches this through
+ * pnpm, whose PATH may not be volta's - which is exactly how the discrepancy
+ * was found.
+ *
+ * Exits non-zero over the cap, so a gate can stand on it.
  */
 import { gzipSync } from 'node:zlib';
 import { readFileSync, existsSync } from 'node:fs';
@@ -27,7 +41,7 @@ import { createRequire } from 'node:module';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const entry = resolve(here, '../dist/state-ref.mjs');
-const cap = Number(process.env.CAP ?? 3200);
+const cap = Number(process.env.CAP ?? 3400);
 
 if (!existsSync(entry)) {
   console.error('dist/state-ref.mjs is missing - run `pnpm build:core` first.');
@@ -72,7 +86,9 @@ const row = (label, text, note) =>
       `${String(gz(text)).padStart(5)} B gzip   ${note}`
   );
 
-console.log('\nBUNDLE — dist/state-ref.mjs  [NFR-3]\n');
+console.log(
+  `\nBUNDLE — dist/state-ref.mjs  [NFR-3]   (gzip by Node ${process.version})\n`
+);
 row('as published', published, '(vite leaves ESM whitespace in)');
 row('minified', minified, `(target <= ${cap} B)  ${pass ? 'PASS' : 'FAIL'}`);
 console.log(

@@ -6,7 +6,7 @@ import type {
   StoreRenderList,
 } from '@/types';
 import type { PathNode } from '@/path';
-import { forEachAffected } from '@/path';
+import { forEachAffected, pathToString } from '@/path';
 
 /**
  * Reports the errors user code threw during a single propagation pass.
@@ -43,6 +43,25 @@ export function removeRun(storeRenderList: StoreRenderList<any>, run: Run) {
 }
 
 /**
+ * How deep a write may nest inside a propagation pass before it is refused.
+ *
+ * A subscriber writing is an ordinary way to derive state - `INV-4` says a
+ * write notifies synchronously, so a chain of them is a chain of ordinary
+ * passes. What is never intended is a subscriber that feeds itself: that
+ * recursed until the stack broke, and the `RangeError` went into the same
+ * reporter as everything else, whose `console.error` then overflowed on the
+ * spot. The user was left with a store stopped at whatever value the stack ran
+ * out on and no usable diagnosis (`CI-23`).
+ *
+ * 100 is far above any real chain and far below where the stack gives out -
+ * a self-feeding loop reached about 1,295 frames on Node 20 - so the error
+ * arrives while there is still stack left to report it with.
+ */
+const MAX_PASS_DEPTH = 100;
+
+let passDepth = 0;
+
+/**
  * Based on the information gathered by the “collector”,
  * this code identifies and executes a callback function for store changes.
  *
@@ -63,6 +82,16 @@ export function runner(
   writtenParent?: PathNode,
   writtenSegment?: string | symbol | null
 ) {
+  if (passDepth >= MAX_PASS_DEPTH) {
+    throw new Error(
+      `state-ref: a subscriber kept writing while its own change was still propagating (over ${MAX_PASS_DEPTH} levels deep${
+        writtenParent
+          ? ` at "${pathToString(writtenParent, writtenSegment)}"`
+          : ''
+      }). A subscriber that writes the path it reads never settles.`
+    );
+  }
+
   const runableRenewList: Set<Run> = new Set();
   const errors: unknown[] = [];
 
@@ -116,23 +145,36 @@ export function runner(
     );
   }
 
-  runableRenewList.forEach(run => {
-    if (!run) {
-      return;
-    }
+  passDepth += 1;
 
-    try {
-      if (run() === false) {
-        removeRun(storeRenderList, run);
-      }
-    } catch (error) {
+  try {
+    runableRenewList.forEach(run => {
       /**
-       * A subscriber that throws must not swallow the subscribers queued
-       * behind it.
+       * A subscription torn down while this pass was in flight must not run.
+       * Its record is already gone, and running it anyway would let the
+       * callback's own reads re-register it through the `collector` - a
+       * resurrection nothing could undo, because the signal that removed it
+       * has already fired and cannot fire twice (`CI-24`).
        */
-      errors.push(error);
-    }
-  });
+      if (!run || !storeRenderList.has(run)) {
+        return;
+      }
+
+      try {
+        if (run() === false) {
+          removeRun(storeRenderList, run);
+        }
+      } catch (error) {
+        /**
+         * A subscriber that throws must not swallow the subscribers queued
+         * behind it.
+         */
+        errors.push(error);
+      }
+    });
+  } finally {
+    passDepth -= 1;
+  }
 
   runableRenewList.clear();
   reportPassErrors(errors);
