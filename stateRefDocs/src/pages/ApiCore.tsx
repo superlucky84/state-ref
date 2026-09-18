@@ -21,7 +21,10 @@ export const ApiCore = mount(() => {
 
       <CodeBlock
         language="typescript"
-        code={`function createStore<V>(initialValue: V): Watch<V>`}
+        code={`function createStore<V>(
+  initialValue: V,
+  createOption?: { trackDeps?: boolean }
+): Watch<V>`}
       />
 
       <h3>Parameters</h3>
@@ -31,7 +34,27 @@ export const ApiCore = mount(() => {
           <code>initialValue: V</code> - The initial value of the store. Can be a primitive
           (number, string, boolean) or an object/array.
         </li>
+        <li>
+          <code>createOption.trackDeps</code> (optional, default: <code>true</code> since
+          3.0.0) - Re-collects what each subscriber reads on every run, so a path a
+          callback has stopped reading stops waking it. Set it to <code>false</code> for
+          the 2.x behaviour, where a subscriber keeps being woken by every path it has
+          ever read.
+        </li>
       </ul>
+
+      <CodeBlock
+        language="typescript"
+        code={`const watch = createStore({ flag: true, a: 0, b: 0 });
+
+watch(ref => {
+  // Only one of "a" and "b" is read on any given run.
+  console.log(ref.flag.value ? ref.a.value : ref.b.value);
+});
+
+// After flag flips to false, writing to "a" no longer wakes the subscriber.
+// With { trackDeps: false } it still would.`}
+      />
 
       <h3>Returns</h3>
 

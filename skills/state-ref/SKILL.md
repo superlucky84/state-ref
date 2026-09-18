@@ -103,6 +103,13 @@ const ref = watch();
 ref.count.value = 10; // Triggers subscription
 ```
 
+Since 3.0.0 a subscriber's dependencies are re-collected on every run, so a path
+the callback has stopped reading stops waking it. Pass
+`createStore(value, { trackDeps: false })` for the 2.x behaviour.
+
+To unsubscribe, return an `AbortSignal` from the callback and abort it, or return
+`false` to stop after that run.
+
 ### Example 2: React Integration
 
 ```ts

@@ -151,6 +151,34 @@ watch((stateRef) => {
 abortController.abort(); // run abort
 ```
 
+Returning `false` from the callback ends the subscription after that run, which is
+useful when the stopping condition is in the state itself. Both work through
+`combineWatch` and `createComputed`.
+
+### tracking what a subscriber reads
+
+Since 3.0.0 a subscriber's dependencies are re-collected on every run, so a path it
+has stopped reading stops waking it:
+
+```typescript
+const watch = createStore({ flag: true, a: 0, b: 0 });
+
+watch((stateRef) => {
+    // Only one of "a" and "b" is read on any given run.
+    console.log(stateRef.flag.value ? stateRef.a.value : stateRef.b.value);
+});
+
+const ref = watch();
+ref.flag.value = false;
+ref.a.value = 99; // does not wake the subscriber any more
+```
+
+Pass `createStore(value, { trackDeps: false })` to get the 2.x behaviour back, where
+every path a callback has ever read keeps waking it.
+
+See [CHANGELOG.md](./CHANGELOG.md) for everything 3.0.0 changes, including the four
+changes that can break 2.x code.
+
 **Primitive types** like numbers or strings can also be handled easily. Here's how:
 
 ```typescript

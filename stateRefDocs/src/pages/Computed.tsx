@@ -107,6 +107,33 @@ num1.value = 200;
 // Logs: Difference: 150, Is first run? false`}
       />
 
+      <h2>Cancelling a Subscription</h2>
+
+      <p>
+        A subscription made here is cancelled the same way as any other: return an{' '}
+        <code>AbortSignal</code> from the callback and abort it, or return{' '}
+        <code>false</code> to drop the subscription after that run. Both reach the
+        inner subscriptions this helper opens on your behalf.
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`const abortController = new AbortController();
+
+computedWatch((refs, isFirst) => {
+  read(refs);
+  if (isFirst) return abortController.signal;
+  return abortController.signal;
+});
+
+abortController.abort();  // every inner subscription goes with it
+
+// Or, to stop after a condition is met:
+computedWatch((refs, isFirst) => {
+  if (done(refs)) return false;
+});`}
+      />
+
       <h2>Read-Only Values</h2>
 
       <p>

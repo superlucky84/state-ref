@@ -161,10 +161,23 @@ This section provides minimal context to help agents locate and use state-ref fu
 ### Store Creation
 - **createStore** - Create auto-sync store (changes immediately notify subscribers)
 - **createStoreManualSync** - Create manual-sync store (Flux-like, explicit sync)
+- Both take an optional second argument, `{ trackDeps }`. Since 3.0.0 it defaults
+  to `true`: a subscriber stops being woken by a path it has stopped reading.
+  `{ trackDeps: false }` restores the 2.x behaviour.
 
 ### Watch Function
 - **watch(callback)** - Subscribe to state changes, returns bound StateRefStore
 - **watch()** - Get unbound StateRefStore reference (no tracking)
+- Unsubscribe by returning an `AbortSignal` from the callback and aborting it, or
+  by returning `false`. Both work through `combineWatch` and `createComputed` too.
+
+### Things That Throw (3.0.0)
+- Writing through a missing intermediate path - state-ref does not create one; the
+  error names the path and the segment that is not an object
+- Assigning to anything but `.value` (`ref.a = 1`), deleting through a reference,
+  or coercing a reference to a primitive without `.value`
+- A subscriber that keeps writing the path it reads: propagation deeper than 100
+  levels is refused rather than left to break the stack
 
 ### Combining & Computing
 - **combineWatch** - Combine multiple watches into single watch
