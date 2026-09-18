@@ -61,7 +61,11 @@
 
 ---
 
-## M-03 — devtools 표시 회귀 (A-1 / DC-05)  ⚠️ **미수행 — 사용자 확인 필요**
+## M-03 — devtools 표시 회귀 (A-1 / DC-05)  🔴 **미수행으로 두었다가 실제로 샜다 (CI-28)**
+
+> **2026-09-18.** 이 절을 "미수행"으로 남긴 채 3.0.0을 냈고, **사용자가 브라우저에서 바로 발견했다** — `console.log(ref)`가 `Object {…}`로만 나오고 경로가 없다. 원인은 `DC-05`(핸들 → Symbol)와 `CI-03`(ownKeys 트랩)의 조합이고, 3.0.2에서 `Symbol.toStringTag`로 복원했다.
+>
+> **아래 항목은 여전히 사람이 봐야 한다.** 3.0.2를 띄워 다시 확인할 것 — 기대값은 devtools 헤더에 `root.john.age {…}`가 나오는 것이다. 자동 테스트는 `Object.prototype.toString.call(ref)`까지만 볼 수 있고, 그것이 devtools에 실제로 어떻게 그려지는지는 보지 못한다.
 
 > 브라우저 devtools와 VS Code 디버거를 사람이 눈으로 봐야 하는 항목이라 자동화하지 않았다. 대신 확인해 둔 것: `NAVI`/`TYPE`은 이제 **패키지에서 export되며**(`ref.a.b[NAVI]` → `"root.a.b"`, `[TYPE]` → `"number"`), `Object.keys`에 노출되지 않는다(M-02 #3).
 

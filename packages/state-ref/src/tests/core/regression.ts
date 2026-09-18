@@ -123,6 +123,32 @@ if (import.meta.vitest) {
       expect((ref.a as any)[TYPE]).toBe('object');
     });
 
+    it('FIXED (3.0.2): a browser console can see the path again (CI-28)', () => {
+      const watch = createStore<{ john: { age: number } }>({
+        john: { age: 20 },
+      });
+      const ref = watch();
+
+      /**
+       * 2.x showed the path in a browser console because the proxy's target
+       * *was* the display object and no `ownKeys` trap existed - the same lie
+       * that made `Object.keys` return debug junk. Fixing that took the
+       * display with it, because a browser renders a proxy through its traps.
+       * `Symbol.toStringTag` puts the path back on the header line without
+       * claiming a property.
+       */
+      expect(Object.prototype.toString.call(ref.john.age)).toBe(
+        '[object root.john.age]'
+      );
+      expect(Object.prototype.toString.call(ref)).toBe('[object root]');
+
+      /** And none of what the tag restores may leak into the shape. */
+      expect(Object.keys(ref.john)).toEqual(['age']);
+      expect(Object.keys({ ...ref.john })).toEqual(['age']);
+      expect(JSON.stringify(ref.john)).toBe('{"age":20}');
+      expect((ref.john.age as any)[NAVI]).toBe('root.john.age');
+    });
+
     it('FIXED (Phase 2): state may own keys named _value / _navi / _type', () => {
       /**
        * This is why the debug handles are symbols. Passing the old string keys

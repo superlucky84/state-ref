@@ -1,5 +1,24 @@
 # Changelog
 
+## 3.0.2
+
+### Fixed
+
+- **A browser console shows a reference's path again** (`CI-28`). Logging a
+  reference in devtools printed `Object {…}` with the path nowhere in sight.
+
+  2.x displayed it for free because the proxy's *target* was the display
+  object `{ _navi, _type, _value }` and there was no `ownKeys` trap, so a
+  browser rendered those three properties. That is the same lie that made
+  `Object.keys(ref)` return `['_navi', '_type', '_value']` and spread copy
+  debug junk, which 3.0.0 fixed (`CI-02`, `CI-03`) - and fixing it left the
+  browser's default rendering with only real state to show.
+
+  `Symbol.toStringTag` now answers with the path, so the header line reads
+  `root.john.age {…}`. Nothing is added to the object's shape: `Object.keys`,
+  spread, `in` and `JSON.stringify` are untouched. Node console output already
+  worked through its own inspect hook and is unchanged.
+
 ## 3.0.1
 
 ### Fixed

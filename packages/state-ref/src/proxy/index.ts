@@ -111,8 +111,17 @@ export function makeProxy<S extends WithRoot, T extends object>(
 
       /**
        * Debug handles. Symbols, so they cannot collide with state keys.
+       *
+       * `Symbol.toStringTag` answers with the path too, which is what puts it
+       * back in a browser console. 2.x displayed the path for free because the
+       * proxy's target *was* the display object and there was no `ownKeys`
+       * trap - the same lie that made `Object.keys` and spread return debug
+       * junk (`CI-02`, `CI-03`). With that fixed, a browser renders through
+       * the traps and sees only real state, so the path had nowhere left to
+       * appear. The tag puts it on the header line - `root.john.age {…}` -
+       * without claiming a property that does not exist.
        */
-      if (prop === NAVI) {
+      if (prop === NAVI || prop === Symbol.toStringTag) {
         return pathToString(parentNode, segment);
       }
       if (prop === TYPE) {
