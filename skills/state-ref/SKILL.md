@@ -103,10 +103,11 @@ const ref = watch();
 ref.count.value = 10; // Triggers subscription
 ```
 
-3.0.0 adds a second argument to `createStore`, `{ trackDeps }`, on by default: a
-subscriber's dependencies are re-collected on every run, so a path the callback
-has stopped reading stops waking it. 2.x had no such option. Pass
-`createStore(value, { trackDeps: false })` for the 2.x behaviour.
+3.0.0 adds a second argument to `createStore`, `{ trackDeps }`, off by default.
+With `{ trackDeps: true }` a subscriber's dependencies are re-collected on every
+run, so a path the callback has stopped reading stops waking it. Suggest it only
+for subscribers whose branch condition lives in the store; otherwise it costs
+about 1.4x per notification and saves nothing.
 
 To unsubscribe, return an `AbortSignal` from the callback and abort it, or return
 `false` to stop after that run.

@@ -162,9 +162,10 @@ This section provides minimal context to help agents locate and use state-ref fu
 - **createStore** - Create auto-sync store (changes immediately notify subscribers)
 - **createStoreManualSync** - Create manual-sync store (Flux-like, explicit sync)
 - Both take an optional second argument, `{ trackDeps }`, new in 3.0.0 and
-  defaulting to `true`: a subscriber stops being woken by a path it has stopped
-  reading. 2.x had no such option - `createStore` took no second argument -
-  and `{ trackDeps: false }` gives that behaviour back.
+  **off by default**: with it on, a subscriber stops being woken by a path it
+  has stopped reading. Worth turning on only when the branch condition lives in
+  the store - it costs ~1.4x per notification and a subscriber with no
+  conditional reads saves nothing.
 
 ### Watch Function
 - **watch(callback)** - Subscribe to state changes, returns bound StateRefStore

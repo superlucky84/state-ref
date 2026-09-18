@@ -259,7 +259,7 @@ if (import.meta.vitest) {
       return { ref: watch(), Branch, state };
     };
 
-    it('keeps waking a component for a path it stopped reading when off', () => {
+    it('keeps waking a component for a path it stopped reading when off (the default)', () => {
       const { ref, Branch, state } = build(false);
 
       trender(<Branch />);

@@ -157,12 +157,12 @@ useful when the stopping condition is in the state itself. Both work through
 
 ### tracking what a subscriber reads
 
-3.0.0 adds a second argument to `createStore`, `{ trackDeps }`, on by default. A
+3.0.0 adds a second argument to `createStore`, `{ trackDeps }`. With it on, a
 subscriber's dependencies are re-collected on every run, so a path it has stopped
 reading stops waking it:
 
 ```typescript
-const watch = createStore({ flag: true, a: 0, b: 0 });
+const watch = createStore({ flag: true, a: 0, b: 0 }, { trackDeps: true });
 
 watch((stateRef) => {
     // Only one of "a" and "b" is read on any given run.
@@ -174,9 +174,11 @@ ref.flag.value = false;
 ref.a.value = 99; // does not wake the subscriber any more
 ```
 
-2.x had no such option - `createStore` took no second argument - and every path a
-callback had ever read kept waking it. Pass `createStore(value, { trackDeps: false })`
-for that behaviour.
+It is **off by default**, which is what 2.x did - a subscription only ever grows.
+Re-collecting costs about 1.4x per notification and saves whole notifications, so
+it pays once it removes roughly 40% of them; a subscriber with no conditional
+reads removes none. Turn it on for subscribers whose branch condition lives in
+the store.
 
 See [CHANGELOG.md](./CHANGELOG.md) for everything 3.0.0 changes, including the four
 changes that can break 2.x code.

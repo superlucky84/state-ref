@@ -35,18 +35,21 @@ export const ApiCore = mount(() => {
           (number, string, boolean) or an object/array.
         </li>
         <li>
-          <code>createOption.trackDeps</code> (optional, default: <code>true</code>;
+          <code>createOption.trackDeps</code> (optional, default: <code>false</code>;
           new in 3.0.0) - Re-collects what each subscriber reads on every run, so a
-          path a callback has stopped reading stops waking it. 2.x had no such option:
-          a subscription there only ever grew. Set it to <code>false</code> for that
-          behaviour, where a subscriber keeps being woken by every path it has ever
-          read.
+          path a callback has stopped reading stops waking it. Off by default: it
+          costs about 1.4x per notification and saves whole notifications, so it pays
+          once it removes roughly 40% of them - a subscriber with no conditional reads
+          removes none. Turn it on where the branch condition lives in the store.
         </li>
       </ul>
 
       <CodeBlock
         language="typescript"
-        code={`const watch = createStore({ flag: true, a: 0, b: 0 });
+        code={`const watch = createStore(
+  { flag: true, a: 0, b: 0 },
+  { trackDeps: true }
+);
 
 watch(ref => {
   // Only one of "a" and "b" is read on any given run.
@@ -54,7 +57,7 @@ watch(ref => {
 });
 
 // After flag flips to false, writing to "a" no longer wakes the subscriber.
-// With { trackDeps: false } it still would.`}
+// Without trackDeps (the default) it still would.`}
       />
 
       <h3>Returns</h3>

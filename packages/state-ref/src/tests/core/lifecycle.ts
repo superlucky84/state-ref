@@ -445,7 +445,7 @@ if (import.meta.vitest) {
       expect(mockFn).not.toHaveBeenCalled();
     });
 
-    it('is on by default from 3.0.0 (DC-02)', () => {
+    it('is off unless asked for (DC-02)', () => {
       const watch = createStore<Branch>(initial());
       const mockFn = vi.fn();
       const ref = watch(store => {
@@ -459,11 +459,15 @@ if (import.meta.vitest) {
 
       ref.a.value = 123;
 
-      expect(mockFn).not.toHaveBeenCalled();
+      /**
+       * The 2.x shape, and still the default: a subscription only grows, so a
+       * path the callback has stopped reading keeps waking it.
+       */
+      expect(mockFn).toHaveBeenCalledTimes(1);
     });
 
-    it('can be turned back off, which is the 2.x behaviour', () => {
-      const watch = createStore<Branch>(initial(), { trackDeps: false });
+    it('sheds the abandoned path when asked for', () => {
+      const watch = createStore<Branch>(initial(), { trackDeps: true });
       const mockFn = vi.fn();
       const ref = watch(store => {
         mockFn();
@@ -476,7 +480,7 @@ if (import.meta.vitest) {
 
       ref.a.value = 123;
 
-      expect(mockFn).toHaveBeenCalledTimes(1);
+      expect(mockFn).not.toHaveBeenCalled();
     });
   });
 }

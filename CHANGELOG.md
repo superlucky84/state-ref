@@ -32,18 +32,22 @@ why this is a major (`DC-08`).
   silently made a manual-sync reference writable (`CI-01`).
   *Migration:* write through `updateRef`, or ask for `{ editable: true }`.
 
-### Changed
+### Added
 
-- **`createStore` and `createStoreManualSync` take a second argument**,
-  `{ trackDeps }`, **new in this release and on by default** (`CI-14`,
-  `DC-02`). A subscriber is no longer woken by a path it has stopped reading,
-  so a component with a conditional read stops re-rendering for the branch it
-  did not take - measured on real components in Phase 8. 2.x had no such
-  option and no way to get this behaviour; a subscription there only ever
-  grew. `createStore(value, { trackDeps: false })` gives the 2.x behaviour
-  back. It costs about 1.4x per notification, since the subscription is
-  rebuilt on each run - the trade is fewer notifications for a slightly more
-  expensive one.
+- **`createStore` and `createStoreManualSync` take a second argument,
+  `{ trackDeps }`** (`CI-14`, `DC-02`). With it on, a subscriber's
+  dependencies are re-collected on every run, so a path the callback has
+  stopped reading stops waking it - a component with a conditional read stops
+  re-rendering for the branch it did not take. 2.x had no such option and no
+  way to get this behaviour; a subscription there only ever grew.
+
+  **Off by default**, because the trade is narrow: re-collection costs about
+  1.4x per notification delivered and saves whole notifications, so it only
+  pays once it removes roughly 40% of them, and a subscriber with no
+  conditional reads removes none. Through a framework connector it is
+  narrower still - re-collection is driven by a store change, so a component
+  branching on its own state never sheds a path. Turn it on where it pays:
+  a subscriber whose branch condition lives in the store.
 
 ### Fixed
 

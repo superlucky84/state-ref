@@ -538,16 +538,18 @@ if (import.meta.vitest) {
 
   describe('CI-14 dependencies are re-collected', () => {
     /**
-     * New in 3.0.0 and on by default (`DC-02`, settled in Phase 8 on
-     * measurements taken through a real React component). 2.x had no such
-     * option - `createStore` took no second argument at all - so what this
-     * pins is that the 2.x behaviour is still reachable, one option away.
+     * `trackDeps` is new in 3.0.0 and off by default (`DC-02`): re-collection
+     * only pays once it removes about 40% of a subscriber's notifications, and
+     * a subscriber with no conditional reads removes none. So the default
+     * behaviour is still 2.x's, which is what this pins; `lifecycle.ts` covers
+     * the opted-in side.
      */
-    it('DEFINED (Phase 8, DC-02): with trackDeps off, a no-longer-read path still wakes the subscriber', () => {
-      const watch = createStore<{ flag: boolean; a: number; b: number }>(
-        { flag: true, a: 0, b: 0 },
-        { trackDeps: false }
-      );
+    it('DEFINED (Phase 8, DC-02): by default a no-longer-read path still wakes the subscriber', () => {
+      const watch = createStore<{ flag: boolean; a: number; b: number }>({
+        flag: true,
+        a: 0,
+        b: 0,
+      });
       let calls = 0;
       const ref = watch(s => {
         calls += 1;

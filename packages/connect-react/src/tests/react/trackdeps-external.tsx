@@ -8,6 +8,9 @@
  * Through a connector that mostly cannot happen, and this pins why: the reads
  * happen during render, and anything outside the store that changes what gets
  * rendered goes through a render of its own - which re-reads, and re-registers.
+ *
+ * `trackDeps` is off by default (`DC-02`), so these ask for it explicitly -
+ * without that there is nothing here to test.
  */
 import { render as trender, cleanup, act } from '@testing-library/react';
 import { useState } from 'react';
@@ -23,7 +26,7 @@ if (import.meta.vitest) {
 
   describe('trackDeps and a condition outside the store', () => {
     it('re-registers the path when the condition is component state', () => {
-      const watch = createStore<Pair>({ a: 0, b: 0 });
+      const watch = createStore<Pair>({ a: 0, b: 0 }, { trackDeps: true });
       const ref = watch();
       const useStore = connectReact(watch);
       let setMode: (m: 'a' | 'b') => void = () => {};
@@ -68,7 +71,7 @@ if (import.meta.vitest) {
     });
 
     it('does not narrow when the re-render came from component state', () => {
-      const watch = createStore<Pair>({ a: 0, b: 0 });
+      const watch = createStore<Pair>({ a: 0, b: 0 }, { trackDeps: true });
       const ref = watch();
       const useStore = connectReact(watch);
       let setMode: (m: 'a' | 'b') => void = () => {};

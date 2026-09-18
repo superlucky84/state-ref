@@ -19,19 +19,23 @@ import { lens } from '@/lens';
  */
 export const DEFAULT_WATCH_OPTION = { cache: true, editable: true };
 /**
- * `trackDeps` is new in 3.0.0, and on (`DC-02`).
+ * `trackDeps` is new in 3.0.0 and off by default (`DC-02`).
  *
  * It re-collects what a callback reads on every run, so a path the callback
  * has stopped reading stops waking it. 2.x has no such option and no way to
- * get this behaviour: a subscription there only ever grew. Turning it on by
- * default changes how often subscribers are called, which is why it waited
- * for a major. Phase 8 measured it on real components: a conditional read that
- * took the other branch went from waking its component on every write of the
- * abandoned path to not waking it at all.
+ * get that behaviour: a subscription there only ever grows.
  *
- * `createStore(value, { trackDeps: false })` restores the 2.x behaviour.
+ * Off by default because the trade is narrow. It costs about 1.4x per
+ * notification delivered and saves whole notifications, so it only pays once
+ * it removes roughly 40% of them - and a subscriber with no conditional reads
+ * removes none. Through a framework connector the saving is narrower still:
+ * re-collection is driven by `run`, so a component that branches on its own
+ * state never sheds a path and pays the cost for nothing.
+ *
+ * `createStore(value, { trackDeps: true })` turns it on where it pays: a
+ * subscriber whose branch condition lives in the store.
  */
-export const DEFAULT_CREATE_OPTION = { autoSync: true, trackDeps: true };
+export const DEFAULT_CREATE_OPTION = { autoSync: true, trackDeps: false };
 
 /**
  * Debug handles on a stateRef, readable as `ref.a.b[NAVI]` / `ref.a.b[TYPE]`.
