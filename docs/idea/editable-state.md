@@ -5,7 +5,7 @@
 - 배경: Zustand, Preact Signals, Jotai와 비교했을 때 state-ref를 선택할 구체적인 이유를 찾기 위한 논의
 - 대상 사용자: 폼, 관리자 화면, 설정 화면, 문서·디자인 에디터를 만드는 개발자
 
-후속 범위 결정: [서버 동기화 설계](../server-sync/README.md)에서 하위 ref별 부분 저장·Live Draft·변경 검토/선택 저장·취소를 이번 릴리스에 포함했다. 이 문서의 초기 추천 순서는 당시 아이디어 기록이며 현재 구현 순서를 대신하지 않는다. 공통 입력 컴포넌트와 다중 선택 편집은 이번 범위에서 제외한다.
+최신 결정(2026-09-19): [서버 동기화와 독립 Draft 설계](../server-sync/README.md)에서 core·sync·draft를 분리하고, resource와 draft가 각자의 기준으로 dirty/changes를 제공하기로 했다. draft는 원본의 현재 값에서 clean으로 시작하고 자기 변경만 원본에 로컬 적용한다. 서버 부분 저장 scope와 resource/draft의 직접 서버 save는 제외하며 원격 저장은 mutation이 맡는다. 이 문서의 fork·commit·scope 관련 초기 예시와 추천 순서는 아이디어 기록이며 현재 API·구현 범위의 기준이 아니다. 공통 입력 컴포넌트와 다중 선택 편집은 이번 범위에서 제외한다.
 
 ## 1. 제안의 중심
 
