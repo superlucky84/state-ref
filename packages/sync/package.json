@@ -1,0 +1,26 @@
+{
+  "type": "module",
+  "name": "@stateref/sync",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Optional query and editable resource package for state-ref",
+  "main": "./dist/stateref-sync.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/stateref-sync.mjs"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run --reporter verbose"
+  },
+  "peerDependencies": {
+    "state-ref": "^3.0.2"
+  },
+  "devDependencies": {
+    "state-ref": "workspace:*"
+  }
+}

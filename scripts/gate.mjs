@@ -69,6 +69,30 @@ const steps = [
     ],
   },
   {
+    name: 'sync-types',
+    cmd: 'pnpm',
+    args: ['--filter', '@stateref/sync', 'exec', 'tsc', '--noEmit'],
+  },
+  {
+    name: 'sync-consumer-types',
+    cmd: 'pnpm',
+    args: [
+      '--filter',
+      '@stateref/sync',
+      'exec',
+      'tsc',
+      '--noEmit',
+      '--strict',
+      '--target',
+      'es2020',
+      '--module',
+      'esnext',
+      '--moduleResolution',
+      'bundler',
+      'test/types.ts',
+    ],
+  },
+  {
     name: 'lint',
     cmd: 'pnpm',
     args: ['exec', 'eslint', ...sourceDirs, '--ext', '.ts,.tsx'],
@@ -78,6 +102,11 @@ const steps = [
     name: 'draft-bundle',
     cmd: 'node',
     args: ['packages/state-ref/test/draft-bundle.mjs'],
+  },
+  {
+    name: 'sync-bundle',
+    cmd: 'node',
+    args: ['packages/sync/test/sync-bundle.mjs'],
   },
   {
     name: 'bench',

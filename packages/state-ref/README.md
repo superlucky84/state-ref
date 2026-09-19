@@ -60,6 +60,10 @@ editor.discard(); // releases subscriptions and closes the draft
 
 Draft editing supports acyclic plain data and dense arrays. Arrays are merged as one atomic field. Functions, Date, Map, core-reserved payload keys, and direct mutation of an object obtained through draft `.value` are rejected. The UMD build is a companion script: load `state-ref.umd.js` before `state-ref.draft.umd.js`, then use the `stateRefDraft` global.
 
+### Optional server query package
+
+`@stateref/sync` is a separate ESM package for shared query caching and editable resource refs. It is installed and imported only by apps that need it. Direct resource edits are local; the package currently exposes no network write or mutation API. See [the sync package guide](../sync/README.md) for its Phase 3 API and supported scope.
+
 ### Understanding References: Inner vs Outer
 
 When you register a subscription function via `watch`, it is executed once initially to collect dependencies. The second argument `isFirst` indicates whether this is the first run.

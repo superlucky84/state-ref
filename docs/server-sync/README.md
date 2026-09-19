@@ -1,8 +1,8 @@
 # state-ref 서버 동기화와 독립 Draft 설계
 
-상태: 2026-09-19 Phase 2의 일반 원본용 독립 draft까지 구현·자동 검증했다. state-ref 코어·서버 동기화 헬퍼·draft 헬퍼를 선택적으로 조합한다. 서버 기능은 계속 추진하며, TanStack Query의 query/mutation 모델과 기능을 참고하되 런타임 독립을 지향한다.
+상태: 2026-09-20 Phase 3의 독립 query 캐시와 편집 가능한 resource 기본 경로까지 구현·자동 검증했다. state-ref 코어·서버 동기화 헬퍼·draft 헬퍼를 선택적으로 조합한다. 서버 기능은 계속 추진하며, TanStack Query의 query/mutation 모델과 기능을 참고하되 런타임 독립을 지향한다.
 
-서버 싱크는 코어 빌드에 합치지 않고 별도로 설치·import하는 플러그인형 패키지로 개발한다. draft는 같은 `state-ref` 패키지의 선택적 `state-ref/draft` 진입점으로 제공해 별도 설치 없이 쓰되 기본 코어 진입점에는 자동 포함하지 않는다. 코어의 범용 `onWrite` 연결은 draft 편집과 서버 resourceRef 직접 편집의 기록에 모두 쓸 수 있다. 현재 일반 core ref의 draft는 동작하며 서버 패키지는 아직 없다.
+서버 싱크는 코어 빌드에 합치지 않고 별도로 설치·import하는 `@stateref/sync` 패키지로 개발한다. draft는 같은 `state-ref` 패키지의 선택적 `state-ref/draft` 진입점으로 제공해 별도 설치 없이 쓰되 기본 코어 진입점에는 자동 포함하지 않는다. 코어의 범용 `onWrite` 연결은 draft 편집과 서버 resourceRef 직접 편집의 기록에 모두 쓴다. 현재 sync는 query/resource까지 제공하며 mutation·저장 수용은 다음 단계다.
 
 UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우저에서는 `state-ref.umd.js`/`stateRef` 다음에 `state-ref.draft.umd.js`/`stateRefDraft`를 로드한다. 두 스크립트의 동작과 코어 누락 오류를 자동 browser smoke로 확인했다.
 
@@ -17,6 +17,7 @@ UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우�
 5. [PHASE0](./PHASE0.md): 새 구현 브랜치의 기준 측정, 계약 실험, F2 참조 목록.
 6. [PHASE1](./PHASE1.md): opt-in setter·`state-ref/plugin` 연결과 남은 공개 계약.
 7. [PHASE2](./PHASE2.md): 선택적 draft 구현·검증, 지원 데이터 경계와 남은 resource 결합.
+8. [PHASE3](./PHASE3.md): 별도 sync 패키지의 query/resource 구현·검증과 F2 기능별 남은 범위.
 
 ## 확정한 사용 의미
 
@@ -37,9 +38,9 @@ UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우�
 
 ## 아직 확정하지 않은 구현 사항
 
-`createDraft`/`apply`는 현재 브랜치의 선택적 draft API로 구현했다. 서버 resource/client API, 자유로운 DTO 제출 기록 연결은 IC2로 추적한다. 독립 엔진의 참조 버전·기본 설계는 [Phase 0](./PHASE0.md)에 고정했고 기능별 구현·검증은 남아 있다. 예시의 `client.query`는 아직 API가 아니다.
+`createDraft`/`apply`와 `createSyncClient`/`client.query`의 기본 경로를 구현했다. 자유로운 DTO 제출 기록 연결은 IC2-04로 추적한다. 독립 엔진의 참조 버전·기본 설계는 [Phase 0](./PHASE0.md)에 고정했고 기능별 구현·검증 결과는 [Phase 3](./PHASE3.md)에 나눠 기록했다.
 
-기능 전반의 동등성은 F2 목록의 목표이며 현재 달성한 상태가 아니다. `state-ref/plugin` 범용 연결과 일반 원본 draft는 검증했지만 sync 제품 기능과 resource 결합은 아직 구현하지 않았다.
+기능 전반의 동등성은 F2 목록의 목표이며 현재 달성한 상태가 아니다. `state-ref/plugin` 범용 연결, 일반 원본 draft, sync의 독립 query/resource 기본 기능을 검증했다. pending 복구·resource/draft 결합과 실제 UI 투영은 아직 검증하지 않았다.
 
 ## 출처와 인계
 

@@ -137,6 +137,12 @@ importers:
 
   packages/state-ref: {}
 
+  packages/sync:
+    devDependencies:
+      state-ref:
+        specifier: workspace:*
+        version: link:../state-ref
+
   stateRefDocs:
     devDependencies:
       autoprefixer:

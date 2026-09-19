@@ -2,7 +2,7 @@
 
 - 기준: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md).
 - 개정일: 2026-09-19. 기준 SHA: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
-- 상태: `feat/server-sync-draft`에서 Phase 2 일반 원본용 draft까지 구현·자동 검증했다. sync 제품 기능은 미완료다. [Phase 0](./PHASE0.md), [Phase 1](./PHASE1.md), [Phase 2](./PHASE2.md) 실행 기록.
+- 상태: `feat/server-sync-draft`에서 Phase 3 query/resource 기본 경로까지 구현·자동 검증했다. mutation과 F2 전체 동등성은 미완료다. [Phase 0](./PHASE0.md), [Phase 1](./PHASE1.md), [Phase 2](./PHASE2.md), [Phase 3](./PHASE3.md) 실행 기록.
 - 이전 T/Phase 범위는 기준 commit의 이력이다. 이번 T2/Phase 계획으로 대체한다.
 
 ## 1. 진행 규칙
@@ -103,11 +103,11 @@
 
 **진입:** Phase 1 종료, IC2-03 엔진 계약 고정. Phase 2의 구현과 무관하게 sync 단독 검증 가능해야 함.
 
-- [ ] client/key/캐시/공유 조회/freshness/GC 및 F2-01/02 기반을 구현한다.
-- [ ] 초기 로드·오류·상태, query 결과 ref와 일반 응답 교체, SSR client 격리를 구현한다.
-- [ ] B_resource와 로컬 편집을 분리하고 resource dirty/changes와 공유 편집을 구현한다.
-- [ ] 직접 편집이 네트워크·기준 수용을 발생시키지 않게 한다.
-- [ ] F2-03/06의 이 단계 지원 범위를 기능 목록에 기록한다.
+- [x] client/key/캐시/공유 조회/freshness/GC 및 F2-01/02 기반을 구현한다. 자동 플랫폼 재조회는 후속 단계.
+- [x] 초기 로드·오류·상태, query 결과 ref와 일반 응답 교체, SSR client 격리를 구현한다.
+- [x] B_resource와 로컬 편집을 분리하고 resource dirty/changes와 공유 편집을 구현한다.
+- [x] 직접 편집이 네트워크·기준 수용을 발생시키지 않게 한다.
+- [x] F2-03/06의 이 단계 지원 범위를 [Phase 3](./PHASE3.md)에 기록한다.
 
 **기준 테스트:** T2-03~07/20/22/25, F2-01/02에 대한 T2-23, T2-01/02 회귀.
 
@@ -187,7 +187,7 @@
 
 ## 4. 실행과 현재 결과
 
-현재 저장소 명령은 `pnpm gate`, `pnpm test`, `pnpm test:core`, `pnpm test:react`, `pnpm test:preact`, `pnpm test:vue`, `pnpm test:svelte`, `pnpm test:solid`다. gate는 Phase 2부터 draft 독립 타입 fixture와 ESM/브라우저 UMD smoke를 포함한다. sync 패키지 검증은 구현 단계에서 추가한다. bare `npx vitest` 등으로 고정 도구를 임의 대체하지 않는다.
+현재 저장소 명령은 `pnpm gate`, `pnpm test`, `pnpm test:core`, `pnpm test:react`, `pnpm test:preact`, `pnpm test:vue`, `pnpm test:svelte`, `pnpm test:solid` 및 `pnpm --filter @stateref/sync test`다. gate는 draft 독립 타입·ESM/브라우저 UMD smoke와 Phase 3 sync 타입·소비자 fixture·ESM bundle smoke를 포함한다. bare `npx vitest` 등으로 고정 도구를 임의 대체하지 않는다.
 
 | 항목 | 현재 확인 결과 |
 |---|---|
@@ -195,11 +195,18 @@
 | core/커넥터 baseline와 gate | Phase 2 `pnpm gate` PASS. 고정 Node 20.3.0 기본 core minified gzip 3,398/3,400 B PASS |
 | 선택적 plugin export | ESM 빌드·공개 선언 타입 검사 PASS; Phase 2 `clearEntries` 추가 후 크기는 별도 산출물로 측정 |
 | 일반 원본 draft 타입·테스트·빌드 | Phase 2 `state-ref/draft` ESM·UMD, 선언 타입 fixture, live·충돌·apply·수명 테스트와 browser smoke PASS. [실행 기록](./PHASE2.md) |
-| 서버 sync/resource 타입·테스트·빌드 | 미수행 — 서버 패키지 미구현 |
-| 기능 동등성 F2 세부 검증 | 미수행 — Phase 0에서 기준 버전·목록은 고정, 실제 엔진·기능 테스트 필요 |
+| 서버 sync/resource 타입·테스트·빌드 | Phase 3 sync ESM·선언 타입·소비자 fixture, 14개 런타임 테스트와 bundle smoke PASS. [실행 기록](./PHASE3.md) |
+| 기능 동등성 F2 세부 검증 | F2-01/02/03/06의 Phase 3 하위 범위만 검증. 미지원 항목은 [PHASE3](./PHASE3.md)에 기록 |
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
+
+### 2026-09-20 — Phase 3 독립 query/resource
+
+- done: [Phase 3 기록](./PHASE3.md)의 별도 `@stateref/sync` ESM, client별 cache·READ 공유·stale/GC/취소/retry와 편집 가능한 resource의 서버 기준·dirty/changes를 구현했다. `pnpm gate`와 고정 Node 기본 core 번들 예산 PASS.
+- next (Phase 4): IC2-04의 mutation·명시적 제출/기준 수용·실패 복구 계약을 먼저 확정한다. Phase 6에서 dirty/pending resource와 draft 조합을 검증한다.
+- blockers: mutation/pending이 없어 후속 입력·실패 복구/두 기준 조합은 검증 불가. F2 자동 플랫폼 정책과 실제 UI 투영, M2 수동 시나리오는 미완료.
+- 기록 시 최신 commit: `f4e27f6`; 이번 Phase 3 변경은 미커밋이다.
 
 ### 2026-09-19 — Phase 2 일반 원본 draft
 

@@ -2,8 +2,8 @@
 
 - 개정일: 2026-09-19. 기준: [REQUIREMENTS](./REQUIREMENTS.md).
 - 기준 commit: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
-- 상태: Phase 2 일반 원본용 draft 자동 검증 완료. `[x]` 결정 행은 서버 sync 기능의 구현·테스트 통과가 아니다.
-- draft 공개 API는 [Phase 2 기록](./PHASE2.md)에 고정했다. resource/client API는 IC2-01의 후속 검증 대상이다.
+- 상태: Phase 3의 독립 query/resource 기본 경로까지 자동 검증 완료. `[x]` 결정 행은 전체 서버 기능 동등성의 구현·테스트 통과가 아니다.
+- draft 공개 API는 [Phase 2 기록](./PHASE2.md)에 고정했다. query/resource 기본 API와 지원 범위는 [Phase 3 기록](./PHASE3.md)에 남겼다. mutation과 UI 투영은 후속 검증 대상이다.
 
 ## 1. 결정 목록
 
@@ -192,7 +192,7 @@ Phase 0에서 서버 엔진의 참조 버전과 key/epoch/기본 타이밍 계�
 | ID | 검증할 기능군 | 단계 |
 |---|---|---|
 | F2-01 | key·캐시 공유·freshness·GC·진행 조회 공유·무효화·재조회 | Phase 3 |
-| F2-02 | 취소·조회 retry/backoff·focus/reconnect·polling·enabled | Phase 3 |
+| F2-02 | 취소·조회 retry/backoff·focus/reconnect·polling·enabled | Phase 3, 5 |
 | F2-03 | query 상태·select·파생/의존/병렬 조회·초기/placeholder 데이터 | Phase 3, 5 |
 | F2-04 | mutation 상태·콜백·명시적 retry·경합/순서·낙관적 반영 | Phase 4 |
 | F2-05 | pagination·infinite query·prefetch·조회 데이터 보장 | Phase 5 |
@@ -219,7 +219,7 @@ Phase 0에서 서버 엔진의 참조 버전과 key/epoch/기본 타이밍 계�
 
 ## 8. 구현 전 조사 항목
 
-- [ ] **IC2-01 / Phase 0~3/8** 코어 연결과 plugin ESM은 Phase 1, `createDraft(ref)` 공개 타입·readonly 원본·종료 ref·선택적 ESM/UMD는 [Phase 2](./PHASE2.md)에서 확인했다. resource metadata/로드 guard와 5종 커넥터의 실제 투영은 후속 단계에서 검증한다.
+- [ ] **IC2-01 / Phase 0~3/8** 코어 연결과 plugin ESM은 Phase 1, `createDraft(ref)` 공개 타입·readonly 원본·종료 ref·선택적 ESM/UMD는 [Phase 2](./PHASE2.md), resource metadata/로드 guard·sync ESM 선언 타입은 [Phase 3](./PHASE3.md)에서 확인했다. 5종 커넥터의 실제 UI 투영은 Phase 8에서 검증한다.
 - [x] **IC2-02 / Phase 0~1** opt-in 변경 기록·publication·원본 구독 lifecycle hook. [Phase 1](./PHASE1.md)의 `state-ref/plugin` 연결, 출처/버전 기록·재진입 guard와 코어 gate·고정 Node 비용을 검증했다. draft의 종료 ref·resource GC와 공개 API는 IC2-01/05 및 후속 단계에 남아 있다.
 - [x] **IC2-03 / Phase 0** 독립 query/mutation 엔진의 설계 계약, `@tanstack/query-core@5.103.1` 기준, F2 목록·기본값·단계, key/epoch/timing 독립 실험을 [Phase 0 기록](./PHASE0.md)에 고정했다. 실제 엔진·기능 동등성 검증은 미완료다.
 - [ ] **IC2-04 / Phase 0~4** 자유로운 DTO와 제출 기록, 영향을 주는 query 연결, epoch/revision, 서버 보정, unknown 및 사후 READ 실패의 결과 타입·복구 계약을 확정한다. resource 변경을 clean 처리하는 구현은 이를 닫은 뒤 진행한다.
@@ -229,6 +229,13 @@ Phase 0에서 서버 엔진의 참조 버전과 key/epoch/기본 타이밍 계�
 IC2-03의 목록은 최소 범위를 확정하는 게이트다. 구현 중 새 기능이나 호환성 차이를 발견하면 F2 목록과 테스트를 함께 갱신하고, 출시 범위를 줄이는 결정이 필요하면 이유와 미지원 항목을 명시한다.
 
 ## 9. 인계
+
+### 2026-09-20 — Phase 3 독립 query/resource
+
+- done: [Phase 3 기록](./PHASE3.md)의 독립 `@stateref/sync` ESM과 기본 query/cache·편집 가능한 resource, 타입·번들·런타임 gate PASS. 기본 core 번들 예산 유지.
+- next: Phase 4의 IC2-04 제출/수용/경쟁 계약과 mutation·실패 복구. resource/draft pending 조합은 Phase 6.
+- blockers: 자동 플랫폼 재조회, pending overlay, 실제 5종 UI 투영과 수동 M2는 미완료.
+- 기록 시 최신 commit: `f4e27f6`; 이번 Phase 3 변경은 미커밋이다.
 
 ### 2026-09-19 — Phase 2 일반 원본 draft
 

@@ -1,6 +1,6 @@
 # REQUIREMENTS — state-ref 서버 동기화와 독립 Draft
 
-- 개정일: 2026-09-19. 사용자 최종 결정 반영, Phase 2 일반 원본용 draft 자동 검증 완료. sync/resource 기능은 미구현.
+- 개정일: 2026-09-20. 사용자 최종 결정 반영, Phase 3 query/resource 기본 경로 자동 검증 완료. mutation/전체 서버 기능 동등성은 미구현.
 - 기준 commit: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`, `state-ref@3.0.2`.
 - 연계: [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 - `R2-*`는 이번 개정의 요구사항이다. 이전 `SR-*`는 당시 커밋의 기록이며 현재 계약으로 사용하지 않는다.
@@ -105,6 +105,13 @@ state-ref 코어, 서버 동기화 헬퍼, draft 헬퍼를 선택적으로 조�
 ## 6. 완료 판정과 인계
 
 이번 개정은 제품·동작 방향을 확정한다. 서버 기능 비교의 참조 버전과 단계는 [Phase 0](./PHASE0.md)에 고정했다. 패키지/export의 실제 타입·빌드, mutation 제출 기록 연결과 기능별 실행 검증은 [DESIGN의 IC2](./DESIGN.md) 및 후속 단계에서 닫는다.
+
+### 2026-09-20 Phase 3 인계
+
+- done: [독립 sync query/resource](./PHASE3.md)에 client별 cache·READ 공유·stale/GC/취소/retry와 편집 가능한 resource의 서버 기준·dirty/changes를 구현했다. `pnpm gate`와 고정 Node 기본 core 번들 예산 PASS.
+- next (Phase 4): IC2-04 제출/기준 수용 계약을 닫고 mutation·실패 복구를 구현한다. Phase 3 resource PASS를 pending/복구·draft 조합의 PASS로 간주하지 않는다.
+- blockers: pending overlay·전체 조합, 5종 실제 커넥터 UI, M2 수동 시나리오는 미완료.
+- 기록 작성 시 최신 commit: `f4e27f6`; Phase 3 작업은 미커밋이다.
 
 ### 2026-09-19 구현 브랜치 진행
 
