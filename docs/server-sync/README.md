@@ -4,6 +4,8 @@
 
 서버 싱크는 코어 빌드에 합치지 않고 별도로 설치·import하는 플러그인형 패키지로 개발한다. draft는 같은 `state-ref` 패키지의 선택적 `state-ref/draft` 진입점으로 제공해 별도 설치 없이 쓰되 기본 코어 진입점에는 자동 포함하지 않는 방향이다. 코어의 범용 `onWrite` 연결은 draft 편집과 서버 resourceRef 직접 편집의 기록에 모두 쓰일 수 있다. 현재 커밋된 것은 이 연결의 첫 부분이고 draft·서버 기능은 아직 없다.
 
+UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 현재 코어 UMD는 `state-ref.umd.js`/`stateRef`만 제공한다. draft 구현 시 코어 다음에 로드할 별도 `state-ref.draft.umd.js`/`stateRefDraft` 산출물을 만들고 브라우저에서 검증한다. 두 draft 이름은 현재 빌드 결과가 아니라 목표다.
+
 대표 경험은 **편집 가능한 resourceRef + 독립 dirty/changes + 한 가지에서 만든 Live Draft + 원본에 대한 명시적인 로컬 반영**이다. 서버 API의 shape를 ref 경로에 맞추도록 요구하지 않는다.
 
 ## 문서 읽는 순서

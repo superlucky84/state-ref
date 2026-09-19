@@ -21,7 +21,7 @@
 
 | 테스트 | 핵심 합격 기준 | 요구사항 |
 |---|---|---|
-| T2-01 | `state-ref` 기본/draft 진입점과 별도 sync 패키지의 import·빌드; core 단독/core+draft/core+sync/전체 조합 검증; 기본 core 산출물에 draft·sync 구현 없음, draft 진입점에 네트워크 엔진 없음 | R2-01 |
+| T2-01 | `state-ref` 기본/draft ESM 진입점과 별도 sync 패키지의 import·빌드, ESM 네 조합 검증; UMD에서 코어→draft 스크립트 로드와 전역 API·코어 누락 오류 검증; 기본 core 산출물에 draft·sync 구현 없음, draft UMD에 코어 중복·네트워크 엔진 없음 | R2-01 |
 | T2-02 | 동기 전파·동일 Watch callback·held ref·AbortSignal/false·readonly 및 기존 gate 회귀 | R2-02 |
 | T2-03 | 같은 key의 진행 READ 1회, fresh 재사용·stale 재조회·GC와 선택한 자동 재조회 정책 | R2-03 |
 | T2-04 | 로드 전 guard, 로드 실패/복구, readonly status, 일반 응답 교체 뒤 held ref, 무변경 leaf 알림 억제 | R2-04 |
@@ -89,6 +89,7 @@
 **진입:** Phase 1 종료, IC2-05의 apply·수명·원본 갱신 규칙 준비.
 
 - [ ] 일반 core ref/하위 ref에서 현재 값을 받아 clean draft를 생성한다.
+- [ ] `state-ref/draft` ESM export와 코어 UMD에 의존하는 별도 draft UMD 산출물을 만들고, 브라우저 스크립트 로딩을 검증한다.
 - [ ] 독립 ref/changes/dirty, 원본 live 갱신, 세 값 비교와 충돌 해결을 구현한다.
 - [ ] apply 사전 검증·원자적 변경 병합·기록 해소·재진입 입력 보존을 구현한다.
 - [ ] reset/discard/종료 ref, 원본 수명과 배열 경계, readonly 계약을 구현한다.

@@ -64,7 +64,7 @@ state-ref 코어, 서버 동기화 헬퍼, draft 헬퍼를 선택적으로 조�
 
 | ID | 요구사항 | 수용 기준 | 검증 |
 |---|---|---|---|
-| R2-01 | 서버 플러그인과 선택적 draft | sync는 별도 설치·import하고 draft는 `state-ref`의 선택적 진입점에서 import한다. core 단독·core+draft·core+sync·전체 조합을 각각 실행 가능 | T2-01, M2-01 |
+| R2-01 | 서버 플러그인과 선택적 draft | sync는 별도 설치·import하고 draft는 `state-ref`의 선택적 진입점에서 import한다. ESM의 네 조합과 UMD 브라우저의 core 단독·core+draft를 실행 가능 | T2-01, M2-01 |
 | R2-02 | 코어 계약 보존 | 동기 전파·Watch identity·해제·readonly·불변 갱신과 기존 성능 예산 유지 | T2-02, M2-02 |
 | R2-03 | 공유 query 캐시 | 같은 client+key의 진행 조회와 기준 데이터 공유, freshness·GC 정책 준수 | T2-03, M2-03 |
 | R2-04 | 로딩과 상태 | 미로드 payload 접근을 명시적으로 처리하고 가짜 데이터·오류 상태 혼동 없음 | T2-04, M2-04 |

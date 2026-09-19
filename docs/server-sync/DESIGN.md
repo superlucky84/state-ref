@@ -47,6 +47,7 @@
 - 직접 ref 편집을 기록하기 위한 범용 opt-in 관찰점은 core에 있을 수 있다. 현재 `create(value, { onWrite })`가 그 첫 연결이며 core 번들에 포함된다. 이 연결을 서버 기능의 core 통합으로 확대하지 않고 기존 번들·성능 예산 안에서 검증한다.
 - 필요하다면 일반적인 변경 기록 도구를 공유하되 기본 core 진입점에서 자동 로드하지 않는다. 네트워크 정책을 core로 옮기거나 default store의 비용을 늘리는 근거로 사용하지 않는다.
 - Phase 0의 별도 `@stateref/draft` 패키지 선택은 사용자 결정으로 대체했다. draft는 같은 패키지의 선택적 `state-ref/draft` 진입점을 목표로 하며, 실제 export·공개 타입·빌드 검증은 IC2-01에 남아 있다. 현재 설치 가능한 기능으로 안내하지 않는다.
+- `state-ref/draft`는 패키지 import 경로다. `<script>`로 로드하는 UMD는 이 경로를 해석하지 못하므로 draft용 UMD 산출물을 별도로 만든다. 현재 코어 UMD는 `dist/state-ref.umd.js`와 전역 `stateRef`만 제공한다. 목표는 코어 UMD 다음에 `dist/state-ref.draft.umd.js`를 로드해 전역 `stateRefDraft`를 얻는 방식이다. draft UMD는 코어를 외부 의존성으로 참조해 코어 구현을 중복 포함하지 않는다. 파일명·전역 이름·로드 순서·코어 누락 시 오류를 실제 빌드와 브라우저 테스트로 확정한다.
 - client+key당 서버 기준은 하나다. resource의 편집 뷰와 draft는 기준 및 변경 기록으로 재구성되는 값이며 별도의 fetch 캐시가 아니다.
 - state-ref에 결과를 제공하는 것과 특정 UI framework의 hooks를 복제하는 것은 구분한다. 기존 5종 커넥터의 수명·readonly·타입을 검증한다.
 
