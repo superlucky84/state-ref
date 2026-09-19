@@ -66,5 +66,9 @@ export function createWriteJournal() {
     version: () => version,
     lastOrigin: () => lastOrigin,
     entries: () => entries.slice(),
+    /** Call after folding raw writes into an owner's current change model. */
+    clearEntries: () => {
+      entries.length = 0;
+    },
   };
 }

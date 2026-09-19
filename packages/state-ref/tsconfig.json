@@ -23,7 +23,8 @@
     "baseUrl": "./",
     "types": ["vitest/globals", "vitest/importMeta"],
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "state-ref": ["src/index.ts"]
     }
   },
   "include": ["src"],

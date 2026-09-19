@@ -38,6 +38,28 @@ It is also designed for easy integration with other UI libraries. We provide cod
 
 The basic principle is that the subscription function only reacts to values retrieved through `.value`, and when a value is assigned with `.value=`, the subscription function is triggered if the value is already subscribed.
 
+### Optional drafts
+
+Import `createDraft` from `state-ref/draft` when you need an independent local edit session over an existing ref. The draft starts from the source's current value. Edits stay local until `apply()` merges the edited fields into the latest source value; a concurrent edit to the same field produces a conflict.
+
+```typescript
+import { createStore } from 'state-ref';
+import { createDraft } from 'state-ref/draft';
+
+const source = createStore({ address: { city: 'Seoul', zip: 100 } })();
+const editor = createDraft(source.address);
+editor.ref.city.value = 'Busan';
+
+editor.isDirty(); // true
+editor.changes(); // city: Seoul -> Busan
+editor.apply(); // updates the source locally; does not contact a server
+editor.discard(); // releases subscriptions and closes the draft
+```
+
+`editor.watch` and `editor.watchStatus` have the same `Watch` shape accepted by the UI connectors. `editor.status` exposes reactive `dirty`, `conflicts`, and `version` values without adding fields to the payload. `reset()` discards local edits but keeps the session open. Changes from a read-only source can be drafted, while `apply()` returns a `readonly` result.
+
+Draft editing supports acyclic plain data and dense arrays. Arrays are merged as one atomic field. Functions, Date, Map, core-reserved payload keys, and direct mutation of an object obtained through draft `.value` are rejected. The UMD build is a companion script: load `state-ref.umd.js` before `state-ref.draft.umd.js`, then use the `stateRefDraft` global.
+
 ### Understanding References: Inner vs Outer
 
 When you register a subscription function via `watch`, it is executed once initially to collect dependencies. The second argument `isFirst` indicates whether this is the first run.
@@ -445,4 +467,3 @@ I would like to extend my gratitude to the following people and projects:
 * [connect-svelte](https://www.npmjs.com/package/@stateref/connect-svelte)
 * [connect-vue](https://www.npmjs.com/package/@stateref/connect-vue)
 * [lithent](https://www.npmjs.com/package/lithent)
-

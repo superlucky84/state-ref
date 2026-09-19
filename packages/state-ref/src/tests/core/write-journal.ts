@@ -38,6 +38,9 @@ if (import.meta.vitest) {
       expect(journal.lastOrigin()).toBe('user');
       expect(journal.entries()).toHaveLength(2);
       expect(journal.entries()[1].write.after).toBe(3);
+      journal.clearEntries();
+      expect(journal.entries()).toEqual([]);
+      expect(journal.version()).toBe(3);
     });
 
     it('restores user origin after a failed internal operation', () => {

@@ -2,8 +2,8 @@
 
 - 개정일: 2026-09-19. 기준: [REQUIREMENTS](./REQUIREMENTS.md).
 - 기준 commit: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
-- 상태: Phase 1 범용 연결 구현 중. `[x]` 결정 행은 제품 기능의 구현·테스트 통과가 아니다.
-- 공개 함수·패키지 이름은 예시다. 최종 선언은 IC2-01에서 검증한다.
+- 상태: Phase 2 일반 원본용 draft 자동 검증 완료. `[x]` 결정 행은 서버 sync 기능의 구현·테스트 통과가 아니다.
+- draft 공개 API는 [Phase 2 기록](./PHASE2.md)에 고정했다. resource/client API는 IC2-01의 후속 검증 대상이다.
 
 ## 1. 결정 목록
 
@@ -24,6 +24,8 @@
 | DC2-13 | [x] dirty·pending·화면 전체 미저장 분리 | 자식 편집을 부모 변경으로 오인하지 않음 | R2-20, T2-20 |
 | DC2-14 | [x] 데이터 ref와 helper metadata 분리 | payload의 dirty/changes 같은 필드명과 충돌 방지 | R2-06/25, T2-06/25 |
 | DC2-15 | [x] 기존 scope/직접 draft 서버 저장 계약 대체 | 이번 결정 이전 예시를 구현 근거로 사용하지 않음 | R2-08/17, T2-08/17 |
+| DC2-16 | [x] draft의 ref/Watch와 반응형 status를 payload 밖에서 제공 | 기존 5종 커넥터 입력 형식을 재사용하고 metadata 필드 충돌을 피함 | R2-20/24/25, T2-20/24/25 |
+| DC2-17 | [x] 원본 알림은 재검사 신호, 편집 경로와 과거 기준은 draft가 소유 | 부모 객체 참조 변화만으로 충돌을 판정하지 않고 무관한 원본 갱신을 병합 | R2-16/17, T2-16/17 |
 
 이전 DC-01~21의 의미는 기준 commit의 Git 이력에 보존된다. 이번 문서의 DC2와 혼용하지 않는다.
 
@@ -49,8 +51,8 @@
 - 코어와 별도 ESM/UMD 산출물 사이의 연결은 등록 심볼 `Symbol.for('state-ref.ref-link')`를 사용한다. 이 심볼은 내부 예약 키이며 payload의 같은 심볼 이름과 충돌할 수 있으므로 일반 상태 필드로 사용하지 않는다. plugin의 `connectRef`는 원본 root 값을 노출하지 않고 opaque owner와 경로·읽기·존재 여부만 반환한다.
 - plugin의 기록은 사용자 setter와 `source-refresh`·`accepted-server-result`·`rollback` 출처를 구분하고 쓰기마다 owner 버전을 올린다. 기록 갱신은 값 구독 알림 전에 끝난다. 관찰점 안에서 같은 store에 다시 쓰는 동작은 helper의 guard가 거절한다. 임의 관찰 함수의 외부 부작용까지 코어가 되돌려 주지는 않으므로 helper는 검증을 먼저 마치고 기록 갱신 뒤 던지지 않는다.
 - 필요하다면 일반적인 변경 기록 도구를 공유하되 기본 core 진입점에서 자동 로드하지 않는다. 네트워크 정책을 core로 옮기거나 default store의 비용을 늘리는 근거로 사용하지 않는다.
-- Phase 0의 별도 `@stateref/draft` 패키지 선택은 사용자 결정으로 대체했다. draft는 같은 패키지의 선택적 `state-ref/draft` 진입점을 목표로 하며, 실제 export·공개 타입·빌드 검증은 IC2-01에 남아 있다. 현재 설치 가능한 기능으로 안내하지 않는다.
-- `state-ref/draft`는 패키지 import 경로다. `<script>`로 로드하는 UMD는 이 경로를 해석하지 못하므로 draft용 UMD 산출물을 별도로 만든다. 현재 코어 UMD는 `dist/state-ref.umd.js`와 전역 `stateRef`만 제공한다. 목표는 코어 UMD 다음에 `dist/state-ref.draft.umd.js`를 로드해 전역 `stateRefDraft`를 얻는 방식이다. draft UMD는 코어를 외부 의존성으로 참조해 코어 구현을 중복 포함하지 않는다. 파일명·전역 이름·로드 순서·코어 누락 시 오류를 실제 빌드와 브라우저 테스트로 확정한다.
+- Phase 0의 별도 `@stateref/draft` 패키지 선택은 사용자 결정으로 대체했다. draft는 같은 패키지의 선택적 `state-ref/draft` 진입점이며 Phase 2에서 일반 core ref 대상의 공개 타입·ESM 빌드를 검증했다. resource/로드 guard는 후속 단계다.
+- `state-ref/draft`는 패키지 import 경로다. `<script>`로 로드하는 UMD는 코어의 `dist/state-ref.umd.js`/`stateRef` 다음에 별도 `dist/state-ref.draft.umd.js`/`stateRefDraft`를 로드한다. draft UMD는 코어를 외부 의존성으로 참조한다. 브라우저 스크립트 순서·코어 누락 오류를 Phase 2 browser smoke로 확인했다.
 - client+key당 서버 기준은 하나다. resource의 편집 뷰와 draft는 기준 및 변경 기록으로 재구성되는 값이며 별도의 fetch 캐시가 아니다.
 - state-ref에 결과를 제공하는 것과 특정 UI framework의 hooks를 복제하는 것은 구분한다. 기존 5종 커넥터의 수명·readonly·타입을 검증한다.
 
@@ -86,7 +88,7 @@ resource dirty는 서버 기준과 현재 편집 뷰 사이에 아직 해소되�
 
 ### 3.3 변경 정보
 
-resource와 draft에 같은 의미의 `isDirty()`, `changes()`, 반응형 변경·필드 상태 조회를 제공한다. 이 메서드를 payload ref의 문자열 속성으로 무조건 주입하지 않는다. 예시에서는 resource/editor handle에 두며, 공통 helper 또는 handle의 최종 형태는 IC2-01에서 결정한다.
+resource와 draft에 같은 의미의 `isDirty()`, `changes()`, 반응형 변경·필드 상태 조회를 제공한다. 이 메서드를 payload ref의 문자열 속성으로 무조건 주입하지 않는다. Phase 2의 draft는 editor handle에 `ref`, `watch`, `status`, `watchStatus`, `isDirty()`, `changes()`를 제공한다. resource handle의 최종 형태는 IC2-01 후속 단계에서 결정한다.
 
 변경 snapshot은 owner ID, 버전, 재사용하지 않는 항목 ID, 기준 경로, before/after/현재 원본 값, 존재 여부, conflict와 관련 작업 정보를 가진다. resource 경로는 resource 루트 기준, draft 경로는 draft 루트 기준으로 표기하고 source 위치는 별도 구조화 metadata로 제공한다. `NAVI` 문자열을 파싱하지 않는다.
 
@@ -96,7 +98,7 @@ resource의 변경 비교는 현재 B_resource와 V_resource를 기준으로 하
 
 ## 4. 독립 Draft API의 의미
 
-다음은 명명·타입 확정 전 예시다. 이미 로드된 쓰기 가능한 원본을 가정한다.
+다음의 `createDraft`/`ref`/`isDirty`/`changes`/`apply` 이름은 Phase 2의 일반 core ref API로 확정했다. resourceRef 연결 자체는 아직 구현 전이며, 이미 로드된 쓰기 가능한 원본을 가정한다.
 
 ```ts
 const editor = createDraft(resourceRef.address);
@@ -217,16 +219,23 @@ Phase 0에서 서버 엔진의 참조 버전과 key/epoch/기본 타이밍 계�
 
 ## 8. 구현 전 조사 항목
 
-- [ ] **IC2-01 / Phase 0~3/8** 코어 연결 방향과 `state-ref/plugin` ESM export는 Phase 1에서 확인했다. createDraft(ref), resource metadata, readonly 원본, 로드 guard, 종료된 ref, 5종 커넥터 투영의 공개 API·타입은 해당 제품 단계에서 검증한다.
+- [ ] **IC2-01 / Phase 0~3/8** 코어 연결과 plugin ESM은 Phase 1, `createDraft(ref)` 공개 타입·readonly 원본·종료 ref·선택적 ESM/UMD는 [Phase 2](./PHASE2.md)에서 확인했다. resource metadata/로드 guard와 5종 커넥터의 실제 투영은 후속 단계에서 검증한다.
 - [x] **IC2-02 / Phase 0~1** opt-in 변경 기록·publication·원본 구독 lifecycle hook. [Phase 1](./PHASE1.md)의 `state-ref/plugin` 연결, 출처/버전 기록·재진입 guard와 코어 gate·고정 Node 비용을 검증했다. draft의 종료 ref·resource GC와 공개 API는 IC2-01/05 및 후속 단계에 남아 있다.
 - [x] **IC2-03 / Phase 0** 독립 query/mutation 엔진의 설계 계약, `@tanstack/query-core@5.103.1` 기준, F2 목록·기본값·단계, key/epoch/timing 독립 실험을 [Phase 0 기록](./PHASE0.md)에 고정했다. 실제 엔진·기능 동등성 검증은 미완료다.
 - [ ] **IC2-04 / Phase 0~4** 자유로운 DTO와 제출 기록, 영향을 주는 query 연결, epoch/revision, 서버 보정, unknown 및 사후 READ 실패의 결과 타입·복구 계약을 확정한다. resource 변경을 clean 처리하는 구현은 이를 닫은 뒤 진행한다.
-- [ ] **IC2-05 / Phase 0~2** draft의 현재 원본 기준, local apply의 원자성·재진입·부모 소멸·배열 경계·원본 유지와 해제를 검증한다. 원본에 pending overlay가 있는 경우도 포함한다.
+- [ ] **IC2-05 / Phase 0~6** 일반 로컬 원본의 현재 기준, 원자적 local apply·재진입·부모 소멸·배열 경계·원본 유지와 해제는 [Phase 2](./PHASE2.md)에서 검증했다. resource 원본의 pending overlay·복구·두 기준 결합은 Phase 6에서 검증해야 한다.
 - [ ] **IC2-06 / Phase 0~5** hydration/영속화 시 서버 기준과 로컬 변경·진행 작업을 구별하는 저장 형식, 개발 도구와 플랫폼 통합을 설계한다. 지원되지 않는 사례와 배포 단계를 명시하며 전체 동등성으로 오인시키지 않는다.
 
 IC2-03의 목록은 최소 범위를 확정하는 게이트다. 구현 중 새 기능이나 호환성 차이를 발견하면 F2 목록과 테스트를 함께 갱신하고, 출시 범위를 줄이는 결정이 필요하면 이유와 미지원 항목을 명시한다.
 
 ## 9. 인계
+
+### 2026-09-19 — Phase 2 일반 원본 draft
+
+- done: [Phase 2 기록](./PHASE2.md)에 선택적 `state-ref/draft`의 공개 API·ESM/UMD, 세 값 비교와 독립 편집·충돌·로컬 apply·readonly status·구독 수명을 구현·검증했다. `pnpm gate` PASS.
+- next: Phase 3 별도 sync 패키지의 query/cache와 resourceRef. Phase 6에서 resource dirty/pending 원본과 draft 조합을 검증한다.
+- blockers: IC2-01의 resource/로드 guard·실제 5종 커넥터 UI 투영과 IC2-05의 pending overlay가 열려 있다. 수동 시나리오는 미수행이다.
+- 기록 시 최신 commit: `f86aec8`; 이번 Phase 2 작업은 미커밋이다.
 
 ### 2026-09-19 구현 브랜치 진행
 

@@ -1,6 +1,6 @@
 # REQUIREMENTS — state-ref 서버 동기화와 독립 Draft
 
-- 개정일: 2026-09-19. 사용자 최종 결정 반영, Phase 1 범용 연결 완료. draft·sync 기능은 미구현.
+- 개정일: 2026-09-19. 사용자 최종 결정 반영, Phase 2 일반 원본용 draft 자동 검증 완료. sync/resource 기능은 미구현.
 - 기준 commit: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`, `state-ref@3.0.2`.
 - 연계: [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 - `R2-*`는 이번 개정의 요구사항이다. 이전 `SR-*`는 당시 커밋의 기록이며 현재 계약으로 사용하지 않는다.
@@ -107,6 +107,13 @@ state-ref 코어, 서버 동기화 헬퍼, draft 헬퍼를 선택적으로 조�
 이번 개정은 제품·동작 방향을 확정한다. 서버 기능 비교의 참조 버전과 단계는 [Phase 0](./PHASE0.md)에 고정했다. 패키지/export의 실제 타입·빌드, mutation 제출 기록 연결과 기능별 실행 검증은 [DESIGN의 IC2](./DESIGN.md) 및 후속 단계에서 닫는다.
 
 ### 2026-09-19 구현 브랜치 진행
+
+- done (Phase 2 일반 원본): [선택적 draft](./PHASE2.md)에 독립 편집·원본 live 추종·충돌·로컬 apply·status·종료 수명과 ESM/UMD를 구현했다. `pnpm gate` 및 고정 Node 기본 core 번들 예산 PASS.
+- next (Phase 3): 별도 sync 패키지의 query/cache와 편집 가능한 resourceRef를 구현한다. 일반 원본 draft PASS를 resource pending/복구 조합의 PASS로 간주하지 않는다.
+- blockers: IC2-01의 resource/로드 guard·커넥터 UI 검증과 IC2-05의 pending overlay 조합, M2 수동 시나리오는 미완료.
+- 기록 작성 시 최신 commit: `f86aec8`; Phase 2 작업은 미커밋이다.
+
+### Phase 1 완료 당시 기록
 
 - done (Phase 1 완료): [plugin 연결](./PHASE1.md)에 일반 하위 ref의 소속·경로 구독·존재 여부, 출처/버전 journal을 구현. 기존 gate와 고정 Node 번들/bench 통과. draft·sync 기능은 아직 없다.
 - next (Phase 2): IC2-01의 공개 draft 계약과 실제 `state-ref/draft` 진입점·원본 live 갱신을 검증한다.

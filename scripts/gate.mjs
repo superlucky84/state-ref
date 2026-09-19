@@ -50,11 +50,35 @@ const steps = [
     args: ['--filter', 'state-ref', 'exec', 'tsc', '--noEmit'],
   },
   {
+    name: 'draft-types',
+    cmd: 'pnpm',
+    args: [
+      '--filter',
+      'state-ref',
+      'exec',
+      'tsc',
+      '--noEmit',
+      '--strict',
+      '--target',
+      'es2020',
+      '--module',
+      'esnext',
+      '--moduleResolution',
+      'bundler',
+      'test/draft-types.ts',
+    ],
+  },
+  {
     name: 'lint',
     cmd: 'pnpm',
     args: ['exec', 'eslint', ...sourceDirs, '--ext', '.ts,.tsx'],
   },
   { name: 'test', cmd: 'pnpm', args: ['test'] },
+  {
+    name: 'draft-bundle',
+    cmd: 'node',
+    args: ['packages/state-ref/test/draft-bundle.mjs'],
+  },
   {
     name: 'bench',
     cmd: 'node',
@@ -76,7 +100,10 @@ for (const step of steps) {
     continue;
   }
 
-  if (step.name !== 'build' && !existsSync(resolve(root, 'packages/state-ref/dist/state-ref.mjs'))) {
+  if (
+    step.name !== 'build' &&
+    !existsSync(resolve(root, 'packages/state-ref/dist/state-ref.mjs'))
+  ) {
     console.error(
       'GATE: packages/state-ref/dist is missing. Run `pnpm gate` without --quick.'
     );

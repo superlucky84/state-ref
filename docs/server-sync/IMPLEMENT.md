@@ -2,7 +2,7 @@
 
 - 기준: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md).
 - 개정일: 2026-09-19. 기준 SHA: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
-- 상태: `feat/server-sync-draft`에서 Phase 1 범용 연결 완료. draft·sync 제품 기능은 미완료다. [Phase 0](./PHASE0.md), [Phase 1](./PHASE1.md) 실행 기록.
+- 상태: `feat/server-sync-draft`에서 Phase 2 일반 원본용 draft까지 구현·자동 검증했다. sync 제품 기능은 미완료다. [Phase 0](./PHASE0.md), [Phase 1](./PHASE1.md), [Phase 2](./PHASE2.md) 실행 기록.
 - 이전 T/Phase 범위는 기준 commit의 이력이다. 이번 T2/Phase 계획으로 대체한다.
 
 ## 1. 진행 규칙
@@ -88,16 +88,16 @@
 
 **진입:** Phase 1 종료, IC2-05의 apply·수명·원본 갱신 규칙 준비.
 
-- [ ] 일반 core ref/하위 ref에서 현재 값을 받아 clean draft를 생성한다.
-- [ ] `state-ref/draft` ESM export와 코어 UMD에 의존하는 별도 draft UMD 산출물을 만들고, 브라우저 스크립트 로딩을 검증한다.
-- [ ] 독립 ref/changes/dirty, 원본 live 갱신, 세 값 비교와 충돌 해결을 구현한다.
-- [ ] apply 사전 검증·원자적 변경 병합·기록 해소·재진입 입력 보존을 구현한다.
-- [ ] reset/discard/종료 ref, 원본 수명과 배열 경계, readonly 계약을 구현한다.
-- [ ] 서버나 mutation 없이 전체 동작을 검증하고 IC2-05를 닫는다.
+- [x] 일반 core ref/하위 ref에서 현재 값을 받아 clean draft를 생성한다.
+- [x] `state-ref/draft` ESM export와 코어 UMD에 의존하는 별도 draft UMD 산출물을 만들고, 브라우저 스크립트 로딩을 검증한다.
+- [x] 독립 ref/changes/dirty/status, 원본 live 갱신, 세 값 비교와 충돌 해결을 구현한다.
+- [x] apply 사전 검증·원자적 변경 병합·기록 해소·재진입 입력 보존을 구현한다.
+- [x] reset/discard/종료 ref, 원본 수명과 배열 경계, readonly 계약을 구현한다.
+- [x] 서버나 mutation 없이 일반 원본의 draft 동작을 검증한다. IC2-05의 resource pending overlay 부분은 Phase 6에 남긴다.
 
 **기준 테스트:** T2-14~22/25/26, T2-18의 서울·부산·대전 흐름을 일반 로컬 원본 기준으로도 검증, T2-01/02 회귀.
 
-**종료:** 서버 패키지를 설치/로드하지 않고 `state-ref/draft`의 모든 기본 흐름 통과. 기본 core 진입점의 기존 번들 예산을 유지하고 draft 진입점 크기를 별도 기록. 원본의 기존 변경과 draft의 자체 변경이 구별됨.
+**종료 (일반 원본 PASS):** 서버 패키지를 설치/로드하지 않고 `state-ref/draft`의 기본 흐름 통과. 기본 core 진입점의 기존 번들 예산을 유지하고 draft 진입점 크기를 별도 기록. 원본의 기존 변경과 draft의 자체 변경이 구별됨. resource 기반 시나리오는 Phase 6/8의 별도 gate다.
 
 ### Phase 3 — Query 캐시와 편집 가능한 ResourceRef
 
@@ -187,18 +187,26 @@
 
 ## 4. 실행과 현재 결과
 
-현재 저장소 명령은 `pnpm gate`, `pnpm test`, `pnpm test:core`, `pnpm test:react`, `pnpm test:preact`, `pnpm test:vue`, `pnpm test:svelte`, `pnpm test:solid`다. draft 진입점과 sync 패키지의 검증 명령은 IC2-01의 배포 경계 확정 후 추가한다. bare `npx vitest` 등으로 고정 도구를 임의 대체하지 않는다.
+현재 저장소 명령은 `pnpm gate`, `pnpm test`, `pnpm test:core`, `pnpm test:react`, `pnpm test:preact`, `pnpm test:vue`, `pnpm test:svelte`, `pnpm test:solid`다. gate는 Phase 2부터 draft 독립 타입 fixture와 ESM/브라우저 UMD smoke를 포함한다. sync 패키지 검증은 구현 단계에서 추가한다. bare `npx vitest` 등으로 고정 도구를 임의 대체하지 않는다.
 
 | 항목 | 현재 확인 결과 |
 |---|---|
-| 문서 링크·ID·단계 구조·공백 정합성 | 이전 문서 개정의 ID/구조 검사 PASS. 현재 `docs/server-sync` Markdown 7개·상대 링크 49개, 누락 0개; `git diff --check` PASS |
-| core/커넥터 baseline와 gate | Phase 1 `state-ref/plugin` 연결 후 `pnpm gate` PASS. 고정 Node 20.3.0 직접 bench 6/6, 기본 core minified gzip 3,398/3,400 B PASS |
-| 선택적 plugin export | ESM 빌드와 다른 workspace 패키지의 import·공개 선언 타입 검사 PASS; 1,935 B raw / 889 B gzip |
-| 독립 draft/sync 타입·테스트·빌드 | 미수행 — 제품 기능 구현 없음 |
+| 문서 링크·ID·단계 구조·공백 정합성 | Phase 1 링크/ID 검사 PASS. Phase 2 문서 추가 후 정적 검사 결과는 [PHASE2](./PHASE2.md)에 기록 |
+| core/커넥터 baseline와 gate | Phase 2 `pnpm gate` PASS. 고정 Node 20.3.0 기본 core minified gzip 3,398/3,400 B PASS |
+| 선택적 plugin export | ESM 빌드·공개 선언 타입 검사 PASS; Phase 2 `clearEntries` 추가 후 크기는 별도 산출물로 측정 |
+| 일반 원본 draft 타입·테스트·빌드 | Phase 2 `state-ref/draft` ESM·UMD, 선언 타입 fixture, live·충돌·apply·수명 테스트와 browser smoke PASS. [실행 기록](./PHASE2.md) |
+| 서버 sync/resource 타입·테스트·빌드 | 미수행 — 서버 패키지 미구현 |
 | 기능 동등성 F2 세부 검증 | 미수행 — Phase 0에서 기준 버전·목록은 고정, 실제 엔진·기능 테스트 필요 |
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
+
+### 2026-09-19 — Phase 2 일반 원본 draft
+
+- done: [Phase 2 기록](./PHASE2.md)의 `state-ref/draft` ESM/UMD, 일반 ref/하위 ref live 편집·충돌·로컬 apply·상태·수명 구현. `pnpm gate`와 고정 Node core 번들 예산 PASS.
+- next (Phase 3): 별도 sync 패키지의 독립 query/cache·편집 가능한 resourceRef를 구현한다. Phase 6에서 이미 dirty/pending인 resource와 draft의 결합을 검증한다.
+- blockers: sync/resource가 아직 없어 IC2-01 resource/로드 guard와 IC2-05 pending overlay·전체 조합은 열려 있다. 수동 M2-01~20 미수행.
+- 기록 시 최신 commit: `f86aec8`; 이번 Phase 2 변경은 미커밋이다.
 
 ### 2026-09-19 — Phase 1 진행
 
