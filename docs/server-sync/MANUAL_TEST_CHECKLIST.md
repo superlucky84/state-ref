@@ -214,6 +214,13 @@ M2-01~20, 해당 출시 범위 F2, 자동 gate와 예제 타입 검사를 통과
 
 ### 2026-09-19 구현 브랜치 진행
 
+- done (Phase 1 진행): opt-in 코어 쓰기 관찰점과 자동 gate PASS. M2-01~20은 여전히 전부 미수행.
+- next: helper와 데모 구현 후 Phase 8에서 출시 범위의 M2를 실행한다.
+- blockers: helper·데모 없음. core ref 소속/구독 계약이 아직 없다.
+- 기록 작성 시 기준 commit: `e01828b`. 이후 문서 이력은 Git HEAD를 따른다.
+
+### Phase 0 시작 당시 인계
+
 - done: `feat/server-sync-draft`에서 [Phase 0 기준·실험](./PHASE0.md)을 시작했다. M2-01~20의 수동 실행 결과는 여전히 전부 미수행이다.
 - next: Phase 8에서 출시 범위의 데모와 M2를 실행한다.
 - blockers: helper와 데모가 아직 구현되지 않았다.

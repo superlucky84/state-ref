@@ -71,6 +71,9 @@
 
 **진입:** Phase 0 종료, core opt-in 접근 선택.
 
+진행 기록: [PHASE1](./PHASE1.md). Phase 0의 IC2-01 계약은 아직 열려 있어, 현재 구현은 진입을 위한 첫 실험이며 Phase 1 종료로 취급하지 않는다.
+
+- [x] `create(value, { onWrite })`의 opt-in setter 이벤트를 값 발행 전에 제공하고 경로 cursor와 전후 값을 관찰한다.
 - [ ] helper 전용 경로/소속/출처/버전/lifecycle 연결을 구현한다.
 - [ ] setter와 metadata 발행 순서를 고정하고 검증 실패 시 무변경을 보장한다.
 - [ ] 변경된 구조만 복사하고 내부 수용/복구를 새로운 사용자 편집으로 기록하지 않는다.
@@ -185,17 +188,24 @@
 
 현재 저장소 명령은 `pnpm gate`, `pnpm test`, `pnpm test:core`, `pnpm test:react`, `pnpm test:preact`, `pnpm test:vue`, `pnpm test:svelte`, `pnpm test:solid`다. helper 패키지별 명령은 IC2-01의 배포 경계 확정 후 추가한다. bare `npx vitest` 등으로 고정 도구를 임의 대체하지 않는다.
 
-| 항목 | 이번 개정 결과 |
+| 항목 | 현재 확인 결과 |
 |---|---|
-| 문서 링크·ID·단계 구조·공백 정합성 | PASS — 7개 문서, 상대 링크 29개, 코드 블록 10개, R2/T2 각 26개·M2 20개·DC2 15개·IC2 6개·F2 9개, Phase 0~8의 진입/기준 테스트/종료, git diff --check |
-| core/커넥터 baseline와 gate | 미수행 — 문서 개정 |
+| 문서 링크·ID·단계 구조·공백 정합성 | 이전 문서 개정의 ID/구조 검사 PASS. 현재 `docs/server-sync` Markdown 7개·상대 링크 49개, 누락 0개; `git diff --check` PASS |
+| core/커넥터 baseline와 gate | Phase 0 기준 및 Phase 1 opt-in setter 변경 후 `pnpm gate` PASS. 고정 Node 직접 bench 6/6 PASS |
 | 독립 draft/sync 타입·테스트·빌드 | 미수행 — 구현 없음 |
 | 기능 동등성 F2 세부 검증 | 미수행 — Phase 0에서 기준 버전·목록은 고정, 실제 엔진·기능 테스트 필요 |
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
 
-### 2026-09-19 — 구현 브랜치 Phase 0 시작
+### 2026-09-19 — Phase 1 진행
+
+- done (Phase 1 진행): [Phase 1 기록](./PHASE1.md)의 opt-in setter 이벤트와 T2-05 일부 반례 검증, 기존 `pnpm gate`와 고정 Node 번들·bench PASS.
+- next (Phase 1): 일반 ref의 소속/경로/구독·수명 연결, 내부 출처/버전과 재진입 경계를 검증한다. Phase 1 종료는 아직 아니다.
+- blockers (Phase 1): 기본 번들 여유 0 B, IC2-01/02 미해소.
+- 기록 작성 시 기준 commit: `e01828b`. 이후 문서 이력은 Git HEAD를 따른다.
+
+### Phase 0 시작 당시 인계
 
 - done: `feat/server-sync-draft`를 `1c6460b`에서 생성. 기존 `pnpm gate` 6단계 PASS, 고정 Node 20.3.0 번들 3,385/3,400 B PASS.
 - done: [Phase 0 기록](./PHASE0.md)에 ref 연결 제약, 패키지/metadata 선택안, TanStack Query core 5.103.1 참조와 F2 목록, draft/query 독립 모델 및 타입 실험 PASS를 기록. IC2-03의 설계 선택을 닫았다.

@@ -11,6 +11,7 @@
 3. [IMPLEMENT](./IMPLEMENT.md): T2 검증, Phase 0~8의 진입·종료, Test Hardening과 Integration Test.
 4. [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md): M2-01~20의 수동 절차와 합격 기준.
 5. [PHASE0](./PHASE0.md): 새 구현 브랜치의 기준 측정, 계약 실험, F2 참조 목록.
+6. [PHASE1](./PHASE1.md): opt-in setter 기록의 첫 구현과 남은 코어 연결.
 
 ## 확정한 사용 의미
 
@@ -49,5 +50,5 @@ ctxbin으로 불러온 `doc-driven-designer-v1` agent/skill의 문서 순서와 
 ### 구현 브랜치 인계 (2026-09-19)
 
 `feat/server-sync-draft`는 `1c6460b`에서 분기했다. 위 출처와 인계는
-문서 개정 당시의 기록이다. 현재 진행 상태는 [Phase 0 기록](./PHASE0.md)과
+문서 개정 당시의 기록이다. 현재 진행 상태는 [Phase 1 기록](./PHASE1.md)과
 [IMPLEMENT 인계](./IMPLEMENT.md)를 따른다.

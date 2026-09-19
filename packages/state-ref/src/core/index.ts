@@ -1,4 +1,3 @@
-import { DEFAULT_WATCH_OPTION, DEFAULT_CREATE_OPTION } from '@/helper';
 import { makeReference } from '@/core/ref';
 import { runner } from '@/connectors/runner';
 import { createPathRoot } from '@/path';
@@ -10,6 +9,7 @@ import type {
   StateRefStore,
   StoreRenderList,
   ManualSyncStore,
+  RefWrite,
 } from '@/types';
 
 /**
@@ -60,35 +60,31 @@ export function createStoreManualSync<V>(
  */
 export function create<V>(
   originalValue: V,
-  userCreateOption?: { autoSync?: boolean; trackDeps?: boolean }
+  userCreateOption?: {
+    autoSync?: boolean;
+    trackDeps?: boolean;
+    onWrite?: (write: RefWrite) => void;
+  }
 ) {
   const storeRenderList: StoreRenderList<any> = new Map();
   const pathRoot = createPathRoot();
   const cacheMap = new WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>();
-  const { autoSync, trackDeps } = Object.assign(
-    {},
-    DEFAULT_CREATE_OPTION,
-    userCreateOption || {}
-  );
+  const autoSync = userCreateOption?.autoSync ?? true;
+  const trackDeps = userCreateOption?.trackDeps ?? false;
   const rootValue: StoreType<V> = { root: originalValue };
+  const onWrite = userCreateOption?.onWrite;
 
   const watch = (
     renew: Renew<StateRefStore<V>> = () => {},
     userOption?: { cache?: boolean; editable?: boolean }
   ): StateRefStore<V> => {
     /**
-     * Resolved as: DEFAULT_WATCH_OPTION < store mode < userOption.
-     * The store mode must be applied unconditionally, otherwise passing any
-     * unrelated option (say `{ cache: false }`) would drop it and silently
-     * make a manual-sync store writable through `watch`.
+     * Cache defaults to true; writability follows the store mode unless the
+     * caller explicitly changes it. An unrelated option such as
+     * `{ cache: false }` must not make a manual-sync store writable.
      */
-    const watchOption = Object.assign(
-      {},
-      DEFAULT_WATCH_OPTION,
-      { editable: autoSync },
-      userOption || {}
-    );
-    const { cache, editable } = watchOption;
+    const cache = userOption?.cache ?? true;
+    const editable = userOption?.editable ?? autoSync;
 
     /**
      * Caching
@@ -109,6 +105,7 @@ export function create<V>(
       cache,
       editable,
       trackDeps,
+      onWrite,
       pathRoot,
     });
   };

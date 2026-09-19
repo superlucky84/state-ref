@@ -90,6 +90,24 @@ export type RenderListSub<A> = Map<PathNode, RunInfo<A>>;
 
 export type StoreRenderList<A> = Map<Run, RenderListSub<A>>;
 
+export type RefPathCursor = {
+  readonly segment: string | symbol;
+  readonly parent: RefPathCursor | null;
+};
+
+/**
+ * An opt-in notification for a successful ref setter, before subscribers run.
+ * The cursor uses the core's stable path nodes; helpers can materialize a
+ * relative path when they record the write, without making every setter copy
+ * a path array.
+ */
+export type RefWrite = Readonly<{
+  parent: RefPathCursor;
+  segment: string | symbol | null;
+  before: unknown;
+  after: unknown;
+}>;
+
 export type Copyable<T, Root = T> = {
   [K in keyof T]: Copyable<T[K], Root>;
 } & {

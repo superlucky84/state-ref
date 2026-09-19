@@ -9,6 +9,7 @@ import type {
   StoreType,
   StateRefStore,
   StoreRenderList,
+  RefWrite,
 } from '@/types';
 
 /**
@@ -23,6 +24,7 @@ export function makeReference<V>({
   cache,
   editable,
   trackDeps,
+  onWrite,
   pathRoot,
 }: {
   renew: Renew<StateRefStore<V>>;
@@ -33,6 +35,7 @@ export function makeReference<V>({
   cache: boolean;
   editable: boolean;
   trackDeps: boolean;
+  onWrite?: (write: RefWrite) => void;
   pathRoot: PathNode;
 }) {
   const ref: { value: null | StateRefStore<StoreType<V>> } = {
@@ -85,7 +88,8 @@ export function makeReference<V>({
     autoSync,
     editable,
     rootValue,
-    pathRoot
+    pathRoot,
+    onWrite
   );
 
   /**

@@ -212,7 +212,7 @@ Phase 0에서 서버 엔진의 참조 버전과 key/epoch/기본 타이밍 계�
 ## 8. 구현 전 조사 항목
 
 - [ ] **IC2-01 / Phase 0** 패키지/export와 공개 API·타입 확정. createDraft(ref), resource의 metadata, readonly 원본, 로드 guard, 종료된 ref, 5종 커넥터 투영을 검증한다.
-- [ ] **IC2-02 / Phase 0~1** opt-in 변경 기록·publication·원본 lifecycle hook. core 단독 성능/번들/구독 비용과 기록 순서를 측정하고 gate에 반영한다.
+- [ ] **IC2-02 / Phase 0~1** opt-in 변경 기록·publication·원본 lifecycle hook. [Phase 1](./PHASE1.md)의 첫 setter 이벤트와 기존 gate·고정 Node 비용 검증 PASS. 출처/버전/lifecycle·재진입은 남아 있다.
 - [x] **IC2-03 / Phase 0** 독립 query/mutation 엔진의 설계 계약, `@tanstack/query-core@5.103.1` 기준, F2 목록·기본값·단계, key/epoch/timing 독립 실험을 [Phase 0 기록](./PHASE0.md)에 고정했다. 실제 엔진·기능 동등성 검증은 미완료다.
 - [ ] **IC2-04 / Phase 0~4** 자유로운 DTO와 제출 기록, 영향을 주는 query 연결, epoch/revision, 서버 보정, unknown 및 사후 READ 실패의 결과 타입·복구 계약을 확정한다. resource 변경을 clean 처리하는 구현은 이를 닫은 뒤 진행한다.
 - [ ] **IC2-05 / Phase 0~2** draft의 현재 원본 기준, local apply의 원자성·재진입·부모 소멸·배열 경계·원본 유지와 해제를 검증한다. 원본에 pending overlay가 있는 경우도 포함한다.
@@ -223,6 +223,13 @@ IC2-03의 목록은 최소 범위를 확정하는 게이트다. 구현 중 새 �
 ## 9. 인계
 
 ### 2026-09-19 구현 브랜치 진행
+
+- done (Phase 1 진행): [Phase 1 기록](./PHASE1.md)의 opt-in setter 관찰점과 기존 gate·번들 기준 통과.
+- next (Phase 1): 임의 ref 소속/구독, 내부 출처/버전, 재진입과 수명을 검증한다. IC2-01/02는 아직 열려 있다.
+- blockers (Phase 1): 고정 Node 번들 여유 0 B.
+- 기록 작성 시 기준 commit: `e01828b`. 이후 문서 이력은 Git HEAD를 따른다.
+
+### Phase 0 시작 당시 인계
 
 - done: `feat/server-sync-draft`에서 [Phase 0 기록](./PHASE0.md)을 시작하고 IC2-03 설계 선택과 독립 query/draft/타입 실험을 남겼다.
 - next: core opt-in ref 연결의 타입·setter 발행·비용을 검증해 IC2-01을 닫고 Phase 1에 진입한다.

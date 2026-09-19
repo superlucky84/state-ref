@@ -108,6 +108,13 @@ state-ref 코어, 서버 동기화 헬퍼, draft 헬퍼를 선택적으로 조�
 
 ### 2026-09-19 구현 브랜치 진행
 
+- done (Phase 1 진행): [opt-in setter 기록](./PHASE1.md)과 기존 gate·고정 Node 번들/bench 통과. 새 helper 기능은 아직 없다.
+- next (Phase 1): 일반 하위 ref의 소속·구독, 내부 수용 출처와 버전 연결.
+- blockers (Phase 1): core 기본 번들 여유 0 B. IC2-01/02는 미해소.
+- 기록 작성 시 기준 commit: `e01828b`. 이후 문서 이력은 Git HEAD를 따른다.
+
+### Phase 0 시작 당시 인계
+
 - done: `feat/server-sync-draft`에서 [Phase 0 기준·실험](./PHASE0.md)을 시작했다. 기존 gate와 독립 모델·타입 실험 PASS, IC2-03의 참조 버전·설계 계약 결정.
 - next: IC2-01/02의 core 연결·비용 실험 후 Phase 1 진입.
 - blockers: 현재 ref에서 구조화 소속·구독을 조회할 수 없고 기본 번들 여유는 15 B다. 새 helper 구현은 미완료다.
