@@ -9,7 +9,7 @@
 
 | 결정 | 상태와 선택 | 근거 | 요구사항 / 검증 |
 |---|---|---|---|
-| DC2-01 | [x] core·sync·draft를 분리하고 조합 | 서버 없는 draft와 draft 없는 서버 동기화 모두 필요 | R2-01, T2-01 |
+| DC2-01 | [x] 기본 core·선택적 draft 진입점·별도 sync 패키지로 조합 | 서버 없는 draft와 draft 없는 서버 동기화 모두 필요 | R2-01, T2-01 |
 | DC2-02 | [x] query와 mutation 분리, resource 저장 메서드 제외 | 서버 작업의 실행 주체를 하나로 유지 | R2-08, T2-08 |
 | DC2-03 | [x] resourceRef 직접 편집은 공유 로컬 변경 | ref 편집 경험과 명시적 서버 전송 분리 | R2-05/07, T2-05/07 |
 | DC2-04 | [x] 서버 부분 저장 scope 제외 | ref 경로가 서버 API의 작업 단위를 결정하지 않음 | R2-08/14, T2-08/14 |
@@ -31,20 +31,22 @@
 
 ```text
 앱 / 프레임워크 커넥터
-  ├─ state-ref core: ref, Watch, 불변 갱신, 구독
-  ├─ 서버 동기화 헬퍼 → core
-  │    ├─ client별 query 캐시와 서버 기준
-  │    ├─ 편집 가능한 resourceRef와 변경 기록
-  │    └─ 독립 mutation, 명시적인 기준 반영과 요청 상태
-  └─ draft 헬퍼 → core
-       ├─ 일반 원본 ref / resourceRef의 가지
-       ├─ 자체 ref, 기준, 변경 기록, 충돌
-       └─ 원본에 로컬 적용, reset, discard
+  ├─ state-ref 기본 진입점: ref, Watch, 불변 갱신, 구독
+  ├─ state-ref/draft (선택적 진입점) → 기본 core
+  │    ├─ 일반 원본 ref / resourceRef의 가지
+  │    ├─ 자체 ref, 기준, 변경 기록, 충돌
+  │    └─ 원본에 로컬 적용, reset, discard
+  └─ @stateref/sync (별도 설치) → 기본 core
+       ├─ client별 query 캐시와 서버 기준
+       ├─ 편집 가능한 resourceRef와 변경 기록
+       └─ 독립 mutation, 명시적인 기준 반영과 요청 상태
 ```
 
-- core는 두 헬퍼를 import하지 않는다. draft는 sync나 TanStack을 import하지 않는다. sync도 draft 구현을 필수로 로드하지 않는다.
-- 필요하다면 일반적인 변경 기록 도구를 별도 내부 모듈로 공유한다. 네트워크 정책을 core로 옮기거나 default store의 비용을 늘리는 근거로 사용하지 않는다.
-- Phase 0에서는 별도 workspace 패키지 `@stateref/sync`, `@stateref/draft`를 선택했다. 실제 export·공개 타입·배포 이름의 확인은 IC2-01에 남아 있으며 설치 가능한 패키지라고 안내하지 않는다.
+- 기본 core 진입점은 draft나 sync를 import하지 않는다. draft 진입점은 sync나 TanStack을 import하지 않는다. sync도 draft 구현을 필수로 로드하지 않는다.
+- 서버 싱크의 query 캐시·resource·mutation·전송 정책은 별도 `@stateref/sync` 패키지에만 둔다. 앱은 sync가 필요할 때만 그 패키지를 설치·import한다. core 단독 빌드에 서버 기능이 합쳐지지 않는 것을 빌드 결과와 의존성 검사로 확인한다.
+- 직접 ref 편집을 기록하기 위한 범용 opt-in 관찰점은 core에 있을 수 있다. 현재 `create(value, { onWrite })`가 그 첫 연결이며 core 번들에 포함된다. 이 연결을 서버 기능의 core 통합으로 확대하지 않고 기존 번들·성능 예산 안에서 검증한다.
+- 필요하다면 일반적인 변경 기록 도구를 공유하되 기본 core 진입점에서 자동 로드하지 않는다. 네트워크 정책을 core로 옮기거나 default store의 비용을 늘리는 근거로 사용하지 않는다.
+- Phase 0의 별도 `@stateref/draft` 패키지 선택은 사용자 결정으로 대체했다. draft는 같은 패키지의 선택적 `state-ref/draft` 진입점을 목표로 하며, 실제 export·공개 타입·빌드 검증은 IC2-01에 남아 있다. 현재 설치 가능한 기능으로 안내하지 않는다.
 - client+key당 서버 기준은 하나다. resource의 편집 뷰와 draft는 기준 및 변경 기록으로 재구성되는 값이며 별도의 fetch 캐시가 아니다.
 - state-ref에 결과를 제공하는 것과 특정 UI framework의 hooks를 복제하는 것은 구분한다. 기존 5종 커넥터의 수명·readonly·타입을 검증한다.
 

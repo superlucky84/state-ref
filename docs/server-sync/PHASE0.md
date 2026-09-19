@@ -25,12 +25,12 @@
 
 선택안:
 
-- [x] `@stateref/draft`와 `@stateref/sync`를 별도 workspace 패키지로 둔다. 둘은 `state-ref`를 사용하고 서로를 기본 의존성으로 가져오지 않는다. 현재 코어의 단일 export에 모든 기능을 넣으면 NFR2-01과 번들 한도를 검증하기 어렵다. 실제 이름 충돌·배포 export는 패키지 생성 시 확인한다.
+- [x] 당시에는 `@stateref/draft`와 `@stateref/sync`를 별도 workspace 패키지로 선택했다. **후속 사용자 결정으로 draft 패키지 선택은 대체**되었다. 현재 목표는 기본 코어 진입점과 분리된 `state-ref/draft` 선택적 진입점, 별도 `@stateref/sync` 패키지다. 단일 기본 export에 모든 기능을 넣으면 NFR2-01과 번들 한도를 검증하기 어려우므로 실제 export·빌드 비용은 IC2-01에서 확인한다.
 - [x] payload ref와 `isDirty()`/`changes()`/상태 metadata를 분리한 handle을 공개한다. 도메인 데이터의 같은 이름 속성과 충돌하지 않는다.
 - [x] 일반 ref에서 draft를 시작할 수 있도록 구조화된 원본 소속, 경로, 쓰기 권한, 구독, 수명 정보를 제공하는 **내부 opt-in 연결**을 설계한다. `NAVI` 문자열을 파싱하지 않는다.
 - [x] 조회 전에는 resource 상태를 관찰할 수 있지만 데이터 ref 접근은 명시적 `NotLoaded` 실패로 처리한다. 최초 조회 실패를 빈 객체로 위장하지 않는다. 후속 정상 조회는 이미 받은 ref의 경로를 유지한다.
 - [x] readonly 원본에서도 독립 draft 작성은 허용하되 `apply()`는 원본을 변경하지 않고 `readonly` 결과를 반환한다. 종료된 draft ref의 읽기·쓰기는 명시적 오류로 막는다.
-- [x] `createDraft<T>(source: StateRefStore<T>)` 형태에서 하위 ref의 `T`가 정확히 추론됨을 TypeScript 5.6.3으로 확인했다. 실제 패키지 선언은 같은 반례로 재검증한다.
+- [x] `createDraft<T>(source: StateRefStore<T>)` 형태에서 하위 ref의 `T`가 정확히 추론됨을 TypeScript 5.6.3으로 확인했다. 실제 draft 진입점 선언은 같은 반례로 재검증한다.
 - [x] draft/resource handle은 기존 5종 커넥터가 받는 `Watch<T>` 형태의 `watch`를 제공한다. draft의 `ref`는 직접 편집용이며, resource의 데이터 `watch`는 첫 load 전 명시적으로 실패한다. resource 상태 관찰은 별도 watch로 제공한다.
 - [ ] 공개 타입 이름·오류 union·connector 투영과 내부 연결의 실제 크기를 제품 선언과 빌드로 검증한다. Phase 1 시작 전 게이트이며 `IC2-01/02`는 아직 열린 상태다.
 

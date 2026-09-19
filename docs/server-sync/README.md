@@ -2,6 +2,8 @@
 
 상태: 2026-09-19 최종 방향 결정 반영, 구현 전. state-ref 코어·서버 동기화 헬퍼·draft 헬퍼를 선택적으로 조합한다. 서버 기능은 계속 추진하며, TanStack Query의 query/mutation 모델과 기능을 참고하되 런타임 독립을 지향한다.
 
+서버 싱크는 코어 빌드에 합치지 않고 별도로 설치·import하는 플러그인형 패키지로 개발한다. draft는 같은 `state-ref` 패키지의 선택적 `state-ref/draft` 진입점으로 제공해 별도 설치 없이 쓰되 기본 코어 진입점에는 자동 포함하지 않는 방향이다. 코어의 범용 `onWrite` 연결은 draft 편집과 서버 resourceRef 직접 편집의 기록에 모두 쓰일 수 있다. 현재 커밋된 것은 이 연결의 첫 부분이고 draft·서버 기능은 아직 없다.
+
 대표 경험은 **편집 가능한 resourceRef + 독립 dirty/changes + 한 가지에서 만든 Live Draft + 원본에 대한 명시적인 로컬 반영**이다. 서버 API의 shape를 ref 경로에 맞추도록 요구하지 않는다.
 
 ## 문서 읽는 순서

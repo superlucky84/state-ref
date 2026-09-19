@@ -21,7 +21,7 @@
 
 | 테스트 | 핵심 합격 기준 | 요구사항 |
 |---|---|---|
-| T2-01 | core, core+draft, core+sync, 전체 조합의 import/build와 의존성 분리; draft-only에 네트워크 엔진 없음 | R2-01 |
+| T2-01 | `state-ref` 기본/draft 진입점과 별도 sync 패키지의 import·빌드; core 단독/core+draft/core+sync/전체 조합 검증; 기본 core 산출물에 draft·sync 구현 없음, draft 진입점에 네트워크 엔진 없음 | R2-01 |
 | T2-02 | 동기 전파·동일 Watch callback·held ref·AbortSignal/false·readonly 및 기존 gate 회귀 | R2-02 |
 | T2-03 | 같은 key의 진행 READ 1회, fresh 재사용·stale 재조회·GC와 선택한 자동 재조회 정책 | R2-03 |
 | T2-04 | 로드 전 guard, 로드 실패/복구, readonly status, 일반 응답 교체 뒤 held ref, 무변경 leaf 알림 억제 | R2-04 |
@@ -96,7 +96,7 @@
 
 **기준 테스트:** T2-14~22/25/26, T2-18의 서울·부산·대전 흐름을 일반 로컬 원본 기준으로도 검증, T2-01/02 회귀.
 
-**종료:** 서버 패키지를 설치/로드하지 않고 모든 draft 기본 흐름 통과. 원본의 기존 변경과 draft의 자체 변경이 구별됨.
+**종료:** 서버 패키지를 설치/로드하지 않고 `state-ref/draft`의 모든 기본 흐름 통과. 기본 core 진입점의 기존 번들 예산을 유지하고 draft 진입점 크기를 별도 기록. 원본의 기존 변경과 draft의 자체 변경이 구별됨.
 
 ### Phase 3 — Query 캐시와 편집 가능한 ResourceRef
 
@@ -186,7 +186,7 @@
 
 ## 4. 실행과 현재 결과
 
-현재 저장소 명령은 `pnpm gate`, `pnpm test`, `pnpm test:core`, `pnpm test:react`, `pnpm test:preact`, `pnpm test:vue`, `pnpm test:svelte`, `pnpm test:solid`다. helper 패키지별 명령은 IC2-01의 배포 경계 확정 후 추가한다. bare `npx vitest` 등으로 고정 도구를 임의 대체하지 않는다.
+현재 저장소 명령은 `pnpm gate`, `pnpm test`, `pnpm test:core`, `pnpm test:react`, `pnpm test:preact`, `pnpm test:vue`, `pnpm test:svelte`, `pnpm test:solid`다. draft 진입점과 sync 패키지의 검증 명령은 IC2-01의 배포 경계 확정 후 추가한다. bare `npx vitest` 등으로 고정 도구를 임의 대체하지 않는다.
 
 | 항목 | 현재 확인 결과 |
 |---|---|

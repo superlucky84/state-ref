@@ -8,6 +8,8 @@
 
 코어의 내부 `create(value, { onWrite })`에 선택적인 setter 관찰점을 추가했다. 일반 `createStore`/`createStoreManualSync`의 공개 옵션은 그대로다. 관찰 이벤트는 경로 cursor(`parent`, `segment`)와 `before`/`after`를 전달한다. helper가 필요할 때만 cursor를 경로 배열로 변환하므로 기본 setter는 매번 경로를 복사하지 않는다. 경로 cursor는 연결된 노드의 읽기 전용 타입이며 `NAVI` 표시 문자열을 파싱하지 않는다.
 
+이 관찰점은 코어 빌드에 포함되는 범용 연결이며 draft 전용도 서버 동기화 엔진도 아니다. draft 자체 ref의 변경 기록과 서버 resourceRef 직접 편집 기록에 모두 쓸 수 있다. 사용자 선택에 따라 draft는 같은 `state-ref` 패키지의 선택적 진입점, 서버 캐시·resource·mutation은 별도 `@stateref/sync` 패키지로 둔다. 기본 코어 산출물에 두 기능의 구현이 없는지 T2-01에서 확인한다.
+
 setter는 먼저 `lens`로 새 트리 생성 가능 여부를 검사하고, 관찰 함수를 호출한 다음 새 값을 확정하고 구독자에게 알린다. 같은 값, readonly 쓰기, 중간 부모가 없는 경로는 이벤트를 남기지 않는다. 관찰 함수가 거절하면 코어 값과 구독 알림도 변경하지 않는다. 코어의 복사 방식과 동기 전파 순서는 유지한다.
 
 | 근거 | 결과 |

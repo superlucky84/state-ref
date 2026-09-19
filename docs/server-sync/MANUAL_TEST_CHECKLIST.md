@@ -28,6 +28,7 @@
 ### M2-01 — 선택적 helper 조합 (R2-01)
 
 - [ ] core만 사용하는 페이지가 두 helper 없이 동작한다.
+- [ ] sync는 별도 패키지로 설치·import하고 draft는 `state-ref/draft`에서 import한다. 기본 core-only 빌드에 draft·서버 엔진이 없고 draft-only 빌드에 네트워크 의존성이 없는지 확인한다.
 - [ ] core+draft 페이지에서 생성·편집·검토·apply·reset을 수행한다. 서버 엔진 로드와 네트워크 호출이 없다.
 - [ ] sync만 사용하는 페이지에서 조회·ref 편집·mutation이 동작하며 draft를 필수로 가져오지 않는다.
 - [ ] 전체 조합 페이지에서도 같은 API 의미를 유지한다.
