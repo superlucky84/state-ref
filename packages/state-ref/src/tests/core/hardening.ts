@@ -139,9 +139,7 @@ if (import.meta.vitest) {
           reported.mock.calls[0][0]
       );
 
-      expect(message).toMatch(
-        /kept writing while its own change was still propagating/
-      );
+      expect(message).toMatch(/subscriber write loop exceeded/);
       expect(message).not.toMatch(/Maximum call stack/);
     });
 

@@ -9,7 +9,7 @@
   "module": "./dist/state-ref.mjs",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && vite build --config vite.plugin.config.js",
     "watch": "vite build --watch",
     "test": "vitest run --reporter verbose",
     "test:dev": "vitest"
@@ -19,6 +19,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/state-ref.mjs",
       "require": "./dist/state-ref.umd.js"
+    },
+    "./plugin": {
+      "types": "./dist/plugin/index.d.ts",
+      "import": "./dist/plugin.mjs"
     }
   },
   "types": "./dist/index.d.ts",

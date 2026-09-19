@@ -2,7 +2,7 @@
 
 - 개정일: 2026-09-19. 기준: [REQUIREMENTS](./REQUIREMENTS.md).
 - 기준 commit: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
-- 상태: 구현 전. `[x]`는 동작 방향 결정이며 구현·테스트 통과가 아니다.
+- 상태: Phase 1 범용 연결 구현 중. `[x]` 결정 행은 제품 기능의 구현·테스트 통과가 아니다.
 - 공개 함수·패키지 이름은 예시다. 최종 선언은 IC2-01에서 검증한다.
 
 ## 1. 결정 목록
@@ -45,6 +45,9 @@
 - 기본 core 진입점은 draft나 sync를 import하지 않는다. draft 진입점은 sync나 TanStack을 import하지 않는다. sync도 draft 구현을 필수로 로드하지 않는다.
 - 서버 싱크의 query 캐시·resource·mutation·전송 정책은 별도 `@stateref/sync` 패키지에만 둔다. 앱은 sync가 필요할 때만 그 패키지를 설치·import한다. core 단독 빌드에 서버 기능이 합쳐지지 않는 것을 빌드 결과와 의존성 검사로 확인한다.
 - 직접 ref 편집을 기록하기 위한 범용 opt-in 관찰점은 core에 있을 수 있다. 현재 `create(value, { onWrite })`가 그 첫 연결이며 core 번들에 포함된다. 이 연결을 서버 기능의 core 통합으로 확대하지 않고 기존 번들·성능 예산 안에서 검증한다.
+- `state-ref/plugin`은 같은 패키지의 선택적 ESM 통합 진입점이다. 일반 하위 ref의 소속·구조화 경로·쓰기 권한·현재 존재 여부를 읽고, 해당 경로만 구독·해제한다. 일반 `state-ref` 진입점은 plugin 구현을 import하지 않는다. 현재 plugin은 코어 ref 연결과 원본별 변경 기록 기반만 제공하며 draft·서버 기능은 제공하지 않는다. CJS/UMD용 plugin 진입점은 아직 제공하지 않으며 draft UMD에서는 필요한 연결 코드를 별도 번들에 포함하는 방식을 검증한다.
+- 코어와 별도 ESM/UMD 산출물 사이의 연결은 등록 심볼 `Symbol.for('state-ref.ref-link')`를 사용한다. 이 심볼은 내부 예약 키이며 payload의 같은 심볼 이름과 충돌할 수 있으므로 일반 상태 필드로 사용하지 않는다. plugin의 `connectRef`는 원본 root 값을 노출하지 않고 opaque owner와 경로·읽기·존재 여부만 반환한다.
+- plugin의 기록은 사용자 setter와 `source-refresh`·`accepted-server-result`·`rollback` 출처를 구분하고 쓰기마다 owner 버전을 올린다. 기록 갱신은 값 구독 알림 전에 끝난다. 관찰점 안에서 같은 store에 다시 쓰는 동작은 helper의 guard가 거절한다. 임의 관찰 함수의 외부 부작용까지 코어가 되돌려 주지는 않으므로 helper는 검증을 먼저 마치고 기록 갱신 뒤 던지지 않는다.
 - 필요하다면 일반적인 변경 기록 도구를 공유하되 기본 core 진입점에서 자동 로드하지 않는다. 네트워크 정책을 core로 옮기거나 default store의 비용을 늘리는 근거로 사용하지 않는다.
 - Phase 0의 별도 `@stateref/draft` 패키지 선택은 사용자 결정으로 대체했다. draft는 같은 패키지의 선택적 `state-ref/draft` 진입점을 목표로 하며, 실제 export·공개 타입·빌드 검증은 IC2-01에 남아 있다. 현재 설치 가능한 기능으로 안내하지 않는다.
 - `state-ref/draft`는 패키지 import 경로다. `<script>`로 로드하는 UMD는 이 경로를 해석하지 못하므로 draft용 UMD 산출물을 별도로 만든다. 현재 코어 UMD는 `dist/state-ref.umd.js`와 전역 `stateRef`만 제공한다. 목표는 코어 UMD 다음에 `dist/state-ref.draft.umd.js`를 로드해 전역 `stateRefDraft`를 얻는 방식이다. draft UMD는 코어를 외부 의존성으로 참조해 코어 구현을 중복 포함하지 않는다. 파일명·전역 이름·로드 순서·코어 누락 시 오류를 실제 빌드와 브라우저 테스트로 확정한다.
@@ -214,8 +217,8 @@ Phase 0에서 서버 엔진의 참조 버전과 key/epoch/기본 타이밍 계�
 
 ## 8. 구현 전 조사 항목
 
-- [ ] **IC2-01 / Phase 0** 패키지/export와 공개 API·타입 확정. createDraft(ref), resource의 metadata, readonly 원본, 로드 guard, 종료된 ref, 5종 커넥터 투영을 검증한다.
-- [ ] **IC2-02 / Phase 0~1** opt-in 변경 기록·publication·원본 lifecycle hook. [Phase 1](./PHASE1.md)의 첫 setter 이벤트와 기존 gate·고정 Node 비용 검증 PASS. 출처/버전/lifecycle·재진입은 남아 있다.
+- [ ] **IC2-01 / Phase 0~3/8** 코어 연결 방향과 `state-ref/plugin` ESM export는 Phase 1에서 확인했다. createDraft(ref), resource metadata, readonly 원본, 로드 guard, 종료된 ref, 5종 커넥터 투영의 공개 API·타입은 해당 제품 단계에서 검증한다.
+- [x] **IC2-02 / Phase 0~1** opt-in 변경 기록·publication·원본 구독 lifecycle hook. [Phase 1](./PHASE1.md)의 `state-ref/plugin` 연결, 출처/버전 기록·재진입 guard와 코어 gate·고정 Node 비용을 검증했다. draft의 종료 ref·resource GC와 공개 API는 IC2-01/05 및 후속 단계에 남아 있다.
 - [x] **IC2-03 / Phase 0** 독립 query/mutation 엔진의 설계 계약, `@tanstack/query-core@5.103.1` 기준, F2 목록·기본값·단계, key/epoch/timing 독립 실험을 [Phase 0 기록](./PHASE0.md)에 고정했다. 실제 엔진·기능 동등성 검증은 미완료다.
 - [ ] **IC2-04 / Phase 0~4** 자유로운 DTO와 제출 기록, 영향을 주는 query 연결, epoch/revision, 서버 보정, unknown 및 사후 READ 실패의 결과 타입·복구 계약을 확정한다. resource 변경을 clean 처리하는 구현은 이를 닫은 뒤 진행한다.
 - [ ] **IC2-05 / Phase 0~2** draft의 현재 원본 기준, local apply의 원자성·재진입·부모 소멸·배열 경계·원본 유지와 해제를 검증한다. 원본에 pending overlay가 있는 경우도 포함한다.
@@ -227,9 +230,9 @@ IC2-03의 목록은 최소 범위를 확정하는 게이트다. 구현 중 새 �
 
 ### 2026-09-19 구현 브랜치 진행
 
-- done (Phase 1 진행): [Phase 1 기록](./PHASE1.md)의 opt-in setter 관찰점과 기존 gate·번들 기준 통과.
-- next (Phase 1): 임의 ref 소속/구독, 내부 출처/버전, 재진입과 수명을 검증한다. IC2-01/02는 아직 열려 있다.
-- blockers (Phase 1): 고정 Node 번들 여유 0 B.
+- done (Phase 1 완료): [Phase 1 기록](./PHASE1.md)의 opt-in setter, `state-ref/plugin` 경로 구독·존재 여부와 출처/버전 journal을 구현. 기존 gate·고정 Node 번들 기준 통과, IC2-02 해소.
+- next (Phase 2): IC2-01의 draft 공개 계약과 `state-ref/draft` ESM·UMD 빌드, 일반 원본의 live draft를 검증한다.
+- blockers (Phase 2): 고정 Node 기본 코어 번들 여유 2 B; 실제 draft/sync 구현과 조합 검증 없음.
 - 기록 작성 시 기준 commit: `e01828b`. 이후 문서 이력은 Git HEAD를 따른다.
 
 ### Phase 0 시작 당시 인계

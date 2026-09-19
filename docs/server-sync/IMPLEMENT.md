@@ -2,7 +2,7 @@
 
 - 기준: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md).
 - 개정일: 2026-09-19. 기준 SHA: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
-- 상태: `feat/server-sync-draft`에서 Phase 0 진행 중. 새 helper 구현·검증은 미완료다. [실행 기록](./PHASE0.md).
+- 상태: `feat/server-sync-draft`에서 Phase 1 범용 연결 완료. draft·sync 제품 기능은 미완료다. [Phase 0](./PHASE0.md), [Phase 1](./PHASE1.md) 실행 기록.
 - 이전 T/Phase 범위는 기준 commit의 이력이다. 이번 T2/Phase 계획으로 대체한다.
 
 ## 1. 진행 규칙
@@ -21,7 +21,7 @@
 
 | 테스트 | 핵심 합격 기준 | 요구사항 |
 |---|---|---|
-| T2-01 | `state-ref` 기본/draft ESM 진입점과 별도 sync 패키지의 import·빌드, ESM 네 조합 검증; UMD에서 코어→draft 스크립트 로드와 전역 API·코어 누락 오류 검증; 기본 core 산출물에 draft·sync 구현 없음, draft UMD에 코어 중복·네트워크 엔진 없음 | R2-01 |
+| T2-01 | `state-ref` 기본/plugin/draft ESM 진입점과 별도 sync 패키지의 import·빌드, ESM 네 조합 검증; UMD에서 코어→draft 스크립트 로드와 전역 API·코어 누락 오류 검증; 기본 core 산출물에 plugin·draft·sync 구현 없음, draft UMD에 코어 중복·네트워크 엔진 없음 | R2-01 |
 | T2-02 | 동기 전파·동일 Watch callback·held ref·AbortSignal/false·readonly 및 기존 gate 회귀 | R2-02 |
 | T2-03 | 같은 key의 진행 READ 1회, fresh 재사용·stale 재조회·GC와 선택한 자동 재조회 정책 | R2-03 |
 | T2-04 | 로드 전 guard, 로드 실패/복구, readonly status, 일반 응답 교체 뒤 held ref, 무변경 leaf 알림 억제 | R2-04 |
@@ -57,7 +57,7 @@
 **진입:** 최종 방향 문서 확인, 기존 사용자 변경을 보존할 실험 범위 확보.
 
 - [x] 현재 Node/pnpm/TS와 core·커넥터의 테스트·타입·빌드·bench·bundle baseline을 기록한다. [Phase 0 기준](./PHASE0.md).
-- [ ] IC2-01: ref 입력 draft, metadata 위치, 공개 API 이름·타입, readonly와 loaded guard를 검증한다.
+- [x] IC2-01의 코어 연결 방향: 구조화된 ref 입력과 선택적 plugin 진입점을 선택한다. 실제 draft/resource 공개 API·readonly/loaded guard와 커넥터 투영은 Phase 2/3/8에서 검증한다.
 - [x] IC2-03: 독립 엔진의 F2 세부 목록·기준 버전·기본값·완료 조건과 단계별 배포 범위를 기록한다. [Phase 0](./PHASE0.md)의 key/epoch/timing 독립 모델 PASS. 실제 엔진의 T2-23은 미수행.
 - [ ] IC2-02/05: 두 비교 기준, 변경 기록, 동기 local apply·재진입·배열 경계의 최소 모델을 검증한다. 두 기준·충돌·부분 병합 참조 모델 PASS; 재진입과 실제 연결 검증 남음.
 - [ ] IC2-04: 임의 DTO와 제출 기록·서버 보정·후속 입력 연결의 최소 모델을 만든다. 후속 입력/미제출 필드 반례 PASS; 보정·결과 union 남음.
@@ -65,24 +65,24 @@
 
 **기준 테스트:** T2-01/02 baseline, T2-14/17/18의 독립 참조 모델, T2-08/10의 DTO 반례, T2-23 기능 목록 검사.
 
-**종료:** IC2-01/03 해소, 나머지 IC2의 선택안·실험 근거·종료 단계 기록. 기능 목록의 누락이나 구현 전 예시를 동작 보장으로 취급하지 않음.
+**종료:** IC2-01의 코어 연결 방향과 IC2-03 해소, 남은 IC2 공개 API·guard의 종료 단계를 기록. 기능 목록의 누락이나 구현 전 예시를 동작 보장으로 취급하지 않음.
 
 ### Phase 1 — 최소 코어 연결과 변경 기록 기반
 
-**진입:** Phase 0 종료, core opt-in 접근 선택.
+**진입:** Phase 0의 코어 연결 방향 선택. IC2-01의 draft/resource 공개 계약은 후속 단계에서 검증.
 
-진행 기록: [PHASE1](./PHASE1.md). Phase 0의 IC2-01 계약은 아직 열려 있어, 현재 구현은 진입을 위한 첫 실험이며 Phase 1 종료로 취급하지 않는다.
+완료 기록: [PHASE1](./PHASE1.md). IC2-01의 draft/resource 공개 계약은 후속 단계의 출시 조건으로 남아 있으며, 코어 연결 단계의 종료와 구분한다.
 
 - [x] `create(value, { onWrite })`의 opt-in setter 이벤트를 값 발행 전에 제공하고 경로 cursor와 전후 값을 관찰한다.
-- [ ] helper 전용 경로/소속/출처/버전/lifecycle 연결을 구현한다.
-- [ ] setter와 metadata 발행 순서를 고정하고 검증 실패 시 무변경을 보장한다.
-- [ ] 변경된 구조만 복사하고 내부 수용/복구를 새로운 사용자 편집으로 기록하지 않는다.
-- [ ] 기존 구독 identity, 동기 전파, AbortSignal/false 해제와 readonly를 보존한다.
-- [ ] IC2-02를 비용 측정과 함께 닫는다.
+- [x] `state-ref/plugin`에 하위 ref 경로/소속/권한/존재 여부, 경로 구독·해제와 출처별 버전 기록을 구현한다.
+- [x] 지원되는 journal observer의 metadata를 setter 구독 알림 전에 갱신하고 관찰 거절·같은 store 재진입의 무변경을 검증한다.
+- [x] 기존 copy-on-write를 유지하고 `runAs` 내부 수용/복구를 새 사용자 편집으로 기록하지 않는다.
+- [x] 기존 구독 identity, 동기 전파, AbortSignal/false 해제와 readonly를 `pnpm gate`로 회귀 검증한다.
+- [x] IC2-02를 코어·plugin 비용 측정과 함께 닫는다.
 
 **기준 테스트:** T2-01/02/05/21/25와 기존 core gate, publication 및 기록 순서 반례.
 
-**종료:** 기존 gate·성능·번들 예산 유지, 두 헬퍼가 사용할 중립적인 연결만 제공, core에 네트워크 의미가 들어가지 않음.
+**종료 (PASS):** 기존 gate·성능·번들 예산 유지, 두 헬퍼가 사용할 중립적인 연결만 제공, core에 네트워크 의미가 들어가지 않음. draft/resource 공개 API는 이 단계의 산출물이 아니다.
 
 ### Phase 2 — 서버 없는 독립 Draft
 
@@ -192,8 +192,9 @@
 | 항목 | 현재 확인 결과 |
 |---|---|
 | 문서 링크·ID·단계 구조·공백 정합성 | 이전 문서 개정의 ID/구조 검사 PASS. 현재 `docs/server-sync` Markdown 7개·상대 링크 49개, 누락 0개; `git diff --check` PASS |
-| core/커넥터 baseline와 gate | Phase 0 기준 및 Phase 1 opt-in setter 변경 후 `pnpm gate` PASS. 고정 Node 직접 bench 6/6 PASS |
-| 독립 draft/sync 타입·테스트·빌드 | 미수행 — 구현 없음 |
+| core/커넥터 baseline와 gate | Phase 1 `state-ref/plugin` 연결 후 `pnpm gate` PASS. 고정 Node 20.3.0 직접 bench 6/6, 기본 core minified gzip 3,398/3,400 B PASS |
+| 선택적 plugin export | ESM 빌드와 다른 workspace 패키지의 import·공개 선언 타입 검사 PASS; 1,935 B raw / 889 B gzip |
+| 독립 draft/sync 타입·테스트·빌드 | 미수행 — 제품 기능 구현 없음 |
 | 기능 동등성 F2 세부 검증 | 미수행 — Phase 0에서 기준 버전·목록은 고정, 실제 엔진·기능 테스트 필요 |
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
@@ -201,9 +202,9 @@
 
 ### 2026-09-19 — Phase 1 진행
 
-- done (Phase 1 진행): [Phase 1 기록](./PHASE1.md)의 opt-in setter 이벤트와 T2-05 일부 반례 검증, 기존 `pnpm gate`와 고정 Node 번들·bench PASS.
-- next (Phase 1): 일반 ref의 소속/경로/구독·수명 연결, 내부 출처/버전과 재진입 경계를 검증한다. Phase 1 종료는 아직 아니다.
-- blockers (Phase 1): 기본 번들 여유 0 B, IC2-01/02 미해소.
+- done (Phase 1 완료): [Phase 1 기록](./PHASE1.md)의 opt-in setter, `state-ref/plugin` 원본 연결·구독·출처/버전 journal, observer 재진입 guard와 기존 `pnpm gate`·고정 Node 번들/bench PASS. IC2-02 해소.
+- next (Phase 2): IC2-01의 공개 draft 계약과 `state-ref/draft` ESM·UMD 빌드, 일반 원본의 live draft를 검증한다.
+- blockers (Phase 2): 기본 코어 번들 여유 2 B. draft 기능과 공개 API는 아직 미구현이다.
 - 기록 작성 시 기준 commit: `e01828b`. 이후 문서 이력은 Git HEAD를 따른다.
 
 ### Phase 0 시작 당시 인계

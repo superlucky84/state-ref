@@ -5,6 +5,7 @@ import { childOf, pathToString } from '@/path';
 import type { PathNode } from '@/path';
 import { collector } from '@/connectors/collector';
 import { runner } from '@/connectors/runner';
+import { REF_CONNECTION } from '@/internal/ref-connection-key';
 import type { Run, WithRoot, StoreRenderList, RefWrite } from '@/types';
 
 /**
@@ -66,11 +67,14 @@ export function makeProxy<S extends WithRoot, T extends object>(
     return created;
   };
 
-  const inspect = () => ({
-    navi: pathToString(parentNode, segment),
-    type: getType(lensValue.get(rootValue)),
-    value: lensValue.get(rootValue),
-  });
+  const inspect = () => {
+    const value = lensValue.get(rootValue);
+    return {
+      navi: pathToString(parentNode, segment),
+      type: getType(value),
+      value,
+    };
+  };
 
   /**
    * The proxy target carries what a console reads, and nothing else.
@@ -107,6 +111,10 @@ export function makeProxy<S extends WithRoot, T extends object>(
        * 3. When accessing child object types from a proxy
        */
       get(_: T, prop: keyof T & (string | symbol)) {
+        if (prop === REF_CONNECTION) {
+          return [rootValue, lensValue, ownNode(), editable, storeRenderList];
+        }
+
         /**
          * When accessing ".value" from a proxy
          */

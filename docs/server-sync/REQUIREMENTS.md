@@ -1,6 +1,6 @@
 # REQUIREMENTS — state-ref 서버 동기화와 독립 Draft
 
-- 개정일: 2026-09-19. 사용자 최종 결정 반영, 구현 전.
+- 개정일: 2026-09-19. 사용자 최종 결정 반영, Phase 1 범용 연결 완료. draft·sync 기능은 미구현.
 - 기준 commit: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`, `state-ref@3.0.2`.
 - 연계: [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 - `R2-*`는 이번 개정의 요구사항이다. 이전 `SR-*`는 당시 커밋의 기록이며 현재 계약으로 사용하지 않는다.
@@ -108,9 +108,9 @@ state-ref 코어, 서버 동기화 헬퍼, draft 헬퍼를 선택적으로 조�
 
 ### 2026-09-19 구현 브랜치 진행
 
-- done (Phase 1 진행): [opt-in setter 기록](./PHASE1.md)과 기존 gate·고정 Node 번들/bench 통과. 새 helper 기능은 아직 없다.
-- next (Phase 1): 일반 하위 ref의 소속·구독, 내부 수용 출처와 버전 연결.
-- blockers (Phase 1): core 기본 번들 여유 0 B. IC2-01/02는 미해소.
+- done (Phase 1 완료): [plugin 연결](./PHASE1.md)에 일반 하위 ref의 소속·경로 구독·존재 여부, 출처/버전 journal을 구현. 기존 gate와 고정 Node 번들/bench 통과. draft·sync 기능은 아직 없다.
+- next (Phase 2): IC2-01의 공개 draft 계약과 실제 `state-ref/draft` 진입점·원본 live 갱신을 검증한다.
+- blockers (Phase 2): core 기본 번들 여유 2 B. IC2-02는 해소했고 IC2-01의 제품 API는 미해소.
 - 기록 작성 시 기준 commit: `e01828b`. 이후 문서 이력은 Git HEAD를 따른다.
 
 ### Phase 0 시작 당시 인계

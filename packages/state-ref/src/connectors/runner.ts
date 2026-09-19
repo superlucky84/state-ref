@@ -84,11 +84,11 @@ export function runner(
 ) {
   if (passDepth >= MAX_PASS_DEPTH) {
     throw new Error(
-      `state-ref: a subscriber kept writing while its own change was still propagating (over ${MAX_PASS_DEPTH} levels deep${
+      `state-ref: subscriber write loop exceeded ${MAX_PASS_DEPTH} levels${
         writtenParent
           ? ` at "${pathToString(writtenParent, writtenSegment)}"`
           : ''
-      }). A subscriber that writes the path it reads never settles.`
+      }. Avoid writing a path this subscriber reads.`
     );
   }
 
