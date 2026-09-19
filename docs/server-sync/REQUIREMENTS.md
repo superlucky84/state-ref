@@ -104,7 +104,16 @@ state-ref 코어, 서버 동기화 헬퍼, draft 헬퍼를 선택적으로 조�
 
 ## 6. 완료 판정과 인계
 
-이번 개정은 제품·동작 방향을 확정한다. 패키지/export, 완전한 공개 타입, mutation 제출 기록 연결, 서버 기능 동등성의 기준·단계는 [DESIGN의 IC2](./DESIGN.md)에 남겨두며 구현 전에 해당 게이트에서 닫는다.
+이번 개정은 제품·동작 방향을 확정한다. 서버 기능 비교의 참조 버전과 단계는 [Phase 0](./PHASE0.md)에 고정했다. 패키지/export의 실제 타입·빌드, mutation 제출 기록 연결과 기능별 실행 검증은 [DESIGN의 IC2](./DESIGN.md) 및 후속 단계에서 닫는다.
+
+### 2026-09-19 구현 브랜치 진행
+
+- done: `feat/server-sync-draft`에서 [Phase 0 기준·실험](./PHASE0.md)을 시작했다. 기존 gate와 독립 모델·타입 실험 PASS, IC2-03의 참조 버전·설계 계약 결정.
+- next: IC2-01/02의 core 연결·비용 실험 후 Phase 1 진입.
+- blockers: 현재 ref에서 구조화 소속·구독을 조회할 수 없고 기본 번들 여유는 15 B다. 새 helper 구현은 미완료다.
+- 기록 작성 시 기준 commit: `1c6460b`. 이후 문서 이력은 Git HEAD를 따른다.
+
+### 이전 문서 개정 인계
 
 - done: 최종 사용자 결정과 이전 결정의 대체 관계를 기록하고 R2/T2/M2 검증 연결을 재정의.
 - next: IMPLEMENT Phase 0에서 공개 계약·기능 목록·독립 엔진과 draft 연결 실험.

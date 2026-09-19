@@ -44,7 +44,7 @@
 
 - core는 두 헬퍼를 import하지 않는다. draft는 sync나 TanStack을 import하지 않는다. sync도 draft 구현을 필수로 로드하지 않는다.
 - 필요하다면 일반적인 변경 기록 도구를 별도 내부 모듈로 공유한다. 네트워크 정책을 core로 옮기거나 default store의 비용을 늘리는 근거로 사용하지 않는다.
-- 별도 npm 패키지인지 subpath export인지는 TBD다. `@stateref/sync`, `@stateref/draft`는 후보 이름이며 설치 가능한 패키지라고 안내하지 않는다.
+- Phase 0에서는 별도 workspace 패키지 `@stateref/sync`, `@stateref/draft`를 선택했다. 실제 export·공개 타입·배포 이름의 확인은 IC2-01에 남아 있으며 설치 가능한 패키지라고 안내하지 않는다.
 - client+key당 서버 기준은 하나다. resource의 편집 뷰와 draft는 기준 및 변경 기록으로 재구성되는 값이며 별도의 fetch 캐시가 아니다.
 - state-ref에 결과를 제공하는 것과 특정 UI framework의 hooks를 복제하는 것은 구분한다. 기존 5종 커넥터의 수명·readonly·타입을 검증한다.
 
@@ -162,6 +162,8 @@ mutation은 resource 연결 없이도 실행할 수 있고, 입력 DTO는 조회
 
 이 연결의 공개 API는 IC2-04의 필수 설계 게이트다. 앞 대화의 `mutation.run(input, { draft })`를 확정 API로 채택하지 않는다. 기본 흐름은 draft의 변경 검토 → 원본에 로컬 적용 → resource 변경 검토 → 앱 DTO로 mutation이다. 일반 draft가 서버 동작을 알아야 할 이유는 없다.
 
+Phase 0에서 서버 엔진의 참조 버전과 key/epoch/기본 타이밍 계약을 [실행 기록](./PHASE0.md)에 고정했다. 이는 구현 증거가 아니며 F2별 검증은 해당 단계에서 별도로 수행한다.
+
 서버 보정 응답은 해당 제출의 결과라는 정보와 함께 처리해야 한다. 단순 값 비교만으로 미제출 변경을 지우거나 자기 응답을 외부 충돌로 오인하지 않는다. 아직 연결하지 않은 임의 ref 쓰기나 외부 캐시 변경에 정밀한 rollback을 보장하지 않는다.
 
 ### 5.3 오류·경쟁·rollback
@@ -177,7 +179,7 @@ mutation은 resource 연결 없이도 실행할 수 있고, 입력 DTO는 조회
 
 ## 6. 서버 기능 동등성 목록
 
-이는 제품 목표의 범위를 잃지 않기 위한 목록이다. 현재 전 항목 구현·검증 미수행이며, 정확한 기준 버전과 하위 시나리오는 Phase 0의 IC2-03/06에서 고정한다. 단계별 구현과 '전체 동등성 완료'를 구분한다.
+이는 제품 목표의 범위를 잃지 않기 위한 목록이다. 현재 전 항목 구현·검증 미수행이며, 비교 기준 버전과 Phase 0 하위 시나리오는 [Phase 0 기록](./PHASE0.md)에 고정했다. 복원·플랫폼의 상세 계약은 IC2-06에서 추적한다. 단계별 구현과 '전체 동등성 완료'를 구분한다.
 
 | ID | 검증할 기능군 | 단계 |
 |---|---|---|
@@ -211,7 +213,7 @@ mutation은 resource 연결 없이도 실행할 수 있고, 입력 DTO는 조회
 
 - [ ] **IC2-01 / Phase 0** 패키지/export와 공개 API·타입 확정. createDraft(ref), resource의 metadata, readonly 원본, 로드 guard, 종료된 ref, 5종 커넥터 투영을 검증한다.
 - [ ] **IC2-02 / Phase 0~1** opt-in 변경 기록·publication·원본 lifecycle hook. core 단독 성능/번들/구독 비용과 기록 순서를 측정하고 gate에 반영한다.
-- [ ] **IC2-03 / Phase 0** 독립 query/mutation 엔진의 계약과 기능 동등성 기준 버전·F2 세부 목록·기본값을 고정한다. scheduler, key hash, 취소, query 전환, 작업 순서의 최소 실험을 남긴다.
+- [x] **IC2-03 / Phase 0** 독립 query/mutation 엔진의 설계 계약, `@tanstack/query-core@5.103.1` 기준, F2 목록·기본값·단계, key/epoch/timing 독립 실험을 [Phase 0 기록](./PHASE0.md)에 고정했다. 실제 엔진·기능 동등성 검증은 미완료다.
 - [ ] **IC2-04 / Phase 0~4** 자유로운 DTO와 제출 기록, 영향을 주는 query 연결, epoch/revision, 서버 보정, unknown 및 사후 READ 실패의 결과 타입·복구 계약을 확정한다. resource 변경을 clean 처리하는 구현은 이를 닫은 뒤 진행한다.
 - [ ] **IC2-05 / Phase 0~2** draft의 현재 원본 기준, local apply의 원자성·재진입·부모 소멸·배열 경계·원본 유지와 해제를 검증한다. 원본에 pending overlay가 있는 경우도 포함한다.
 - [ ] **IC2-06 / Phase 0~5** hydration/영속화 시 서버 기준과 로컬 변경·진행 작업을 구별하는 저장 형식, 개발 도구와 플랫폼 통합을 설계한다. 지원되지 않는 사례와 배포 단계를 명시하며 전체 동등성으로 오인시키지 않는다.
@@ -219,6 +221,15 @@ mutation은 resource 연결 없이도 실행할 수 있고, 입력 DTO는 조회
 IC2-03의 목록은 최소 범위를 확정하는 게이트다. 구현 중 새 기능이나 호환성 차이를 발견하면 F2 목록과 테스트를 함께 갱신하고, 출시 범위를 줄이는 결정이 필요하면 이유와 미지원 항목을 명시한다.
 
 ## 9. 인계
+
+### 2026-09-19 구현 브랜치 진행
+
+- done: `feat/server-sync-draft`에서 [Phase 0 기록](./PHASE0.md)을 시작하고 IC2-03 설계 선택과 독립 query/draft/타입 실험을 남겼다.
+- next: core opt-in ref 연결의 타입·setter 발행·비용을 검증해 IC2-01을 닫고 Phase 1에 진입한다.
+- blockers: 기본 코어 번들 여유 15 B, 임의 하위 ref의 구조화 소속·구독 계약 부재. IC2-01/02/04/05/06의 세부 구현 계약은 열려 있다.
+- 기록 작성 시 기준 commit: `1c6460b`. 이후 문서 이력은 Git HEAD를 따른다.
+
+### 이전 문서 개정 인계
 
 - done: 최종 사용자 결정으로 helper 경계, 두 변경 기준, 로컬 apply, mutation 분리, scope 제외를 정리. 이전 Query core 의존성과 draft 직접 서버 저장 모델을 대체.
 - next: IMPLEMENT Phase 0에서 IC2 조사와 두 기준의 최소 실행 모델 검증. Phase 2에서 서버 없는 draft를 먼저 검증하고 서버 기능과 조합.

@@ -10,6 +10,7 @@
 2. [DESIGN](./DESIGN.md): helper 경계, 두 변경 기준, local apply와 mutation, DC2/IC2/F2.
 3. [IMPLEMENT](./IMPLEMENT.md): T2 검증, Phase 0~8의 진입·종료, Test Hardening과 Integration Test.
 4. [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md): M2-01~20의 수동 절차와 합격 기준.
+5. [PHASE0](./PHASE0.md): 새 구현 브랜치의 기준 측정, 계약 실험, F2 참조 목록.
 
 ## 확정한 사용 의미
 
@@ -30,7 +31,7 @@
 
 ## 아직 확정하지 않은 구현 사항
 
-패키지/export 경로, 정확한 함수명과 타입, 자유로운 DTO에 대한 제출 기록 연결, 독립 엔진의 상세 옵션·기능별 동등성 기준은 IC2로 추적한다. 예시의 `createDraft`, `apply`, `client.query`는 현재 배포된 API가 아니다.
+패키지/export 경로, 정확한 함수명과 타입, 자유로운 DTO에 대한 제출 기록 연결은 IC2로 추적한다. 독립 엔진의 참조 버전·기본 설계는 [Phase 0](./PHASE0.md)에 고정했고 기능별 구현·검증은 남아 있다. 예시의 `createDraft`, `apply`, `client.query`는 현재 배포된 API가 아니다.
 
 기능 전반의 동등성은 F2 목록의 목표이며 현재 달성한 상태가 아니다. 의존성 설치, helper 구현, 런타임 검증은 아직 수행하지 않았다.
 
@@ -44,3 +45,9 @@ ctxbin으로 불러온 `doc-driven-designer-v1` agent/skill의 문서 순서와 
 - next: IMPLEMENT Phase 0에서 두 변경 기준·로컬 apply·제출 기록과 F2 상세 계약 검증.
 - blockers: 문서 개정 차단 없음. 구현 전 조사와 실행 검증은 미완료.
 - latest commit: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`, core `3.0.2`. 이번 문서 개정은 미커밋이다.
+
+### 구현 브랜치 인계 (2026-09-19)
+
+`feat/server-sync-draft`는 `1c6460b`에서 분기했다. 위 출처와 인계는
+문서 개정 당시의 기록이다. 현재 진행 상태는 [Phase 0 기록](./PHASE0.md)과
+[IMPLEMENT 인계](./IMPLEMENT.md)를 따른다.
