@@ -66,6 +66,27 @@ edits via `onReject: 'remove'`. Later input survives, including a return to the
 old baseline while the WRITE is pending. The linked query's `status.pending`
 tracks the operation separately from `dirty`.
 
+For SSR, transfer only settled, clean server baselines between separate clients:
+
+```ts
+const server = createSyncClient({ ssr: true });
+const source = server.query(options);
+await source.load();
+const snapshot = JSON.parse(JSON.stringify(server.dehydrate()));
+
+const browser = createSyncClient();
+browser.hydrate(snapshot); // before creating any query handles
+const restored = browser.query(options);
+```
+
+The snapshot preserves query keys, server data, freshness times, invalidation,
+and editability. Data must be JSON-compatible. `dehydrate()` rejects local edits,
+in-flight READ/linked WRITE operations, and unconfirmed WRITE outcomes rather
+than silently dropping them. `status.unconfirmed` remains true after an unknown
+WRITE outcome or failed post-WRITE reconciliation until a successful READ or
+known server value is accepted. Such entries are retained through GC. This is
+SSR cache transfer, not local-edit persistence or offline mutation recovery.
+
 Independent mutations run concurrently by default. Pass the same `scope`
 string to `run` to execute those operations in start order, including their
 callbacks; a failure does not block the next operation. A query permits one

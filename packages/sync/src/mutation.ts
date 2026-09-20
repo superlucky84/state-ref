@@ -104,6 +104,7 @@ export type PreparedLink<T> = {
   begin: () => void;
   success: (data: T) => Promise<void>;
   reject: () => void;
+  uncertain: () => void;
   end: () => void;
 };
 
@@ -270,6 +271,7 @@ export function createMutation<I, T>(
             for (const link of links) await link.success(data);
             outcome = { kind: 'success', operationId: id, data };
           } catch (error) {
+            links.forEach(link => link.uncertain());
             outcome = { kind: 'sync-error', operationId: id, data, error };
           }
         } else {
@@ -283,7 +285,7 @@ export function createMutation<I, T>(
                 recoveryError ??= error;
               }
             }
-          }
+          } else links.forEach(link => link.uncertain());
           outcome = {
             kind: rejected ? 'rejected' : 'unknown',
             operationId: id,
@@ -292,6 +294,7 @@ export function createMutation<I, T>(
           };
         }
       } catch (error) {
+        links.forEach(link => link.uncertain());
         outcome = { kind: 'unknown', operationId: id, error };
       } finally {
         links.forEach(link => link.end());

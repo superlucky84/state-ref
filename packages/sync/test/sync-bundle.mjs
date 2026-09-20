@@ -47,6 +47,23 @@ const result = await sameClient
 assert.equal(result.kind, 'success');
 assert.equal(linked.isDirty(), false);
 linked.dispose();
+const server = createSyncClient({ ssr: true });
+const hydratedSource = server.query({
+  queryKey: ['hydrated'],
+  queryFn: () => ({ count: 7 }),
+});
+await hydratedSource.load();
+const snapshot = JSON.parse(JSON.stringify(server.dehydrate()));
+const browser = createSyncClient({ ssr: true });
+browser.hydrate(snapshot);
+const hydrated = browser.query({
+  queryKey: ['hydrated'],
+  queryFn: () => ({ count: 8 }),
+});
+assert.equal(hydrated.ref.count.value, 7);
+assert.equal(hydrated.status.unconfirmed.value, false);
+hydratedSource.dispose();
+hydrated.dispose();
 assert.equal(submitted.changes.length, 1);
 query.dispose();
-console.log('sync ESM bundle: independent query, resource and mutation PASS');
+console.log('sync ESM bundle: query, resource, mutation and hydration PASS');

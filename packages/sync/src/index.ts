@@ -7,6 +7,8 @@ import { ResourceStore } from './resource';
 import type { ResourceChange, ResourceSubmission } from './resource';
 import { createMutation } from './mutation';
 import type { MutationHandle, MutationLink, MutationOptions } from './mutation';
+import { copyJson, parseSnapshot } from './hydration';
+import type { HydratedQuery, SyncSnapshot } from './hydration';
 
 export { hashQueryKey } from './key';
 export type { QueryKey } from './key';
@@ -25,6 +27,7 @@ export type {
   MutationRunOptions,
   MutationStatus,
 } from './mutation';
+export type { HydratedQuery, SyncSnapshot } from './hydration';
 
 export type QueryStatus = Readonly<{
   status: 'pending' | 'success' | 'error';
@@ -37,6 +40,8 @@ export type QueryStatus = Readonly<{
   conflicts: number;
   version: number;
   pending: number;
+  /** A linked WRITE may have changed the server without a confirmed baseline. */
+  unconfirmed: boolean;
 }>;
 
 export type QueryOptions<T> = Readonly<{
@@ -73,6 +78,9 @@ export type SyncClient = Readonly<{
   invalidate: (key: QueryKey) => void;
   remove: (key: QueryKey) => boolean;
   size: () => number;
+  dehydrate: () => SyncSnapshot;
+  /** Restore into an empty client before creating query handles. */
+  hydrate: (snapshot: SyncSnapshot) => void;
 }>;
 
 function checkDuration(value: number, name: string) {
@@ -117,6 +125,7 @@ class QueryEntry<T> {
       conflicts: 0,
       version: 0,
       pending: 0,
+      unconfirmed: false,
     }),
     { autoSync: false }
   );
@@ -195,7 +204,8 @@ class QueryEntry<T> {
       this.owners > 0 ||
       this.pending ||
       this.linked ||
-      this.resource?.isDirty()
+      this.resource?.isDirty() ||
+      this.statusValue.unconfirmed
     )
       return;
     const time = this.options.gcTime ?? (this.ssr ? Infinity : 300_000);
@@ -244,12 +254,70 @@ class QueryEntry<T> {
     return this.resource?.isDirty() ?? false;
   }
 
+  isUnconfirmed() {
+    return this.statusValue.unconfirmed;
+  }
+
   changes() {
     return this.resource?.changes() ?? Object.freeze([]);
   }
 
   version() {
     return this.resource?.version() ?? 0;
+  }
+
+  dehydrate(): HydratedQuery | null {
+    if (
+      this.pending ||
+      this.linked ||
+      this.resource?.isDirty() ||
+      this.statusValue.unconfirmed
+    ) {
+      throw new Error(
+        `Query ${this.hash} has local or unresolved work; it cannot be dehydrated.`
+      );
+    }
+    if (!this.statusValue.loaded) return null;
+    if (
+      this.statusValue.status !== 'success' ||
+      !this.resource ||
+      this.statusValue.updatedAt === null
+    ) {
+      throw new Error(`Query ${this.hash} has no settled successful baseline.`);
+    }
+    return Object.freeze({
+      queryKey: JSON.parse(this.hash) as QueryKey,
+      data: copyJson(this.resource.serverValue()),
+      updatedAt: this.statusValue.updatedAt,
+      invalidated: this.statusValue.invalidated,
+      editable: this.options.editable ?? true,
+    });
+  }
+
+  hydrate(seed: HydratedQuery) {
+    if (this.resource || this.statusValue.loaded) {
+      throw new Error('Hydration requires an empty query entry.');
+    }
+    this.resource = new ResourceStore(
+      seed.data as T,
+      seed.editable,
+      () => this.snapshot(),
+      this.flush
+    );
+    this.publish({
+      status: 'success',
+      fetchStatus: 'idle',
+      loaded: true,
+      error: null,
+      updatedAt: seed.updatedAt,
+      invalidated: seed.invalidated,
+      unconfirmed: false,
+    });
+    this.scheduleGc();
+  }
+
+  markUnconfirmed() {
+    this.publish({ unconfirmed: true, invalidated: true });
   }
 
   canLink() {
@@ -299,6 +367,7 @@ class QueryEntry<T> {
       error: null,
       updatedAt: Date.now(),
       invalidated: false,
+      unconfirmed: false,
     });
   }
 
@@ -310,6 +379,7 @@ class QueryEntry<T> {
       error: null,
       updatedAt: Date.now(),
       invalidated: false,
+      unconfirmed: false,
     });
   }
 
@@ -384,6 +454,7 @@ class QueryEntry<T> {
             error: null,
             updatedAt: Date.now(),
             invalidated: false,
+            unconfirmed: false,
           });
         }
         return value;
@@ -427,6 +498,7 @@ export function createSyncClient(options: { ssr?: boolean } = {}): SyncClient {
       entries.get(hash) !== entry ||
       entry.owners > 0 ||
       entry.isDirty() ||
+      entry.isUnconfirmed() ||
       entry.statusValuePending()
     )
       return;
@@ -595,10 +667,12 @@ export function createSyncClient(options: { ssr?: boolean } = {}): SyncClient {
                   entry.acceptServer(accept.select(data), submission);
                 else if (accept.kind === 'refetch')
                   await entry.load(true, submission, true);
+                else entry.markUnconfirmed();
               },
               reject: () => {
                 if (onReject === 'remove') entry.removeSubmission(submission!);
               },
+              uncertain: () => entry.markUnconfirmed(),
               end: () => {
                 if (submission) entry.getResource().endSubmission(submission);
                 entry.endLink();
@@ -610,6 +684,52 @@ export function createSyncClient(options: { ssr?: boolean } = {}): SyncClient {
         schedule
       );
     },
+    dehydrate(): SyncSnapshot {
+      const queries: HydratedQuery[] = [];
+      for (const entry of entries.values()) {
+        const seed = entry.dehydrate();
+        if (seed) queries.push(seed);
+      }
+      return Object.freeze({
+        schemaVersion: 1 as const,
+        capturedAt: Date.now(),
+        queries: Object.freeze(queries),
+      });
+    },
+    hydrate(snapshot: SyncSnapshot) {
+      if (entries.size) {
+        throw new Error(
+          'Hydrate an empty client before creating query handles.'
+        );
+      }
+      const seeds = parseSnapshot(snapshot);
+      const prepared: Array<[string, QueryEntry<any>]> = [];
+      try {
+        for (const seed of seeds) {
+          const hash = hashQueryKey(seed.queryKey);
+          const entry = new QueryEntry(
+            hash,
+            {
+              queryKey: seed.queryKey,
+              editable: seed.editable,
+              queryFn: () => {
+                throw new Error(
+                  'Attach a query function before loading hydrated data.'
+                );
+              },
+            },
+            options.ssr ?? false,
+            evict
+          );
+          prepared.push([hash, entry]);
+          entry.hydrate(seed);
+        }
+      } catch (error) {
+        prepared.forEach(([, entry]) => entry.expire());
+        throw error;
+      }
+      prepared.forEach(([hash, entry]) => entries.set(hash, entry));
+    },
     invalidate(key: QueryKey) {
       entries.get(hashQueryKey(key))?.invalidate();
     },
@@ -620,6 +740,7 @@ export function createSyncClient(options: { ssr?: boolean } = {}): SyncClient {
         !entry ||
         entry.owners > 0 ||
         entry.isDirty() ||
+        entry.isUnconfirmed() ||
         entry.statusValuePending()
       )
         return false;

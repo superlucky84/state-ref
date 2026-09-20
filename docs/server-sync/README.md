@@ -1,6 +1,6 @@
 # state-ref 서버 동기화와 독립 Draft 설계
 
-상태: 2026-09-20 Phase 4 mutation·제출 기록·실패 결과·명시적 순차 scope까지 구현했다. **다음 작업은 Phase 5 기능 확장과 Phase 6 resource/draft 조합**이다. state-ref 코어·서버 동기화 헬퍼·draft 헬퍼를 선택적으로 조합한다. 서버 기능은 계속 추진하며, TanStack Query의 query/mutation 모델과 기능을 참고하되 런타임 독립을 지향한다.
+상태: 2026-09-21 Phase 4 mutation 이후 Phase 5.1의 깨끗한 서버 기준 SSR 전달을 구현했다. **Phase 5의 나머지 기능과 Phase 6 resource/draft 조합은 다음 작업**이다. state-ref 코어·서버 동기화 헬퍼·draft 헬퍼를 선택적으로 조합한다. 서버 기능은 계속 추진하며, TanStack Query의 query/mutation 모델과 기능을 참고하되 런타임 독립을 지향한다.
 
 서버 싱크는 코어 빌드에 합치지 않고 별도로 설치·import하는 `@stateref/sync` 패키지로 개발한다. draft와 batch는 같은 `state-ref` 패키지의 선택적 `state-ref/draft`·`state-ref/batch` 진입점으로 제공한다. 코어의 범용 `onWrite` 연결은 draft 편집과 서버 resourceRef 직접 편집의 기록에 모두 쓴다. sync는 query/resource와 독립 mutation·명시적 저장 수용을 제공한다.
 
@@ -21,14 +21,19 @@ UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우�
 9. [PHASE3](./PHASE3.md): 별도 sync 패키지의 query/resource 구현·검증과 F2 기능별 남은 범위.
 10. [PHASE3_5](./PHASE3_5.md): 선택적 동기 batch 구현·커넥터·번들 검증 기록.
 11. [PHASE4](./PHASE4.md): mutation·제출 snapshot·서버 기준 수용·실패 결과의 구현/검증과 남은 범위.
+12. [PHASE5_1](./PHASE5_1.md): clean baseline SSR 복원 경계와 F2-01~09 지원/미지원 표.
 
 ## Phase 3.5 완료 — 명시적 동기 batch
 
 `batch`는 `state-ref/batch`에서 import한다. 일반 core ref의 여러 쓰기를 한 스코프로 묶고, 각 값은 즉시 반영하되 변경 알림은 가장 바깥 `batch`가 끝날 때 동기적으로 합친다. `watch(callback)`에 전달된 ref와 `watch()`가 반환한 ref 모두 같은 스토어의 공통 setter를 사용하므로 두 쓰기 형태에 똑같이 적용한다. 중첩 batch, 최초 `watch` 콜백, 수동 sync, draft/resource metadata, 5종 커넥터의 자동 검증은 [Phase 3.5 기록](./PHASE3_5.md)에 남겼다. 마이크로태스크 스케줄러는 사용하지 않는다. M2 수동 체크리스트는 Phase 8에 남아 있다.
 
-## Phase 4 진행 — mutation과 제출 기록
+## Phase 4 완료 — mutation과 제출 기록
 
 `client.mutation(...)`은 조회 데이터와 다른 DTO로도 실행된다. resource 편집은 `query.capture()`로 제출할 변경을 고정하고 mutation의 `links`에서 서버 기준을 `refetch`·응답 매핑·제출값 수용 중 하나로 명시한다. 저장 중 추가 입력을 보존하며, 확정 거절·결과 불명·WRITE 성공 뒤 READ 실패를 구분한다. 명시적 `scope`는 서로 다른 mutation의 실행을 순차화한다. 공개 예제와 제한은 [sync 패키지 README](../../packages/sync/README.md), 검증 범위는 [Phase 4 기록](./PHASE4.md)에 있다. 수동 M2는 아직 완료로 표시하지 않는다.
+
+## Phase 5.1 진행 — clean SSR 기준 전달
+
+`client.dehydrate()`와 `client.hydrate(snapshot)`로 성공한 깨끗한 서버 기준을 요청별 SSR client에서 새 client로 옮긴다. 로컬 편집·진행 작업·미확정 WRITE는 snapshot 생성을 거절하고, 미확정 상태는 서버 기준이 다시 확인될 때까지 캐시에 남긴다. 형식과 미지원 범위, F2 전체 기능 차이는 [Phase 5.1 기록](./PHASE5_1.md)에 있다.
 
 ## 확정한 사용 의미
 
@@ -49,7 +54,7 @@ UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우�
 
 ## 남은 구현 사항
 
-`createDraft`/`apply`, `createSyncClient`/`client.query`와 자유로운 DTO의 `client.mutation`·제출 기록 연결을 구현했다. 독립 엔진의 참조 버전·기본 설계는 [Phase 0](./PHASE0.md)에 고정했고 구현·검증 결과는 [Phase 3](./PHASE3.md)과 [Phase 4](./PHASE4.md)에 나눠 기록했다.
+`createDraft`/`apply`, `createSyncClient`/`client.query`와 자유로운 DTO의 `client.mutation`·제출 기록 연결, 깨끗한 서버 기준의 SSR 전달을 구현했다. 독립 엔진의 참조 버전·기본 설계는 [Phase 0](./PHASE0.md)에 고정했고 구현·검증 결과는 [Phase 3](./PHASE3.md), [Phase 4](./PHASE4.md), [Phase 5.1](./PHASE5_1.md)에 나눠 기록했다.
 
 기능 전반의 동등성은 F2 목록의 목표이며 현재 달성한 상태가 아니다. Phase 4의 명시적 제출과 실패 복구는 자동 검증했지만, resource/draft 결합과 실제 UI 투영, M2 수동 시나리오는 아직 검증하지 않았다. 다음 단계의 정확한 범위와 검증 기준은 [HANDOFF](./HANDOFF.md)에 있다.
 
@@ -57,7 +62,7 @@ UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우�
 
 [초기 아이디어](../idea/editable-state.md)는 배경 기록이다. 이전의 scope·resource save·draft 직접 서버 저장·Query core 의존성 결정은 이번 개정으로 대체했다. 구현은 이 디렉토리의 현재 4개 기준 문서를 따른다.
 
-ctxbin으로 불러온 `doc-driven-designer-v1` agent/skill의 문서 순서와 결정·검증·인계 규칙을 적용했다.
+ctxbin으로 불러온 `doc-driven-designer-v1` agent/skill의 문서 순서와 결정·검증·인계 규칙을 적용했다. 아래 항목은 최초 문서 개정 당시 이력이다.
 
 - done: 최종 방향을 기준 문서와 검증 계획에 반영.
 - next: IMPLEMENT Phase 0에서 두 변경 기준·로컬 apply·제출 기록과 F2 상세 계약 검증.
@@ -67,5 +72,5 @@ ctxbin으로 불러온 `doc-driven-designer-v1` agent/skill의 문서 순서와 
 ### 구현 브랜치 인계 (2026-09-19)
 
 `feat/server-sync-draft`는 `1c6460b`에서 분기했다. 위 출처와 인계는
-문서 개정 당시의 기록이다. 현재 진행 상태는 [Phase 1 기록](./PHASE1.md)과
-[IMPLEMENT 인계](./IMPLEMENT.md)를 따른다.
+문서 개정 당시의 기록이다. 현재 진행 상태는 [HANDOFF](./HANDOFF.md)와
+[IMPLEMENT 인계](./IMPLEMENT.md#5-인계)를 따른다.

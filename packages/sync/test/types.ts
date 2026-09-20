@@ -1,5 +1,9 @@
 import { createSyncClient, MutationRejectedError } from '@stateref/sync';
-import type { MutationResult, ResourceSubmission } from '@stateref/sync';
+import type {
+  MutationResult,
+  ResourceSubmission,
+  SyncSnapshot,
+} from '@stateref/sync';
 import { createDraft } from 'state-ref/draft';
 
 const query = createSyncClient({ ssr: true }).query({
@@ -66,3 +70,27 @@ async function submit() {
 }
 
 void submit;
+
+async function restore() {
+  const server = createSyncClient({ ssr: true });
+  const source = server.query({
+    queryKey: ['hydrated'],
+    queryFn: () => ({ city: '서울' }),
+  });
+  await source.load();
+  const snapshot: SyncSnapshot = server.dehydrate();
+  const browser = createSyncClient();
+  browser.hydrate(snapshot);
+  const restored = browser.query({
+    queryKey: ['hydrated'],
+    queryFn: () => ({ city: '부산' }),
+  });
+  const city: string = restored.ref.city.value;
+  const unconfirmed: boolean = restored.status.unconfirmed.value;
+  void city;
+  void unconfirmed;
+  source.dispose();
+  restored.dispose();
+}
+
+void restore;
