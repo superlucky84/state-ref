@@ -41,3 +41,7 @@ F2-04의 기본 mutation·상태·콜백·기본 병렬·명시적 retry·순차
 - next: F2-04의 기준 동등성 차이를 Phase 5 기능 목록에서 다루고, Phase 6에서 resource와 draft의 두 기준·pending 조합을 검증한다.
 - blockers: 수동 M2-06~11, 다중 query의 원자성, Phase 6/8 통합은 미완료.
 - 기록 시 최신 commit: `4157ff7`; Phase 4 변경은 아직 미커밋이다.
+
+### 후속 커밋과 현재 인계
+
+위 마지막 행은 Phase 4 구현을 커밋하기 전의 기록이다. 구현은 이후 `6c9a59b` (`feat(sync): add mutation submissions and reconciliation`)로 커밋했다. 작업 재개 시 [현재 HANDOFF](./HANDOFF.md)의 문서 지도·검증·다음 단계가 우선한다.

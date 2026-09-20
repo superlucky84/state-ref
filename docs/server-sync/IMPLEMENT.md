@@ -3,6 +3,7 @@
 - 기준: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md).
 - 개정일: 2026-09-19. 기준 SHA: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
 - 상태: `feat/server-sync-draft`에서 Phase 4 mutation·제출 기록·수용/실패 복구·순차 scope까지 구현했다. F2 전체 동등성은 미완료다. [Phase 0](./PHASE0.md), [Phase 1](./PHASE1.md), [Phase 2](./PHASE2.md), [Phase 3](./PHASE3.md), [Phase 3.5](./PHASE3_5.md), [Phase 4](./PHASE4.md) 실행 기록.
+- 현재 재개 지점은 [HANDOFF](./HANDOFF.md)를 따른다. 아래 날짜별 인계는 작성 당시의 기록이므로 현재 커밋과 혼동하지 않는다.
 - 이전 T/Phase 범위는 기준 commit의 이력이다. 이번 T2/Phase 계획으로 대체한다.
 
 ## 1. 진행 규칙
@@ -203,19 +204,26 @@
 
 ## 4. 실행과 현재 결과
 
-현재 저장소 명령은 `pnpm gate`, `pnpm test`, `pnpm test:core`, `pnpm test:react`, `pnpm test:preact`, `pnpm test:vue`, `pnpm test:svelte`, `pnpm test:solid` 및 `pnpm --filter @stateref/sync test`다. gate는 draft 독립 타입·ESM/브라우저 UMD smoke와 Phase 3 sync 타입·소비자 fixture·ESM bundle smoke를 포함한다. bare `npx vitest` 등으로 고정 도구를 임의 대체하지 않는다.
+현재 저장소 명령은 `pnpm gate`, `pnpm test`, `pnpm test:core`, `pnpm test:react`, `pnpm test:preact`, `pnpm test:vue`, `pnpm test:svelte`, `pnpm test:solid` 및 `pnpm --filter @stateref/sync test`다. gate는 draft·batch 타입/ESM/UMD smoke와 sync query/resource/mutation 타입·소비자 fixture·ESM bundle smoke를 포함한다. bare `npx vitest` 등으로 고정 도구를 임의 대체하지 않는다.
 
 | 항목 | 현재 확인 결과 |
 |---|---|
-| 문서 링크·ID·단계 구조·공백 정합성 | Phase 1 링크/ID 검사 PASS. Phase 2 문서 추가 후 정적 검사 결과는 [PHASE2](./PHASE2.md)에 기록 |
-| core/커넥터 baseline와 gate | Phase 2 `pnpm gate` PASS. 고정 Node 20.3.0 기본 core minified gzip 3,398/3,400 B PASS |
+| 문서 링크·ID·단계 구조·공백 정합성 | 과거 단계의 정적 검사 결과는 [PHASE2](./PHASE2.md)에 기록. 현재 handoff 링크와 문서 상태는 [HANDOFF](./HANDOFF.md)를 따른다 |
+| core/커넥터 baseline와 gate | Phase 4 `pnpm gate` PASS. 고정 Node 20.3.0 기본 core minified gzip 3,455/3,500 B PASS |
 | 선택적 plugin export | ESM 빌드·공개 선언 타입 검사 PASS; Phase 2 `clearEntries` 추가 후 크기는 별도 산출물로 측정 |
 | 일반 원본 draft 타입·테스트·빌드 | Phase 2 `state-ref/draft` ESM·UMD, 선언 타입 fixture, live·충돌·apply·수명 테스트와 browser smoke PASS. [실행 기록](./PHASE2.md) |
-| 서버 sync/resource 타입·테스트·빌드 | Phase 3 sync ESM·선언 타입·소비자 fixture, 14개 런타임 테스트와 bundle smoke PASS. [실행 기록](./PHASE3.md) |
-| 기능 동등성 F2 세부 검증 | F2-01/02/03/06의 Phase 3 하위 범위만 검증. 미지원 항목은 [PHASE3](./PHASE3.md)에 기록 |
+| 서버 sync 타입·테스트·빌드 | Phase 4 sync ESM·선언 타입·소비자 fixture, query/resource/mutation 런타임 33개 테스트와 bundle smoke PASS. [실행 기록](./PHASE4.md) |
+| 기능 동등성 F2 세부 검증 | F2-01/02/03/06의 Phase 3 하위 범위와 F2-04의 Phase 4 하위 범위만 검증. F2 전체 동등성은 미완료. [PHASE3](./PHASE3.md), [PHASE4](./PHASE4.md) |
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
+
+### 2026-09-20 — Phase 4 커밋 후 handoff
+
+- done: Phase 4 구현을 `6c9a59b` (`feat(sync): add mutation submissions and reconciliation`)로 커밋했다. 작업 트리는 커밋 직후 깨끗했다. 현재 계약·검증·다음 작업의 단일 진입점은 [HANDOFF](./HANDOFF.md)다.
+- next: Phase 5 진입 시 F2-01~09의 지원/미지원 표와 IC2-06 복원 경계를 먼저 확인한 뒤, 선택한 하위 기능을 자동 테스트·타입·번들 증거와 함께 구현한다. Phase 6 resource/draft 조합과 Phase 8 M2 수동 검증은 별도 게이트다.
+- blockers: 전체 F2 동등성·Phase 6 runtime 조합·Phase 8 수동 M2는 미완료. 즉시 작업을 막는 외부 blocker는 없다.
+- 최신 구현 commit: `6c9a59b`. 이 handoff 문서 개정은 별도 작업이다.
 
 ### 2026-09-20 — Phase 4 기본 mutation·제출 기록
 

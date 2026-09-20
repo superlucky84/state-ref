@@ -10,16 +10,17 @@ UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우�
 
 ## 문서 읽는 순서
 
-1. [REQUIREMENTS](./REQUIREMENTS.md): 확정 방향, 이전 결정의 대체 관계, R2 수용 기준.
-2. [DESIGN](./DESIGN.md): helper 경계, 두 변경 기준, local apply와 mutation, DC2/IC2/F2.
-3. [IMPLEMENT](./IMPLEMENT.md): T2 검증, Phase 0~8의 진입·종료, Test Hardening과 Integration Test.
-4. [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md): M2-01~20의 수동 절차와 합격 기준. M2-02에 batch 검증을 추가했다.
-5. [PHASE4](./PHASE4.md): mutation·제출 snapshot·서버 기준 수용·실패 결과의 구현/검증과 남은 F2-04 차이.
-5. [PHASE0](./PHASE0.md): 새 구현 브랜치의 기준 측정, 계약 실험, F2 참조 목록.
-6. [PHASE1](./PHASE1.md): opt-in setter·`state-ref/plugin` 연결과 남은 공개 계약.
-7. [PHASE2](./PHASE2.md): 선택적 draft 구현·검증, 지원 데이터 경계와 남은 resource 결합.
-8. [PHASE3](./PHASE3.md): 별도 sync 패키지의 query/resource 구현·검증과 F2 기능별 남은 범위.
-9. [PHASE3_5](./PHASE3_5.md): 선택적 동기 batch 구현·커넥터·번들 검증 기록.
+1. [HANDOFF](./HANDOFF.md): 현재 커밋, 검증 결과, 다음 단계와 남은 위험. 재개 시 먼저 읽는다.
+2. [REQUIREMENTS](./REQUIREMENTS.md): 확정 방향, 이전 결정의 대체 관계, R2 수용 기준.
+3. [DESIGN](./DESIGN.md): helper 경계, 두 변경 기준, local apply와 mutation, DC2/IC2/F2.
+4. [IMPLEMENT](./IMPLEMENT.md): T2 검증, Phase 0~8의 진입·종료, Test Hardening과 Integration Test.
+5. [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md): M2-01~20의 수동 절차와 합격 기준. M2-02에 batch 검증을 추가했다.
+6. [PHASE0](./PHASE0.md): 새 구현 브랜치의 기준 측정, 계약 실험, F2 참조 목록.
+7. [PHASE1](./PHASE1.md): opt-in setter·`state-ref/plugin` 연결과 남은 공개 계약.
+8. [PHASE2](./PHASE2.md): 선택적 draft 구현·검증, 지원 데이터 경계와 남은 resource 결합.
+9. [PHASE3](./PHASE3.md): 별도 sync 패키지의 query/resource 구현·검증과 F2 기능별 남은 범위.
+10. [PHASE3_5](./PHASE3_5.md): 선택적 동기 batch 구현·커넥터·번들 검증 기록.
+11. [PHASE4](./PHASE4.md): mutation·제출 snapshot·서버 기준 수용·실패 결과의 구현/검증과 남은 범위.
 
 ## Phase 3.5 완료 — 명시적 동기 batch
 
@@ -46,11 +47,11 @@ UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우�
 
 서버 서울 → resource 부산 → 주소 draft 대전 → 원본 적용의 결과는 **resource: 서울 → 대전 / draft: 변경 없음**이다. 적용 전 draft를 폐기하면 resource의 서울 → 부산 변경이 그대로 남는다.
 
-## 아직 확정하지 않은 구현 사항
+## 남은 구현 사항
 
-`createDraft`/`apply`와 `createSyncClient`/`client.query`의 기본 경로를 구현했다. 자유로운 DTO 제출 기록 연결은 IC2-04로 추적한다. 독립 엔진의 참조 버전·기본 설계는 [Phase 0](./PHASE0.md)에 고정했고 기능별 구현·검증 결과는 [Phase 3](./PHASE3.md)에 나눠 기록했다.
+`createDraft`/`apply`, `createSyncClient`/`client.query`와 자유로운 DTO의 `client.mutation`·제출 기록 연결을 구현했다. 독립 엔진의 참조 버전·기본 설계는 [Phase 0](./PHASE0.md)에 고정했고 구현·검증 결과는 [Phase 3](./PHASE3.md)과 [Phase 4](./PHASE4.md)에 나눠 기록했다.
 
-기능 전반의 동등성은 F2 목록의 목표이며 현재 달성한 상태가 아니다. `state-ref/plugin` 범용 연결, 일반 원본 draft, sync의 독립 query/resource 기본 기능을 검증했다. pending 복구·resource/draft 결합과 실제 UI 투영은 아직 검증하지 않았다.
+기능 전반의 동등성은 F2 목록의 목표이며 현재 달성한 상태가 아니다. Phase 4의 명시적 제출과 실패 복구는 자동 검증했지만, resource/draft 결합과 실제 UI 투영, M2 수동 시나리오는 아직 검증하지 않았다. 다음 단계의 정확한 범위와 검증 기준은 [HANDOFF](./HANDOFF.md)에 있다.
 
 ## 출처와 인계
 

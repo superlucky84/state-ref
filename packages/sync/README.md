@@ -19,7 +19,6 @@ await account.load();
 account.ref.address.city.value = 'Busan';
 account.isDirty(); // true
 account.changes(); // server baseline -> current local edit
-account.dispose();
 ```
 
 Mutation input can have a different shape from query data. Capture the edits
@@ -44,6 +43,7 @@ const result = await save.run(
     }],
   }
 );
+account.dispose();
 ```
 
 `run` clones the input with `structuredClone` before calling `mutationFn`; inputs
@@ -70,8 +70,8 @@ Independent mutations run concurrently by default. Pass the same `scope`
 string to `run` to execute those operations in start order, including their
 callbacks; a failure does not block the next operation. A query permits one
 linked operation at a time; callers sequence operations on that query by
-awaiting the prior result and capturing its current edits again. A multi-query link
-does not promise atomicity across servers or queries. The caller must map the
+awaiting the prior result and capturing its current edits again. A multi-query
+link does not promise atomicity across servers or queries. The caller must map the
 actual DTO to the captured changes honestly; the library cannot infer which
 fields a free-form DTO saved. A result of `sync-error` must be reconciled with
 a new READ or known server value, not by resending the successful WRITE.
@@ -84,5 +84,4 @@ Defaults: `staleTime: 0`, inactive `gcTime: 5 minutes` (infinite for `createSync
 
 Queries require an explicit `load()` call unless a mutation response or
 `acceptServer` populates the cache. Automatic focus/reconnect/polling and
-persistence are later work; a
-successful local edit does not save to a server.
+persistence are later work; a successful local edit does not save to a server.
