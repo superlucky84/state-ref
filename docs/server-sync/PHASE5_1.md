@@ -23,7 +23,9 @@ schema 1에는 `schemaVersion`, `capturedAt`, query별 `queryKey`, `data`, `upda
 
 참조 범위: [TanStack SSR 안내](https://tanstack.com/query/latest/docs/framework/react/guides/ssr), [dehydrate](https://tanstack.com/query/latest/docs/framework/react/reference/functions/dehydrate), [hydrate](https://tanstack.com/query/latest/docs/framework/react/reference/functions/hydrate). 이 API는 해당 라이브러리의 snapshot 형식이나 hydration 경계와 호환된다고 주장하지 않는다.
 
-## F2 기능별 현재 상태
+## Phase 5.1 시점 F2 기능별 상태
+
+이 표는 Phase 5.1 완료 시점의 기준이다. F2-03·05의 다음 하위 범위는 [Phase 5.2](./PHASE5_2.md#f2-상태-갱신과-검증)에 갱신했다.
 
 | 기능 | 검증된 하위 범위 | 남은 범위 |
 | --- | --- | --- |

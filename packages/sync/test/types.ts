@@ -94,3 +94,24 @@ async function restore() {
 }
 
 void restore;
+
+async function prepareCache() {
+  const client = createSyncClient({ ssr: true });
+  const options = {
+    queryKey: ['prepared'],
+    queryFn: () => ({ city: '서울' }),
+    initialData: { city: '부산' },
+    initialUpdatedAt: 1000,
+  };
+  await client.prefetch(options);
+  const fetched: { city: string } = await client.fetch(options);
+  const ensured: { city: string } = await client.ensure(options);
+  const query = client.query(options);
+  const city: string = query.ref.city.value;
+  void fetched;
+  void ensured;
+  void city;
+  query.dispose();
+}
+
+void prepareCache;

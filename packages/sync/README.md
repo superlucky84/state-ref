@@ -87,6 +87,33 @@ WRITE outcome or failed post-WRITE reconciliation until a successful READ or
 known server value is accepted. Such entries are retained through GC. This is
 SSR cache transfer, not local-edit persistence or offline mutation recovery.
 
+Known server data may seed an empty cache entry before the first READ. Use
+`initialData` only for a complete, confirmed server value; it becomes the
+editable baseline and can be included in an SSR snapshot. `initialUpdatedAt`
+defaults to the installation time and controls freshness with `staleTime`.
+
+```ts
+const options = {
+  queryKey: ['account', 1],
+  queryFn: ({ signal }: { signal: AbortSignal }) =>
+    api.readAccount(1, { signal }),
+  staleTime: 30_000,
+};
+await client.prefetch(options); // cache success; ignore load rejection
+const fresh = await client.fetch(options); // fresh cache or READ; throws errors
+const cached = await client.ensure(options); // confirmed cache, even if stale
+const seeded = client.query({ ...options, initialData: knownAccount });
+```
+
+These calls share the client's cache and in-flight READ by key. Temporary
+`fetch/prefetch/ensure` options do not replace an existing query handle's
+options. `ensure` returns the confirmed server baseline, even if a local edit
+exists; an unconfirmed WRITE requires a new READ. Invalid key, time, or initial
+data setup still rejects from `prefetch`. Editable results returned by
+`load/fetch/ensure` are frozen
+copies; edit through the query ref. Placeholder data and observer-specific
+selection are not part of this API yet.
+
 Independent mutations run concurrently by default. Pass the same `scope`
 string to `run` to execute those operations in start order, including their
 callbacks; a failure does not block the next operation. A query permits one

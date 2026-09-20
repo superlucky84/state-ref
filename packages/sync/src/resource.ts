@@ -80,8 +80,8 @@ export class ResourceStore<T> {
     private readonly flushStatus: () => void
   ) {
     if (editable) assertEditable(initial);
-    this.baseline = initial;
-    const store = core.create(initial, {
+    this.baseline = editable ? (frozenCopy(initial) as T) : initial;
+    const store = core.create(this.baseline, {
       onWrite: write => {
         if (this.disposed) throw new Error('This resource has expired.');
         if (this.internalWrite) {
@@ -291,7 +291,10 @@ export class ResourceStore<T> {
 
   /** Accept a READ as server baseline, retaining local edits and their origin. */
   accept(server: T, submission?: ResourceSubmission<T>) {
-    if (this.editable) assertEditable(server);
+    if (this.editable) {
+      assertEditable(server);
+      server = frozenCopy(server) as T;
+    }
     if (submission) this.assertSubmission(submission);
     const previous = this.value();
     let next: unknown = server;

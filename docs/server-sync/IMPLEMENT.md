@@ -2,7 +2,7 @@
 
 - 기준: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md).
 - 개정일: 2026-09-19. 기준 SHA: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
-- 상태: `feat/server-sync-draft`에서 Phase 4 mutation 이후 [Phase 5.1](./PHASE5_1.md)의 clean baseline SSR 전달까지 구현했다. F2 전체 동등성은 미완료다. [Phase 0](./PHASE0.md), [Phase 1](./PHASE1.md), [Phase 2](./PHASE2.md), [Phase 3](./PHASE3.md), [Phase 3.5](./PHASE3_5.md), [Phase 4](./PHASE4.md) 실행 기록도 참조한다.
+- 상태: `feat/server-sync-draft`에서 Phase 4 mutation 이후 [Phase 5.1](./PHASE5_1.md)의 clean baseline SSR 전달과 [Phase 5.2](./PHASE5_2.md)의 확정 초기 기준·캐시 준비 API까지 구현했다. F2 전체 동등성은 미완료다. [Phase 0](./PHASE0.md), [Phase 1](./PHASE1.md), [Phase 2](./PHASE2.md), [Phase 3](./PHASE3.md), [Phase 3.5](./PHASE3_5.md), [Phase 4](./PHASE4.md) 실행 기록도 참조한다.
 - 현재 재개 지점은 [HANDOFF](./HANDOFF.md)를 따른다. 아래 날짜별 인계는 작성 당시의 기록이므로 현재 커밋과 혼동하지 않는다.
 - 이전 T/Phase 범위는 기준 commit의 이력이다. 이번 T2/Phase 계획으로 대체한다.
 
@@ -157,6 +157,8 @@
 
 첫 하위 단위인 [Phase 5.1](./PHASE5_1.md)에서 clean baseline SSR 전달 형식과 F2-01~09 현재 상태를 기록했다. 위 체크 항목은 영속화·오프라인·재개 및 기능 목록의 나머지 범위가 남아 있어 열린 상태다.
 
+[Phase 5.2](./PHASE5_2.md)에서 F2-03 확정 초기 기준과 F2-05 명시적 캐시 준비 API를 추가했다. placeholder/의존·파생 조회와 pagination/infinite는 여전히 열린 상태다.
+
 **기준 테스트:** T2-23의 모든 F2 하위 시나리오, T2-03/04/07/10~13/22/25의 복원·네트워크 상태 조합.
 
 **종료:** 해당 출시 범위의 모든 기능에 구현·테스트 증거 존재. 전체 동등성 선언은 전체 목록 통과 시에만 가능하며, 부분 출시라면 미지원 항목을 명시함.
@@ -214,11 +216,18 @@
 | core/커넥터 baseline와 gate | Phase 4 `pnpm gate` PASS. 고정 Node 20.3.0 기본 core minified gzip 3,455/3,500 B PASS |
 | 선택적 plugin export | ESM 빌드·공개 선언 타입 검사 PASS; Phase 2 `clearEntries` 추가 후 크기는 별도 산출물로 측정 |
 | 일반 원본 draft 타입·테스트·빌드 | Phase 2 `state-ref/draft` ESM·UMD, 선언 타입 fixture, live·충돌·apply·수명 테스트와 browser smoke PASS. [실행 기록](./PHASE2.md) |
-| 서버 sync 타입·테스트·빌드 | Phase 5.1 sync ESM·선언 타입·소비자 fixture, query/resource/mutation/hydration 런타임 43개 테스트와 bundle smoke PASS. [Phase 5.1](./PHASE5_1.md) |
-| 기능 동등성 F2 세부 검증 | F2-01/02/03/06의 Phase 3 하위 범위, F2-04의 Phase 4 하위 범위, F2-06의 Phase 5.1 clean SSR 전달만 검증. F2 전체 동등성은 미완료. [지원 상태 표](./PHASE5_1.md#f2-기능별-현재-상태) |
+| 서버 sync 타입·테스트·빌드 | Phase 5.2 sync ESM·선언 타입·소비자 fixture, query/resource/mutation/hydration/cache 런타임 53개 테스트와 bundle smoke PASS. [Phase 5.2](./PHASE5_2.md) |
+| 기능 동등성 F2 세부 검증 | Phase 3/4 기반, Phase 5.1 clean SSR 전달과 Phase 5.2 확정 초기 기준·fetch/prefetch/ensure 하위 범위만 검증. F2 전체 동등성은 미완료. [기준 표](./PHASE5_1.md#phase-51-시점-f2-기능별-상태), [5.2 갱신](./PHASE5_2.md#f2-상태-갱신과-검증) |
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
+
+### 2026-09-21 — Phase 5.2 확정 초기 기준·캐시 준비
+
+- done: `initialData`와 시각, `client.fetch/prefetch/ensure`, 편집 가능한 기준의 caller 객체 격리, 미확정 WRITE/초기값 경계를 [Phase 5.2](./PHASE5_2.md)에 기록했다. `pnpm gate` PASS; 마지막 미확정 초기값 반례 뒤 sync 53개 테스트·타입·lint·ESM 소비자 타입/smoke PASS.
+- next: F2-03 관찰자별 placeholder/select와 의존·파생 조회의 view 경계를 먼저 고정하고 구현한다. Phase 5 나머지 F2와 Phase 6/8 게이트는 별도다.
+- blockers: 전체 F2 동등성·영속화/오프라인/재개·UI·draft 통합 미완료. 즉시 작업을 막는 외부 blocker는 없다.
+- 시작 기준 구현 commit: `b25924e`. Phase 5.2 구현·테스트·문서는 같은 변경으로 기록한다.
 
 ### 2026-09-21 — Phase 5.1 clean SSR 전달
 

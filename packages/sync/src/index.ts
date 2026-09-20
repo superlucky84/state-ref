@@ -5,6 +5,7 @@ import { hashQueryKey } from './key';
 import type { QueryKey } from './key';
 import { ResourceStore } from './resource';
 import type { ResourceChange, ResourceSubmission } from './resource';
+import { frozenCopy } from './tree';
 import { createMutation } from './mutation';
 import type { MutationHandle, MutationLink, MutationOptions } from './mutation';
 import { copyJson, parseSnapshot } from './hydration';
@@ -53,6 +54,10 @@ export type QueryOptions<T> = Readonly<{
   gcTime?: number;
   retry?: number;
   retryDelay?: (attempt: number) => number;
+  /** A known server value used only while the key has no baseline. */
+  initialData?: T;
+  /** Timestamp of initialData; defaults to the time it is installed. */
+  initialUpdatedAt?: number;
 }>;
 
 export type QueryHandle<T> = Readonly<{
@@ -74,6 +79,12 @@ export type QueryHandle<T> = Readonly<{
 
 export type SyncClient = Readonly<{
   query: <T>(options: QueryOptions<T>) => QueryHandle<T>;
+  /** Return a fresh cached baseline or perform a READ. */
+  fetch: <T>(options: QueryOptions<T>) => Promise<T>;
+  /** Best-effort fetch that caches success and swallows load rejections. */
+  prefetch: <T>(options: QueryOptions<T>) => Promise<void>;
+  /** Return a confirmed cached baseline even when stale, or perform a READ. */
+  ensure: <T>(options: QueryOptions<T>) => Promise<T>;
   mutation: <I, T>(options: MutationOptions<I, T>) => MutationHandle<I, T>;
   invalidate: (key: QueryKey) => void;
   remove: (key: QueryKey) => boolean;
@@ -153,11 +164,15 @@ class QueryEntry<T> {
   }
 
   configure(options: QueryOptions<T>) {
+    this.assertCompatible(options);
+    this.options = options;
+    this.cancelGc();
+  }
+
+  assertCompatible(options: QueryOptions<T>) {
     if ((options.editable ?? true) !== (this.options.editable ?? true)) {
       throw new TypeError('A query key cannot mix editable and readonly data.');
     }
-    this.options = options;
-    this.cancelGc();
   }
 
   private snapshot(patch: Partial<QueryStatus> = {}) {
@@ -224,8 +239,8 @@ class QueryEntry<T> {
     this.statusAbort.abort();
   }
 
-  isStale() {
-    const staleTime = this.options.staleTime ?? 0;
+  isStale(options: QueryOptions<T> = this.options) {
+    const staleTime = options.staleTime ?? 0;
     checkDuration(staleTime, 'staleTime');
     return (
       !this.statusValue.loaded ||
@@ -248,6 +263,20 @@ class QueryEntry<T> {
     if (!this.resource)
       throw new Error('Query data is not loaded. Call load() first.');
     return this.resource;
+  }
+
+  hasConfirmedBaseline() {
+    return (
+      this.statusValue.loaded &&
+      this.resource !== null &&
+      !this.statusValue.unconfirmed &&
+      !this.linked
+    );
+  }
+
+  serverValue(): T {
+    const value = this.getResource().serverValue();
+    return this.options.editable ?? true ? (frozenCopy(value) as T) : value;
   }
 
   isDirty() {
@@ -294,13 +323,10 @@ class QueryEntry<T> {
     });
   }
 
-  hydrate(seed: HydratedQuery) {
-    if (this.resource || this.statusValue.loaded) {
-      throw new Error('Hydration requires an empty query entry.');
-    }
+  private seedBaseline(value: T, updatedAt: number, invalidated: boolean) {
     this.resource = new ResourceStore(
-      seed.data as T,
-      seed.editable,
+      value,
+      this.options.editable ?? true,
       () => this.snapshot(),
       this.flush
     );
@@ -309,11 +335,29 @@ class QueryEntry<T> {
       fetchStatus: 'idle',
       loaded: true,
       error: null,
-      updatedAt: seed.updatedAt,
-      invalidated: seed.invalidated,
+      updatedAt,
+      invalidated,
       unconfirmed: false,
     });
     this.scheduleGc();
+  }
+
+  seedInitial(value: T, updatedAt: number) {
+    if (
+      this.resource ||
+      this.pending ||
+      this.linked ||
+      this.statusValue.unconfirmed
+    )
+      return;
+    this.seedBaseline(value, updatedAt, false);
+  }
+
+  hydrate(seed: HydratedQuery) {
+    if (this.resource || this.statusValue.loaded) {
+      throw new Error('Hydration requires an empty query entry.');
+    }
+    this.seedBaseline(seed.data as T, seed.updatedAt, seed.invalidated);
   }
 
   markUnconfirmed() {
@@ -391,7 +435,8 @@ class QueryEntry<T> {
   load(
     force = false,
     submission?: ResourceSubmission<T>,
-    linked = false
+    linked = false,
+    requestOptions: QueryOptions<T> = this.options
   ): Promise<T> {
     if (this.removed)
       return Promise.reject(new Error('This query entry has expired.'));
@@ -400,14 +445,14 @@ class QueryEntry<T> {
         new Error('A linked operation is pending for this query.')
       );
     if (this.pending && !force) return this.pending;
-    if (!force && !this.isStale())
-      return Promise.resolve(this.getResource().serverValue());
+    if (!force && !this.isStale(requestOptions))
+      return Promise.resolve(this.serverValue());
     if (force && this.pending) this.invalidate();
 
     const currentEpoch = ++this.epoch;
     const controller = new AbortController();
     this.controller = controller;
-    const options = this.options;
+    const options = requestOptions;
     const retry = options.retry ?? (this.ssr ? 0 : 3);
     checkDuration(retry, 'retry');
     const delay =
@@ -457,7 +502,7 @@ class QueryEntry<T> {
             unconfirmed: false,
           });
         }
-        return value;
+        return options.editable ?? true ? (frozenCopy(value) as T) : value;
       }
     })();
     this.pending = task;
@@ -505,17 +550,54 @@ export function createSyncClient(options: { ssr?: boolean } = {}): SyncClient {
     entries.delete(hash);
     entry.expire();
   };
-  return Object.freeze({
-    query<T>(queryOptions: QueryOptions<T>): QueryHandle<T> {
-      const hash = hashQueryKey(queryOptions.queryKey);
-      checkDuration(queryOptions.staleTime ?? 0, 'staleTime');
-      checkDuration(queryOptions.gcTime ?? 0, 'gcTime');
-      let entry = entries.get(hash) as QueryEntry<T> | undefined;
-      if (entry) entry.configure(queryOptions);
-      else {
-        entry = new QueryEntry(hash, queryOptions, options.ssr ?? false, evict);
-        entries.set(hash, entry);
+  const getOrCreate = <T>(
+    queryOptions: QueryOptions<T>,
+    configureExisting: boolean
+  ): QueryEntry<T> => {
+    const hash = hashQueryKey(queryOptions.queryKey);
+    checkDuration(queryOptions.staleTime ?? 0, 'staleTime');
+    checkDuration(queryOptions.gcTime ?? 0, 'gcTime');
+    if (queryOptions.initialUpdatedAt !== undefined) {
+      if (
+        !Number.isFinite(queryOptions.initialUpdatedAt) ||
+        queryOptions.initialUpdatedAt < 0
+      ) {
+        throw new RangeError('initialUpdatedAt must be a finite timestamp.');
       }
+      if (queryOptions.initialData === undefined) {
+        throw new TypeError('initialUpdatedAt requires initialData.');
+      }
+    }
+    let entry = entries.get(hash) as QueryEntry<T> | undefined;
+    if (entry) {
+      entry.assertCompatible(queryOptions);
+      if (queryOptions.initialData !== undefined) {
+        entry.seedInitial(
+          queryOptions.initialData,
+          queryOptions.initialUpdatedAt ?? Date.now()
+        );
+      }
+      if (configureExisting) entry.configure(queryOptions);
+    } else {
+      entry = new QueryEntry(hash, queryOptions, options.ssr ?? false, evict);
+      try {
+        if (queryOptions.initialData !== undefined) {
+          entry.seedInitial(
+            queryOptions.initialData,
+            queryOptions.initialUpdatedAt ?? Date.now()
+          );
+        }
+      } catch (error) {
+        entry.expire();
+        throw error;
+      }
+      entries.set(hash, entry);
+    }
+    return entry;
+  };
+  const client: SyncClient = Object.freeze({
+    query<T>(queryOptions: QueryOptions<T>): QueryHandle<T> {
+      const entry = getOrCreate(queryOptions, true);
       entry.attach();
       let active = true;
       const controllers = new Set<AbortController>();
@@ -612,6 +694,36 @@ export function createSyncClient(options: { ssr?: boolean } = {}): SyncClient {
       const frozen = Object.freeze(handle);
       handles.set(frozen, entry);
       return frozen;
+    },
+    async fetch<T>(queryOptions: QueryOptions<T>): Promise<T> {
+      const entry = getOrCreate(queryOptions, false);
+      entry.attach();
+      try {
+        return await entry.load(false, undefined, false, queryOptions);
+      } finally {
+        entry.detach();
+      }
+    },
+    async prefetch<T>(queryOptions: QueryOptions<T>): Promise<void> {
+      const entry = getOrCreate(queryOptions, false);
+      entry.attach();
+      try {
+        await entry.load(false, undefined, false, queryOptions);
+      } catch {
+        // Prefetch is best-effort; a later fetch still observes the error.
+      } finally {
+        entry.detach();
+      }
+    },
+    async ensure<T>(queryOptions: QueryOptions<T>): Promise<T> {
+      const entry = getOrCreate(queryOptions, false);
+      entry.attach();
+      try {
+        if (entry.hasConfirmedBaseline()) return entry.serverValue();
+        return await entry.load(false, undefined, false, queryOptions);
+      } finally {
+        entry.detach();
+      }
     },
     mutation<I, T>(mutationOptions: MutationOptions<I, T>) {
       return createMutation(
@@ -749,4 +861,5 @@ export function createSyncClient(options: { ssr?: boolean } = {}): SyncClient {
     },
     size: () => entries.size,
   });
+  return client;
 }

@@ -64,6 +64,18 @@ assert.equal(hydrated.ref.count.value, 7);
 assert.equal(hydrated.status.unconfirmed.value, false);
 hydratedSource.dispose();
 hydrated.dispose();
+const preparedClient = createSyncClient({ ssr: true });
+const prepared = {
+  queryKey: ['prepared'],
+  queryFn: () => ({ count: 3 }),
+  initialData: { count: 2 },
+  staleTime: Infinity,
+};
+await preparedClient.prefetch(prepared);
+assert.deepEqual(await preparedClient.ensure(prepared), { count: 2 });
+assert.deepEqual(await preparedClient.fetch(prepared), { count: 2 });
 assert.equal(submitted.changes.length, 1);
 query.dispose();
-console.log('sync ESM bundle: query, resource, mutation and hydration PASS');
+console.log(
+  'sync ESM bundle: query, mutation, hydration and cache helpers PASS'
+);
