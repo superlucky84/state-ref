@@ -25,8 +25,16 @@ export type ResourceChange = Readonly<{
   conflict: boolean;
 }>;
 
+export type ResourceSubmission<T> = Readonly<{
+  owner: object;
+  version: number;
+  value: T;
+  changes: readonly ResourceChange[];
+}>;
+
 type Edit = {
   id: number;
+  version: number;
   path: DataPath;
   original: Located;
   after: unknown;
@@ -53,6 +61,8 @@ export class ResourceStore<T> {
   private readonly link: ReturnType<typeof connectRef<T>>;
   private readonly journal = createWriteJournal();
   private readonly owner = Object.freeze({});
+  private readonly submissions = new WeakSet<object>();
+  private readonly activeSubmissions = new Set<ResourceSubmission<T>>();
   private readonly stopObserve: () => void;
   private readonly subscriptionAbort = new AbortController();
   private edits: Edit[] = [];
@@ -99,6 +109,7 @@ export class ResourceStore<T> {
           );
           edit = {
             id: this.nextId++,
+            version: this.revision + 1,
             path: atomic,
             original: readPath(this.baseline, atomic),
             after: readPath(next, atomic).value,
@@ -107,11 +118,13 @@ export class ResourceStore<T> {
           this.edits.push(edit);
         }
         this.revision += 1;
+        edit.version = this.revision;
         if (
           sameValue(readPath(this.baseline, edit.path), {
             exists: true,
             value: edit.after,
-          })
+          }) &&
+          !this.activeSubmissions.size
         ) {
           this.edits = this.edits.filter(item => item !== edit);
         } else {
@@ -155,11 +168,24 @@ export class ResourceStore<T> {
   }
 
   isDirty() {
-    return this.edits.length > 0;
+    return this.edits.some(
+      edit =>
+        !sameValue(readPath(this.baseline, edit.path), {
+          exists: true,
+          value: edit.after,
+        })
+    );
   }
 
   conflicts() {
-    return this.edits.filter(edit => edit.conflict).length;
+    return this.edits.filter(
+      edit =>
+        edit.conflict &&
+        !sameValue(readPath(this.baseline, edit.path), {
+          exists: true,
+          value: edit.after,
+        })
+    ).length;
   }
 
   changes(): readonly ResourceChange[] {
@@ -169,39 +195,138 @@ export class ResourceStore<T> {
         value: value.exists ? frozenCopy(value.value) : undefined,
       });
     return Object.freeze(
-      this.edits.map(edit =>
-        Object.freeze({
-          owner: this.owner,
-          id: edit.id,
-          version: this.revision,
-          path: Object.freeze([...edit.path]),
-          before: located(readPath(this.baseline, edit.path)),
-          after: located({ exists: true, value: edit.after }),
-          conflict: edit.conflict,
-        })
-      )
+      this.edits
+        .filter(
+          edit =>
+            !sameValue(readPath(this.baseline, edit.path), {
+              exists: true,
+              value: edit.after,
+            })
+        )
+        .map(edit =>
+          Object.freeze({
+            owner: this.owner,
+            id: edit.id,
+            version: this.revision,
+            path: Object.freeze([...edit.path]),
+            before: located(readPath(this.baseline, edit.path)),
+            after: located({ exists: true, value: edit.after }),
+            conflict: edit.conflict,
+          })
+        )
     );
   }
 
+  capture(ids?: readonly number[]): ResourceSubmission<T> {
+    if (!this.editable) throw new TypeError('This query is readonly.');
+    const selected = this.changes().filter(change =>
+      ids ? ids.includes(change.id) : true
+    );
+    if (
+      ids &&
+      (new Set(ids).size !== ids.length || selected.length !== ids.length)
+    ) {
+      throw new TypeError('Unknown or repeated resource change ID.');
+    }
+    const submission = Object.freeze({
+      owner: this.owner,
+      version: this.revision,
+      value: frozenCopy(this.value()) as T,
+      changes: Object.freeze(selected),
+    });
+    this.submissions.add(submission);
+    return submission;
+  }
+
+  assertSubmission(submission: ResourceSubmission<T>) {
+    if (!submission || !this.submissions.has(submission) || !this.editable) {
+      throw new TypeError('Submission belongs to another resource.');
+    }
+  }
+
+  beginSubmission(submission: ResourceSubmission<T>) {
+    this.assertSubmission(submission);
+    if (submission.version !== this.revision) {
+      throw new Error('Submission is stale. Capture the current edits again.');
+    }
+    this.activeSubmissions.add(submission);
+  }
+
+  endSubmission(submission: ResourceSubmission<T>) {
+    this.activeSubmissions.delete(submission);
+    this.edits = this.edits.filter(
+      edit =>
+        !sameValue(readPath(this.baseline, edit.path), {
+          exists: true,
+          value: edit.after,
+        })
+    );
+  }
+
+  /** Accept a confirmed WRITE without treating newer input as submitted. */
+  acceptSubmitted(submission: ResourceSubmission<T>) {
+    this.assertSubmission(submission);
+    let server: unknown = this.baseline;
+    for (const change of submission.changes) {
+      if (change.owner !== this.owner) {
+        throw new TypeError('Submission contains a foreign change.');
+      }
+      const current = readPath(server, change.path);
+      if (
+        !sameValue(current, change.before) &&
+        !sameValue(current, change.after)
+      ) {
+        throw new Error('Server baseline changed at a submitted path.');
+      }
+      server = replacePath(server, change.path, change.after.value);
+    }
+    this.accept(server as T, submission);
+  }
+
+  /** Remove only unchanged submitted edits after a confirmed rejection. */
+  removeSubmission(submission: ResourceSubmission<T>) {
+    this.assertSubmission(submission);
+    this.accept(this.baseline, submission);
+  }
+
   /** Accept a READ as server baseline, retaining local edits and their origin. */
-  accept(server: T) {
+  accept(server: T, submission?: ResourceSubmission<T>) {
     if (this.editable) assertEditable(server);
+    if (submission) this.assertSubmission(submission);
     const previous = this.value();
-    this.baseline = server;
     let next: unknown = server;
     const remaining: Edit[] = [];
     for (const edit of this.edits) {
+      const submitted = submission?.changes.find(
+        change =>
+          change.id === edit.id &&
+          change.path.length === edit.path.length &&
+          change.path.every((part, index) => part === edit.path[index])
+      );
+      if (
+        submitted &&
+        edit.version <= submission!.version &&
+        sameValue({ exists: true, value: edit.after }, submitted.after)
+      ) {
+        continue;
+      }
       const current = readPath(server, edit.path);
       if (sameValue(current, { exists: true, value: edit.after })) continue;
-      edit.conflict = !sameValue(edit.original, current);
+      const continued = Boolean(submitted);
+      const updated = {
+        ...edit,
+        original: continued ? current : edit.original,
+        conflict: !continued && !sameValue(edit.original, current),
+      };
       try {
         next = replacePath(next, edit.path, edit.after);
       } catch {
-        edit.conflict = true;
+        updated.conflict = true;
         next = preserveBranch(next, previous, edit.path);
       }
-      remaining.push(edit);
+      remaining.push(updated);
     }
+    this.baseline = server;
     this.edits = remaining;
     this.revision += 1;
     this.pendingStatus = true;

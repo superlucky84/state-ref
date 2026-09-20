@@ -1,6 +1,6 @@
 # REQUIREMENTS — state-ref 서버 동기화와 독립 Draft
 
-- 개정일: 2026-09-20. 사용자 최종 결정 반영, Phase 3 query/resource와 Phase 3.5 batch 자동 검증 완료. mutation/전체 서버 기능 동등성은 미구현.
+- 개정일: 2026-09-20. 사용자 최종 결정 반영, Phase 4 mutation·제출 기록·순차 scope 자동 검증까지 진행. 전체 서버 기능 동등성은 미완료.
 - 기준 commit: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`, `state-ref@3.0.2`.
 - 연계: [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 - `R2-*`는 이번 개정의 요구사항이다. 이전 `SR-*`는 당시 커밋의 기록이며 현재 계약으로 사용하지 않는다.

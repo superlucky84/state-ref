@@ -2,7 +2,7 @@
 
 - 기준: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md).
 - 개정일: 2026-09-19. 기준 SHA: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
-- 상태: `feat/server-sync-draft`에서 Phase 3 query/resource와 Phase 3.5 선택적 batch까지 구현·자동 검증했다. mutation과 F2 전체 동등성은 미완료다. [Phase 0](./PHASE0.md), [Phase 1](./PHASE1.md), [Phase 2](./PHASE2.md), [Phase 3](./PHASE3.md), [Phase 3.5](./PHASE3_5.md) 실행 기록.
+- 상태: `feat/server-sync-draft`에서 Phase 4 mutation·제출 기록·수용/실패 복구·순차 scope까지 구현했다. F2 전체 동등성은 미완료다. [Phase 0](./PHASE0.md), [Phase 1](./PHASE1.md), [Phase 2](./PHASE2.md), [Phase 3](./PHASE3.md), [Phase 3.5](./PHASE3_5.md), [Phase 4](./PHASE4.md) 실행 기록.
 - 이전 T/Phase 범위는 기준 commit의 이력이다. 이번 T2/Phase 계획으로 대체한다.
 
 ## 1. 진행 규칙
@@ -133,16 +133,16 @@
 
 **진입:** Phase 3.5 종료, IC2-04의 공개 제출/수용/경쟁 계약을 먼저 확정.
 
-- [ ] 독립 mutation과 arbitrary DTO, 요청별 상태와 callback 수명을 구현한다.
-- [ ] 제출 시점 값·편집 버전 기록과 명시적인 affected query 연결을 구현한다.
-- [ ] 재조회/응답 매핑/계약한 제출값 수용, cache-only 반영, 서버 보정값을 처리한다.
-- [ ] 연결한 ref 쓰기의 작업별 낙관적 기록·실패 제거·입력 유지와 후속 작업 의존성을 검증한다.
-- [ ] WRITE 성공+기준 복구 실패, unknown, revision·operation ID, 오래된 READ 차단을 구현한다.
-- [ ] F2-04와 IC2-04의 결과 타입·오류·순서 계약을 증거와 함께 닫는다.
+- [x] 독립 mutation과 자유로운 DTO, 요청별 상태와 callback 수명을 구현했다.
+- [x] 제출 시점 값·편집 버전 기록과 명시적인 affected query 연결을 구현했다.
+- [x] 재조회/응답 매핑/계약한 제출값 수용, cache-only 반영, 서버 보정값을 처리했다.
+- [x] 연결한 ref 쓰기의 작업별 제출 기록·실패 제거·입력 유지와 후속 부모/자식 입력 보존을 검증했다.
+- [x] WRITE 성공+기준 복구 실패, unknown, revision·operation ID, 오래된 READ 차단을 구현했다.
+- [x] F2-04 기본 병렬·명시적 순차 scope와 IC2-04 결과 타입·오류·같은 key 작업 거절 계약을 [Phase 4](./PHASE4.md)에 기록했다. 전체 기능 동등성 차이는 Phase 5에 남긴다.
 
 **기준 테스트:** T2-08~13/20, T2-23의 F2-04, T2-05/06/22 회귀. 최종 값뿐 아니라 기준·입력·작업·READ/WRITE 횟수를 검증한다.
 
-**종료:** 어떤 입력을 저장했는지 명시적으로 식별, 미제출/후속 입력 보존, 재조회 실패로 성공 WRITE를 다시 보내지 않음.
+**자동 종료:** 어떤 입력을 저장했는지 명시적으로 식별, 미제출/후속 입력 보존, 재조회 실패로 성공 WRITE를 다시 보내지 않는 계약과 명시적 순차 scope를 자동 검증했다. 수동 M2는 Phase 8에 남겼다.
 
 ### Phase 5 — 서버 기능 동등성 확장
 
@@ -216,6 +216,13 @@
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
+
+### 2026-09-20 — Phase 4 기본 mutation·제출 기록
+
+- done: [Phase 4](./PHASE4.md)의 독립 mutation, 제출 snapshot, 명시적 기준 수용, 확정 거절/unknown/WRITE 성공·READ 실패의 결과 union, 늦은 READ 차단과 후속 입력 보존을 구현했다. 타입·ESM smoke 및 자동 테스트를 추가했다.
+- next: Phase 5 전체 서버 기능 차이를 추적하고, Phase 6 resource/draft 조합을 진행한다.
+- blockers: 수동 M2, UI·draft 통합 미완료.
+- 기록 시 최신 commit: `4157ff7`; Phase 4 변경은 미커밋이다.
 
 ### 2026-09-20 — Phase 3.5 선택적 동기 batch 자동 게이트 완료
 

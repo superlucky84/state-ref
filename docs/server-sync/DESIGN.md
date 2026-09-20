@@ -2,7 +2,7 @@
 
 - 개정일: 2026-09-19. 기준: [REQUIREMENTS](./REQUIREMENTS.md).
 - 기준 commit: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
-- 상태: Phase 3의 독립 query/resource와 Phase 3.5의 선택적 batch까지 자동 검증 완료. `[x]` 결정 행은 전체 서버 기능 동등성의 구현·테스트 통과가 아니다.
+- 상태: Phase 4의 mutation·제출 기록·결과 union·명시적 순차 scope까지 자동 검증했다. 전체 서버 기능 동등성은 미완료다. `[x]` 결정 행은 전체 서버 기능 동등성의 구현·테스트 통과가 아니다.
 - draft 공개 API는 [Phase 2 기록](./PHASE2.md)에 고정했다. query/resource 기본 API와 지원 범위는 [Phase 3 기록](./PHASE3.md)에 남겼다. mutation과 UI 투영은 후속 검증 대상이다.
 
 ## 1. 결정 목록
@@ -260,13 +260,20 @@ Phase 0에서 서버 엔진의 참조 버전과 key/epoch/기본 타이밍 계�
 - [ ] **IC2-01 / Phase 0~3/8** 코어 연결과 plugin ESM은 Phase 1, `createDraft(ref)` 공개 타입·readonly 원본·종료 ref·선택적 ESM/UMD는 [Phase 2](./PHASE2.md), resource metadata/로드 guard·sync ESM 선언 타입은 [Phase 3](./PHASE3.md)에서 확인했다. 5종 커넥터의 실제 UI 투영은 Phase 8에서 검증한다.
 - [x] **IC2-02 / Phase 0~1** opt-in 변경 기록·publication·원본 구독 lifecycle hook. [Phase 1](./PHASE1.md)의 `state-ref/plugin` 연결, 출처/버전 기록·재진입 guard와 코어 gate·고정 Node 비용을 검증했다. draft의 종료 ref·resource GC와 공개 API는 IC2-01/05 및 후속 단계에 남아 있다.
 - [x] **IC2-03 / Phase 0** 독립 query/mutation 엔진의 설계 계약, `@tanstack/query-core@5.103.1` 기준, F2 목록·기본값·단계, key/epoch/timing 독립 실험을 [Phase 0 기록](./PHASE0.md)에 고정했다. 실제 엔진·기능 동등성 검증은 미완료다.
-- [ ] **IC2-04 / Phase 0~4** 자유로운 DTO와 제출 기록, 영향을 주는 query 연결, epoch/revision, 서버 보정, unknown 및 사후 READ 실패의 결과 타입·복구 계약을 확정한다. resource 변경을 clean 처리하는 구현은 이를 닫은 뒤 진행한다.
+- [x] **IC2-04 / Phase 0~4** 자유로운 DTO와 제출 snapshot, 명시적 query 연결, epoch/revision, 서버 보정, unknown 및 사후 READ 실패의 결과 타입·복구 계약과 명시적 순차 scope를 [Phase 4](./PHASE4.md)에서 확정·자동 검증했다. 전체 기능 동등성은 별도 잔여 범위다.
 - [ ] **IC2-05 / Phase 0~6** 일반 로컬 원본의 현재 기준, 원자적 local apply·재진입·부모 소멸·배열 경계·원본 유지와 해제는 [Phase 2](./PHASE2.md)에서 검증했다. resource 원본의 pending overlay·복구·두 기준 결합은 Phase 6에서 검증해야 한다.
 - [ ] **IC2-06 / Phase 0~5** hydration/영속화 시 서버 기준과 로컬 변경·진행 작업을 구별하는 저장 형식, 개발 도구와 플랫폼 통합을 설계한다. 지원되지 않는 사례와 배포 단계를 명시하며 전체 동등성으로 오인시키지 않는다.
 
 IC2-03의 목록은 최소 범위를 확정하는 게이트다. 구현 중 새 기능이나 호환성 차이를 발견하면 F2 목록과 테스트를 함께 갱신하고, 출시 범위를 줄이는 결정이 필요하면 이유와 미지원 항목을 명시한다.
 
 ## 9. 인계
+
+### 2026-09-20 — Phase 4 기본 mutation·제출 기록
+
+- done: [Phase 4 기록](./PHASE4.md)의 독립 mutation, 명시적 제출/기준 수용, 보정 응답과 후속 입력, 거절/unknown/동기화 실패 결과와 오래된 READ 차단의 자동 검증.
+- next: Phase 5 서버 기능 목록, Phase 6 resource/draft 결합. M2 수동 검증은 Phase 8.
+- blockers: 전체 동등성·수동 M2와 UI/draft 통합 미완료.
+- 기록 시 최신 commit: `4157ff7`; Phase 4 구현은 미커밋이다.
 
 ### 2026-09-20 — Phase 3.5 선택적 동기 batch
 

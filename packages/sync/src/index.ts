@@ -4,11 +4,27 @@ import { guardRef, guardedWatch } from './ref-guard';
 import { hashQueryKey } from './key';
 import type { QueryKey } from './key';
 import { ResourceStore } from './resource';
-import type { ResourceChange } from './resource';
+import type { ResourceChange, ResourceSubmission } from './resource';
+import { createMutation } from './mutation';
+import type { MutationHandle, MutationLink, MutationOptions } from './mutation';
 
 export { hashQueryKey } from './key';
 export type { QueryKey } from './key';
-export type { ResourceChange, ResourceValue } from './resource';
+export { MutationRejectedError } from './mutation';
+export type {
+  ResourceChange,
+  ResourceValue,
+  ResourceSubmission,
+} from './resource';
+export type {
+  MutationHandle,
+  MutationLink,
+  MutationOperation,
+  MutationOptions,
+  MutationResult,
+  MutationRunOptions,
+  MutationStatus,
+} from './mutation';
 
 export type QueryStatus = Readonly<{
   status: 'pending' | 'success' | 'error';
@@ -20,6 +36,7 @@ export type QueryStatus = Readonly<{
   dirty: boolean;
   conflicts: number;
   version: number;
+  pending: number;
 }>;
 
 export type QueryOptions<T> = Readonly<{
@@ -44,11 +61,15 @@ export type QueryHandle<T> = Readonly<{
   isDirty: () => boolean;
   changes: () => readonly ResourceChange[];
   version: () => number;
+  capture: (ids?: readonly number[]) => ResourceSubmission<T>;
+  /** Accept a known server value without a WRITE. */
+  acceptServer: (value: T) => void;
   dispose: () => void;
 }>;
 
 export type SyncClient = Readonly<{
   query: <T>(options: QueryOptions<T>) => QueryHandle<T>;
+  mutation: <I, T>(options: MutationOptions<I, T>) => MutationHandle<I, T>;
   invalidate: (key: QueryKey) => void;
   remove: (key: QueryKey) => boolean;
   size: () => number;
@@ -95,6 +116,7 @@ class QueryEntry<T> {
       dirty: false,
       conflicts: 0,
       version: 0,
+      pending: 0,
     }),
     { autoSync: false }
   );
@@ -109,6 +131,7 @@ class QueryEntry<T> {
   private gcTimer: ReturnType<typeof setTimeout> | null = null;
   private statusValue: QueryStatus = this.rawStatus.value;
   private staged = false;
+  private linked = 0;
   private options: QueryOptions<T>;
 
   constructor(
@@ -168,7 +191,13 @@ class QueryEntry<T> {
   }
 
   private scheduleGc() {
-    if (this.owners > 0 || this.pending || this.resource?.isDirty()) return;
+    if (
+      this.owners > 0 ||
+      this.pending ||
+      this.linked ||
+      this.resource?.isDirty()
+    )
+      return;
     const time = this.options.gcTime ?? (this.ssr ? Infinity : 300_000);
     if (!Number.isFinite(time)) return;
     this.cancelGc();
@@ -223,9 +252,83 @@ class QueryEntry<T> {
     return this.resource?.version() ?? 0;
   }
 
-  load(force = false): Promise<T> {
+  canLink() {
+    if (this.removed || this.linked) {
+      throw new Error('A linked operation is already pending for this query.');
+    }
+  }
+
+  statusValuePending() {
+    return this.linked > 0;
+  }
+
+  beginLink() {
+    this.linked += 1;
+    this.epoch += 1; // Existing READ results cannot enter this baseline.
+    this.controller?.abort();
+    this.controller = null;
+    this.pending = null;
+    this.publish({
+      invalidated: true,
+      fetchStatus: 'idle',
+      pending: this.linked,
+    });
+  }
+
+  endLink() {
+    this.linked -= 1;
+    this.publish({ pending: this.linked });
+    this.scheduleGc();
+  }
+
+  acceptServer(value: T, submission?: ResourceSubmission<T>) {
+    if (this.resource) this.resource.accept(value, submission);
+    else {
+      if (submission)
+        throw new TypeError('An unloaded query cannot have a submission.');
+      this.resource = new ResourceStore(
+        value,
+        this.options.editable ?? true,
+        () => this.snapshot(),
+        this.flush
+      );
+    }
+    this.publish({
+      status: 'success',
+      loaded: true,
+      error: null,
+      updatedAt: Date.now(),
+      invalidated: false,
+    });
+  }
+
+  acceptSubmitted(submission: ResourceSubmission<T>) {
+    this.getResource().acceptSubmitted(submission);
+    this.publish({
+      status: 'success',
+      loaded: true,
+      error: null,
+      updatedAt: Date.now(),
+      invalidated: false,
+    });
+  }
+
+  removeSubmission(submission: ResourceSubmission<T>) {
+    this.getResource().removeSubmission(submission);
+    this.publish();
+  }
+
+  load(
+    force = false,
+    submission?: ResourceSubmission<T>,
+    linked = false
+  ): Promise<T> {
     if (this.removed)
       return Promise.reject(new Error('This query entry has expired.'));
+    if (this.linked && !linked)
+      return Promise.reject(
+        new Error('A linked operation is pending for this query.')
+      );
     if (this.pending && !force) return this.pending;
     if (!force && !this.isStale())
       return Promise.resolve(this.getResource().serverValue());
@@ -262,7 +365,7 @@ class QueryEntry<T> {
         }
         if (currentEpoch === this.epoch && !this.removed) {
           try {
-            if (this.resource) this.resource.accept(value);
+            if (this.resource) this.resource.accept(value, submission);
             else {
               this.resource = new ResourceStore(
                 value,
@@ -303,8 +406,29 @@ class QueryEntry<T> {
 /** One client owns one cache. Construct a new client for each SSR request. */
 export function createSyncClient(options: { ssr?: boolean } = {}): SyncClient {
   const entries = new Map<string, QueryEntry<any>>();
+  const handles = new WeakMap<object, QueryEntry<any>>();
+  const scopes = new Map<string, Promise<void>>();
+  let nextOperationId = 1;
+  const schedule = <R>(scope: string, task: () => Promise<R>): Promise<R> => {
+    const previous = scopes.get(scope) ?? Promise.resolve();
+    const result = previous.then(task);
+    const settled = result.then(
+      () => {},
+      () => {}
+    );
+    scopes.set(scope, settled);
+    void settled.then(() => {
+      if (scopes.get(scope) === settled) scopes.delete(scope);
+    });
+    return result;
+  };
   const evict = (hash: string, entry: QueryEntry<any>) => {
-    if (entries.get(hash) !== entry || entry.owners > 0 || entry.isDirty())
+    if (
+      entries.get(hash) !== entry ||
+      entry.owners > 0 ||
+      entry.isDirty() ||
+      entry.statusValuePending()
+    )
       return;
     entries.delete(hash);
     entry.expire();
@@ -394,6 +518,17 @@ export function createSyncClient(options: { ssr?: boolean } = {}): SyncClient {
           assertActive();
           return entry!.version();
         },
+        capture: ids => {
+          assertActive();
+          return entry!.getResource().capture(ids);
+        },
+        acceptServer: value => {
+          assertActive();
+          if (entry!.statusValuePending())
+            throw new Error('A linked operation is pending for this query.');
+          entry!.invalidate();
+          entry!.acceptServer(value);
+        },
         dispose: () => {
           if (!active) return;
           active = false;
@@ -402,7 +537,78 @@ export function createSyncClient(options: { ssr?: boolean } = {}): SyncClient {
           entry!.detach();
         },
       };
-      return Object.freeze(handle);
+      const frozen = Object.freeze(handle);
+      handles.set(frozen, entry);
+      return frozen;
+    },
+    mutation<I, T>(mutationOptions: MutationOptions<I, T>) {
+      return createMutation(
+        mutationOptions,
+        () => nextOperationId++,
+        links => {
+          const seen = new Set<QueryEntry<any>>();
+          const prepared = links.map((link: MutationLink<T>) => {
+            const entry = handles.get(link.query);
+            if (!entry)
+              throw new TypeError('Linked query belongs to another client.');
+            link.query.version(); // Disposed handles fail before the WRITE starts.
+            entry.canLink();
+            if (seen.has(entry))
+              throw new TypeError(
+                'A query may be linked only once per operation.'
+              );
+            seen.add(entry);
+            const submission = link.submission;
+            const onReject = link.onReject;
+            const resource = submission ? entry.getResource() : null;
+            if (submission) resource!.assertSubmission(submission);
+            if (submission && resource!.version() !== submission.version) {
+              throw new Error(
+                'Submission is stale. Capture the current edits again.'
+              );
+            }
+            const accept = link.accept ?? { kind: 'none' as const };
+            if (accept.kind === 'submitted' && !submission) {
+              throw new TypeError(
+                'Submitted acceptance requires a submission.'
+              );
+            }
+            if (onReject === 'remove' && !submission) {
+              throw new TypeError(
+                'Removing rejected edits requires a submission.'
+              );
+            }
+            return {
+              begin: () => {
+                if (submission) resource!.beginSubmission(submission);
+                try {
+                  entry.beginLink();
+                } catch (error) {
+                  if (submission) resource!.endSubmission(submission);
+                  throw error;
+                }
+              },
+              success: async (data: T) => {
+                if (accept.kind === 'submitted')
+                  entry.acceptSubmitted(submission!);
+                else if (accept.kind === 'response')
+                  entry.acceptServer(accept.select(data), submission);
+                else if (accept.kind === 'refetch')
+                  await entry.load(true, submission, true);
+              },
+              reject: () => {
+                if (onReject === 'remove') entry.removeSubmission(submission!);
+              },
+              end: () => {
+                if (submission) entry.getResource().endSubmission(submission);
+                entry.endLink();
+              },
+            };
+          });
+          return prepared;
+        },
+        schedule
+      );
     },
     invalidate(key: QueryKey) {
       entries.get(hashQueryKey(key))?.invalidate();
@@ -410,7 +616,13 @@ export function createSyncClient(options: { ssr?: boolean } = {}): SyncClient {
     remove(key: QueryKey) {
       const hash = hashQueryKey(key);
       const entry = entries.get(hash);
-      if (!entry || entry.owners > 0 || entry.isDirty()) return false;
+      if (
+        !entry ||
+        entry.owners > 0 ||
+        entry.isDirty() ||
+        entry.statusValuePending()
+      )
+        return false;
       evict(hash, entry);
       return true;
     },

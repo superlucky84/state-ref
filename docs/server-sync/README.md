@@ -1,8 +1,8 @@
 # state-ref 서버 동기화와 독립 Draft 설계
 
-상태: 2026-09-20 Phase 3 query/resource와 최우선 Phase 3.5의 선택적 동기 `batch`까지 구현·자동 검증했다. **다음 작업은 Phase 4 mutation·제출 기록·실패 복구**다. state-ref 코어·서버 동기화 헬퍼·draft 헬퍼를 선택적으로 조합한다. 서버 기능은 계속 추진하며, TanStack Query의 query/mutation 모델과 기능을 참고하되 런타임 독립을 지향한다.
+상태: 2026-09-20 Phase 4 mutation·제출 기록·실패 결과·명시적 순차 scope까지 구현했다. **다음 작업은 Phase 5 기능 확장과 Phase 6 resource/draft 조합**이다. state-ref 코어·서버 동기화 헬퍼·draft 헬퍼를 선택적으로 조합한다. 서버 기능은 계속 추진하며, TanStack Query의 query/mutation 모델과 기능을 참고하되 런타임 독립을 지향한다.
 
-서버 싱크는 코어 빌드에 합치지 않고 별도로 설치·import하는 `@stateref/sync` 패키지로 개발한다. draft와 batch는 같은 `state-ref` 패키지의 선택적 `state-ref/draft`·`state-ref/batch` 진입점으로 제공한다. 코어의 범용 `onWrite` 연결은 draft 편집과 서버 resourceRef 직접 편집의 기록에 모두 쓴다. 현재 sync는 query/resource까지 제공하며 mutation·저장 수용은 Phase 4에서 진행한다.
+서버 싱크는 코어 빌드에 합치지 않고 별도로 설치·import하는 `@stateref/sync` 패키지로 개발한다. draft와 batch는 같은 `state-ref` 패키지의 선택적 `state-ref/draft`·`state-ref/batch` 진입점으로 제공한다. 코어의 범용 `onWrite` 연결은 draft 편집과 서버 resourceRef 직접 편집의 기록에 모두 쓴다. sync는 query/resource와 독립 mutation·명시적 저장 수용을 제공한다.
 
 UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우저에서는 `state-ref.umd.js`/`stateRef` 다음에 필요에 따라 `state-ref.draft.umd.js`/`stateRefDraft`와 `state-ref.batch.umd.js`/`stateRefBatch`를 로드한다. draft의 코어 누락 오류와 batch의 core→batch 스크립트 동작을 자동 browser smoke로 확인했다.
 
@@ -14,6 +14,7 @@ UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우�
 2. [DESIGN](./DESIGN.md): helper 경계, 두 변경 기준, local apply와 mutation, DC2/IC2/F2.
 3. [IMPLEMENT](./IMPLEMENT.md): T2 검증, Phase 0~8의 진입·종료, Test Hardening과 Integration Test.
 4. [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md): M2-01~20의 수동 절차와 합격 기준. M2-02에 batch 검증을 추가했다.
+5. [PHASE4](./PHASE4.md): mutation·제출 snapshot·서버 기준 수용·실패 결과의 구현/검증과 남은 F2-04 차이.
 5. [PHASE0](./PHASE0.md): 새 구현 브랜치의 기준 측정, 계약 실험, F2 참조 목록.
 6. [PHASE1](./PHASE1.md): opt-in setter·`state-ref/plugin` 연결과 남은 공개 계약.
 7. [PHASE2](./PHASE2.md): 선택적 draft 구현·검증, 지원 데이터 경계와 남은 resource 결합.
@@ -23,6 +24,10 @@ UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우�
 ## Phase 3.5 완료 — 명시적 동기 batch
 
 `batch`는 `state-ref/batch`에서 import한다. 일반 core ref의 여러 쓰기를 한 스코프로 묶고, 각 값은 즉시 반영하되 변경 알림은 가장 바깥 `batch`가 끝날 때 동기적으로 합친다. `watch(callback)`에 전달된 ref와 `watch()`가 반환한 ref 모두 같은 스토어의 공통 setter를 사용하므로 두 쓰기 형태에 똑같이 적용한다. 중첩 batch, 최초 `watch` 콜백, 수동 sync, draft/resource metadata, 5종 커넥터의 자동 검증은 [Phase 3.5 기록](./PHASE3_5.md)에 남겼다. 마이크로태스크 스케줄러는 사용하지 않는다. M2 수동 체크리스트는 Phase 8에 남아 있다.
+
+## Phase 4 진행 — mutation과 제출 기록
+
+`client.mutation(...)`은 조회 데이터와 다른 DTO로도 실행된다. resource 편집은 `query.capture()`로 제출할 변경을 고정하고 mutation의 `links`에서 서버 기준을 `refetch`·응답 매핑·제출값 수용 중 하나로 명시한다. 저장 중 추가 입력을 보존하며, 확정 거절·결과 불명·WRITE 성공 뒤 READ 실패를 구분한다. 명시적 `scope`는 서로 다른 mutation의 실행을 순차화한다. 공개 예제와 제한은 [sync 패키지 README](../../packages/sync/README.md), 검증 범위는 [Phase 4 기록](./PHASE4.md)에 있다. 수동 M2는 아직 완료로 표시하지 않는다.
 
 ## 확정한 사용 의미
 
