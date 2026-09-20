@@ -2,7 +2,7 @@
 
 - 개정일: 2026-09-19. 기준: [REQUIREMENTS](./REQUIREMENTS.md).
 - 기준 commit: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
-- 상태: Phase 3의 독립 query/resource 기본 경로까지 자동 검증 완료. `[x]` 결정 행은 전체 서버 기능 동등성의 구현·테스트 통과가 아니다.
+- 상태: Phase 3의 독립 query/resource와 Phase 3.5의 선택적 batch까지 자동 검증 완료. `[x]` 결정 행은 전체 서버 기능 동등성의 구현·테스트 통과가 아니다.
 - draft 공개 API는 [Phase 2 기록](./PHASE2.md)에 고정했다. query/resource 기본 API와 지원 범위는 [Phase 3 기록](./PHASE3.md)에 남겼다. mutation과 UI 투영은 후속 검증 대상이다.
 
 ## 1. 결정 목록
@@ -26,7 +26,7 @@
 | DC2-15 | [x] 기존 scope/직접 draft 서버 저장 계약 대체 | 이번 결정 이전 예시를 구현 근거로 사용하지 않음 | R2-08/17, T2-08/17 |
 | DC2-16 | [x] draft의 ref/Watch와 반응형 status를 payload 밖에서 제공 | 기존 5종 커넥터 입력 형식을 재사용하고 metadata 필드 충돌을 피함 | R2-20/24/25, T2-20/24/25 |
 | DC2-17 | [x] 원본 알림은 재검사 신호, 편집 경로와 과거 기준은 draft가 소유 | 부모 객체 참조 변화만으로 충돌을 판정하지 않고 무관한 원본 갱신을 병합 | R2-16/17, T2-16/17 |
-| DC2-18 | [ ] 명시적 동기 `batch(fn)`을 Phase 3.5에서 우선 검증 | `watch` 콜백 ref와 보관 ref 모두 같은 setter를 사용하며, 비동기 스케줄러 없이 알림 횟수를 줄여야 함 | R2-27, T2-27 |
+| DC2-18 | [x] 선택적 `state-ref/batch`에서 명시적 동기 `batch(fn)` | `watch` 콜백 ref와 보관 ref 모두 같은 setter를 사용하며, 비동기 스케줄러 없이 알림 횟수를 줄임. [Phase 3.5](./PHASE3_5.md) 자동 검증 | R2-27, T2-27 |
 
 이전 DC-01~21의 의미는 기준 commit의 Git 이력에 보존된다. 이번 문서의 DC2와 혼용하지 않는다.
 
@@ -59,9 +59,12 @@
 
 ### 명시적 동기 batch 계획
 
-Phase 3 다음의 최우선 구현 검토다. 다음 코드는 **목표 API 예시이며 현재 실행 가능한 API가 아니다.** 공개 export 위치와 코어 번들 비용은 Phase 3.5에서 결정한다.
+Phase 3.5에서 구현한 공개 API다. 기본 코어에 배치 본체를 넣지 않고 선택적 진입점으로 분리했다. 코어 번들 비용과 검증 결과는 [Phase 3.5](./PHASE3_5.md)에 기록했다.
 
 ```ts
+import { createStore } from 'state-ref';
+import { batch } from 'state-ref/batch';
+
 const watch = createStore({ apply: false, b: 0, c: 0 });
 
 watch(state => {
@@ -253,7 +256,7 @@ Phase 0에서 서버 엔진의 참조 버전과 key/epoch/기본 타이밍 계�
 
 ## 8. 구현 전 조사 항목
 
-- [ ] **IC2-07 / Phase 3.5 — 최우선** `batch(fn)` 공개 위치·동기 종료/중첩/예외 의미, 같은 store의 후보 경로 합집합, callback 인자/반환 ref, 최초 실행, manual sync, draft/resource metadata, 5종 커넥터 회귀, 코어 크기 예산을 검증한다. 구현 전 목표 계약이며 완료 표시가 아니다.
+- [x] **IC2-07 / Phase 3.5** `batch(fn)` 공개 위치·동기 종료/중첩/예외 의미, 같은 store의 후보 경로 합집합, callback 인자/반환 ref, 최초 실행, manual sync, draft/resource metadata, 5종 커넥터 자동 회귀, 코어 크기 예산을 [Phase 3.5 기록](./PHASE3_5.md)에서 검증했다. 수동 M2는 Phase 8에 남아 있다.
 - [ ] **IC2-01 / Phase 0~3/8** 코어 연결과 plugin ESM은 Phase 1, `createDraft(ref)` 공개 타입·readonly 원본·종료 ref·선택적 ESM/UMD는 [Phase 2](./PHASE2.md), resource metadata/로드 guard·sync ESM 선언 타입은 [Phase 3](./PHASE3.md)에서 확인했다. 5종 커넥터의 실제 UI 투영은 Phase 8에서 검증한다.
 - [x] **IC2-02 / Phase 0~1** opt-in 변경 기록·publication·원본 구독 lifecycle hook. [Phase 1](./PHASE1.md)의 `state-ref/plugin` 연결, 출처/버전 기록·재진입 guard와 코어 gate·고정 Node 비용을 검증했다. draft의 종료 ref·resource GC와 공개 API는 IC2-01/05 및 후속 단계에 남아 있다.
 - [x] **IC2-03 / Phase 0** 독립 query/mutation 엔진의 설계 계약, `@tanstack/query-core@5.103.1` 기준, F2 목록·기본값·단계, key/epoch/timing 독립 실험을 [Phase 0 기록](./PHASE0.md)에 고정했다. 실제 엔진·기능 동등성 검증은 미완료다.
@@ -264,6 +267,13 @@ Phase 0에서 서버 엔진의 참조 버전과 key/epoch/기본 타이밍 계�
 IC2-03의 목록은 최소 범위를 확정하는 게이트다. 구현 중 새 기능이나 호환성 차이를 발견하면 F2 목록과 테스트를 함께 갱신하고, 출시 범위를 줄이는 결정이 필요하면 이유와 미지원 항목을 명시한다.
 
 ## 9. 인계
+
+### 2026-09-20 — Phase 3.5 선택적 동기 batch
+
+- done: [Phase 3.5 기록](./PHASE3_5.md)의 선택적 ESM/UMD `batch`, 동기 구독 알림, draft/resource metadata 및 5종 커넥터 자동 검증. `pnpm gate`와 고정 Node 번들 3,455/3,500 B PASS.
+- next: Phase 4의 IC2-04 제출/수용/경쟁 계약과 mutation·실패 복구. M2 수동 시나리오는 Phase 8에서 수행한다.
+- blockers: mutation/pending overlay·resource/draft 전체 조합은 미완료.
+- 기록 시 최신 commit: `3b99ab1`; Phase 3.5 구현은 미커밋이다.
 
 ### 2026-09-20 — Phase 3 이후 우선순위 변경
 

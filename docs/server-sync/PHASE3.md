@@ -51,4 +51,4 @@ mutation과 자유로운 DTO·제출 기록·서버 기준의 명시적 수용�
 
 ### 후속 순서 변경 (2026-09-20)
 
-Phase 3은 이후 `57bf184`로 커밋했다. 위 `next: Phase 4`는 Phase 3 완료 당시의 기록이다. 현재 최우선 작업은 [IMPLEMENT Phase 3.5](./IMPLEMENT.md#phase-35--명시적-동기-batch-최우선)의 명시적 동기 `batch`이며, 이를 검증한 뒤 Phase 4 mutation을 시작한다. batch는 아직 구현되지 않았다.
+Phase 3은 이후 `57bf184`로 커밋했다. 위 `next: Phase 4`는 Phase 3 완료 당시의 기록이다. 그 사이 최우선으로 진행한 명시적 동기 batch의 결과는 [Phase 3.5](./PHASE3_5.md)에 기록했다. 현재 다음 단계는 Phase 4 mutation이다.

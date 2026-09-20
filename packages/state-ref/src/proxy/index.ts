@@ -4,7 +4,7 @@ import { NAVI, TYPE, NODE_INSPECT, getType } from '@/helper';
 import { childOf, pathToString } from '@/path';
 import type { PathNode } from '@/path';
 import { collector } from '@/connectors/collector';
-import { runner } from '@/connectors/runner';
+import { runBatch } from '@/connectors/runner';
 import { REF_CONNECTION } from '@/internal/ref-connection-key';
 import type { Run, WithRoot, StoreRenderList, RefWrite } from '@/types';
 
@@ -285,8 +285,11 @@ export function makeProxy<S extends WithRoot, T extends object>(
            * Run dependency subscription callbacks, limited to the subscriptions
            * this path can have invalidated.
            */
-          if (autoSync) {
-            runner(storeRenderList, parentNode, segment);
+          if (
+            autoSync &&
+            !runBatch.batch?.write(storeRenderList, parentNode, segment)
+          ) {
+            runBatch(storeRenderList, parentNode, segment);
           }
         }
         return true;

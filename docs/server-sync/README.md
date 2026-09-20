@@ -1,10 +1,10 @@
 # state-ref 서버 동기화와 독립 Draft 설계
 
-상태: 2026-09-20 Phase 3의 독립 query 캐시와 편집 가능한 resource 기본 경로까지 구현·자동 검증했다. **다음 최우선 작업은 명시적 동기 `batch`(Phase 3.5)**이며, 그 뒤에 mutation·제출 기록·실패 복구(Phase 4)를 진행한다. `batch`는 아직 구현되지 않았다. state-ref 코어·서버 동기화 헬퍼·draft 헬퍼를 선택적으로 조합한다. 서버 기능은 계속 추진하며, TanStack Query의 query/mutation 모델과 기능을 참고하되 런타임 독립을 지향한다.
+상태: 2026-09-20 Phase 3 query/resource와 최우선 Phase 3.5의 선택적 동기 `batch`까지 구현·자동 검증했다. **다음 작업은 Phase 4 mutation·제출 기록·실패 복구**다. state-ref 코어·서버 동기화 헬퍼·draft 헬퍼를 선택적으로 조합한다. 서버 기능은 계속 추진하며, TanStack Query의 query/mutation 모델과 기능을 참고하되 런타임 독립을 지향한다.
 
-서버 싱크는 코어 빌드에 합치지 않고 별도로 설치·import하는 `@stateref/sync` 패키지로 개발한다. draft는 같은 `state-ref` 패키지의 선택적 `state-ref/draft` 진입점으로 제공해 별도 설치 없이 쓰되 기본 코어 진입점에는 자동 포함하지 않는다. 코어의 범용 `onWrite` 연결은 draft 편집과 서버 resourceRef 직접 편집의 기록에 모두 쓴다. 현재 sync는 query/resource까지 제공하며 mutation·저장 수용은 batch 이후 Phase 4에서 진행한다.
+서버 싱크는 코어 빌드에 합치지 않고 별도로 설치·import하는 `@stateref/sync` 패키지로 개발한다. draft와 batch는 같은 `state-ref` 패키지의 선택적 `state-ref/draft`·`state-ref/batch` 진입점으로 제공한다. 코어의 범용 `onWrite` 연결은 draft 편집과 서버 resourceRef 직접 편집의 기록에 모두 쓴다. 현재 sync는 query/resource까지 제공하며 mutation·저장 수용은 Phase 4에서 진행한다.
 
-UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우저에서는 `state-ref.umd.js`/`stateRef` 다음에 `state-ref.draft.umd.js`/`stateRefDraft`를 로드한다. 두 스크립트의 동작과 코어 누락 오류를 자동 browser smoke로 확인했다.
+UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우저에서는 `state-ref.umd.js`/`stateRef` 다음에 필요에 따라 `state-ref.draft.umd.js`/`stateRefDraft`와 `state-ref.batch.umd.js`/`stateRefBatch`를 로드한다. draft의 코어 누락 오류와 batch의 core→batch 스크립트 동작을 자동 browser smoke로 확인했다.
 
 대표 경험은 **편집 가능한 resourceRef + 독립 dirty/changes + 한 가지에서 만든 Live Draft + 원본에 대한 명시적인 로컬 반영**이다. 서버 API의 shape를 ref 경로에 맞추도록 요구하지 않는다.
 
@@ -18,10 +18,11 @@ UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우�
 6. [PHASE1](./PHASE1.md): opt-in setter·`state-ref/plugin` 연결과 남은 공개 계약.
 7. [PHASE2](./PHASE2.md): 선택적 draft 구현·검증, 지원 데이터 경계와 남은 resource 결합.
 8. [PHASE3](./PHASE3.md): 별도 sync 패키지의 query/resource 구현·검증과 F2 기능별 남은 범위.
+9. [PHASE3_5](./PHASE3_5.md): 선택적 동기 batch 구현·커넥터·번들 검증 기록.
 
-## 다음 최우선 작업 — 명시적 동기 batch
+## Phase 3.5 완료 — 명시적 동기 batch
 
-`batch(() => { ... })`는 일반 core ref의 여러 쓰기를 한 스코프로 묶고, 각 값은 즉시 반영하되 변경 알림은 가장 바깥 `batch`가 끝날 때 동기적으로 합치는 제안이다. `watch(callback)`에 전달된 ref와 `watch()`가 반환한 ref 모두 같은 스토어의 공통 setter를 사용하므로 두 쓰기 형태에 똑같이 적용한다. 중첩 batch, 최초 `watch` 콜백, 수동 sync, draft/resource metadata, Vue·Svelte 연결의 경계는 [DESIGN의 batch 계약](./DESIGN.md#명시적-동기-batch-계획)과 [IMPLEMENT Phase 3.5](./IMPLEMENT.md#phase-35--명시적-동기-batch-최우선)를 따른다. 마이크로태스크 스케줄러는 사용하지 않는다.
+`batch`는 `state-ref/batch`에서 import한다. 일반 core ref의 여러 쓰기를 한 스코프로 묶고, 각 값은 즉시 반영하되 변경 알림은 가장 바깥 `batch`가 끝날 때 동기적으로 합친다. `watch(callback)`에 전달된 ref와 `watch()`가 반환한 ref 모두 같은 스토어의 공통 setter를 사용하므로 두 쓰기 형태에 똑같이 적용한다. 중첩 batch, 최초 `watch` 콜백, 수동 sync, draft/resource metadata, 5종 커넥터의 자동 검증은 [Phase 3.5 기록](./PHASE3_5.md)에 남겼다. 마이크로태스크 스케줄러는 사용하지 않는다. M2 수동 체크리스트는 Phase 8에 남아 있다.
 
 ## 확정한 사용 의미
 

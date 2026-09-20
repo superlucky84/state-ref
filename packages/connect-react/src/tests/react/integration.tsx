@@ -19,6 +19,7 @@
 import { render as trender, cleanup, act } from '@testing-library/react';
 import { useState } from 'react';
 import { createStore } from 'state-ref';
+import { batch } from 'state-ref/batch';
 import { connectReact } from '@/index';
 
 type Board = {
@@ -39,6 +40,37 @@ if (import.meta.vitest) {
   afterEach(cleanup);
 
   describe('render counts', () => {
+    it('coalesces two store writes for a mounted component', () => {
+      const watch = createStore<Board>(initial());
+      const ref = watch();
+      const useStore = connectReact(watch);
+      const seen: string[] = [];
+      let renders = 0;
+      watch(state => {
+        seen.push(`${state.title.value}:${state.meta.tag.value}`);
+      });
+
+      function View() {
+        const state = useStore();
+        renders += 1;
+        return <div>{`${state.title.value}:${state.meta.tag.value}`}</div>;
+      }
+
+      const { container } = trender(<View />);
+      renders = 0;
+      seen.length = 0;
+      act(() =>
+        batch(() => {
+          ref.title.value = 'next';
+          ref.meta.tag.value = 'b';
+          expect(seen).toEqual([]);
+        })
+      );
+      expect(seen).toEqual(['next:b']);
+      expect(container.textContent).toBe('next:b');
+      expect(renders).toBe(1);
+    });
+
     it('renders only the component whose path moved', () => {
       const watch = createStore<Board>(initial());
       const ref = watch();
@@ -104,11 +136,9 @@ if (import.meta.vitest) {
       expect(renders).toBe(1);
 
       /**
-       * Two writes are two notifications - `INV-4`, and `DC-03`'s decision not
-       * to batch - but one render. React coalesces the two `setState` calls
-       * that result, so the core's refusal to batch costs a React application
-       * nothing here. Measured rather than assumed: the plain subscriber
-       * counts the notifications the connector does not turn into renders.
+       * Outside explicit batch, two writes are two synchronous notifications.
+       * React coalesces the resulting setState calls into one render. The
+       * subscriber count keeps that distinction visible.
        */
       let notifications = 0;
 

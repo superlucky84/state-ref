@@ -15,13 +15,19 @@
  * a consumer would and gzips that.
  *
  * Usage:  pnpm build:core && node packages/state-ref/bench/bundle-size.mjs
- * Env:    CAP (default 3400, bytes gzipped)
+ * Env:    CAP (default 3500, bytes gzipped)
  *
  * The cap was 3,200 through Phase 6.5. Phase 7 raised it to 3,400 to pay for
  * the two defects it found - the teardown that came back (`CI-24`) and the
  * recursion with no floor (`CI-23`). 147 B for a leak that cannot be undone
  * and a stack overflow that reported itself as nothing is a trade the budget
  * exists to allow (`DC-09`, re-resolved 2026-09-18).
+ *
+ * Phase 3.5 raised the cap to 3,500 for the explicit synchronous batch seam.
+ * The previous core was 3,398 B on pinned Node 20.3.0. Keeping the batch
+ * algorithm in the optional state-ref/batch entry leaves only its setter hook
+ * and narrowed candidate runner in the default core: 3,455 B (+57 B). The
+ * separate batch ESM is measured independently. See docs/server-sync/PHASE3_5.md.
  *
  * The gzipped figure depends on the Node that runs this: the same bytes
  * measure 3,347 B on the pinned Node 20.3.0 and 3,320 B on Node 22.13.0,
@@ -41,7 +47,7 @@ import { createRequire } from 'node:module';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const entry = resolve(here, '../dist/state-ref.mjs');
-const cap = Number(process.env.CAP ?? 3400);
+const cap = Number(process.env.CAP ?? 3500);
 
 if (!existsSync(entry)) {
   console.error('dist/state-ref.mjs is missing - run `pnpm build:core` first.');

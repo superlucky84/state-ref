@@ -1,4 +1,4 @@
-import { create } from 'state-ref';
+import * as core from 'state-ref';
 import type { StateRefStore, Watch } from 'state-ref';
 import { connectRef, createWriteJournal, observeRef } from 'state-ref/plugin';
 import {
@@ -71,7 +71,7 @@ export class ResourceStore<T> {
   ) {
     if (editable) assertEditable(initial);
     this.baseline = initial;
-    const store = create(initial, {
+    const store = core.create(initial, {
       onWrite: write => {
         if (this.disposed) throw new Error('This resource has expired.');
         if (this.internalWrite) {
@@ -122,22 +122,25 @@ export class ResourceStore<T> {
         }
         this.pendingStatus = true;
         this.stageStatus();
-        // Equal-value setters have no observeRef notification.
-        queueMicrotask(() => this.publishStatus());
+        // A net-zero batch may have no observeRef notification. Its status
+        // still needs to settle synchronously before batch returns.
+        if (!core.runBatch?.batch?.end(this.publishStatus)) {
+          queueMicrotask(this.publishStatus);
+        }
       },
     });
     this.watch = store.watch;
     this.ref = store.watch(() => this.subscriptionAbort.signal);
     this.link = connectRef(this.ref);
-    this.stopObserve = observeRef(this.ref, () => this.publishStatus());
+    this.stopObserve = observeRef(this.ref, this.publishStatus);
   }
 
-  private publishStatus() {
+  private readonly publishStatus = () => {
     if (this.disposed) return;
     if (!this.pendingStatus) return;
     this.pendingStatus = false;
     this.flushStatus();
-  }
+  };
 
   value(): T {
     return this.link.read() as T;

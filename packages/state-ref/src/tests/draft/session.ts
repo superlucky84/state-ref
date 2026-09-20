@@ -1,10 +1,33 @@
 import { createStore, createStoreManualSync } from '@/core';
+import { batch } from 'state-ref/batch';
 import { createDraft } from '@/draft';
 
 if (import.meta.vitest) {
   const { describe, it, expect } = import.meta.vitest;
 
   describe('independent draft', () => {
+    it('settles primitive status synchronously after a net-zero batch', () => {
+      const source = createStore(0)();
+      const draft = createDraft(source);
+      const seen: number[] = [];
+      draft.watch(state => {
+        seen.push(state.value);
+      });
+
+      batch(() => {
+        draft.ref.value = 1;
+        draft.ref.value = 0;
+        expect(seen).toEqual([0]);
+      });
+      expect(seen).toEqual([0]);
+      expect(draft.isDirty()).toBe(false);
+      expect(draft.changes()).toEqual([]);
+      expect(draft.status.dirty.value).toBe(false);
+      expect(draft.status.version.value).toBe(draft.version());
+      expect(draft.status.version.value).toBeGreaterThan(0);
+      draft.discard();
+    });
+
     it('starts clean from the source current value even after an earlier edit', () => {
       const source = createStore({ city: '서울' })();
       source.city.value = '부산';

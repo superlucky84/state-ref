@@ -80,7 +80,8 @@ export function runner(
    * where the writes went.
    */
   writtenParent?: PathNode,
-  writtenSegment?: string | symbol | null
+  writtenSegment?: string | symbol | null,
+  writtenNodes?: Set<PathNode>
 ) {
   if (passDepth >= MAX_PASS_DEPTH) {
     throw new Error(
@@ -117,7 +118,7 @@ export function runner(
     }
   };
 
-  if (writtenParent) {
+  if (writtenParent || writtenNodes) {
     /**
      * A write moves references only along its own path and through the subtree
      * it replaced, so those are the only nodes worth re-reading - and at each
@@ -134,7 +135,8 @@ export function runner(
         }
       });
 
-    forEachAffected(writtenParent, writtenSegment, visit);
+    if (writtenNodes) writtenNodes.forEach(visit);
+    else forEachAffected(writtenParent!, writtenSegment, visit);
   } else {
     /**
      * A manual `sync()` knows nothing about where the writes landed, so every
@@ -179,6 +181,18 @@ export function runner(
   runableRenewList.clear();
   reportPassErrors(errors);
 }
+
+/** Internal hook installed by the optional state-ref/batch entry point. */
+export const runBatch = runner as typeof runner & {
+  batch?: {
+    write: (
+      subscriptions: StoreRenderList<any>,
+      parent: PathNode,
+      segment: string | symbol | null
+    ) => boolean;
+    end: (callback: () => void) => boolean;
+  };
+};
 
 export function firstRunner<V>(
   run: Run,

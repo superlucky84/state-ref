@@ -24,7 +24,8 @@
     "types": ["vitest/globals", "vitest/importMeta"],
     "paths": {
       "@/*": ["src/*"],
-      "state-ref": ["src/index.ts"]
+      "state-ref": ["src/index.ts"],
+      "state-ref/batch": ["src/batch/index.ts"]
     }
   },
   "include": ["src"],

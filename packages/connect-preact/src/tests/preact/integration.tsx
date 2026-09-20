@@ -10,6 +10,7 @@
 import { render as trender, cleanup, act } from '@testing-library/preact';
 import { h } from 'preact';
 import { createStore } from 'state-ref';
+import { batch } from 'state-ref/batch';
 import { connectPreact } from '@/index';
 
 type Board = { title: string; items: number[]; meta: { tag: string } };
@@ -26,6 +27,37 @@ if (import.meta.vitest) {
   afterEach(cleanup);
 
   describe('Preact render counts', () => {
+    it('coalesces two store writes for a mounted component', () => {
+      const watch = createStore<Board>(initial());
+      const ref = watch();
+      const useStore = connectPreact(watch);
+      const seen: string[] = [];
+      let renders = 0;
+      watch(state => {
+        seen.push(`${state.title.value}:${state.meta.tag.value}`);
+      });
+
+      function View() {
+        const state = useStore();
+        renders += 1;
+        return <div>{`${state.title.value}:${state.meta.tag.value}`}</div>;
+      }
+
+      const { container } = trender(<View />);
+      renders = 0;
+      seen.length = 0;
+      act(() =>
+        batch(() => {
+          ref.title.value = 'next';
+          ref.meta.tag.value = 'b';
+          expect(seen).toEqual([]);
+        })
+      );
+      expect(seen).toEqual(['next:b']);
+      expect(container.textContent).toBe('next:b');
+      expect(renders).toBe(1);
+    });
+
     it('renders only the component whose path moved', () => {
       const watch = createStore<Board>(initial());
       const ref = watch();

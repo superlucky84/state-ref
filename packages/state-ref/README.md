@@ -38,6 +38,28 @@ It is also designed for easy integration with other UI libraries. We provide cod
 
 The basic principle is that the subscription function only reacts to values retrieved through `.value`, and when a value is assigned with `.value=`, the subscription function is triggered if the value is already subscribed.
 
+### Optional synchronous batch
+
+Import `batch` from `state-ref/batch` to group several writes into one synchronous notification pass. Values change immediately inside the callback, and subscribers reading both paths run once with the final values when the outermost batch ends.
+
+```typescript
+import { createStore } from 'state-ref';
+import { batch } from 'state-ref/batch';
+
+const watch = createStore({ b: 0, c: 0 });
+watch(state => {
+  console.log(state.b.value, state.c.value);
+}); // runs once immediately to collect both dependencies
+
+const ref = watch();
+batch(() => {
+  ref.b.value = 3;
+  ref.c.value = 4;
+}); // subscriber runs once with 3, 4 before batch returns
+```
+
+The ref passed into a `watch` callback can also write inside `batch`. Nested calls flush only at the outermost boundary. Ordinary writes outside a batch still notify synchronously per write. A batch groups notifications; it does not roll back writes when the callback throws, and it cannot span an `await`. Manual-sync stores still require their explicit `sync()`. For UMD, load `state-ref.umd.js` before `state-ref.batch.umd.js`, then call `stateRefBatch.batch`.
+
 ### Optional drafts
 
 Import `createDraft` from `state-ref/draft` when you need an independent local edit session over an existing ref. The draft starts from the source's current value. Edits stay local until `apply()` merges the edited fields into the latest source value; a concurrent edit to the same field produces a conflict.

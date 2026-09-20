@@ -18,6 +18,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
+      'state-ref/batch': resolve(__dirname, './src/batch/index.ts'),
+      'state-ref': resolve(__dirname, './src/index.ts'),
     },
   },
   build: {

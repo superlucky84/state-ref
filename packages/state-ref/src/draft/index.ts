@@ -257,6 +257,7 @@ export function createDraft<T>(source: StateRefStore<T>): Draft<T> {
         sourceReason !== null || !sameValue(edit.before, currentSource);
     }
     stageStatus();
+    core.runBatch?.batch?.end(settleDraft);
   };
 
   const { watch: rawWatch } = core.create(initial, { onWrite });
@@ -327,13 +328,14 @@ export function createDraft<T>(source: StateRefStore<T>): Draft<T> {
 
   // Registered before the draft ref is handed out, so a caller inspecting
   // changes from its subscriber sees the edit log for the published value.
-  const stopDraft = observeRef(rawRef, () => {
+  const settleDraft = () => {
     if (pendingRebase) {
       pendingRebase = false;
       rebase();
     }
     flushStatus();
-  });
+  };
+  const stopDraft = observeRef(rawRef, settleDraft);
   const stopSource = observeRef(source, () => rebase());
 
   const snapshotValue = (located: LocatedValue): DraftValue =>

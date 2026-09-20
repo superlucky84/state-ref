@@ -2,7 +2,7 @@
 
 - 기준: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md).
 - 개정일: 2026-09-19. 기준 SHA: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
-- 상태: `feat/server-sync-draft`에서 Phase 3 query/resource 기본 경로까지 구현·자동 검증했다. mutation과 F2 전체 동등성은 미완료다. [Phase 0](./PHASE0.md), [Phase 1](./PHASE1.md), [Phase 2](./PHASE2.md), [Phase 3](./PHASE3.md) 실행 기록.
+- 상태: `feat/server-sync-draft`에서 Phase 3 query/resource와 Phase 3.5 선택적 batch까지 구현·자동 검증했다. mutation과 F2 전체 동등성은 미완료다. [Phase 0](./PHASE0.md), [Phase 1](./PHASE1.md), [Phase 2](./PHASE2.md), [Phase 3](./PHASE3.md), [Phase 3.5](./PHASE3_5.md) 실행 기록.
 - 이전 T/Phase 범위는 기준 commit의 이력이다. 이번 T2/Phase 계획으로 대체한다.
 
 ## 1. 진행 규칙
@@ -118,16 +118,16 @@
 
 **진입:** Phase 3 종료. Phase 4 mutation 작업보다 먼저 IC2-07/DC2-18의 [목표 계약](./DESIGN.md#명시적-동기-batch-계획)을 확정한다. 과거 `DC-03`의 자동 microtask 배칭 기각과 구분하고, 기존 기본 쓰기별 동기 전파는 유지한다.
 
-- [ ] `batch(() => { ... })`의 공개 export·타입·ESM/UMD 경계와 기본 core gzip 3,400 B 예산을 실측해 결정한다. 선택적 진입점으로 나눠도 공통 setter에 필요한 비용을 별도 측정한다.
-- [ ] `watch(state => ...)` 콜백의 state, `const ref = watch(callback)` 반환 ref, 별도 `watch()`가 만든 ref에서 같은 store의 batch 의미를 검증한다. `watch` 등록 시 최초 콜백은 값별이 아니라 등록당 1회 즉시 실행하며, batch가 이를 억제하지 않는다. `.value` 읽기가 없으면 구독도 없다.
-- [ ] setter 값 확정과 `onWrite`/journal은 쓰기마다 즉시 실행하고, 알림만 가장 바깥 동기 batch 종료 시 store별·구독별 최종 값 기준으로 합친다. 중첩, 같은 경로 왕복, 무변경 쓰기, 배열 길이/부모 교체, `trackDeps`, 해제·예외·구독 콜백 재진입을 검증한다. `await`를 가로지르는 batch와 rollback은 제공하지 않는다.
-- [ ] 전체 구독 스캔 없이 변경 경로의 영향 집합을 합쳐 한 번 검사한다. 기존 manual `sync()`의 명시적 알림 의미와 batch 밖의 동기 전파를 유지한다. 여러 store를 묶어도 `combineWatch` 전역 1회 발화까지 약속하지 않는다.
-- [ ] 마지막 쓰기가 원상복귀해 값 구독이 발화하지 않는 경우에도 draft/resource status·dirty·changes·version이 batch 종료 전에 최종 상태로 일치하도록 한다.
-- [ ] React·Preact·Vue·Svelte·Solid의 실제 마운트된 커넥터에서 batch 종료 시점, 양방향 쓰기, unmount/해제, 중첩 갱신을 확인한다. 과거 Vue의 microtask 지연 쓰기 유실을 회귀 검사한다.
+- [x] `batch(() => { ... })`를 `state-ref/batch` ESM/UMD로 제공하고 공개 타입·소비자 빌드를 확인했다. 공통 setter 연결 비용을 실측해 기본 core gzip 한도를 3,400→3,500 B로 조정했다. [Phase 3.5 기록](./PHASE3_5.md).
+- [x] `watch(state => ...)` 콜백의 state, `const ref = watch(callback)` 반환 ref, 별도 `watch()` ref에서 같은 store의 batch 의미를 검증했다. 최초 콜백은 등록당 1회 즉시 실행하며, `.value` 읽기가 없으면 구독도 없다.
+- [x] setter 값 확정과 `onWrite`/journal은 쓰기마다 즉시 실행하고 알림은 가장 바깥 동기 batch 종료 시 합친다. 중첩·같은 경로 왕복·배열 길이·`trackDeps`·해제·예외·콜백 안 batch를 검증했다. Promise 반환 batch와 rollback은 제공하지 않는다.
+- [x] 변경 경로 영향 노드의 집합을 store별로 모아 전체 구독 스캔 없이 한 번 검사한다. manual `sync()`와 batch 밖의 즉시 전파를 유지한다. `combineWatch`의 여러 store 전역 1회 발화는 약속하지 않는다.
+- [x] 원시값이 원상복귀해 값 구독이 발화하지 않아도 draft/resource status·dirty·changes·version이 batch 종료 전에 일치하도록 검증했다.
+- [x] React·Preact·Vue·Svelte·Solid의 실제 마운트 소비자에서 최종 값·구독 1회 알림을 확인하고 기존 unmount/해제 회귀를 함께 통과했다. Vue·Svelte의 batch 후 양방향 입력을 검증했다.
 
-**기준 테스트:** T2-27, T2-02/05/06/14~18/24 회귀, M2-02, `pnpm gate`, 고정 Node 20.3.0 번들·성능 측정.
+**기준 테스트:** T2-27, T2-02/05/06/14~18/24 회귀, M2-02의 자동 대응, `pnpm gate`, 고정 Node 20.3.0 번들·성능 측정. M2-02 수동 확인은 Phase 8에서 수행한다.
 
-**종료:** 공개 API·타입·빌드·동기 알림 계약과 metadata/커넥터 회귀 PASS. 구현이 예산이나 정확성에 막히면 근거를 남기고 범위를 재결정한다. 이 단계가 끝나기 전에는 Phase 4를 시작하지 않는다.
+**종료 (자동 게이트 PASS):** 공개 API·타입·빌드·동기 알림 계약과 metadata/커넥터 회귀 PASS. 기본 core 번들 3,455/3,500 B PASS. M2 수동 시나리오는 Phase 8의 출시 검증으로 유지한다.
 
 ### Phase 4 — Mutation·제출 기록·실패 복구
 
@@ -216,6 +216,13 @@
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
+
+### 2026-09-20 — Phase 3.5 선택적 동기 batch 자동 게이트 완료
+
+- done: [Phase 3.5 기록](./PHASE3_5.md)의 `state-ref/batch` ESM/UMD, 동기 알림·중첩·예외·두 ref 쓰기 경로, draft/resource status와 5종 커넥터 자동 검증. `pnpm gate` PASS; 고정 Node 20.3.0 기본 core minified gzip 3,455/3,500 B PASS.
+- next: Phase 4 IC2-04 계약을 닫고 mutation·제출 기록·실패 복구를 구현한다. M2-02 포함 수동 검증은 Phase 8에서 수행한다.
+- blockers: mutation/pending overlay·resource/draft 전체 조합과 M2 수동 결과는 미완료.
+- 기록 시 최신 commit: `3b99ab1`; Phase 3.5 구현은 미커밋이다.
 
 ### 2026-09-20 — 다음 최우선 순서 변경
 

@@ -1,4 +1,6 @@
 export { createStore, createStoreManualSync } from '@/core';
+/** Internal bridge for the optional state-ref/batch entry point and helpers. */
+export { runBatch } from '@/connectors/runner';
 /**
  * Internal seam for the bench and tests - how many path nodes a store has is
  * otherwise unobservable, and `DC-14` needs it gated. Not documented as API.

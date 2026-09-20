@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { batch } from 'state-ref/batch';
 import { createSyncClient, hashQueryKey } from '../index';
 
 function deferred<T>() {
@@ -14,6 +15,34 @@ function deferred<T>() {
 afterEach(() => vi.useRealTimers());
 
 describe('query cache', () => {
+  it('settles primitive resource metadata before a net-zero batch returns', async () => {
+    const query = createSyncClient({ ssr: true }).query({
+      queryKey: ['primitive-batch'],
+      queryFn: () => 0,
+    });
+    await query.load();
+    const values: number[] = [];
+    const versions: number[] = [];
+    query.watch(ref => {
+      values.push(ref.value);
+    });
+    query.watchStatus(status => {
+      versions.push(status.version.value);
+    });
+
+    batch(() => {
+      query.ref.value = 1;
+      query.ref.value = 0;
+      expect(values).toEqual([0]);
+    });
+    expect(values).toEqual([0]);
+    expect(query.isDirty()).toBe(false);
+    expect(query.changes()).toEqual([]);
+    expect(query.status.version.value).toBe(query.version());
+    expect(versions).toEqual([0, 2]);
+    query.dispose();
+  });
+
   it('hashes only acyclic JSON keys with stable object order', () => {
     expect(hashQueryKey(['a', { z: 1, a: 2 }])).toBe(
       hashQueryKey(['a', { a: 2, z: 1 }])
