@@ -74,8 +74,17 @@ const prepared = {
 await preparedClient.prefetch(prepared);
 assert.deepEqual(await preparedClient.ensure(prepared), { count: 2 });
 assert.deepEqual(await preparedClient.fetch(prepared), { count: 2 });
+const display = preparedClient.view(
+  { queryKey: ['display'], queryFn: () => ({ city: 'Seoul' }) },
+  {
+    select: data => data.city,
+    placeholderData: { city: 'Waiting' },
+  }
+);
+assert.equal(display.ref.phase.value, 'placeholder');
+await display.query.load();
+assert.equal(display.ref.data.value, 'Seoul');
+display.dispose();
 assert.equal(submitted.changes.length, 1);
 query.dispose();
-console.log(
-  'sync ESM bundle: query, mutation, hydration and cache helpers PASS'
-);
+console.log('sync ESM bundle: query, mutation, hydration, cache and view PASS');

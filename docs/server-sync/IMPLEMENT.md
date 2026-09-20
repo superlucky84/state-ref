@@ -2,7 +2,7 @@
 
 - 기준: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md).
 - 개정일: 2026-09-19. 기준 SHA: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
-- 상태: `feat/server-sync-draft`에서 Phase 4 mutation 이후 [Phase 5.1](./PHASE5_1.md)의 clean baseline SSR 전달과 [Phase 5.2](./PHASE5_2.md)의 확정 초기 기준·캐시 준비 API까지 구현했다. F2 전체 동등성은 미완료다. [Phase 0](./PHASE0.md), [Phase 1](./PHASE1.md), [Phase 2](./PHASE2.md), [Phase 3](./PHASE3.md), [Phase 3.5](./PHASE3_5.md), [Phase 4](./PHASE4.md) 실행 기록도 참조한다.
+- 상태: `feat/server-sync-draft`에서 Phase 4 mutation 이후 [Phase 5.1](./PHASE5_1.md)의 clean baseline SSR 전달, [Phase 5.2](./PHASE5_2.md)의 확정 초기 기준·캐시 준비, [Phase 5.3](./PHASE5_3.md)의 관찰자별 view까지 구현했다. F2 전체 동등성은 미완료다. [Phase 0](./PHASE0.md), [Phase 1](./PHASE1.md), [Phase 2](./PHASE2.md), [Phase 3](./PHASE3.md), [Phase 3.5](./PHASE3_5.md), [Phase 4](./PHASE4.md) 실행 기록도 참조한다.
 - 현재 재개 지점은 [HANDOFF](./HANDOFF.md)를 따른다. 아래 날짜별 인계는 작성 당시의 기록이므로 현재 커밋과 혼동하지 않는다.
 - 이전 T/Phase 범위는 기준 commit의 이력이다. 이번 T2/Phase 계획으로 대체한다.
 
@@ -159,6 +159,8 @@
 
 [Phase 5.2](./PHASE5_2.md)에서 F2-03 확정 초기 기준과 F2-05 명시적 캐시 준비 API를 추가했다. placeholder/의존·파생 조회와 pagination/infinite는 여전히 열린 상태다.
 
+[Phase 5.3](./PHASE5_3.md)에서 F2-03의 관찰자별 placeholder/select와 수동 의존·병렬 조회를 추가했다. 자동 enabled/key 전환, pagination/infinite 및 프레임워크 실제 view 연결은 여전히 열린 상태다.
+
 **기준 테스트:** T2-23의 모든 F2 하위 시나리오, T2-03/04/07/10~13/22/25의 복원·네트워크 상태 조합.
 
 **종료:** 해당 출시 범위의 모든 기능에 구현·테스트 증거 존재. 전체 동등성 선언은 전체 목록 통과 시에만 가능하며, 부분 출시라면 미지원 항목을 명시함.
@@ -208,19 +210,26 @@
 
 ## 4. 실행과 현재 결과
 
-현재 저장소 명령은 `pnpm gate`, `pnpm test`, `pnpm test:core`, `pnpm test:react`, `pnpm test:preact`, `pnpm test:vue`, `pnpm test:svelte`, `pnpm test:solid` 및 `pnpm --filter @stateref/sync test`다. gate는 draft·batch 타입/ESM/UMD smoke와 sync query/resource/mutation 타입·소비자 fixture·ESM bundle smoke를 포함한다. bare `npx vitest` 등으로 고정 도구를 임의 대체하지 않는다.
+현재 저장소 명령은 `pnpm gate`, `pnpm test`, `pnpm test:core`, `pnpm test:react`, `pnpm test:preact`, `pnpm test:vue`, `pnpm test:svelte`, `pnpm test:solid` 및 `pnpm --filter @stateref/sync test`다. gate는 draft·batch 타입/ESM/UMD smoke와 sync query/resource/mutation/view 타입·소비자 fixture·ESM bundle smoke를 포함한다. bare `npx vitest` 등으로 고정 도구를 임의 대체하지 않는다.
 
 | 항목 | 현재 확인 결과 |
 |---|---|
 | 문서 링크·ID·단계 구조·공백 정합성 | 과거 단계의 정적 검사 결과는 [PHASE2](./PHASE2.md)에 기록. 현재 handoff 링크와 문서 상태는 [HANDOFF](./HANDOFF.md)를 따른다 |
-| core/커넥터 baseline와 gate | Phase 4 `pnpm gate` PASS. 고정 Node 20.3.0 기본 core minified gzip 3,455/3,500 B PASS |
+| core/커넥터 baseline와 gate | Phase 5.3 `pnpm gate` PASS. 고정 Node 20.3.0 기본 core minified gzip 3,455/3,500 B PASS |
 | 선택적 plugin export | ESM 빌드·공개 선언 타입 검사 PASS; Phase 2 `clearEntries` 추가 후 크기는 별도 산출물로 측정 |
 | 일반 원본 draft 타입·테스트·빌드 | Phase 2 `state-ref/draft` ESM·UMD, 선언 타입 fixture, live·충돌·apply·수명 테스트와 browser smoke PASS. [실행 기록](./PHASE2.md) |
-| 서버 sync 타입·테스트·빌드 | Phase 5.2 sync ESM·선언 타입·소비자 fixture, query/resource/mutation/hydration/cache 런타임 53개 테스트와 bundle smoke PASS. [Phase 5.2](./PHASE5_2.md) |
-| 기능 동등성 F2 세부 검증 | Phase 3/4 기반, Phase 5.1 clean SSR 전달과 Phase 5.2 확정 초기 기준·fetch/prefetch/ensure 하위 범위만 검증. F2 전체 동등성은 미완료. [기준 표](./PHASE5_1.md#phase-51-시점-f2-기능별-상태), [5.2 갱신](./PHASE5_2.md#f2-상태-갱신과-검증) |
+| 서버 sync 타입·테스트·빌드 | Phase 5.3 sync ESM·선언 타입·소비자 fixture, query/resource/mutation/hydration/cache/view 런타임 62개 테스트와 bundle smoke PASS. [Phase 5.3](./PHASE5_3.md) |
+| 기능 동등성 F2 세부 검증 | Phase 3/4 기반, Phase 5.1 clean SSR 전달, Phase 5.2 확정 초기 기준·fetch/prefetch/ensure, Phase 5.3 관찰자별 placeholder/select·수동 의존/병렬 READ 하위 범위만 검증. F2 전체 동등성은 미완료. [기준 표](./PHASE5_1.md#phase-51-시점-f2-기능별-상태), [5.3 갱신](./PHASE5_3.md#f2-범위와-증거) |
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
+
+### 2026-09-21 — Phase 5.3 관찰자별 view
+
+- done: `client.view()`의 읽기 전용 표시 ref, view별 placeholder/select/비교, query·selector 오류 분리, 편집값 선택, 수동 의존·병렬 READ, 구독·소유권 해제를 [Phase 5.3](./PHASE5_3.md)에 기록했다. `pnpm gate` PASS; sync 62개 테스트·타입·lint·ESM 소비자 타입/smoke PASS.
+- next: 자동 `enabled`와 반응형 key 교체의 수명·취소 계약을 고정하고 오래된 결과가 새 view에 나타나지 않는지 검증한다. pagination/infinite, 영속화/오프라인/재개, UI connector 검증과 Phase 6/8 게이트는 별도다.
+- blockers: 전체 F2 동등성·영속화/오프라인/재개·UI·draft 통합 미완료. 즉시 작업을 막는 외부 blocker는 없다.
+- 시작 기준 구현 commit: `eefa3eb`. Phase 5.3 구현·테스트·문서는 현재 변경으로 기록한다.
 
 ### 2026-09-21 — Phase 5.2 확정 초기 기준·캐시 준비
 

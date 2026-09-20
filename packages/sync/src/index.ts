@@ -10,6 +10,8 @@ import { createMutation } from './mutation';
 import type { MutationHandle, MutationLink, MutationOptions } from './mutation';
 import { copyJson, parseSnapshot } from './hydration';
 import type { HydratedQuery, SyncSnapshot } from './hydration';
+import { createQueryView } from './view';
+import type { QueryViewHandle, QueryViewOptions } from './view';
 
 export { hashQueryKey } from './key';
 export type { QueryKey } from './key';
@@ -29,6 +31,13 @@ export type {
   MutationStatus,
 } from './mutation';
 export type { HydratedQuery, SyncSnapshot } from './hydration';
+export type {
+  QueryViewHandle,
+  QueryViewOptions,
+  QueryViewRef,
+  QueryViewState,
+  QueryViewWatch,
+} from './view';
 
 export type QueryStatus = Readonly<{
   status: 'pending' | 'success' | 'error';
@@ -79,6 +88,10 @@ export type QueryHandle<T> = Readonly<{
 
 export type SyncClient = Readonly<{
   query: <T>(options: QueryOptions<T>) => QueryHandle<T>;
+  view: <T, S = T>(
+    options: QueryOptions<T>,
+    viewOptions?: QueryViewOptions<T, S>
+  ) => QueryViewHandle<T, S>;
   /** Return a fresh cached baseline or perform a READ. */
   fetch: <T>(options: QueryOptions<T>) => Promise<T>;
   /** Best-effort fetch that caches success and swallows load rejections. */
@@ -694,6 +707,18 @@ export function createSyncClient(options: { ssr?: boolean } = {}): SyncClient {
       const frozen = Object.freeze(handle);
       handles.set(frozen, entry);
       return frozen;
+    },
+    view<T, S = T>(
+      queryOptions: QueryOptions<T>,
+      viewOptions?: QueryViewOptions<T, S>
+    ): QueryViewHandle<T, S> {
+      const query = client.query(queryOptions);
+      try {
+        return createQueryView(query, viewOptions);
+      } catch (error) {
+        query.dispose();
+        throw error;
+      }
     },
     async fetch<T>(queryOptions: QueryOptions<T>): Promise<T> {
       const entry = getOrCreate(queryOptions, false);

@@ -110,9 +110,39 @@ These calls share the client's cache and in-flight READ by key. Temporary
 options. `ensure` returns the confirmed server baseline, even if a local edit
 exists; an unconfirmed WRITE requires a new READ. Invalid key, time, or initial
 data setup still rejects from `prefetch`. Editable results returned by
-`load/fetch/ensure` are frozen
-copies; edit through the query ref. Placeholder data and observer-specific
-selection are not part of this API yet.
+`load/fetch/ensure` are frozen copies; edit through the query ref.
+
+Placeholder data and observer-specific selection live in a separate view
+instead of the shared cache:
+
+```ts
+const view = client.view(
+  {
+    queryKey: ['account', 1],
+    queryFn: ({ signal }: { signal: AbortSignal }) =>
+      api.readAccount(1, { signal }),
+  },
+  {
+    placeholderData: previewAccount,
+    select: account => account.address.city,
+  }
+);
+view.ref.data.value; // this view's placeholder or selected current value
+await view.query.load(); // explicit READ, as with client.query(...)
+view.query.ref.address.city.value = 'Busan'; // edit the shared resource
+view.dispose(); // releases the view and its owned query handle
+```
+
+`view.ref` and `view.watch` are readonly display state with `phase`,
+`fetchStatus`, `isPlaceholder`, `error`, and `errorSource`. A placeholder is
+observer-local and never enters `dehydrate()` or the editable resource. After a
+first READ error it disappears; a refetch error retains previously loaded data.
+`select` sees current local edits, but its result never replaces the cached
+query shape. An optional `equals` compares selected values (default:
+`Object.is`); select/comparison errors affect that view, not the shared query.
+Views do not automatically load, switch keys, or enable dependent queries.
+Use `view.watch` to compose a dependent READ explicitly and dispose old views
+when switching keys.
 
 Independent mutations run concurrently by default. Pass the same `scope`
 string to `run` to execute those operations in start order, including their

@@ -2,7 +2,7 @@
 
 - 개정일: 2026-09-19. 기준: [REQUIREMENTS](./REQUIREMENTS.md).
 - 기준 commit: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
-- 상태: Phase 4 mutation 이후 [Phase 5.1](./PHASE5_1.md)의 clean baseline SSR 전달과 [Phase 5.2](./PHASE5_2.md)의 확정 초기 기준·캐시 준비 API까지 자동 검증했다. 전체 서버 기능 동등성은 미완료다. `[x]` 결정 행은 전체 서버 기능 동등성의 구현·테스트 통과가 아니다.
+- 상태: Phase 4 mutation 이후 [Phase 5.1](./PHASE5_1.md)의 clean baseline SSR 전달, [Phase 5.2](./PHASE5_2.md)의 초기 기준·캐시 준비, [Phase 5.3](./PHASE5_3.md)의 관찰자별 view까지 자동 검증했다. 전체 서버 기능 동등성은 미완료다. `[x]` 결정 행은 전체 서버 기능 동등성의 구현·테스트 통과가 아니다.
 - 최신 구현 SHA와 현재 재개 지점은 [HANDOFF](./HANDOFF.md)를 따른다. 아래 날짜별 인계는 당시의 기록이다.
 - draft 공개 API는 [Phase 2 기록](./PHASE2.md)에 고정했다. query/resource 기본 API와 지원 범위는 [Phase 3 기록](./PHASE3.md)에 남겼다. mutation과 UI 투영은 후속 검증 대상이다.
 
@@ -225,7 +225,7 @@ Phase 0에서 서버 엔진의 참조 버전과 key/epoch/기본 타이밍 계�
 
 ## 6. 서버 기능 동등성 목록
 
-이는 제품 목표의 범위를 잃지 않기 위한 목록이다. 비교 기준 버전과 Phase 0 하위 시나리오는 [Phase 0 기록](./PHASE0.md)에 고정했다. 기능군별 범위는 [Phase 5.1 표](./PHASE5_1.md#phase-51-시점-f2-기능별-상태)와 [Phase 5.2 갱신](./PHASE5_2.md#f2-상태-갱신과-검증)에 있다. 복원·플랫폼의 상세 계약은 IC2-06에서 추적한다. 단계별 구현과 '전체 동등성 완료'를 구분한다.
+이는 제품 목표의 범위를 잃지 않기 위한 목록이다. 비교 기준 버전과 Phase 0 하위 시나리오는 [Phase 0 기록](./PHASE0.md)에 고정했다. 기능군별 범위는 [Phase 5.1 표](./PHASE5_1.md#phase-51-시점-f2-기능별-상태), [Phase 5.2](./PHASE5_2.md#f2-상태-갱신과-검증), [Phase 5.3](./PHASE5_3.md#f2-범위와-증거)의 갱신에 있다. 복원·플랫폼의 상세 계약은 IC2-06에서 추적한다. 단계별 구현과 '전체 동등성 완료'를 구분한다.
 
 | ID | 검증할 기능군 | 단계 |
 |---|---|---|

@@ -1,6 +1,6 @@
 # state-ref 서버 동기화와 독립 Draft 설계
 
-상태: 2026-09-21 Phase 4 mutation 이후 Phase 5.1의 깨끗한 서버 기준 SSR 전달과 Phase 5.2의 확정 초기 기준·캐시 준비 API를 구현했다. **Phase 5의 나머지 기능과 Phase 6 resource/draft 조합은 다음 작업**이다. state-ref 코어·서버 동기화 헬퍼·draft 헬퍼를 선택적으로 조합한다. 서버 기능은 계속 추진하며, TanStack Query의 query/mutation 모델과 기능을 참고하되 런타임 독립을 지향한다.
+상태: 2026-09-21 Phase 4 mutation 이후 Phase 5.1의 깨끗한 서버 기준 SSR 전달, Phase 5.2의 초기 기준·캐시 준비, Phase 5.3의 관찰자별 view까지 구현했다. **Phase 5의 나머지 기능과 Phase 6 resource/draft 조합은 다음 작업**이다. state-ref 코어·서버 동기화 헬퍼·draft 헬퍼를 선택적으로 조합한다. 서버 기능은 계속 추진하며, TanStack Query의 query/mutation 모델과 기능을 참고하되 런타임 독립을 지향한다.
 
 서버 싱크는 코어 빌드에 합치지 않고 별도로 설치·import하는 `@stateref/sync` 패키지로 개발한다. draft와 batch는 같은 `state-ref` 패키지의 선택적 `state-ref/draft`·`state-ref/batch` 진입점으로 제공한다. 코어의 범용 `onWrite` 연결은 draft 편집과 서버 resourceRef 직접 편집의 기록에 모두 쓴다. sync는 query/resource와 독립 mutation·명시적 저장 수용을 제공한다.
 
@@ -23,6 +23,7 @@ UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우�
 11. [PHASE4](./PHASE4.md): mutation·제출 snapshot·서버 기준 수용·실패 결과의 구현/검증과 남은 범위.
 12. [PHASE5_1](./PHASE5_1.md): clean baseline SSR 복원 경계와 F2-01~09 지원/미지원 표.
 13. [PHASE5_2](./PHASE5_2.md): 확정 초기 기준, fetch/prefetch/ensure 캐시 계약과 남은 view 경계.
+14. [PHASE5_3](./PHASE5_3.md): 공유 캐시와 분리된 placeholder/select view, 수동 의존·병렬 조회.
 
 ## Phase 3.5 완료 — 명시적 동기 batch
 
@@ -38,7 +39,11 @@ UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우�
 
 ## Phase 5.2 진행 — 확정 초기 기준과 캐시 준비
 
-`query({ initialData })`는 알려진 서버 값을 빈 캐시 기준으로 설치한다. `client.fetch/prefetch/ensure`는 handle을 장기 보유하지 않고 캐시를 준비하거나 확정 기준을 읽는다. 오류·stale·dirty·미확정 WRITE의 의미와 미지원 placeholder/select 범위는 [Phase 5.2 기록](./PHASE5_2.md)에 있다.
+`query({ initialData })`는 알려진 서버 값을 빈 캐시 기준으로 설치한다. `client.fetch/prefetch/ensure`는 handle을 장기 보유하지 않고 캐시를 준비하거나 확정 기준을 읽는다. 오류·stale·dirty·미확정 WRITE의 의미와 당시 남아 있던 view 범위는 [Phase 5.2 기록](./PHASE5_2.md)에 있다.
+
+## Phase 5.3 진행 — 관찰자별 표시 View
+
+`client.view()`는 같은 query/resource를 공유해도 각 관찰자에게 다른 placeholder와 select 결과를 표시한다. 표시값은 읽기 전용이고 서버 기준이나 편집 기록에 들어가지 않는다. 명시적 `load()`·구독 해제, 오류 분리, 수동 의존·병렬 조회의 지원 범위는 [Phase 5.3 기록](./PHASE5_3.md)에 있다.
 
 ## 확정한 사용 의미
 
@@ -59,7 +64,7 @@ UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우�
 
 ## 남은 구현 사항
 
-`createDraft`/`apply`, `createSyncClient`/`client.query`와 자유로운 DTO의 `client.mutation`·제출 기록 연결, 깨끗한 서버 기준의 SSR 전달, 확정 초기 기준과 캐시 준비 API를 구현했다. 독립 엔진의 참조 버전·기본 설계는 [Phase 0](./PHASE0.md)에 고정했고 구현·검증 결과는 [Phase 3](./PHASE3.md), [Phase 4](./PHASE4.md), [Phase 5.1](./PHASE5_1.md), [Phase 5.2](./PHASE5_2.md)에 나눠 기록했다.
+`createDraft`/`apply`, `createSyncClient`/`client.query`와 자유로운 DTO의 `client.mutation`·제출 기록 연결, 깨끗한 서버 기준의 SSR 전달, 확정 초기 기준·캐시 준비와 관찰자별 view를 구현했다. 독립 엔진의 참조 버전·기본 설계는 [Phase 0](./PHASE0.md)에 고정했고 구현·검증 결과는 [Phase 3](./PHASE3.md), [Phase 4](./PHASE4.md), [Phase 5.1](./PHASE5_1.md), [Phase 5.2](./PHASE5_2.md), [Phase 5.3](./PHASE5_3.md)에 나눠 기록했다.
 
 기능 전반의 동등성은 F2 목록의 목표이며 현재 달성한 상태가 아니다. Phase 4의 명시적 제출과 실패 복구는 자동 검증했지만, resource/draft 결합과 실제 UI 투영, M2 수동 시나리오는 아직 검증하지 않았다. 다음 단계의 정확한 범위와 검증 기준은 [HANDOFF](./HANDOFF.md)에 있다.
 

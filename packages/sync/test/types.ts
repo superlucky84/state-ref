@@ -115,3 +115,33 @@ async function prepareCache() {
 }
 
 void prepareCache;
+
+async function displayView() {
+  const client = createSyncClient({ ssr: true });
+  const view = client.view(
+    {
+      queryKey: ['display'],
+      queryFn: () => ({ city: '서울', count: 1 }),
+    },
+    {
+      select: data => data.city,
+      placeholderData: { city: '대기', count: 0 },
+    }
+  );
+  const preview: string | undefined = view.ref.data.value;
+  const placeholder: boolean = view.ref.isPlaceholder.value;
+  // @ts-expect-error a view has no display-value setter
+  view.ref.data.value = '수정';
+  view.watch(ref => {
+    // @ts-expect-error a view callback has no display-value setter
+    ref.phase.value = 'success';
+  });
+  await view.query.load();
+  const source: string = view.query.ref.city.value;
+  void preview;
+  void placeholder;
+  void source;
+  view.dispose();
+}
+
+void displayView;
