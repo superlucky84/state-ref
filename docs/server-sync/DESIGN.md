@@ -26,6 +26,7 @@
 | DC2-15 | [x] 기존 scope/직접 draft 서버 저장 계약 대체 | 이번 결정 이전 예시를 구현 근거로 사용하지 않음 | R2-08/17, T2-08/17 |
 | DC2-16 | [x] draft의 ref/Watch와 반응형 status를 payload 밖에서 제공 | 기존 5종 커넥터 입력 형식을 재사용하고 metadata 필드 충돌을 피함 | R2-20/24/25, T2-20/24/25 |
 | DC2-17 | [x] 원본 알림은 재검사 신호, 편집 경로와 과거 기준은 draft가 소유 | 부모 객체 참조 변화만으로 충돌을 판정하지 않고 무관한 원본 갱신을 병합 | R2-16/17, T2-16/17 |
+| DC2-18 | [ ] 명시적 동기 `batch(fn)`을 Phase 3.5에서 우선 검증 | `watch` 콜백 ref와 보관 ref 모두 같은 setter를 사용하며, 비동기 스케줄러 없이 알림 횟수를 줄여야 함 | R2-27, T2-27 |
 
 이전 DC-01~21의 의미는 기준 commit의 Git 이력에 보존된다. 이번 문서의 DC2와 혼용하지 않는다.
 
@@ -55,6 +56,39 @@
 - `state-ref/draft`는 패키지 import 경로다. `<script>`로 로드하는 UMD는 코어의 `dist/state-ref.umd.js`/`stateRef` 다음에 별도 `dist/state-ref.draft.umd.js`/`stateRefDraft`를 로드한다. draft UMD는 코어를 외부 의존성으로 참조한다. 브라우저 스크립트 순서·코어 누락 오류를 Phase 2 browser smoke로 확인했다.
 - client+key당 서버 기준은 하나다. resource의 편집 뷰와 draft는 기준 및 변경 기록으로 재구성되는 값이며 별도의 fetch 캐시가 아니다.
 - state-ref에 결과를 제공하는 것과 특정 UI framework의 hooks를 복제하는 것은 구분한다. 기존 5종 커넥터의 수명·readonly·타입을 검증한다.
+
+### 명시적 동기 batch 계획
+
+Phase 3 다음의 최우선 구현 검토다. 다음 코드는 **목표 API 예시이며 현재 실행 가능한 API가 아니다.** 공개 export 위치와 코어 번들 비용은 Phase 3.5에서 결정한다.
+
+```ts
+const watch = createStore({ apply: false, b: 0, c: 0 });
+
+watch(state => {
+  if (state.apply.value) {
+    batch(() => {
+      state.b.value = 3;
+      state.c.value = 4;
+    });
+  }
+});
+
+const ref = watch();
+batch(() => {
+  ref.b.value = 5;
+  ref.c.value = 6;
+});
+```
+
+- `watch(callback)`의 인자와 그 호출의 반환 ref는 같은 프록시다. 별도의 `watch()`가 만든 ref도 같은 store의 root·구독 목록·setter를 공유한다. 따라서 batch는 프록시 인스턴스나 특정 `watch` 호출에 붙이지 않고 쓰기 경계에서 적용한다.
+- `watch(callback)`은 등록 때 콜백을 즉시 **한 번** 실행한다. 한 번의 실행에서 여러 `.value`를 읽어 각 경로의 구독을 수집하는 것이지 값마다 첫 콜백을 실행하지 않는다. `batch`는 이 최초 실행을 억제하지 않는다. 콜백에서 `.value`를 읽지 않으면 변경을 구독하지 않는다.
+- batch 안에서는 각 setter가 copy-on-write로 값을 즉시 확정하며 이후 읽기는 새 값을 본다. `onWrite`와 journal은 변경된 쓰기마다 즉시 기록한다. 일반 구독 알림만 가장 바깥 batch 종료 시, 반환하거나 예외가 나기 전에 동기적으로 합친다. 기본 setter의 쓰기별 동기 알림은 batch 밖에서 유지한다.
+- 같은 store의 같은 구독 콜백은 스코프 종료 시 최종 관찰값이 마지막 알림 시점의 값과 다를 때 한 번 호출한다. 비교는 기존 구독의 참조 동일성 기준을 따른다. 중첩 batch는 가장 바깥 스코프에서만 내보낸다. 원상복귀로 최종 관찰값이 같으면 값 구독 알림은 없다. `watch` 최초 실행과 callback 내부의 후속 쓰기 알림은 이 횟수에 포함하지 않는다.
+- 구독 콜백 안에서 `batch`를 시작할 수 있다. batch 종료 시 알림이 동기 실행되므로 콜백 안의 쓰기가 다시 콜백을 부를 수 있다. 자기 구독 경로로 되먹임하는 코드는 기존과 같이 재진입 제한을 지켜야 한다. batch는 이를 자동으로 루프 없이 만드는 기능이 아니다.
+- `batch(fn)`은 동기 함수만 받는다. `await`를 건너 범위를 유지하지 않고, `fn`이 던져도 이미 반영된 쓰기를 롤백하지 않으며 `finally`에서 알림을 마무리한다. 이는 데이터베이스식 원자적 rollback이 아니라 **동기 알림 묶기**다.
+- `createStoreManualSync`는 여전히 명시적인 `sync()`가 알림 시점을 정한다. 여러 store를 한 batch에서 써도 store별 전파만 한 번으로 제한하며 `combineWatch` 같은 여러 store 결합 콜백의 전역 1회 발화는 별도 계약 없이는 약속하지 않는다.
+- 최종 값이 되돌아와 값 구독이 발화하지 않아도 draft/resource의 `dirty`·`changes`·`version`은 종료 전에 최종 상태로 정합해야 한다. 경로별 후보 합집합을 검사해 전체 구독 스캔을 피하고, 배열 길이·중첩 경로·구독 해제·예외·재진입을 검증한다.
+- [기존 코어 설계의 INV-4](../core-improvement/DESIGN.md)는 기본 쓰기의 즉시 전파를 유지한다. `DC-03`에서 구현 후 되돌린 것은 **자동 microtask 지연 배칭**이다. 이번 제안은 사용자가 지정한 동기 스코프에서만 중간 알림을 생략하므로 그 결정의 대체 범위를 명시해 검증한다. Vue 양방향 쓰기 유실과 Svelte 갱신 순서를 실제 커넥터에서 재검증한다.
 
 ## 3. 두 기준과 변경 기록
 
@@ -207,7 +241,7 @@ Phase 0에서 서버 엔진의 참조 버전과 key/epoch/기본 타이밍 계�
 
 ## 7. 코어·데이터·수명 경계
 
-[기존 코어 설계](../core-improvement/DESIGN.md)의 동기 전파·ref identity·구독 해제를 유지한다. [proxy setter](../../packages/state-ref/src/proxy/index.ts)와 [core](../../packages/state-ref/src/core/index.ts)에 필요한 최소 opt-in 연결을 검토한다.
+[기존 코어 설계](../core-improvement/DESIGN.md)의 batch 밖 동기 전파·ref identity·구독 해제를 유지한다. 명시적 batch 스코프의 예외는 DC2-18에서 별도로 검증한다. [proxy setter](../../packages/state-ref/src/proxy/index.ts)와 [core](../../packages/state-ref/src/core/index.ts)에 필요한 최소 opt-in 연결을 검토한다.
 
 - 지원되는 setter에서 경로·이전/다음 값·출처·버전을 수집한다. 전체 root 구독 뒤의 diff로 최초 변경 의도를 추정하지 않는다.
 - 원본 ref의 소속·경로·쓰기 권한·lifecycle을 구조화된 정보로 제공한다. draft와 sync 전용 의미를 기본 ref API에 강제하지 않는다.
@@ -219,6 +253,7 @@ Phase 0에서 서버 엔진의 참조 버전과 key/epoch/기본 타이밍 계�
 
 ## 8. 구현 전 조사 항목
 
+- [ ] **IC2-07 / Phase 3.5 — 최우선** `batch(fn)` 공개 위치·동기 종료/중첩/예외 의미, 같은 store의 후보 경로 합집합, callback 인자/반환 ref, 최초 실행, manual sync, draft/resource metadata, 5종 커넥터 회귀, 코어 크기 예산을 검증한다. 구현 전 목표 계약이며 완료 표시가 아니다.
 - [ ] **IC2-01 / Phase 0~3/8** 코어 연결과 plugin ESM은 Phase 1, `createDraft(ref)` 공개 타입·readonly 원본·종료 ref·선택적 ESM/UMD는 [Phase 2](./PHASE2.md), resource metadata/로드 guard·sync ESM 선언 타입은 [Phase 3](./PHASE3.md)에서 확인했다. 5종 커넥터의 실제 UI 투영은 Phase 8에서 검증한다.
 - [x] **IC2-02 / Phase 0~1** opt-in 변경 기록·publication·원본 구독 lifecycle hook. [Phase 1](./PHASE1.md)의 `state-ref/plugin` 연결, 출처/버전 기록·재진입 guard와 코어 gate·고정 Node 비용을 검증했다. draft의 종료 ref·resource GC와 공개 API는 IC2-01/05 및 후속 단계에 남아 있다.
 - [x] **IC2-03 / Phase 0** 독립 query/mutation 엔진의 설계 계약, `@tanstack/query-core@5.103.1` 기준, F2 목록·기본값·단계, key/epoch/timing 독립 실험을 [Phase 0 기록](./PHASE0.md)에 고정했다. 실제 엔진·기능 동등성 검증은 미완료다.
@@ -229,6 +264,13 @@ Phase 0에서 서버 엔진의 참조 버전과 key/epoch/기본 타이밍 계�
 IC2-03의 목록은 최소 범위를 확정하는 게이트다. 구현 중 새 기능이나 호환성 차이를 발견하면 F2 목록과 테스트를 함께 갱신하고, 출시 범위를 줄이는 결정이 필요하면 이유와 미지원 항목을 명시한다.
 
 ## 9. 인계
+
+### 2026-09-20 — Phase 3 이후 우선순위 변경
+
+- done: [명시적 동기 batch 목표 계약](#명시적-동기-batch-계획)을 DC2-18/IC2-07로 기록했다. 구현·테스트는 아직 없다.
+- next: Phase 3.5의 공개 API·코어 크기·metadata/커넥터 경계를 먼저 검증하고 구현한다. 그 뒤 Phase 4의 mutation·제출/복구를 진행한다.
+- blockers: 기본 core 번들 gzip 여유 2 B, 과거 microtask 방식의 Vue 쓰기 유실, draft/resource status의 최종 정합성.
+- 기록 시 최신 commit: `57bf184` (Phase 3).
 
 ### 2026-09-20 — Phase 3 독립 query/resource
 

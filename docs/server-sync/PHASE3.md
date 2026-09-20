@@ -48,3 +48,7 @@ mutation과 자유로운 DTO·제출 기록·서버 기준의 명시적 수용�
 - next: Phase 4의 mutation/제출 기록/실패 복구 계약 IC2-04를 먼저 닫고 구현한다.
 - blockers: pending overlay가 없어 저장 중의 후속 입력·복구·resource/draft 통합은 검증 불가. M2 수동 시나리오 미수행.
 - 기록 시 최신 commit: `f4e27f6`; 이번 Phase 3 변경은 미커밋이다.
+
+### 후속 순서 변경 (2026-09-20)
+
+Phase 3은 이후 `57bf184`로 커밋했다. 위 `next: Phase 4`는 Phase 3 완료 당시의 기록이다. 현재 최우선 작업은 [IMPLEMENT Phase 3.5](./IMPLEMENT.md#phase-35--명시적-동기-batch-최우선)의 명시적 동기 `batch`이며, 이를 검증한 뒤 Phase 4 mutation을 시작한다. batch는 아직 구현되지 않았다.

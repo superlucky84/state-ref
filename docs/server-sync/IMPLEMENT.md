@@ -22,7 +22,7 @@
 | 테스트 | 핵심 합격 기준 | 요구사항 |
 |---|---|---|
 | T2-01 | `state-ref` 기본/plugin/draft ESM 진입점과 별도 sync 패키지의 import·빌드, ESM 네 조합 검증; UMD에서 코어→draft 스크립트 로드와 전역 API·코어 누락 오류 검증; 기본 core 산출물에 plugin·draft·sync 구현 없음, draft UMD에 코어 중복·네트워크 엔진 없음 | R2-01 |
-| T2-02 | 동기 전파·동일 Watch callback·held ref·AbortSignal/false·readonly 및 기존 gate 회귀 | R2-02 |
+| T2-02 | batch 밖의 쓰기별 동기 전파·동일 Watch callback·held ref·AbortSignal/false·readonly 및 기존 gate 회귀 | R2-02 |
 | T2-03 | 같은 key의 진행 READ 1회, fresh 재사용·stale 재조회·GC와 선택한 자동 재조회 정책 | R2-03 |
 | T2-04 | 로드 전 guard, 로드 실패/복구, readonly status, 일반 응답 교체 뒤 held ref, 무변경 leaf 알림 억제 | R2-04 |
 | T2-05 | 최초 setter 기록, 구독 콜백이 즉시 읽는 changes 일관성, 편집만으로 WRITE 0회 | R2-05 |
@@ -47,6 +47,7 @@
 | T2-24 | 5종 커넥터에서 core+draft 및 전체 조합, mount/unmount·엄격 수명·예제 타입·UI 상태 검증 | R2-24 |
 | T2-25 | 값/예약 키/직접 객체 변형의 오류·지원 계약, metadata와 payload 이름 충돌 없음 | R2-25 |
 | T2-26 | changes snapshot readonly, ID 재사용 없음, 오래된 검토/다른 owner로 apply·resolve 시 새 입력 보존 | R2-26 |
+| T2-27 | `watch` 콜백 인자·반환 ref·별도 `watch()` ref에서 쓰기, 최초 callback은 등록당 1회, batch 종료 시 store별 최종 값 구독 알림 1회, 중첩·예외·manual sync·reentrancy·metadata·5종 커넥터와 번들/성능 게이트 | R2-27 |
 
 필수 fixture는 (1) 네트워크 없는 core 원본과 draft 2개, (2) 같은 key를 보는 resource 패널 2개와 주소 draft 2개, (3) 조회와 다른 DTO의 mutation, (4) 서버 기준·resource 값·draft 기준·각 changes/dirty/pending을 동시에 관찰하는 패널이다.
 
@@ -113,9 +114,24 @@
 
 **종료:** sync 단독으로 query 결과를 편집·검토 가능, 서버 기준과 편집 뷰가 분리됨. draft를 기본 의존성으로 가져오지 않음.
 
+### Phase 3.5 — 명시적 동기 batch (최우선)
+
+**진입:** Phase 3 종료. Phase 4 mutation 작업보다 먼저 IC2-07/DC2-18의 [목표 계약](./DESIGN.md#명시적-동기-batch-계획)을 확정한다. 과거 `DC-03`의 자동 microtask 배칭 기각과 구분하고, 기존 기본 쓰기별 동기 전파는 유지한다.
+
+- [ ] `batch(() => { ... })`의 공개 export·타입·ESM/UMD 경계와 기본 core gzip 3,400 B 예산을 실측해 결정한다. 선택적 진입점으로 나눠도 공통 setter에 필요한 비용을 별도 측정한다.
+- [ ] `watch(state => ...)` 콜백의 state, `const ref = watch(callback)` 반환 ref, 별도 `watch()`가 만든 ref에서 같은 store의 batch 의미를 검증한다. `watch` 등록 시 최초 콜백은 값별이 아니라 등록당 1회 즉시 실행하며, batch가 이를 억제하지 않는다. `.value` 읽기가 없으면 구독도 없다.
+- [ ] setter 값 확정과 `onWrite`/journal은 쓰기마다 즉시 실행하고, 알림만 가장 바깥 동기 batch 종료 시 store별·구독별 최종 값 기준으로 합친다. 중첩, 같은 경로 왕복, 무변경 쓰기, 배열 길이/부모 교체, `trackDeps`, 해제·예외·구독 콜백 재진입을 검증한다. `await`를 가로지르는 batch와 rollback은 제공하지 않는다.
+- [ ] 전체 구독 스캔 없이 변경 경로의 영향 집합을 합쳐 한 번 검사한다. 기존 manual `sync()`의 명시적 알림 의미와 batch 밖의 동기 전파를 유지한다. 여러 store를 묶어도 `combineWatch` 전역 1회 발화까지 약속하지 않는다.
+- [ ] 마지막 쓰기가 원상복귀해 값 구독이 발화하지 않는 경우에도 draft/resource status·dirty·changes·version이 batch 종료 전에 최종 상태로 일치하도록 한다.
+- [ ] React·Preact·Vue·Svelte·Solid의 실제 마운트된 커넥터에서 batch 종료 시점, 양방향 쓰기, unmount/해제, 중첩 갱신을 확인한다. 과거 Vue의 microtask 지연 쓰기 유실을 회귀 검사한다.
+
+**기준 테스트:** T2-27, T2-02/05/06/14~18/24 회귀, M2-02, `pnpm gate`, 고정 Node 20.3.0 번들·성능 측정.
+
+**종료:** 공개 API·타입·빌드·동기 알림 계약과 metadata/커넥터 회귀 PASS. 구현이 예산이나 정확성에 막히면 근거를 남기고 범위를 재결정한다. 이 단계가 끝나기 전에는 Phase 4를 시작하지 않는다.
+
 ### Phase 4 — Mutation·제출 기록·실패 복구
 
-**진입:** Phase 3 종료, IC2-04의 공개 제출/수용/경쟁 계약을 먼저 확정.
+**진입:** Phase 3.5 종료, IC2-04의 공개 제출/수용/경쟁 계약을 먼저 확정.
 
 - [ ] 독립 mutation과 arbitrary DTO, 요청별 상태와 callback 수명을 구현한다.
 - [ ] 제출 시점 값·편집 버전 기록과 명시적인 affected query 연결을 구현한다.
@@ -179,9 +195,9 @@
 - [ ] 조회 shape와 다른 DTO, 원본 로컬 적용, 제출 중 추가 입력, 기준 복구 실패를 UI에서 확인한다.
 - [ ] 지원 프레임워크의 loading/error/hydration 연결과 기능 목록을 교차 확인한다.
 - [ ] 새 helper의 타입·테스트·빌드를 root gate에 포함하고 실제 문서 예제를 타입 검사한다.
-- [ ] M2-01~20을 수행하고 환경·구현 SHA·결과·증거를 기록한다.
+- [ ] M2-01~20을 수행하고 환경·구현 SHA·결과·증거를 기록한다. M2-02에 추가된 batch 시나리오도 포함한다.
 
-**기준 테스트:** T2-01~26 통합 회귀, 각 커넥터의 T2-04/05/14~22/24/26, F2 플랫폼 시나리오, M2 전체 수동 검증.
+**기준 테스트:** T2-01~27 통합 회귀, 각 커넥터의 T2-04/05/14~22/24/26/27, F2 플랫폼 시나리오, M2 전체 수동 검증.
 
 **종료:** 지원하는 모든 커넥터·출시 기능의 gate와 수동 검증 통과. 기능 동등성 목표의 잔여 항목은 명시하고 미수행을 PASS로 바꾸지 않음.
 
@@ -200,6 +216,13 @@
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
+
+### 2026-09-20 — 다음 최우선 순서 변경
+
+- done: Phase 3의 query/resource 작업은 `57bf184`로 커밋했다. 명시적 동기 batch의 요구사항·목표 인터페이스·검증 계획을 R2-27/DC2-18/IC2-07/T2-27 및 Phase 3.5에 기록했다. batch 자체는 아직 구현하지 않았다.
+- next: Phase 3.5 `batch(() => { ... })`의 두 ref 쓰기 경로·최초 callback·동기 flush·metadata·커넥터·번들 비용을 먼저 구현·검증한다. 그 뒤 Phase 4 mutation·제출 기록·실패 복구를 시작한다.
+- blockers: 기본 core gzip 예산 여유 2 B, draft/resource metadata의 batch 최종 상태, 이전 microtask 방식에서 발생한 Vue 양방향 쓰기 유실 회귀.
+- 기록 시 최신 commit: `57bf184`; 이번 우선순위 문서 변경은 미커밋이다.
 
 ### 2026-09-20 — Phase 3 독립 query/resource
 

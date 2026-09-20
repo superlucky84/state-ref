@@ -21,6 +21,7 @@ state-ref 코어, 서버 동기화 헬퍼, draft 헬퍼를 선택적으로 조�
 - **U2-10** 적용에 성공하고 추가 입력이 없다면 draft는 clean이다. resource는 서버 기준과의 차이를 계속 추적한다.
 - **U2-11** TanStack에 런타임 의존하지 않는 서버 동기화를 지향한다. TanStack Query의 기능 전반을 목표로 하되, 기준 버전·기능별 계약·출시 단계는 검증 가능한 목록으로 확정한다.
 - **U2-12** 서버 저장 중의 후속 입력, 실패 작업 이외의 변경, 최신 서버 값을 보존한다. 단순 전체 스냅샷 복원으로 구현하지 않는다.
+- **U2-13** 여러 ref 쓰기를 호출자가 명시적으로 `batch(() => { ... })`로 묶을 수 있어야 한다. 값은 즉시 읽히고 구독 알림은 batch 종료 시점에 동기적으로 합쳐진다. `watch` 콜백 인자와 반환 ref를 통한 쓰기를 모두 지원하며, 기본 쓰기 알림 시점은 그대로 유지한다. 이 API는 Phase 3.5의 최우선 구현 대상이며 아직 제공되지 않는다.
 
 패키지 이름, export 경로, 함수 이름, 내부 hook, 구체적인 조회 기본값은 아직 구현 설계 항목이다. 대화의 예시를 이미 제공되는 API나 모든 세부 사항에 대한 사용자 승인으로 취급하지 않는다.
 
@@ -65,7 +66,7 @@ state-ref 코어, 서버 동기화 헬퍼, draft 헬퍼를 선택적으로 조�
 | ID | 요구사항 | 수용 기준 | 검증 |
 |---|---|---|---|
 | R2-01 | 서버 플러그인과 선택적 draft | sync는 별도 설치·import하고 draft는 `state-ref`의 선택적 진입점에서 import한다. ESM의 네 조합과 UMD 브라우저의 core 단독·core+draft를 실행 가능 | T2-01, M2-01 |
-| R2-02 | 코어 계약 보존 | 동기 전파·Watch identity·해제·readonly·불변 갱신과 기존 성능 예산 유지 | T2-02, M2-02 |
+| R2-02 | 코어 계약 보존 | 기본 쓰기는 쓰기마다 동기 전파, 명시적 batch만 스코프 종료 시 동기 전파; Watch identity·해제·readonly·불변 갱신과 기존 성능 예산 유지 | T2-02, M2-02 |
 | R2-03 | 공유 query 캐시 | 같은 client+key의 진행 조회와 기준 데이터 공유, freshness·GC 정책 준수 | T2-03, M2-03 |
 | R2-04 | 로딩과 상태 | 미로드 payload 접근을 명시적으로 처리하고 가짜 데이터·오류 상태 혼동 없음 | T2-04, M2-04 |
 | R2-05 | resource 직접 편집 | 첫 setter부터 변경 기록, 편집만으로 WRITE 0회, 서버 기준은 유지 | T2-05, M2-05 |
@@ -90,6 +91,7 @@ state-ref 코어, 서버 동기화 헬퍼, draft 헬퍼를 선택적으로 조�
 | R2-24 | UI 통합 | React·Preact·Vue·Svelte·Solid에서 로컬 draft와 서버 ref/draft/변경 검토 검증 | T2-24, M2-20 |
 | R2-25 | 데이터와 타입 경계 | query 데이터 지원과 편집 가능 데이터 지원을 구분, 미지원 값·예약 키·직접 객체 변형 처리 명시 | T2-25, M2-17 |
 | R2-26 | 변경 검토의 유효성 | 버전 있는 변경 snapshot, 오래된 검토에 의한 적용/충돌 해결이 새 입력을 지우지 않음 | T2-26, M2-16 |
+| R2-27 | 명시적 동기 batch | `watch` 콜백 ref와 반환/보관 ref의 쓰기, 중첩 호출, 최종 값 기준 구독자 1회 알림, 즉시 값 읽기, 동기 종료·예외·metadata·커넥터 경계를 검증한다. 기본 동기 쓰기와 manual sync 의미는 유지 | T2-27, M2-02 |
 
 ## 5. 비기능 요구사항
 
@@ -101,12 +103,15 @@ state-ref 코어, 서버 동기화 헬퍼, draft 헬퍼를 선택적으로 조�
 - **NFR2-06** Node·pnpm·TypeScript 버전, baseline, 성능·번들 예산을 Phase 0에서 기록하고 근거 없이 기존 예산을 늘리지 않는다.
 - **NFR2-07** client는 앱/SSR 요청별로 명시적으로 소유한다. 전역 singleton으로 서로 다른 사용자의 데이터를 공유하지 않는다.
 - **NFR2-08** changes는 현재 편집을 위한 정보이며 영구 감사 로그가 아니다. 값이나 요청 DTO를 자동 외부 전송·로그 출력하지 않는다.
+- **NFR2-09** 명시적 batch는 microtask/타이머/프레임워크 스케줄러에 알림 시점을 맡기지 않는다. 기본 core 번들·쓰기 성능 예산과 5종 커넥터의 실제 양방향 갱신을 재검증한다.
 
 ## 6. 완료 판정과 인계
 
 이번 개정은 제품·동작 방향을 확정한다. 서버 기능 비교의 참조 버전과 단계는 [Phase 0](./PHASE0.md)에 고정했다. 패키지/export의 실제 타입·빌드, mutation 제출 기록 연결과 기능별 실행 검증은 [DESIGN의 IC2](./DESIGN.md) 및 후속 단계에서 닫는다.
 
 ### 2026-09-20 Phase 3 인계
+
+후속 우선순위 변경: [IMPLEMENT Phase 3.5](./IMPLEMENT.md#phase-35--명시적-동기-batch-최우선)를 Phase 4보다 먼저 진행한다. 아래 `next (Phase 4)`는 Phase 3 완료 당시 기록이며 현재의 첫 작업 순서는 아니다.
 
 - done: [독립 sync query/resource](./PHASE3.md)에 client별 cache·READ 공유·stale/GC/취소/retry와 편집 가능한 resource의 서버 기준·dirty/changes를 구현했다. `pnpm gate`와 고정 Node 기본 core 번들 예산 PASS.
 - next (Phase 4): IC2-04 제출/기준 수용 계약을 닫고 mutation·실패 복구를 구현한다. Phase 3 resource PASS를 pending/복구·draft 조합의 PASS로 간주하지 않는다.
