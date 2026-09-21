@@ -12,6 +12,8 @@ import { copyJson, parseSnapshot } from './hydration';
 import type { HydratedQuery, SyncSnapshot } from './hydration';
 import { createQueryView } from './view';
 import type { QueryViewHandle, QueryViewOptions } from './view';
+import { createLiveQueryView } from './live-view';
+import type { LiveQueryOptions, LiveQueryViewHandle } from './live-view';
 
 export { hashQueryKey } from './key';
 export type { QueryKey } from './key';
@@ -38,6 +40,11 @@ export type {
   QueryViewState,
   QueryViewWatch,
 } from './view';
+export type {
+  LiveQueryOptions,
+  LiveQueryViewHandle,
+  LiveQueryViewState,
+} from './live-view';
 
 export type QueryStatus = Readonly<{
   status: 'pending' | 'success' | 'error';
@@ -92,6 +99,12 @@ export type SyncClient = Readonly<{
     options: QueryOptions<T>,
     viewOptions?: QueryViewOptions<T, S>
   ) => QueryViewHandle<T, S>;
+  /** Follow a state-ref source, automatically loading its active query key. */
+  liveView: <I, T, S = T>(
+    source: Watch<I>,
+    resolve: (input: I) => LiveQueryOptions<T> | null,
+    viewOptions?: QueryViewOptions<T, S>
+  ) => LiveQueryViewHandle<T, S>;
   /** Return a fresh cached baseline or perform a READ. */
   fetch: <T>(options: QueryOptions<T>) => Promise<T>;
   /** Best-effort fetch that caches success and swallows load rejections. */
@@ -219,6 +232,7 @@ class QueryEntry<T> {
 
   detach() {
     this.owners -= 1;
+    if (this.owners === 0 && this.pending && !this.linked) this.invalidate();
     this.scheduleGc();
   }
 
@@ -719,6 +733,15 @@ export function createSyncClient(options: { ssr?: boolean } = {}): SyncClient {
         query.dispose();
         throw error;
       }
+    },
+    liveView<I, T, S = T>(
+      source: Watch<I>,
+      resolve: (input: I) => LiveQueryOptions<T> | null,
+      viewOptions?: QueryViewOptions<T, S>
+    ): LiveQueryViewHandle<T, S> {
+      return createLiveQueryView(source, resolve, options =>
+        client.view(options, viewOptions)
+      );
     },
     async fetch<T>(queryOptions: QueryOptions<T>): Promise<T> {
       const entry = getOrCreate(queryOptions, false);

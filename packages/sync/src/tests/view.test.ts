@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { create } from 'state-ref';
 import { createSyncClient } from '../index';
 
 function deferred<T>() {
@@ -303,5 +304,192 @@ describe('query display views', () => {
     expect(client.size()).toBe(2);
     first.dispose();
     second.dispose();
+  });
+});
+
+describe('live query views', () => {
+  it('waits for enabled input and starts a dependent READ automatically', async () => {
+    const client = createSyncClient({ ssr: true });
+    const source = create({ id: null as number | null, enabled: false });
+    const read = deferred<{ task: string }>();
+    const queryFn = vi.fn(() => read.promise);
+    const live = client.liveView(
+      source.watch,
+      input =>
+        input.id === null
+          ? null
+          : {
+              queryKey: ['tasks', input.id],
+              queryFn,
+              enabled: input.enabled,
+            },
+      { placeholderData: { task: '기다리는 중' } }
+    );
+    expect(live.query).toBeNull();
+    expect(live.ref.enabled.value).toBe(false);
+    source.updateRef.id.value = 7;
+    expect(live.ref.queryKey.value).toEqual(['tasks', 7]);
+    expect(live.ref.data.value).toBeUndefined();
+    expect(queryFn).not.toHaveBeenCalled();
+    source.updateRef.enabled.value = true;
+    expect(live.ref.enabled.value).toBe(true);
+    expect(live.ref.phase.value).toBe('placeholder');
+    expect(live.ref.data.value).toEqual({ task: '기다리는 중' });
+    expect(queryFn).toHaveBeenCalledOnce();
+    read.resolve({ task: 'task-7' });
+    await live.query!.load();
+    expect(live.ref.data.value).toEqual({ task: 'task-7' });
+    expect(client.dehydrate().queries[0].data).toEqual({ task: 'task-7' });
+    live.dispose();
+  });
+
+  it('aborts an unowned old key and ignores its late result', async () => {
+    const client = createSyncClient({ ssr: true });
+    const source = create({ id: 1 });
+    const oldRead = deferred<{ n: number }>();
+    const newRead = deferred<{ n: number }>();
+    let oldSignal!: AbortSignal;
+    const live = client.liveView(
+      source.watch,
+      input => ({
+        queryKey: ['switch', input.id],
+        queryFn: ({ signal }) => {
+          if (input.id === 1) {
+            oldSignal = signal;
+            return oldRead.promise;
+          }
+          return newRead.promise;
+        },
+        retry: 0,
+      }),
+      { select: data => data.n, placeholderData: { n: -1 } }
+    );
+    const firstQuery = live.query!;
+    const seen: Array<[number | undefined, number | undefined]> = [];
+    live.watch(ref => {
+      seen.push([ref.queryKey.value?.[1] as number, ref.data.value]);
+    });
+    expect(live.ref.data.value).toBe(-1);
+    source.updateRef.id.value = 2;
+    expect(oldSignal.aborted).toBe(true);
+    expect(() => firstQuery.status.value).toThrow('disposed');
+    expect(live.ref.queryKey.value).toEqual(['switch', 2]);
+    expect(live.ref.data.value).toBe(-1);
+    oldRead.resolve({ n: 1 });
+    await Promise.resolve();
+    newRead.resolve({ n: 2 });
+    await live.query!.load();
+    expect(live.ref.data.value).toBe(2);
+    expect(seen.every(([key, value]) => key !== 2 || value !== 1)).toBe(true);
+    expect(client.dehydrate().queries).toEqual([
+      expect.objectContaining({ queryKey: ['switch', 2], data: { n: 2 } }),
+    ]);
+    live.dispose();
+  });
+
+  it('preserves a shared old READ for another owner and stops on disable', async () => {
+    const client = createSyncClient({ ssr: true });
+    const source = create({ id: 1, enabled: true });
+    const oldRead = deferred<{ n: number }>();
+    const nextRead = deferred<{ n: number }>();
+    let oldSignal!: AbortSignal;
+    const resolve = (input: { id: number; enabled: boolean }) => ({
+      queryKey: ['shared-switch', input.id],
+      enabled: input.enabled,
+      queryFn: ({ signal }: { signal: AbortSignal }) => {
+        if (input.id === 1) {
+          oldSignal = signal;
+          return oldRead.promise;
+        }
+        return nextRead.promise;
+      },
+    });
+    const live = client.liveView(source.watch, resolve);
+    const shared = client.view(resolve({ id: 1, enabled: true }));
+    source.updateRef.id.value = 2;
+    expect(oldSignal.aborted).toBe(false);
+    oldRead.resolve({ n: 1 });
+    await shared.query.load();
+    expect(shared.ref.data.value).toEqual({ n: 1 });
+    expect(live.ref.queryKey.value).toEqual(['shared-switch', 2]);
+    expect(live.ref.data.value).toBeUndefined();
+    source.updateRef.enabled.value = false;
+    expect(live.query).toBeNull();
+    expect(live.ref.enabled.value).toBe(false);
+    expect(live.ref.fetchStatus.value).toBe('idle');
+    expect(live.ref.data.value).toBeUndefined();
+    nextRead.resolve({ n: 2 });
+    await Promise.resolve();
+    expect(live.ref.data.value).toBeUndefined();
+    shared.dispose();
+    live.dispose();
+  });
+
+  it('reconnects on same-key input and removes source subscriptions on dispose', async () => {
+    const client = createSyncClient({ ssr: true });
+    const source = create({ revision: 1 });
+    const queryFn = vi.fn(() => ({ n: 1 }));
+    const live = client.liveView(source.watch, input => ({
+      queryKey: ['same-key'],
+      queryFn,
+      staleTime: input.revision === 1 ? Infinity : 0,
+    }));
+    await live.query!.load();
+    expect(queryFn).toHaveBeenCalledOnce();
+    const previous = live.query!;
+    source.updateRef.revision.value = 2;
+    expect(() => previous.status.value).toThrow('disposed');
+    await live.query!.load();
+    expect(queryFn).toHaveBeenCalledTimes(2);
+    live.dispose();
+    expect(() => live.ref.data.value).toThrow('disposed');
+    source.updateRef.revision.value = 3;
+    expect(queryFn).toHaveBeenCalledTimes(2);
+  });
+
+  it('clears a loaded old value immediately and restores only the matching cache key', async () => {
+    const client = createSyncClient({ ssr: true });
+    const source = create({ id: 1 });
+    const second = deferred<{ n: number }>();
+    const live = client.liveView(source.watch, input => ({
+      queryKey: ['loaded-switch', input.id],
+      queryFn: () => (input.id === 1 ? { n: 1 } : second.promise),
+      staleTime: Infinity,
+    }));
+    await live.query!.load();
+    expect(live.ref.data.value).toEqual({ n: 1 });
+    source.updateRef.id.value = 2;
+    expect(live.ref.queryKey.value).toEqual(['loaded-switch', 2]);
+    expect(live.ref.data.value).toBeUndefined();
+    expect(live.ref.phase.value).toBe('pending');
+    source.updateRef.id.value = 1;
+    expect(live.ref.data.value).toEqual({ n: 1 });
+    second.resolve({ n: 2 });
+    await Promise.resolve();
+    expect(live.ref.data.value).toEqual({ n: 1 });
+    live.dispose();
+  });
+
+  it('clears the prior view and reports an invalid source key locally', async () => {
+    const client = createSyncClient({ ssr: true });
+    const source = create({ id: 1 });
+    const live = client.liveView(source.watch, input => ({
+      queryKey: ['valid', input.id === 2 ? undefined : input.id],
+      queryFn: () => ({ n: input.id }),
+    }));
+    await live.query!.load();
+    const prior = live.query;
+    source.updateRef.id.value = 2;
+    expect(live.query).toBeNull();
+    expect(() => prior!.status.value).toThrow('disposed');
+    expect(live.ref.queryKey.value).toBeNull();
+    expect(live.ref.data.value).toBeUndefined();
+    expect(live.ref.phase.value).toBe('error');
+    expect(live.ref.errorSource.value).toBe('source');
+    expect(live.ref.error.value).toBeInstanceOf(TypeError);
+    source.updateRef.id.value = 3;
+    await live.query!.load();
+    expect(live.ref.data.value).toEqual({ n: 3 });
+    live.dispose();
   });
 });

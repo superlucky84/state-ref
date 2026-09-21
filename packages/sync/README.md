@@ -35,12 +35,14 @@ const save = client.mutation({
 const result = await save.run(
   { city: submission.value.address.city },
   {
-    links: [{
-      query: account,
-      submission,
-      accept: { kind: 'refetch' },
-      onReject: 'keep',
-    }],
+    links: [
+      {
+        query: account,
+        submission,
+        accept: { kind: 'refetch' },
+        onReject: 'keep',
+      },
+    ],
   }
 );
 account.dispose();
@@ -140,9 +142,41 @@ first READ error it disappears; a refetch error retains previously loaded data.
 `select` sees current local edits, but its result never replaces the cached
 query shape. An optional `equals` compares selected values (default:
 `Object.is`); select/comparison errors affect that view, not the shared query.
-Views do not automatically load, switch keys, or enable dependent queries.
-Use `view.watch` to compose a dependent READ explicitly and dispose old views
-when switching keys.
+The fixed-key `view` does not start a READ automatically. For a reactive key or
+dependent query, bind a `state-ref` source to `liveView`:
+
+```ts
+import { create } from 'state-ref';
+
+const input = create({ accountId: null as number | null, enabled: false });
+const live = client.liveView(
+  input.watch,
+  ({ accountId, enabled }) =>
+    accountId === null
+      ? null
+      : {
+          queryKey: ['account', accountId],
+          queryFn: ({ signal }) => api.readAccount(accountId, { signal }),
+          enabled,
+        },
+  { select: account => account.address.city }
+);
+input.updateRef.accountId.value = 1;
+input.updateRef.enabled.value = true; // starts a READ automatically
+live.ref.data.value; // selected current key only
+live.ref.queryKey.value; // ['account', 1]
+// After the baseline loads: live.query?.ref.address.city.value = 'Busan';
+live.dispose();
+```
+
+`null` or `enabled: false` clears the display and releases the current query.
+The stable, readonly `live.ref` exposes `enabled` and `queryKey`; `live.query`
+is the current handle or `null`. Each source update reconnects with its new
+options, including when the key is unchanged. The old handle is disposed. An
+unowned in-flight READ is aborted and cannot install a late result; another
+owner of the same key keeps its shared READ. Neither placeholder nor selected
+display data enters the shared cache. Connector-specific lifecycle wiring is
+still pending.
 
 Independent mutations run concurrently by default. Pass the same `scope`
 string to `run` to execute those operations in start order, including their
@@ -160,6 +194,6 @@ Editable data defaults to a plain, acyclic tree with dense arrays. Arrays are tr
 
 Defaults: `staleTime: 0`, inactive `gcTime: 5 minutes` (infinite for `createSyncClient({ ssr: true })`), three query retries in a client and zero in SSR. The client owns its cache; create a separate client for each SSR request. The `queryKey` must be an acyclic JSON-compatible array, with object key order ignored in its hash.
 
-Queries require an explicit `load()` call unless a mutation response or
-`acceptServer` populates the cache. Automatic focus/reconnect/polling and
+Fixed-key queries require an explicit `load()` call unless a mutation response,
+`acceptServer`, or an active `liveView` populates the cache. Automatic focus/reconnect/polling and
 persistence are later work; a successful local edit does not save to a server.

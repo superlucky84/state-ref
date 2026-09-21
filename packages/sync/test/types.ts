@@ -5,6 +5,7 @@ import type {
   SyncSnapshot,
 } from '@stateref/sync';
 import { createDraft } from 'state-ref/draft';
+import { create } from 'state-ref';
 
 const query = createSyncClient({ ssr: true }).query({
   queryKey: ['account', { id: 1 }],
@@ -145,3 +146,32 @@ async function displayView() {
 }
 
 void displayView;
+
+async function liveDisplayView() {
+  const client = createSyncClient({ ssr: true });
+  const source = create({ id: null as number | null, enabled: false });
+  const live = client.liveView(
+    source.watch,
+    input =>
+      input.id === null
+        ? null
+        : {
+            queryKey: ['account', input.id],
+            queryFn: () => ({ city: '서울' }),
+            enabled: input.enabled,
+          },
+    { select: data => data.city }
+  );
+  const enabled: boolean = live.ref.enabled.value;
+  const selected: string | undefined = live.ref.data.value;
+  // @ts-expect-error a live view has no display-value setter
+  live.ref.data.value = '부산';
+  source.updateRef.id.value = 1;
+  source.updateRef.enabled.value = true;
+  if (live.query) await live.query.load();
+  void enabled;
+  void selected;
+  live.dispose();
+}
+
+void liveDisplayView;

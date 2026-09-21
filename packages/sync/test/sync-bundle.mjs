@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createSyncClient } from '../dist/stateref-sync.mjs';
+import { create } from 'state-ref';
 
 const bundle = await readFile(
   new URL('../dist/stateref-sync.mjs', import.meta.url),
@@ -85,6 +86,30 @@ assert.equal(display.ref.phase.value, 'placeholder');
 await display.query.load();
 assert.equal(display.ref.data.value, 'Seoul');
 display.dispose();
+const input = create({ id: null, enabled: false });
+const live = preparedClient.liveView(
+  input.watch,
+  ({ id, enabled }) =>
+    id === null
+      ? null
+      : {
+          queryKey: ['live', id],
+          queryFn: () => ({ city: `City ${id}` }),
+          enabled,
+        },
+  { select: data => data.city }
+);
+assert.equal(live.query, null);
+input.updateRef.id.value = 1;
+input.updateRef.enabled.value = true;
+await live.query.load();
+assert.equal(live.ref.data.value, 'City 1');
+input.updateRef.id.value = 2;
+await live.query.load();
+assert.equal(live.ref.data.value, 'City 2');
+live.dispose();
 assert.equal(submitted.changes.length, 1);
 query.dispose();
-console.log('sync ESM bundle: query, mutation, hydration, cache and view PASS');
+console.log(
+  'sync ESM bundle: query, mutation, hydration, cache and views PASS'
+);
