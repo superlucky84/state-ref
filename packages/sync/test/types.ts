@@ -5,12 +5,15 @@ import {
   openPersistedMutationQueue,
   restoreSyncSnapshot,
   saveSyncSnapshot,
+  saveLocalSyncSnapshot,
+  restoreLocalSyncSnapshot,
 } from '@stateref/sync';
 import type {
   AutomaticRefetchPolicy,
   BrowserSyncHost,
   InfiniteData,
   InfiniteQueryHandle,
+  LocalSyncSnapshot,
   MutationResult,
   NetworkMode,
   ResourceSubmission,
@@ -306,6 +309,37 @@ async function persistedCommands() {
 }
 
 void persistedCommands;
+
+async function recoveredLocalEdits() {
+  const client = createSyncClient({ ssr: true });
+  const query = client.query({
+    queryKey: ['local'],
+    queryFn: () => ({ n: 1 }),
+  });
+  await query.load();
+  query.ref.n.value = 2;
+  const snapshot: LocalSyncSnapshot = client.dehydrateLocal();
+  const restored = createSyncClient({ ssr: true });
+  restored.hydrateLocal(snapshot);
+  const storage: SyncStorage = {
+    getItem: () => null,
+    setItem: () => {},
+    removeItem: () => {},
+  };
+  await saveLocalSyncSnapshot(client, storage, {
+    key: 'local',
+    buster: 'v1',
+  });
+  const loaded: boolean = await restoreLocalSyncSnapshot(
+    createSyncClient({ ssr: true }),
+    storage,
+    { key: 'local', buster: 'v1' }
+  );
+  void loaded;
+  query.dispose();
+}
+
+void recoveredLocalEdits;
 
 createSyncClient().query({
   queryKey: ['bad-automatic-policy'],

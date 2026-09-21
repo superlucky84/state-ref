@@ -2,6 +2,7 @@ import type { SyncClient } from './index';
 import type { MutationHandle, MutationResult } from './mutation';
 import { copyJson } from './hydration';
 import type { SyncSnapshot } from './hydration';
+import type { LocalSyncSnapshot } from './local-hydration';
 
 /** One owner per key; setItem must atomically replace a complete string. */
 export type SyncStorage = Readonly<{
@@ -22,6 +23,13 @@ type StoredBaseline = Readonly<{
   buster: string;
   savedAt: number;
   snapshot: SyncSnapshot;
+}>;
+
+type StoredLocalBaseline = Readonly<{
+  schemaVersion: 1;
+  buster: string;
+  savedAt: number;
+  snapshot: LocalSyncSnapshot;
 }>;
 
 function nonempty(value: unknown, name: string): asserts value is string {
@@ -84,6 +92,47 @@ export async function restoreSyncSnapshot(
   const age = Date.now() - envelope.savedAt;
   if (age < 0 || age > (options.maxAge ?? Infinity)) return false;
   client.hydrate(envelope.snapshot as SyncSnapshot);
+  return true;
+}
+
+/** Preserve dirty resource edits and unconfirmed baselines separately. */
+export async function saveLocalSyncSnapshot(
+  client: SyncClient,
+  storage: SyncStorage,
+  options: SyncPersistenceOptions
+): Promise<void> {
+  checkOptions(options);
+  const snapshot = client.dehydrateLocal();
+  const value: StoredLocalBaseline = {
+    schemaVersion: 1,
+    buster: options.buster,
+    savedAt: Date.now(),
+    snapshot,
+  };
+  await storage.setItem(options.key, JSON.stringify(value));
+}
+
+/** Return false for absent, expired, or differently busted local data. */
+export async function restoreLocalSyncSnapshot(
+  client: SyncClient,
+  storage: SyncStorage,
+  options: SyncPersistenceOptions
+): Promise<boolean> {
+  checkOptions(options);
+  const text = await storage.getItem(options.key);
+  if (text === null) return false;
+  const stored: unknown = JSON.parse(text);
+  if (!stored || typeof stored !== 'object')
+    throw new TypeError('Invalid persisted local sync snapshot.');
+  const envelope = stored as Partial<StoredLocalBaseline>;
+  if (envelope.schemaVersion !== 1)
+    throw new TypeError('Unsupported persisted local snapshot schema version.');
+  nonempty(envelope.buster, 'persisted buster');
+  timestamp(envelope.savedAt, 'persisted savedAt');
+  if (envelope.buster !== options.buster) return false;
+  const age = Date.now() - envelope.savedAt;
+  if (age < 0 || age > (options.maxAge ?? Infinity)) return false;
+  client.hydrateLocal(envelope.snapshot as LocalSyncSnapshot);
   return true;
 }
 

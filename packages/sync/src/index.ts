@@ -10,6 +10,8 @@ import { createMutation } from './mutation';
 import type { MutationHandle, MutationLink, MutationOptions } from './mutation';
 import { copyJson, parseSnapshot } from './hydration';
 import type { HydratedQuery, SyncSnapshot } from './hydration';
+import { parseLocalSnapshot } from './local-hydration';
+import type { LocalHydratedQuery, LocalSyncSnapshot } from './local-hydration';
 import { createQueryView } from './view';
 import type { QueryViewHandle, QueryViewOptions } from './view';
 import { createLiveQueryView } from './live-view';
@@ -48,6 +50,8 @@ export {
   saveSyncSnapshot,
   restoreSyncSnapshot,
   openPersistedMutationQueue,
+  saveLocalSyncSnapshot,
+  restoreLocalSyncSnapshot,
 } from './persistence';
 export type {
   SyncStorage,
@@ -60,6 +64,8 @@ export type {
   ResourceChange,
   ResourceValue,
   ResourceSubmission,
+  ResourceRecoveryEdit,
+  ResourceRecoveryState,
 } from './resource';
 export type {
   MutationHandle,
@@ -71,6 +77,7 @@ export type {
   MutationStatus,
 } from './mutation';
 export type { HydratedQuery, SyncSnapshot } from './hydration';
+export type { LocalHydratedQuery, LocalSyncSnapshot } from './local-hydration';
 export type {
   QueryViewHandle,
   QueryViewOptions,
@@ -178,6 +185,10 @@ export type SyncClient = Readonly<{
   dehydrate: () => SyncSnapshot;
   /** Restore into an empty client before creating query handles. */
   hydrate: (snapshot: SyncSnapshot) => void;
+  /** Preserve editable local state separately from clean SSR snapshots. */
+  dehydrateLocal: () => LocalSyncSnapshot;
+  /** Restore into an empty client without starting a READ or WRITE. */
+  hydrateLocal: (snapshot: LocalSyncSnapshot) => void;
 }>;
 
 function checkDuration(value: number, name: string) {
@@ -414,6 +425,37 @@ class QueryEntry<T> {
     });
   }
 
+  dehydrateLocal(): LocalHydratedQuery | null {
+    if (this.pending || this.linked)
+      throw new Error(
+        `Query ${this.hash} has an active READ or linked WRITE; it cannot be locally dehydrated.`
+      );
+    if (!this.statusValue.loaded) {
+      if (this.statusValue.unconfirmed)
+        throw new Error(
+          `Query ${this.hash} has an unloaded unconfirmed WRITE.`
+        );
+      return null;
+    }
+    if (!this.resource || this.statusValue.updatedAt === null)
+      throw new Error(`Query ${this.hash} has no server baseline.`);
+    return Object.freeze({
+      queryKey: JSON.parse(this.hash) as QueryKey,
+      data: copyJson(this.resource.serverValue()),
+      updatedAt: this.statusValue.updatedAt,
+      invalidated:
+        this.statusValue.invalidated ||
+        this.statusValue.status === 'error' ||
+        this.statusValue.unconfirmed,
+      editable: this.options.editable ?? true,
+      unconfirmed: this.statusValue.unconfirmed,
+      ...(this.kind === 'infinite' ? { kind: 'infinite' as const } : {}),
+      ...(this.resource.editable
+        ? { local: this.resource.recoveryState() }
+        : {}),
+    });
+  }
+
   private seedBaseline(value: T, updatedAt: number, invalidated: boolean) {
     this.resource = new ResourceStore(
       value,
@@ -449,6 +491,13 @@ class QueryEntry<T> {
       throw new Error('Hydration requires an empty query entry.');
     }
     this.seedBaseline(seed.data as T, seed.updatedAt, seed.invalidated);
+  }
+
+  hydrateLocal(seed: LocalHydratedQuery) {
+    this.hydrate(seed);
+    if (seed.local) this.getResource().restoreRecovery(seed.local);
+    if (seed.unconfirmed) this.markUnconfirmed();
+    if (this.isDirty() || seed.unconfirmed) this.cancelGc();
   }
 
   markUnconfirmed() {
@@ -1174,6 +1223,53 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
           );
           prepared.push([hash, entry]);
           entry.hydrate(seed);
+        }
+      } catch (error) {
+        prepared.forEach(([, entry]) => entry.expire());
+        throw error;
+      }
+      prepared.forEach(([hash, entry]) => entries.set(hash, entry));
+    },
+    dehydrateLocal(): LocalSyncSnapshot {
+      const queries: LocalHydratedQuery[] = [];
+      for (const entry of entries.values()) {
+        const seed = entry.dehydrateLocal();
+        if (seed) queries.push(seed);
+      }
+      return Object.freeze({
+        schemaVersion: 2 as const,
+        capturedAt: Date.now(),
+        queries: Object.freeze(queries),
+      });
+    },
+    hydrateLocal(snapshot: LocalSyncSnapshot) {
+      if (entries.size)
+        throw new Error(
+          'Hydrate an empty client before creating query handles.'
+        );
+      const seeds = parseLocalSnapshot(snapshot);
+      const prepared: Array<[string, QueryEntry<any>]> = [];
+      try {
+        for (const seed of seeds) {
+          const hash = hashQueryKey(seed.queryKey);
+          const entry = new QueryEntry(
+            hash,
+            {
+              queryKey: seed.queryKey,
+              editable: seed.editable,
+              queryFn: () => {
+                throw new Error(
+                  'Attach a query function before loading hydrated data.'
+                );
+              },
+            },
+            options.ssr ?? false,
+            evict,
+            network,
+            seed.kind ?? 'query'
+          );
+          prepared.push([hash, entry]);
+          entry.hydrateLocal(seed);
         }
       } catch (error) {
         prepared.forEach(([, entry]) => entry.expire());

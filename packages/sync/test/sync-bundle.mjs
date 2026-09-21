@@ -6,6 +6,8 @@ import {
   openPersistedMutationQueue,
   restoreSyncSnapshot,
   saveSyncSnapshot,
+  saveLocalSyncSnapshot,
+  restoreLocalSyncSnapshot,
 } from '../dist/stateref-sync.mjs';
 import { create } from 'state-ref';
 
@@ -233,6 +235,33 @@ await queue.enqueue({
 });
 assert.equal((await queue.resume())[0].result.kind, 'success');
 assert.deepEqual(queue.entries(), []);
+const editableClient = createSyncClient({ ssr: true });
+const editable = editableClient.query({
+  queryKey: ['local-bundle'],
+  queryFn: () => ({ count: 1 }),
+});
+await editable.load();
+editable.ref.count.value = 2;
+await saveLocalSyncSnapshot(editableClient, storage, {
+  key: 'local',
+  buster: 'v1',
+});
+const localRestoredClient = createSyncClient({ ssr: true });
+assert.equal(
+  await restoreLocalSyncSnapshot(localRestoredClient, storage, {
+    key: 'local',
+    buster: 'v1',
+  }),
+  true
+);
+const localRestored = localRestoredClient.query({
+  queryKey: ['local-bundle'],
+  queryFn: () => ({ count: 1 }),
+});
+assert.equal(localRestored.ref.count.value, 2);
+assert.equal(localRestored.isDirty(), true);
+editable.dispose();
+localRestored.dispose();
 cleanQuery.dispose();
 restoredClean.dispose();
 assert.equal(submitted.changes.length, 1);

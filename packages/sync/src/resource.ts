@@ -13,6 +13,7 @@ import {
   startsWith,
 } from './tree';
 import type { DataPath, Located } from './tree';
+import { copyJson } from './hydration';
 
 export type ResourceValue = Readonly<{ exists: boolean; value: unknown }>;
 export type ResourceChange = Readonly<{
@@ -30,6 +31,22 @@ export type ResourceSubmission<T> = Readonly<{
   version: number;
   value: T;
   changes: readonly ResourceChange[];
+}>;
+
+export type ResourceRecoveryEdit = Readonly<{
+  id: number;
+  version: number;
+  path: readonly string[];
+  original: Readonly<{ exists: boolean; value?: unknown }>;
+  after: unknown;
+  conflict: boolean;
+}>;
+
+export type ResourceRecoveryState = Readonly<{
+  current: unknown;
+  revision: number;
+  nextId: number;
+  edits: readonly ResourceRecoveryEdit[];
 }>;
 
 type Edit = {
@@ -165,6 +182,61 @@ export class ResourceStore<T> {
 
   version() {
     return this.revision;
+  }
+
+  recoveryState(): ResourceRecoveryState {
+    if (!this.editable)
+      throw new TypeError('Readonly query has no editable recovery state.');
+    return Object.freeze({
+      current: copyJson(this.value()),
+      revision: this.revision,
+      nextId: this.nextId,
+      edits: Object.freeze(
+        this.edits.map(edit =>
+          Object.freeze({
+            id: edit.id,
+            version: edit.version,
+            path: Object.freeze(copyJson(edit.path) as string[]),
+            original: Object.freeze(
+              edit.original.exists
+                ? { exists: true, value: copyJson(edit.original.value) }
+                : { exists: false }
+            ),
+            after: copyJson(edit.after),
+            conflict: edit.conflict,
+          })
+        )
+      ),
+    });
+  }
+
+  restoreRecovery(state: ResourceRecoveryState) {
+    if (!this.editable || this.revision || this.edits.length)
+      throw new Error('Recovery requires a new editable resource.');
+    this.revision = state.revision;
+    this.nextId = state.nextId;
+    this.edits = state.edits.map(edit => ({
+      id: edit.id,
+      version: edit.version,
+      path: [...edit.path],
+      original: {
+        exists: edit.original.exists,
+        value: edit.original.value,
+      },
+      after: edit.after,
+      conflict: edit.conflict,
+    }));
+    this.pendingStatus = true;
+    this.stageStatus();
+    this.internalWrite = true;
+    try {
+      this.journal.runAs('accepted-server-result', () => {
+        this.ref.value = state.current as T;
+      });
+    } finally {
+      this.internalWrite = false;
+    }
+    this.publishStatus();
   }
 
   isDirty() {

@@ -287,6 +287,32 @@ client. `localStorage` is an example; `SyncStorage` also accepts asynchronous
 methods. Storage keys must have one owner and should be scoped to the app's
 current user and data partition.
 
+To preserve local edits and an unconfirmed baseline, use the separate schema 2
+recovery snapshot. It includes the server baseline, displayed value, change
+IDs and conflict origins. Restore it into an empty client before opening
+query handles:
+
+```ts
+import {
+  saveLocalSyncSnapshot,
+  restoreLocalSyncSnapshot,
+} from '@stateref/sync';
+
+const localOptions = { key: 'account-local', buster: 'api-v1', maxAge: 60_000 };
+await saveLocalSyncSnapshot(client, localStorage, localOptions);
+const recovered = createSyncClient();
+await restoreLocalSyncSnapshot(recovered, localStorage, localOptions);
+```
+
+The local snapshot accepts only JSON-compatible, loaded data and rejects an
+active READ, linked WRITE, or unloaded unconfirmed WRITE. Restore starts no
+READ or WRITE. Recreate the query handle with its query function; a later READ
+rebases the restored edit through the normal conflict rules. An unconfirmed
+WRITE remains unconfirmed until a successful READ or explicit known server
+value. Keep this storage key separate from the clean baseline and command
+queue. A saved local snapshot does not contain an active mutation's DTO or
+submission record and cannot resume a linked WRITE.
+
 For an independent command, register a mutation handle and queue a JSON DTO
 with a server-supported idempotency key. Call `resume()` after confirming the
 host is online:
