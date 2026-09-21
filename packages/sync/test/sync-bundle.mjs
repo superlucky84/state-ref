@@ -134,8 +134,32 @@ assert.equal(automatic.ref.count.value, 2);
 automatic.dispose();
 assert.equal(automaticListeners.size, 0);
 assert.equal(automaticClient.remove(['automatic']), true);
+const infiniteClient = createSyncClient({ ssr: true });
+const infinite = infiniteClient.infiniteQuery({
+  queryKey: ['infinite-bundle'],
+  queryFn: ({ pageParam }) => ({ id: pageParam }),
+  initialPageParam: 0,
+  getNextPageParam: page => page.id + 1,
+  maxPages: 2,
+});
+await infinite.load();
+await infinite.fetchNextPage();
+assert.deepEqual(infinite.ref.value.pageParams, [0, 1]);
+const infiniteSnapshot = JSON.parse(JSON.stringify(infiniteClient.dehydrate()));
+const infiniteRestoredClient = createSyncClient({ ssr: true });
+infiniteRestoredClient.hydrate(infiniteSnapshot);
+const infiniteRestored = infiniteRestoredClient.infiniteQuery({
+  queryKey: ['infinite-bundle'],
+  queryFn: ({ pageParam }) => ({ id: pageParam }),
+  initialPageParam: 0,
+  getNextPageParam: page => page.id + 1,
+  maxPages: 2,
+});
+assert.deepEqual(infiniteRestored.ref.value.pageParams, [0, 1]);
+infinite.dispose();
+infiniteRestored.dispose();
 assert.equal(submitted.changes.length, 1);
 query.dispose();
 console.log(
-  'sync ESM bundle: query, mutation, hydration, cache, views and automatic refetch PASS'
+  'sync ESM bundle: query, mutation, hydration, cache, views, automatic refetch and infinite query PASS'
 );

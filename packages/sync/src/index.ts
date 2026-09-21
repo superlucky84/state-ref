@@ -22,6 +22,19 @@ import type {
   AutomaticRefetchOptions,
   SyncEnvironment,
 } from './automatic-refetch';
+import {
+  checkInfiniteData,
+  checkInfiniteOptions,
+  makeInfiniteData,
+  nextPageParam,
+  previousPageParam,
+  samePageParam,
+} from './infinite';
+import type {
+  InfiniteData,
+  InfiniteQueryHandle,
+  InfiniteQueryOptions,
+} from './infinite';
 
 export { hashQueryKey } from './key';
 export type { QueryKey } from './key';
@@ -59,6 +72,11 @@ export type {
   SyncEnvironment,
   SyncEnvironmentEvent,
 } from './automatic-refetch';
+export type {
+  InfiniteData,
+  InfiniteQueryHandle,
+  InfiniteQueryOptions,
+} from './infinite';
 
 export type QueryStatus = Readonly<{
   status: 'pending' | 'success' | 'error';
@@ -116,6 +134,9 @@ export type QueryHandle<T> = Readonly<{
 
 export type SyncClient = Readonly<{
   query: <T>(options: QueryOptions<T>) => QueryHandle<T>;
+  infiniteQuery: <Page, Param>(
+    options: InfiniteQueryOptions<Page, Param>
+  ) => InfiniteQueryHandle<Page, Param>;
   view: <T, S = T>(
     options: QueryOptions<T>,
     viewOptions?: QueryViewOptions<T, S>
@@ -192,6 +213,7 @@ class QueryEntry<T> {
   resource: ResourceStore<T> | null = null;
   owners = 0;
   removed = false;
+  infinitePolicy: string | null = null;
   private epoch = 0;
   private controller: AbortController | null = null;
   private pending: Promise<T> | null = null;
@@ -205,7 +227,8 @@ class QueryEntry<T> {
     readonly hash: string,
     options: QueryOptions<T>,
     private readonly ssr: boolean,
-    private readonly evict: (hash: string, entry: QueryEntry<T>) => void
+    private readonly evict: (hash: string, entry: QueryEntry<T>) => void,
+    readonly kind: 'query' | 'infinite' = 'query'
   ) {
     this.options = options;
   }
@@ -368,6 +391,7 @@ class QueryEntry<T> {
       updatedAt: this.statusValue.updatedAt,
       invalidated: this.statusValue.invalidated,
       editable: this.options.editable ?? true,
+      ...(this.kind === 'infinite' ? { kind: 'infinite' as const } : {}),
     });
   }
 
@@ -577,24 +601,31 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
   const entries = new Map<string, QueryEntry<any>>();
   const handles = new WeakMap<object, QueryEntry<any>>();
   const scopes = new Map<string, Promise<void>>();
+  const pageScopes = new Map<string, Promise<void>>();
   const automaticRefetch = createAutomaticRefetchManager(
     options.environment,
     options.ssr ?? false
   );
   let nextOperationId = 1;
-  const schedule = <R>(scope: string, task: () => Promise<R>): Promise<R> => {
-    const previous = scopes.get(scope) ?? Promise.resolve();
+  const scheduleWith = <R>(
+    registry: Map<string, Promise<void>>,
+    scope: string,
+    task: () => Promise<R>
+  ): Promise<R> => {
+    const previous = registry.get(scope) ?? Promise.resolve();
     const result = previous.then(task);
     const settled = result.then(
       () => {},
       () => {}
     );
-    scopes.set(scope, settled);
+    registry.set(scope, settled);
     void settled.then(() => {
-      if (scopes.get(scope) === settled) scopes.delete(scope);
+      if (registry.get(scope) === settled) registry.delete(scope);
     });
     return result;
   };
+  const schedule = <R>(scope: string, task: () => Promise<R>): Promise<R> =>
+    scheduleWith(scopes, scope, task);
   const evict = (hash: string, entry: QueryEntry<any>) => {
     if (
       entries.get(hash) !== entry ||
@@ -609,7 +640,8 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
   };
   const getOrCreate = <T>(
     queryOptions: QueryOptions<T>,
-    configureExisting: boolean
+    configureExisting: boolean,
+    kind: 'query' | 'infinite' = 'query'
   ): QueryEntry<T> => {
     const hash = hashQueryKey(queryOptions.queryKey);
     checkDuration(queryOptions.staleTime ?? 0, 'staleTime');
@@ -628,6 +660,8 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
     }
     let entry = entries.get(hash) as QueryEntry<T> | undefined;
     if (entry) {
+      if (entry.kind !== kind)
+        throw new TypeError('A query key cannot mix query kinds.');
       entry.assertCompatible(queryOptions);
       if (queryOptions.initialData !== undefined) {
         entry.seedInitial(
@@ -637,7 +671,13 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
       }
       if (configureExisting) entry.configure(queryOptions);
     } else {
-      entry = new QueryEntry(hash, queryOptions, options.ssr ?? false, evict);
+      entry = new QueryEntry(
+        hash,
+        queryOptions,
+        options.ssr ?? false,
+        evict,
+        kind
+      );
       try {
         if (queryOptions.initialData !== undefined) {
           entry.seedInitial(
@@ -653,117 +693,283 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
     }
     return entry;
   };
+  const openQuery = <T>(
+    queryOptions: QueryOptions<T>,
+    kind: 'query' | 'infinite' = 'query'
+  ): QueryHandle<T> => {
+    const entry = getOrCreate(queryOptions, true, kind);
+    entry.attach();
+    const automatic = automaticRefetch.observe(
+      entry,
+      queryOptions,
+      () => entry.isStale(queryOptions),
+      force => entry.automaticLoad(force, queryOptions)
+    );
+    let active = true;
+    const controllers = new Set<AbortController>();
+    const refs = new WeakMap<object, object>();
+    const snapshots = new WeakMap<object, object>();
+    const assertActive = () => {
+      if (!active || entry!.removed)
+        throw new Error('This query handle has been disposed.');
+    };
+    const guard = <V>(ref: StateRefStore<V>): StateRefStore<V> =>
+      guardRef(ref, assertActive, refs, snapshots);
+    const guardData = <V>(ref: StateRefStore<V>): StateRefStore<V> =>
+      guardRef(
+        ref,
+        assertActive,
+        refs,
+        snapshots,
+        entry!.getResource().editable
+      );
+    let dataWatch: Watch<T> | null = null;
+    const statusWatch = guardedWatch(
+      entry.statusStore.watch,
+      entry.rawStatus,
+      guard,
+      assertActive,
+      controllers,
+      true
+    );
+    const handle: QueryHandle<T> = {
+      get ref() {
+        assertActive();
+        return guardData(entry!.getResource().ref);
+      },
+      get watch() {
+        assertActive();
+        const resource = entry!.getResource();
+        if (!dataWatch) {
+          dataWatch = guardedWatch(
+            resource.watch,
+            resource.ref,
+            guardData,
+            assertActive,
+            controllers,
+            !resource.editable
+          );
+        }
+        return dataWatch;
+      },
+      status: guard(entry.rawStatus),
+      watchStatus: statusWatch,
+      load: () => {
+        assertActive();
+        automatic.start();
+        return entry!.load();
+      },
+      refetch: () => {
+        assertActive();
+        automatic.start();
+        return entry!.load(true);
+      },
+      invalidate: () => {
+        assertActive();
+        entry!.invalidate();
+      },
+      isDirty: () => {
+        assertActive();
+        return entry!.isDirty();
+      },
+      changes: () => {
+        assertActive();
+        return entry!.changes();
+      },
+      version: () => {
+        assertActive();
+        return entry!.version();
+      },
+      capture: ids => {
+        assertActive();
+        return entry!.getResource().capture(ids);
+      },
+      acceptServer: value => {
+        assertActive();
+        if (entry!.statusValuePending())
+          throw new Error('A linked operation is pending for this query.');
+        entry!.invalidate();
+        entry!.acceptServer(value);
+      },
+      dispose: () => {
+        if (!active) return;
+        active = false;
+        try {
+          automatic.dispose();
+        } finally {
+          controllers.forEach(controller => controller.abort());
+          controllers.clear();
+          entry!.detach();
+        }
+      },
+    };
+    const frozen = Object.freeze(handle);
+    handles.set(frozen, entry);
+    return frozen;
+  };
   const client: SyncClient = Object.freeze({
     query<T>(queryOptions: QueryOptions<T>): QueryHandle<T> {
-      const entry = getOrCreate(queryOptions, true);
-      entry.attach();
-      const automatic = automaticRefetch.observe(
-        entry,
-        queryOptions,
-        () => entry.isStale(queryOptions),
-        force => entry.automaticLoad(force, queryOptions)
-      );
-      let active = true;
-      const controllers = new Set<AbortController>();
-      const refs = new WeakMap<object, object>();
-      const snapshots = new WeakMap<object, object>();
-      const assertActive = () => {
-        if (!active || entry!.removed)
-          throw new Error('This query handle has been disposed.');
+      return openQuery(queryOptions);
+    },
+    infiniteQuery<Page, Param>(
+      infiniteOptions: InfiniteQueryOptions<Page, Param>
+    ): InfiniteQueryHandle<Page, Param> {
+      checkInfiniteOptions(infiniteOptions);
+      const hash = hashQueryKey(infiniteOptions.queryKey);
+      const policy = JSON.stringify([
+        hashQueryKey([infiniteOptions.initialPageParam]),
+        infiniteOptions.maxPages ?? null,
+      ]);
+      const existing = entries.get(hash);
+      if (existing?.infinitePolicy && existing.infinitePolicy !== policy)
+        throw new TypeError('A query key cannot mix infinite page policies.');
+      type Data = InfiniteData<Page, Param>;
+      let entry: QueryEntry<Data>;
+      const refresh = async ({
+        signal,
+      }: {
+        signal: AbortSignal;
+      }): Promise<Data> => {
+        const previous = entry.resource?.serverValue();
+        if (previous) checkInfiniteData(previous, infiniteOptions.maxPages);
+        const count = previous?.pages.length ?? 1;
+        const pages: Page[] = [];
+        const pageParams: Param[] = [];
+        let param = previous?.pageParams[0] ?? infiniteOptions.initialPageParam;
+        for (let index = 0; index < count; index += 1) {
+          aborted(signal);
+          const page = await infiniteOptions.queryFn({
+            signal,
+            pageParam: param,
+          });
+          aborted(signal);
+          pages.push(page);
+          pageParams.push(param);
+          if (index + 1 < count) {
+            const next = nextPageParam(
+              infiniteOptions,
+              makeInfiniteData(pages, pageParams)
+            );
+            if (next == null) break;
+            if (pageParams.some(item => samePageParam(item, next)))
+              throw new TypeError(
+                'Infinite page cursor repeated during refetch.'
+              );
+            param = next;
+          }
+        }
+        return makeInfiniteData(pages, pageParams);
       };
-      const guard = <V>(ref: StateRefStore<V>): StateRefStore<V> =>
-        guardRef(ref, assertActive, refs, snapshots);
-      const guardData = <V>(ref: StateRefStore<V>): StateRefStore<V> =>
-        guardRef(
-          ref,
-          assertActive,
-          refs,
-          snapshots,
-          entry!.getResource().editable
-        );
-      let dataWatch: Watch<T> | null = null;
-      const statusWatch = guardedWatch(
-        entry.statusStore.watch,
-        entry.rawStatus,
-        guard,
-        assertActive,
-        controllers,
-        true
-      );
-      const handle: QueryHandle<T> = {
+      const queryOptions: QueryOptions<Data> = {
+        ...infiniteOptions,
+        editable: false,
+        queryFn: refresh,
+        initialData: infiniteOptions.initialData
+          ? makeInfiniteData(
+              infiniteOptions.initialData.pages,
+              infiniteOptions.initialData.pageParams
+            )
+          : undefined,
+      };
+      const query = openQuery(queryOptions, 'infinite');
+      entry = handles.get(query) as QueryEntry<Data>;
+      try {
+        if (entry.resource)
+          checkInfiniteData(
+            entry.resource.serverValue(),
+            infiniteOptions.maxPages
+          );
+      } catch (error) {
+        query.dispose();
+        throw error;
+      }
+      entry.infinitePolicy = policy;
+      const current = (): Data | null =>
+        query.status.loaded.value ? query.ref.value : null;
+      const append = (direction: 'next' | 'previous'): Promise<Data> =>
+        scheduleWith(pageScopes, entry.hash, async () => {
+          if (
+            !query.status.loaded.value ||
+            query.status.fetchStatus.value === 'fetching'
+          )
+            await query.load();
+          const before = current()!;
+          checkInfiniteData(before, infiniteOptions.maxPages);
+          const candidate =
+            direction === 'next'
+              ? nextPageParam(infiniteOptions, before)
+              : previousPageParam(infiniteOptions, before);
+          if (candidate == null) return before;
+          if (before.pageParams.some(param => samePageParam(param, candidate)))
+            throw new TypeError('Infinite page cursor repeated.');
+          return entry.load(true, undefined, false, {
+            ...queryOptions,
+            queryFn: async ({ signal }) => {
+              const page = await infiniteOptions.queryFn({
+                signal,
+                pageParam: candidate,
+              });
+              aborted(signal);
+              const latest = entry.resource?.serverValue() ?? before;
+              checkInfiniteData(latest, infiniteOptions.maxPages);
+              if (
+                latest.pageParams.some(param => samePageParam(param, candidate))
+              )
+                return latest;
+              const pages =
+                direction === 'next'
+                  ? [...latest.pages, page]
+                  : [page, ...latest.pages];
+              const params =
+                direction === 'next'
+                  ? [...latest.pageParams, candidate]
+                  : [candidate, ...latest.pageParams];
+              const max = infiniteOptions.maxPages;
+              if (max !== undefined && pages.length > max) {
+                if (direction === 'next') {
+                  pages.shift();
+                  params.shift();
+                } else {
+                  pages.pop();
+                  params.pop();
+                }
+              }
+              return makeInfiniteData(pages, params);
+            },
+          });
+        });
+      return Object.freeze({
         get ref() {
-          assertActive();
-          return guardData(entry!.getResource().ref);
+          return query.ref as unknown as InfiniteQueryHandle<
+            Page,
+            Param
+          >['ref'];
         },
         get watch() {
-          assertActive();
-          const resource = entry!.getResource();
-          if (!dataWatch) {
-            dataWatch = guardedWatch(
-              resource.watch,
-              resource.ref,
-              guardData,
-              assertActive,
-              controllers,
-              !resource.editable
-            );
-          }
-          return dataWatch;
+          return query.watch as unknown as InfiniteQueryHandle<
+            Page,
+            Param
+          >['watch'];
         },
-        status: guard(entry.rawStatus),
-        watchStatus: statusWatch,
-        load: () => {
-          assertActive();
-          automatic.start();
-          return entry!.load();
+        status: query.status,
+        watchStatus: query.watchStatus,
+        load: query.load,
+        refetch: query.refetch,
+        fetchNextPage: () => append('next'),
+        fetchPreviousPage: () => append('previous'),
+        hasNextPage: () => {
+          const data = current();
+          return data !== null && nextPageParam(infiniteOptions, data) != null;
         },
-        refetch: () => {
-          assertActive();
-          automatic.start();
-          return entry!.load(true);
+        hasPreviousPage: () => {
+          const data = current();
+          return (
+            data !== null && previousPageParam(infiniteOptions, data) != null
+          );
         },
-        invalidate: () => {
-          assertActive();
-          entry!.invalidate();
-        },
-        isDirty: () => {
-          assertActive();
-          return entry!.isDirty();
-        },
-        changes: () => {
-          assertActive();
-          return entry!.changes();
-        },
-        version: () => {
-          assertActive();
-          return entry!.version();
-        },
-        capture: ids => {
-          assertActive();
-          return entry!.getResource().capture(ids);
-        },
-        acceptServer: value => {
-          assertActive();
-          if (entry!.statusValuePending())
-            throw new Error('A linked operation is pending for this query.');
-          entry!.invalidate();
-          entry!.acceptServer(value);
-        },
-        dispose: () => {
-          if (!active) return;
-          active = false;
-          try {
-            automatic.dispose();
-          } finally {
-            controllers.forEach(controller => controller.abort());
-            controllers.clear();
-            entry!.detach();
-          }
-        },
-      };
-      const frozen = Object.freeze(handle);
-      handles.set(frozen, entry);
-      return frozen;
+        invalidate: query.invalidate,
+        dispose: query.dispose,
+      });
     },
     view<T, S = T>(
       queryOptions: QueryOptions<T>,
@@ -922,7 +1128,8 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
               },
             },
             options.ssr ?? false,
-            evict
+            evict,
+            seed.kind ?? 'query'
           );
           prepared.push([hash, entry]);
           entry.hydrate(seed);

@@ -1,6 +1,7 @@
 import { hashQueryKey } from './key';
 import type { QueryKey } from './key';
 import { assertEditable } from './tree';
+import { checkInfiniteData } from './infinite';
 
 export type HydratedQuery = Readonly<{
   queryKey: QueryKey;
@@ -8,6 +9,7 @@ export type HydratedQuery = Readonly<{
   updatedAt: number;
   invalidated: boolean;
   editable: boolean;
+  kind?: 'infinite';
 }>;
 
 /** Only settled, clean server baselines are transferable in schema 1. */
@@ -56,14 +58,23 @@ export function parseSnapshot(input: SyncSnapshot): HydratedQuery[] {
     ) {
       throw new TypeError('Invalid hydrated query flags.');
     }
+    if (query.kind !== undefined && query.kind !== 'infinite') {
+      throw new TypeError('Invalid hydrated query kind.');
+    }
     const data = copyJson(query.data);
     if (query.editable) assertEditable(data);
+    if (query.kind === 'infinite') {
+      if (query.editable)
+        throw new TypeError('Infinite query must be readonly.');
+      checkInfiniteData(data);
+    }
     return Object.freeze({
       queryKey: JSON.parse(hash) as QueryKey,
       data,
       updatedAt: time(query.updatedAt, 'updatedAt'),
       invalidated: query.invalidated,
       editable: query.editable,
+      ...(query.kind === 'infinite' ? { kind: 'infinite' as const } : {}),
     });
   });
 }

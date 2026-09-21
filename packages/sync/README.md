@@ -182,6 +182,41 @@ subscription on unmount; the owner of `live` calls `live.dispose()` when the
 view itself is no longer needed. Edit actual data through `live.query?.ref`
 after it loads.
 
+For numbered pagination, include the page in the key supplied to `liveView`.
+Each page then has its own cache entry. A `placeholderData` value is only a
+display preview for the new key; it never becomes that page's server baseline.
+Use `client.prefetch`, `fetch`, or `ensure` with the same page key to prepare it.
+
+For an accumulating list, use one infinite query key:
+
+```ts
+const feed = client.infiniteQuery({
+  queryKey: ['feed'],
+  queryFn: ({ pageParam, signal }) => api.readFeed(pageParam, { signal }),
+  initialPageParam: 0,
+  getNextPageParam: lastPage => lastPage.nextCursor,
+  getPreviousPageParam: firstPage => firstPage.previousCursor,
+  maxPages: 3,
+});
+await feed.load();
+if (feed.hasNextPage()) await feed.fetchNextPage();
+feed.ref.value.pages; // retained pages
+feed.ref.value.pageParams; // matching cursors
+feed.dispose();
+```
+
+`null` or `undefined` from a cursor callback means that direction has ended.
+`fetchPreviousPage()` prepends a page. `maxPages` trims the opposite end when
+adding a page, and a refetch reloads retained pages sequentially, recomputing
+following cursors. Concurrent additions to the same key run in order; a forced
+refetch can cancel a pending page READ, and its late response cannot enter the
+cache. Different page keys can load in parallel. Infinite pages are readonly:
+send edits with an explicit mutation and invalidate or refetch the list. The
+page parameters must be JSON-compatible. The aggregate can be dehydrated when
+its page data is JSON-compatible and no READ is pending; hydration restores its
+infinite query kind. Handles sharing a key must use the same initial page
+parameter and `maxPages` policy.
+
 Focus, reconnect, and polling policies become active after a handle's first
 `load()` or `refetch()`. An active `liveView` performs that first load
 automatically. Provide a client-scoped environment when the host has focus and

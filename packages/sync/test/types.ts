@@ -1,6 +1,8 @@
 import { createSyncClient, MutationRejectedError } from '@stateref/sync';
 import type {
   AutomaticRefetchPolicy,
+  InfiniteData,
+  InfiniteQueryHandle,
   MutationResult,
   ResourceSubmission,
   SyncClientOptions,
@@ -200,6 +202,34 @@ const automatic = createSyncClient(automaticOptions).query({
   refetchIntervalInBackground: true,
 });
 void automatic.load().then(() => automatic.dispose());
+
+async function infiniteDisplay() {
+  const feed: InfiniteQueryHandle<{ id: number }, number> = createSyncClient({
+    ssr: true,
+  }).infiniteQuery({
+    queryKey: ['feed'],
+    queryFn: ({ pageParam, signal }) => ({
+      id: signal.aborted ? -1 : pageParam,
+    }),
+    initialPageParam: 0,
+    getNextPageParam: (last, pages, lastParam, params) =>
+      pages.length === params.length ? last.id + lastParam + 1 : undefined,
+    maxPages: 2,
+  });
+  const loaded: InfiniteData<{ id: number }, number> = await feed.load();
+  const hasMore: boolean = feed.hasNextPage();
+  const next: number = (await feed.fetchNextPage()).pageParams[1];
+  void loaded;
+  void hasMore;
+  void next;
+  // @ts-expect-error infinite data is a readonly view
+  feed.ref.value = { pages: [], pageParams: [] };
+  // @ts-expect-error infinite query has no editable change capture
+  feed.capture();
+  feed.dispose();
+}
+
+void infiniteDisplay;
 
 createSyncClient().query({
   queryKey: ['bad-automatic-policy'],
