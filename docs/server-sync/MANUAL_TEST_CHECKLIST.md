@@ -1,6 +1,6 @@
 # MANUAL_TEST_CHECKLIST — 두 변경 기준과 서버 동기화
 
-- 개정일: 2026-09-19. 기준 SHA: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
+- 개정일: 2026-09-21. 기준 SHA: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
 - 기준: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md).
 - 상태: 전 항목 미수행. 구현 후 Phase 8에서 사용할 절차이며 현재 기능 동작의 증거가 아니다.
 
@@ -52,6 +52,8 @@
 - [ ] 같은 key를 두 패널에서 동시에 조회한다. 진행 READ는 공유한다.
 - [ ] 한 패널의 resourceRef 수정이 다른 패널에 보이지만 WRITE는 없다.
 - [ ] fresh/stale/GC 정책을 실제 설정값대로 확인한다.
+- [ ] client별 브라우저 환경 adapter로 focus/reconnect를 발생시킨다. `true`는 stale일 때만, `'always'`는 fresh 상태도 다시 읽고 `false`는 읽지 않는지 확인한다.
+- [ ] foreground/background/offline에서 polling을 실행한다. 같은 key 두 관찰자의 같은 interval tick은 READ 한 번을 공유하고, linked WRITE 중에는 자동 READ가 시작되지 않는지 확인한다.
 - [ ] 별도 client/SSR 요청에서는 같은 key의 값·편집·오류·요청을 공유하지 않는다.
 
 **합격:** client 안에서는 정의된 공유, client 사이에는 격리. **결과: 미수행.**
@@ -188,6 +190,7 @@
 - [ ] draft 생성·종료를 20회 반복하고 구독·기록이 누적되지 않는지 확인한다.
 - [ ] dirty/pending/복구 대기/열린 원본 구독의 유지 사유를 확인한다.
 - [ ] 한 화면 종료가 다른 화면이나 서버 없는 draft 사용을 중단하지 않는다.
+- [ ] 시작 전 query는 환경 listener와 polling timer를 만들지 않고, 마지막 시작 관찰자와 polling handle을 dispose하면 listener/timer가 남지 않는지 확인한다. SSR client에는 둘 다 생기지 않아야 한다.
 - [ ] 일반 응답 교체와 실제 runtime 만료 뒤 ref의 차이를 확인한다.
 
 **합격:** 입력 보존과 자원 정리가 명시적인 수명 계약을 따름. **결과: 미수행.**

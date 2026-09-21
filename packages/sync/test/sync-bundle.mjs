@@ -108,8 +108,34 @@ input.updateRef.id.value = 2;
 await live.query.load();
 assert.equal(live.ref.data.value, 'City 2');
 live.dispose();
+const automaticListeners = new Set();
+const automaticClient = createSyncClient({
+  environment: {
+    subscribe(listener) {
+      automaticListeners.add(listener);
+      return () => automaticListeners.delete(listener);
+    },
+    isFocused: () => true,
+    isOnline: () => true,
+  },
+});
+let automaticReads = 0;
+const automatic = automaticClient.query({
+  queryKey: ['automatic'],
+  queryFn: () => ({ count: ++automaticReads }),
+  refetchOnFocus: 'always',
+});
+await automatic.load();
+automaticListeners.forEach(listener => listener('focus'));
+await Promise.resolve();
+await Promise.resolve();
+await Promise.resolve();
+assert.equal(automatic.ref.count.value, 2);
+automatic.dispose();
+assert.equal(automaticListeners.size, 0);
+assert.equal(automaticClient.remove(['automatic']), true);
 assert.equal(submitted.changes.length, 1);
 query.dispose();
 console.log(
-  'sync ESM bundle: query, mutation, hydration, cache and views PASS'
+  'sync ESM bundle: query, mutation, hydration, cache, views and automatic refetch PASS'
 );

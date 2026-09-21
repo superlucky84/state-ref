@@ -14,6 +14,14 @@ import { createQueryView } from './view';
 import type { QueryViewHandle, QueryViewOptions } from './view';
 import { createLiveQueryView } from './live-view';
 import type { LiveQueryOptions, LiveQueryViewHandle } from './live-view';
+import {
+  checkAutomaticRefetchOptions,
+  createAutomaticRefetchManager,
+} from './automatic-refetch';
+import type {
+  AutomaticRefetchOptions,
+  SyncEnvironment,
+} from './automatic-refetch';
 
 export { hashQueryKey } from './key';
 export type { QueryKey } from './key';
@@ -45,6 +53,12 @@ export type {
   LiveQueryViewHandle,
   LiveQueryViewState,
 } from './live-view';
+export type {
+  AutomaticRefetchOptions,
+  AutomaticRefetchPolicy,
+  SyncEnvironment,
+  SyncEnvironmentEvent,
+} from './automatic-refetch';
 
 export type QueryStatus = Readonly<{
   status: 'pending' | 'success' | 'error';
@@ -74,6 +88,13 @@ export type QueryOptions<T> = Readonly<{
   initialData?: T;
   /** Timestamp of initialData; defaults to the time it is installed. */
   initialUpdatedAt?: number;
+}> &
+  AutomaticRefetchOptions;
+
+export type SyncClientOptions = Readonly<{
+  ssr?: boolean;
+  /** Client-scoped focus and connectivity events for automatic refetch. */
+  environment?: SyncEnvironment;
 }>;
 
 export type QueryHandle<T> = Readonly<{
@@ -544,13 +565,22 @@ class QueryEntry<T> {
       .catch(() => {});
     return task;
   }
+
+  automaticLoad(force: boolean, requestOptions: QueryOptions<T>): Promise<T> {
+    if (this.pending) return this.pending;
+    return this.load(force, undefined, false, requestOptions);
+  }
 }
 
 /** One client owns one cache. Construct a new client for each SSR request. */
-export function createSyncClient(options: { ssr?: boolean } = {}): SyncClient {
+export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
   const entries = new Map<string, QueryEntry<any>>();
   const handles = new WeakMap<object, QueryEntry<any>>();
   const scopes = new Map<string, Promise<void>>();
+  const automaticRefetch = createAutomaticRefetchManager(
+    options.environment,
+    options.ssr ?? false
+  );
   let nextOperationId = 1;
   const schedule = <R>(scope: string, task: () => Promise<R>): Promise<R> => {
     const previous = scopes.get(scope) ?? Promise.resolve();
@@ -584,6 +614,7 @@ export function createSyncClient(options: { ssr?: boolean } = {}): SyncClient {
     const hash = hashQueryKey(queryOptions.queryKey);
     checkDuration(queryOptions.staleTime ?? 0, 'staleTime');
     checkDuration(queryOptions.gcTime ?? 0, 'gcTime');
+    checkAutomaticRefetchOptions(queryOptions);
     if (queryOptions.initialUpdatedAt !== undefined) {
       if (
         !Number.isFinite(queryOptions.initialUpdatedAt) ||
@@ -626,6 +657,12 @@ export function createSyncClient(options: { ssr?: boolean } = {}): SyncClient {
     query<T>(queryOptions: QueryOptions<T>): QueryHandle<T> {
       const entry = getOrCreate(queryOptions, true);
       entry.attach();
+      const automatic = automaticRefetch.observe(
+        entry,
+        queryOptions,
+        () => entry.isStale(queryOptions),
+        force => entry.automaticLoad(force, queryOptions)
+      );
       let active = true;
       const controllers = new Set<AbortController>();
       const refs = new WeakMap<object, object>();
@@ -677,10 +714,12 @@ export function createSyncClient(options: { ssr?: boolean } = {}): SyncClient {
         watchStatus: statusWatch,
         load: () => {
           assertActive();
+          automatic.start();
           return entry!.load();
         },
         refetch: () => {
           assertActive();
+          automatic.start();
           return entry!.load(true);
         },
         invalidate: () => {
@@ -713,9 +752,13 @@ export function createSyncClient(options: { ssr?: boolean } = {}): SyncClient {
         dispose: () => {
           if (!active) return;
           active = false;
-          controllers.forEach(controller => controller.abort());
-          controllers.clear();
-          entry!.detach();
+          try {
+            automatic.dispose();
+          } finally {
+            controllers.forEach(controller => controller.abort());
+            controllers.clear();
+            entry!.detach();
+          }
         },
       };
       const frozen = Object.freeze(handle);

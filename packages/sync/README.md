@@ -182,6 +182,58 @@ subscription on unmount; the owner of `live` calls `live.dispose()` when the
 view itself is no longer needed. Edit actual data through `live.query?.ref`
 after it loads.
 
+Focus, reconnect, and polling policies become active after a handle's first
+`load()` or `refetch()`. An active `liveView` performs that first load
+automatically. Provide a client-scoped environment when the host has focus and
+connectivity events:
+
+```ts
+import type { SyncEnvironment } from '@stateref/sync';
+
+const environment: SyncEnvironment = {
+  isFocused: () => document.visibilityState !== 'hidden',
+  isOnline: () => navigator.onLine,
+  subscribe(listener) {
+    const focus = () => listener('focus');
+    const visible = () => {
+      if (document.visibilityState !== 'hidden') listener('focus');
+    };
+    const reconnect = () => listener('reconnect');
+    window.addEventListener('focus', focus);
+    window.addEventListener('online', reconnect);
+    document.addEventListener('visibilitychange', visible);
+    return () => {
+      window.removeEventListener('focus', focus);
+      window.removeEventListener('online', reconnect);
+      document.removeEventListener('visibilitychange', visible);
+    };
+  },
+};
+
+const client = createSyncClient({ environment });
+const account = client.query({
+  queryKey: ['account', 1],
+  queryFn: ({ signal }) => api.readAccount(1, { signal }),
+  staleTime: 30_000,
+  refetchOnFocus: true, // default; stale data only
+  refetchOnReconnect: 'always', // include fresh data
+  refetchInterval: 60_000,
+  refetchIntervalInBackground: false, // default
+});
+await account.load();
+```
+
+`false` disables a focus or reconnect policy. Events run only while the
+environment is focused and online. Polling is opt-in, always pauses offline,
+and pauses in the background unless explicitly enabled. Same-key observers and
+already running READs share one request. Automatic results use the normal
+resource rebase rules, so local edits remain and overlapping server changes
+become conflicts. Linked WRITEs block automatic READs. Disposing the last
+started observer removes the environment subscription, and disposing each
+handle clears its polling timer. SSR clients create neither event subscriptions
+nor polling timers. Without an environment there are no focus/reconnect events;
+polling treats the host as focused and online.
+
 Independent mutations run concurrently by default. Pass the same `scope`
 string to `run` to execute those operations in start order, including their
 callbacks; a failure does not block the next operation. A query permits one
@@ -199,5 +251,5 @@ Editable data defaults to a plain, acyclic tree with dense arrays. Arrays are tr
 Defaults: `staleTime: 0`, inactive `gcTime: 5 minutes` (infinite for `createSyncClient({ ssr: true })`), three query retries in a client and zero in SSR. The client owns its cache; create a separate client for each SSR request. The `queryKey` must be an acyclic JSON-compatible array, with object key order ignored in its hash.
 
 Fixed-key queries require an explicit `load()` call unless a mutation response,
-`acceptServer`, or an active `liveView` populates the cache. Automatic focus/reconnect/polling and
-persistence are later work; a successful local edit does not save to a server.
+`acceptServer`, or an active `liveView` populates the cache. Persistence is later
+work; a successful local edit does not save to a server.

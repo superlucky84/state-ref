@@ -1,7 +1,11 @@
 import { createSyncClient, MutationRejectedError } from '@stateref/sync';
 import type {
+  AutomaticRefetchPolicy,
   MutationResult,
   ResourceSubmission,
+  SyncClientOptions,
+  SyncEnvironment,
+  SyncEnvironmentEvent,
   SyncSnapshot,
 } from '@stateref/sync';
 import { createDraft } from 'state-ref/draft';
@@ -175,3 +179,31 @@ async function liveDisplayView() {
 }
 
 void liveDisplayView;
+
+const environmentListeners = new Set<(event: SyncEnvironmentEvent) => void>();
+const environment: SyncEnvironment = {
+  subscribe(listener) {
+    environmentListeners.add(listener);
+    return () => environmentListeners.delete(listener);
+  },
+  isFocused: () => true,
+  isOnline: () => true,
+};
+const automaticOptions: SyncClientOptions = { environment };
+const focusPolicy: AutomaticRefetchPolicy = 'always';
+const automatic = createSyncClient(automaticOptions).query({
+  queryKey: ['automatic'],
+  queryFn: () => ({ city: '서울' }),
+  refetchOnFocus: focusPolicy,
+  refetchOnReconnect: false,
+  refetchInterval: 30_000,
+  refetchIntervalInBackground: true,
+});
+void automatic.load().then(() => automatic.dispose());
+
+createSyncClient().query({
+  queryKey: ['bad-automatic-policy'],
+  queryFn: () => 1,
+  // @ts-expect-error automatic policy accepts only boolean or always
+  refetchOnFocus: 'stale',
+});
