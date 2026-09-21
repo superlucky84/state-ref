@@ -2,6 +2,9 @@ import {
   createBrowserSyncEnvironment,
   createSyncClient,
   MutationRejectedError,
+  openPersistedMutationQueue,
+  restoreSyncSnapshot,
+  saveSyncSnapshot,
 } from '@stateref/sync';
 import type {
   AutomaticRefetchPolicy,
@@ -14,6 +17,8 @@ import type {
   SyncClientOptions,
   SyncEnvironment,
   SyncEnvironmentEvent,
+  SyncStorage,
+  PersistedMutationQueue,
   SyncSnapshot,
 } from '@stateref/sync';
 import { createDraft } from 'state-ref/draft';
@@ -256,6 +261,51 @@ async function infiniteDisplay() {
 }
 
 void infiniteDisplay;
+
+async function persistedCommands() {
+  const values = new Map<string, string>();
+  const storage: SyncStorage = {
+    getItem: key => values.get(key) ?? null,
+    setItem: (key, value) => {
+      values.set(key, value);
+    },
+    removeItem: key => {
+      values.delete(key);
+    },
+  };
+  const source = createSyncClient({ ssr: true });
+  await saveSyncSnapshot(source, storage, { key: 'baseline', buster: 'v1' });
+  const restored: boolean = await restoreSyncSnapshot(
+    createSyncClient({ ssr: true }),
+    storage,
+    { key: 'baseline', buster: 'v1', maxAge: 1000 }
+  );
+  const send = source.mutation({
+    mutationFn: (input: { n: number }) => input.n,
+  });
+  const queue: PersistedMutationQueue = await openPersistedMutationQueue({
+    storage,
+    key: 'jobs',
+    buster: 'v1',
+    maxAge: 1000,
+    commands: { send },
+    isOnline: () => true,
+  });
+  await queue.enqueue({
+    id: 'one',
+    command: 'send',
+    input: { n: 1 },
+    idempotencyKey: 'server-supported-key',
+  });
+  const state: 'queued' | 'inFlight' | 'unknown' | 'rejected' =
+    queue.entries()[0].state;
+  const results = await queue.resume();
+  void restored;
+  void state;
+  void results;
+}
+
+void persistedCommands;
 
 createSyncClient().query({
   queryKey: ['bad-automatic-policy'],

@@ -44,6 +44,18 @@ export type { BrowserSyncHost } from './browser-environment';
 export type { QueryKey } from './key';
 export type { NetworkMode } from './network';
 export { MutationRejectedError } from './mutation';
+export {
+  saveSyncSnapshot,
+  restoreSyncSnapshot,
+  openPersistedMutationQueue,
+} from './persistence';
+export type {
+  SyncStorage,
+  SyncPersistenceOptions,
+  PersistedMutationJob,
+  PersistedMutationQueueOptions,
+  PersistedMutationQueue,
+} from './persistence';
 export type {
   ResourceChange,
   ResourceValue,

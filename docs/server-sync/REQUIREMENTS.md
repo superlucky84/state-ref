@@ -1,6 +1,6 @@
 # REQUIREMENTS — state-ref 서버 동기화와 독립 Draft
 
-- 개정일: 2026-09-21. 사용자 최종 결정 반영, Phase 4 mutation과 Phase 5.1~5.8의 SSR·cache/view·UI view·자동 재조회·pagination/infinite·query network mode·브라우저 adapter 하위 범위까지 자동 검증. 전체 서버 기능 동등성은 미완료.
+- 개정일: 2026-09-21. 사용자 최종 결정 반영, Phase 4 mutation과 Phase 5.1~5.9의 SSR·cache/view·UI view·자동 재조회·pagination/infinite·query network mode·브라우저 adapter·clean 기준 영속화·독립 명령 queue 하위 범위까지 자동 검증. 전체 서버 기능 동등성은 미완료.
 - 기준 commit: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`, `state-ref@3.0.2`.
 - 연계: [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 - `R2-*`는 이번 개정의 요구사항이다. 이전 `SR-*`는 당시 커밋의 기록이며 현재 계약으로 사용하지 않는다.

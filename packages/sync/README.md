@@ -262,7 +262,72 @@ invalidation or disposal cancels the wait. SSR treats the environment as
 online. `navigator.onLine` is only a browser connectivity hint, so hosts can
 inject their own `SyncEnvironment` and queries that do not need network access
 can use `always`. Mutations retain their explicit retry and unknown-result
-rules; offline WRITE persistence and resume need a separate contract.
+rules. Offline standalone commands can use the explicit queue below.
+
+Clean server baselines can be stored with an app-owned string storage. Save
+and restore are explicit operations, and restore requires a new, empty client:
+
+```ts
+import {
+  createSyncClient,
+  saveSyncSnapshot,
+  restoreSyncSnapshot,
+} from '@stateref/sync';
+
+const options = { key: 'account-baseline', buster: 'api-v1', maxAge: 60_000 };
+await saveSyncSnapshot(client, localStorage, options);
+const restored = createSyncClient();
+await restoreSyncSnapshot(restored, localStorage, options);
+```
+
+`saveSyncSnapshot` rejects dirty resources, pending READs, linked WRITEs and
+unconfirmed baselines. Expired or differently busted snapshots are ignored
+without deleting stored data. Malformed snapshots throw before changing the
+client. `localStorage` is an example; `SyncStorage` also accepts asynchronous
+methods. Storage keys must have one owner and should be scoped to the app's
+current user and data partition.
+
+For an independent command, register a mutation handle and queue a JSON DTO
+with a server-supported idempotency key. Call `resume()` after confirming the
+host is online:
+
+```ts
+import { openPersistedMutationQueue } from '@stateref/sync';
+
+const send = client.mutation({
+  mutationFn: (input: { note: string }, { idempotencyKey }) =>
+    api.sendNote(input, { idempotencyKey }),
+});
+const queue = await openPersistedMutationQueue({
+  storage: localStorage,
+  key: 'pending-notes',
+  buster: 'api-v1',
+  maxAge: 24 * 60 * 60 * 1000,
+  commands: { send },
+  isOnline: () => navigator.onLine,
+});
+await queue.enqueue({
+  id: 'note-42',
+  command: 'send',
+  input: { note: 'Hello' },
+  idempotencyKey: 'note-42',
+});
+await queue.resume();
+```
+
+The queue writes an `inFlight` marker before every WRITE. On restart, an
+`inFlight` job becomes `unknown`; it and later queued jobs are held. An unknown
+job can be staged again only with `retryUnknown(id)`, which reuses its key.
+Use that method only when the server guarantees idempotency for the key, or
+after reconciling the result with the server. `discard(id)` is explicit.
+Confirmed rejections remain available for inspection; successful jobs are
+removed. Use a separate storage key for the clean baseline and command queue.
+Commands older than `maxAge` remain queued and block later jobs until the
+caller reviews or discards them. `discard(id)` cannot cancel an in-flight
+server WRITE.
+The queue does not serialize resource submissions, local edits, mutation
+callbacks, or query handles. Recreate the command registry for each new client
+and invalidate or refetch affected queries after a successful command.
 
 Independent mutations run concurrently by default. Pass the same `scope`
 string to `run` to execute those operations in start order, including their
@@ -281,5 +346,5 @@ Editable data defaults to a plain, acyclic tree with dense arrays. Arrays are tr
 Defaults: `staleTime: 0`, inactive `gcTime: 5 minutes` (infinite for `createSyncClient({ ssr: true })`), three query retries in a client and zero in SSR. The client owns its cache; create a separate client for each SSR request. The `queryKey` must be an acyclic JSON-compatible array, with object key order ignored in its hash.
 
 Fixed-key queries require an explicit `load()` call unless a mutation response,
-`acceptServer`, or an active `liveView` populates the cache. Persistence is later
-work; a successful local edit does not save to a server.
+`acceptServer`, or an active `liveView` populates the cache. A successful local
+edit does not save to a server.

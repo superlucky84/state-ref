@@ -3,6 +3,9 @@ import { readFile } from 'node:fs/promises';
 import {
   createBrowserSyncEnvironment,
   createSyncClient,
+  openPersistedMutationQueue,
+  restoreSyncSnapshot,
+  saveSyncSnapshot,
 } from '../dist/stateref-sync.mjs';
 import { create } from 'state-ref';
 
@@ -184,8 +187,56 @@ await offlineLoad;
 assert.equal(offlineQuery.ref.count.value, 1);
 offlineQuery.dispose();
 assert.equal(browserClient.remove(['network-bundle']), true);
+const persisted = new Map();
+const storage = {
+  getItem: key => persisted.get(key) ?? null,
+  setItem: (key, value) => persisted.set(key, value),
+  removeItem: key => persisted.delete(key),
+};
+const cleanClient = createSyncClient({ ssr: true });
+const cleanQuery = cleanClient.query({
+  queryKey: ['persisted-bundle'],
+  queryFn: () => ({ count: 4 }),
+});
+await cleanQuery.load();
+await saveSyncSnapshot(cleanClient, storage, {
+  key: 'baseline',
+  buster: 'v1',
+});
+const restoredClient = createSyncClient({ ssr: true });
+assert.equal(
+  await restoreSyncSnapshot(restoredClient, storage, {
+    key: 'baseline',
+    buster: 'v1',
+  }),
+  true
+);
+const restoredClean = restoredClient.query({
+  queryKey: ['persisted-bundle'],
+  queryFn: () => ({ count: 5 }),
+});
+assert.equal(restoredClean.ref.count.value, 4);
+const queuedMutation = cleanClient.mutation({
+  mutationFn: (input, { idempotencyKey }) => ({ input, idempotencyKey }),
+});
+const queue = await openPersistedMutationQueue({
+  storage,
+  key: 'commands',
+  buster: 'v1',
+  commands: { send: queuedMutation },
+});
+await queue.enqueue({
+  id: 'one',
+  command: 'send',
+  input: { count: 4 },
+  idempotencyKey: 'request-one',
+});
+assert.equal((await queue.resume())[0].result.kind, 'success');
+assert.deepEqual(queue.entries(), []);
+cleanQuery.dispose();
+restoredClean.dispose();
 assert.equal(submitted.changes.length, 1);
 query.dispose();
 console.log(
-  'sync ESM bundle: query, mutation, hydration, cache, views, automatic refetch, infinite query and network mode PASS'
+  'sync ESM bundle: query, mutation, hydration, cache, views, automatic refetch, infinite query, network mode and persistence PASS'
 );

@@ -2,7 +2,7 @@
 
 - 개정일: 2026-09-19. 기준: [REQUIREMENTS](./REQUIREMENTS.md).
 - 기준 commit: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
-- 상태: Phase 4 mutation 이후 [Phase 5.1](./PHASE5_1.md)의 clean baseline SSR 전달, [Phase 5.2](./PHASE5_2.md)의 초기 기준·캐시 준비, [Phase 5.3](./PHASE5_3.md)의 관찰자별 view, [Phase 5.4](./PHASE5_4.md)의 자동 enabled/key 전환, [Phase 5.5](./PHASE5_5.md)의 5종 UI 읽기 전용 view 연결, [Phase 5.6](./PHASE5_6.md)의 client별 focus/reconnect/polling, [Phase 5.7](./PHASE5_7.md)의 pagination/infinite, [Phase 5.8](./PHASE5_8.md)의 query network mode·브라우저 adapter 하위 범위까지 자동 검증했다. 전체 서버 기능 동등성은 미완료다. `[x]` 결정 행은 전체 서버 기능 동등성의 구현·테스트 통과가 아니다.
+- 상태: Phase 4 mutation 이후 [Phase 5.1](./PHASE5_1.md)의 clean baseline SSR 전달, [Phase 5.2](./PHASE5_2.md)의 초기 기준·캐시 준비, [Phase 5.3](./PHASE5_3.md)의 관찰자별 view, [Phase 5.4](./PHASE5_4.md)의 자동 enabled/key 전환, [Phase 5.5](./PHASE5_5.md)의 5종 UI 읽기 전용 view 연결, [Phase 5.6](./PHASE5_6.md)의 client별 focus/reconnect/polling, [Phase 5.7](./PHASE5_7.md)의 pagination/infinite, [Phase 5.8](./PHASE5_8.md)의 query network mode·브라우저 adapter, [Phase 5.9](./PHASE5_9.md)의 clean 기준 영속화·독립 명령 queue 하위 범위까지 자동 검증했다. 전체 서버 기능 동등성은 미완료다. `[x]` 결정 행은 전체 서버 기능 동등성의 구현·테스트 통과가 아니다.
 - 최신 구현 SHA와 현재 재개 지점은 [HANDOFF](./HANDOFF.md)를 따른다. 아래 날짜별 인계는 당시의 기록이다.
 - draft 공개 API는 [Phase 2 기록](./PHASE2.md)에 고정했다. query/resource 기본 API와 지원 범위는 [Phase 3 기록](./PHASE3.md)에 남겼다. mutation과 UI 투영은 후속 검증 대상이다.
 
@@ -225,7 +225,7 @@ Phase 0에서 서버 엔진의 참조 버전과 key/epoch/기본 타이밍 계�
 
 ## 6. 서버 기능 동등성 목록
 
-이는 제품 목표의 범위를 잃지 않기 위한 목록이다. 비교 기준 버전과 Phase 0 하위 시나리오는 [Phase 0 기록](./PHASE0.md)에 고정했다. 기능군별 범위는 [Phase 5.1 표](./PHASE5_1.md#phase-51-시점-f2-기능별-상태), [Phase 5.2](./PHASE5_2.md#f2-상태-갱신과-검증), [Phase 5.3](./PHASE5_3.md#f2-범위와-증거), [Phase 5.4](./PHASE5_4.md), [Phase 5.5](./PHASE5_5.md), [Phase 5.6](./PHASE5_6.md), [Phase 5.7](./PHASE5_7.md), [Phase 5.8](./PHASE5_8.md)의 갱신에 있다. 복원·플랫폼의 상세 계약은 IC2-06에서 추적한다. 단계별 구현과 '전체 동등성 완료'를 구분한다.
+이는 제품 목표의 범위를 잃지 않기 위한 목록이다. 비교 기준 버전과 Phase 0 하위 시나리오는 [Phase 0 기록](./PHASE0.md)에 고정했다. 기능군별 범위는 [Phase 5.1 표](./PHASE5_1.md#phase-51-시점-f2-기능별-상태), [Phase 5.2](./PHASE5_2.md#f2-상태-갱신과-검증), [Phase 5.3](./PHASE5_3.md#f2-범위와-증거), [Phase 5.4](./PHASE5_4.md), [Phase 5.5](./PHASE5_5.md), [Phase 5.6](./PHASE5_6.md), [Phase 5.7](./PHASE5_7.md), [Phase 5.8](./PHASE5_8.md), [Phase 5.9](./PHASE5_9.md)의 갱신에 있다. 복원·플랫폼의 상세 계약은 IC2-06에서 추적한다. 단계별 구현과 '전체 동등성 완료'를 구분한다.
 
 | ID | 검증할 기능군 | 단계 |
 |---|---|---|
@@ -263,7 +263,7 @@ Phase 0에서 서버 엔진의 참조 버전과 key/epoch/기본 타이밍 계�
 - [x] **IC2-03 / Phase 0** 독립 query/mutation 엔진의 설계 계약, `@tanstack/query-core@5.103.1` 기준, F2 목록·기본값·단계, key/epoch/timing 독립 실험을 [Phase 0 기록](./PHASE0.md)에 고정했다. 실제 엔진·기능 동등성 검증은 미완료다.
 - [x] **IC2-04 / Phase 0~4** 자유로운 DTO와 제출 snapshot, 명시적 query 연결, epoch/revision, 서버 보정, unknown 및 사후 READ 실패의 결과 타입·복구 계약과 명시적 순차 scope를 [Phase 4](./PHASE4.md)에서 확정·자동 검증했다. 전체 기능 동등성은 별도 잔여 범위다.
 - [ ] **IC2-05 / Phase 0~6** 일반 로컬 원본의 현재 기준, 원자적 local apply·재진입·부모 소멸·배열 경계·원본 유지와 해제는 [Phase 2](./PHASE2.md)에서 검증했다. resource 원본의 pending overlay·복구·두 기준 결합은 Phase 6에서 검증해야 한다.
-- [ ] **IC2-06 / Phase 0~5** hydration/영속화 시 서버 기준과 로컬 변경·진행 작업을 구별하는 저장 형식, 개발 도구와 플랫폼 통합을 설계한다. [Phase 5.1](./PHASE5_1.md)에서 clean baseline SSR 전달, [Phase 5.6](./PHASE5_6.md)에서 client별 환경 사건·자동 재조회, [Phase 5.8](./PHASE5_8.md)에서 query network mode와 브라우저 adapter를 구현했다. 영속화·오프라인 mutation 재개·개발 도구와 로컬 변경 복원은 미완료다.
+- [ ] **IC2-06 / Phase 0~5** hydration/영속화 시 서버 기준과 로컬 변경·진행 작업을 구별하는 저장 형식, 개발 도구와 플랫폼 통합을 설계한다. [Phase 5.1](./PHASE5_1.md)에서 clean baseline SSR 전달, [Phase 5.6](./PHASE5_6.md)에서 client별 환경 사건·자동 재조회, [Phase 5.8](./PHASE5_8.md)에서 query network mode와 브라우저 adapter, [Phase 5.9](./PHASE5_9.md)에서 clean 기준 영속화와 독립 명령 queue를 구현했다. 연결 제출 기록·로컬 변경 복원 및 개발 도구는 미완료다.
 
 IC2-03의 목록은 최소 범위를 확정하는 게이트다. 구현 중 새 기능이나 호환성 차이를 발견하면 F2 목록과 테스트를 함께 갱신하고, 출시 범위를 줄이는 결정이 필요하면 이유와 미지원 항목을 명시한다.
 
