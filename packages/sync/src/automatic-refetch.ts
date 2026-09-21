@@ -21,7 +21,8 @@ export type AutomaticRefetchOptions = Readonly<{
 
 type Observer = {
   readonly identity: object;
-  readonly options: AutomaticRefetchOptions;
+  readonly options: AutomaticRefetchOptions &
+    Readonly<{ networkMode?: NetworkMode }>;
   readonly isStale: () => boolean;
   readonly run: (force: boolean) => Promise<unknown>;
   started: boolean;
@@ -82,8 +83,8 @@ export function createAutomaticRefetchManager(
   const polling = new Map<number, PollGroup>();
   let unsubscribe: (() => void) | null = null;
 
-  const canRun = (background: boolean) =>
-    (environment?.isOnline() ?? true) &&
+  const canRun = (background: boolean, mode?: NetworkMode) =>
+    (mode === 'always' || (environment?.isOnline() ?? true)) &&
     (background || (environment?.isFocused() ?? true));
 
   const run = (observer: Observer, force: boolean) => {
@@ -94,14 +95,16 @@ export function createAutomaticRefetchManager(
   };
 
   const onEnvironment = (event: SyncEnvironmentEvent) => {
-    if (!canRun(false)) return;
+    if (!(environment?.isFocused() ?? true)) return;
     const selected = new Map<object, { observer: Observer; force: boolean }>();
     active.forEach(observer => {
       const policy =
         event === 'focus'
           ? observer.options.refetchOnFocus ?? true
-          : observer.options.refetchOnReconnect ?? true;
+          : observer.options.refetchOnReconnect ??
+            (observer.options.networkMode === 'always' ? false : true);
       if (policy === false) return;
+      if (!canRun(false, observer.options.networkMode)) return;
       const force = policy === 'always';
       if (!force && !observer.isStale()) return;
       const current = selected.get(observer.identity);
@@ -116,7 +119,10 @@ export function createAutomaticRefetchManager(
     const selected = new Map<object, Observer>();
     group.observers.forEach(observer => {
       if (
-        canRun(observer.options.refetchIntervalInBackground ?? false) &&
+        canRun(
+          observer.options.refetchIntervalInBackground ?? false,
+          observer.options.networkMode
+        ) &&
         !selected.has(observer.identity)
       ) {
         selected.set(observer.identity, observer);
@@ -173,7 +179,8 @@ export function createAutomaticRefetchManager(
   return Object.freeze({
     observe(
       identity: object,
-      options: AutomaticRefetchOptions,
+      options: AutomaticRefetchOptions &
+        Readonly<{ networkMode?: NetworkMode }>,
       isStale: () => boolean,
       automaticLoad: (force: boolean) => Promise<unknown>
     ): AutomaticRefetchObserver {
@@ -184,6 +191,7 @@ export function createAutomaticRefetchManager(
           refetchOnReconnect: options.refetchOnReconnect,
           refetchInterval: options.refetchInterval,
           refetchIntervalInBackground: options.refetchIntervalInBackground,
+          networkMode: options.networkMode,
         }),
         isStale,
         run: automaticLoad,
@@ -218,3 +226,4 @@ export function createAutomaticRefetchManager(
     },
   });
 }
+import type { NetworkMode } from './network';

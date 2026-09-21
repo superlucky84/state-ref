@@ -1,6 +1,6 @@
 # state-ref 서버 동기화와 독립 Draft 설계
 
-상태: 2026-09-21 Phase 4 mutation 이후 Phase 5.1~5.7의 SSR 기준 전달, 캐시 준비·view, 자동 key 전환·재조회, 5종 UI 읽기 전용 view와 pagination/infinite 하위 범위까지 구현했다. **Phase 5의 나머지 기능과 Phase 6 resource/draft 조합은 다음 작업**이다. state-ref 코어·서버 동기화 헬퍼·draft 헬퍼를 선택적으로 조합한다. 서버 기능은 계속 추진하며, TanStack Query의 query/mutation 모델과 기능을 참고하되 런타임 독립을 지향한다.
+상태: 2026-09-21 Phase 4 mutation 이후 Phase 5.1~5.8의 SSR 기준 전달, 캐시 준비·view, 자동 key 전환·재조회, 5종 UI 읽기 전용 view, pagination/infinite, query network mode와 브라우저 adapter 하위 범위까지 구현했다. **Phase 5의 나머지 기능과 Phase 6 resource/draft 조합은 다음 작업**이다. state-ref 코어·서버 동기화 헬퍼·draft 헬퍼를 선택적으로 조합한다. 서버 기능은 계속 추진하며, TanStack Query의 query/mutation 모델과 기능을 참고하되 런타임 독립을 지향한다.
 
 서버 싱크는 코어 빌드에 합치지 않고 별도로 설치·import하는 `@stateref/sync` 패키지로 개발한다. draft와 batch는 같은 `state-ref` 패키지의 선택적 `state-ref/draft`·`state-ref/batch` 진입점으로 제공한다. 코어의 범용 `onWrite` 연결은 draft 편집과 서버 resourceRef 직접 편집의 기록에 모두 쓴다. sync는 query/resource와 독립 mutation·명시적 저장 수용을 제공한다.
 
@@ -28,6 +28,7 @@ UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우�
 16. [PHASE5_5](./PHASE5_5.md): 5종 UI 커넥터의 읽기 전용 view 연결과 실제 수명 검증.
 17. [PHASE5_6](./PHASE5_6.md): client별 환경 사건과 focus/reconnect/polling 자동 재조회 수명.
 18. [PHASE5_7](./PHASE5_7.md): 페이지 key와 양방향 infinite 조회, `maxPages`, 취소·SSR 계약.
+19. [PHASE5_8](./PHASE5_8.md): query network mode의 pause·재개와 브라우저 환경 adapter.
 
 ## Phase 3.5 완료 — 명시적 동기 batch
 
@@ -65,6 +66,10 @@ UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우�
 
 일반 페이지는 pageParam을 query key에 넣고 `liveView`로 현재 페이지를 표시한다. `client.infiniteQuery()`는 한 key에 `pages/pageParams`를 저장하고 다음·이전 cursor, `maxPages`, 순차 재조회, 경쟁 취소와 SSR 복원을 제공한다. 무한 결과는 readonly이며 명시적 mutation 뒤 재조회한다. 검증과 미지원 편의 API는 [Phase 5.7 기록](./PHASE5_7.md)에 있다.
 
+## Phase 5.8 진행 — Query Network Mode·Browser Adapter
+
+query별 `online`·`always`·`offlineFirst`는 오프라인 READ 시작과 retry 대기, reconnect 재개를 구분한다. `createBrowserSyncEnvironment()`는 명시적 호출 시 브라우저 focus/visibility/online 신호를 client별 환경으로 연결한다. mutation의 오프라인 저장·재개와 보장 범위는 [Phase 5.8 기록](./PHASE5_8.md)에 명시한다.
+
 ## 확정한 사용 의미
 
 | 대상 | 변경 비교 기준 | 자기 변경을 반영하는 곳 |
@@ -84,7 +89,7 @@ UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우�
 
 ## 남은 구현 사항
 
-`createDraft`/`apply`, `createSyncClient`/`client.query`와 자유로운 DTO의 `client.mutation`·제출 기록 연결, 깨끗한 서버 기준의 SSR 전달, 확정 초기 기준·캐시 준비, 관찰자별 view, 자동 enabled/key 전환, 5종 UI 읽기 전용 연결, client별 자동 재조회와 pagination/infinite 하위 범위를 구현했다. 독립 엔진의 참조 버전·기본 설계는 [Phase 0](./PHASE0.md)에 고정했고 구현·검증 결과는 [Phase 3](./PHASE3.md), [Phase 4](./PHASE4.md), [Phase 5.1](./PHASE5_1.md), [Phase 5.2](./PHASE5_2.md), [Phase 5.3](./PHASE5_3.md), [Phase 5.4](./PHASE5_4.md), [Phase 5.5](./PHASE5_5.md), [Phase 5.6](./PHASE5_6.md), [Phase 5.7](./PHASE5_7.md)에 나눠 기록했다.
+`createDraft`/`apply`, `createSyncClient`/`client.query`와 자유로운 DTO의 `client.mutation`·제출 기록 연결, 깨끗한 서버 기준의 SSR 전달, 확정 초기 기준·캐시 준비, 관찰자별 view, 자동 enabled/key 전환, 5종 UI 읽기 전용 연결, client별 자동 재조회, pagination/infinite와 query network mode·브라우저 adapter 하위 범위를 구현했다. 독립 엔진의 참조 버전·기본 설계는 [Phase 0](./PHASE0.md)에 고정했고 구현·검증 결과는 [Phase 3](./PHASE3.md), [Phase 4](./PHASE4.md), [Phase 5.1](./PHASE5_1.md), [Phase 5.2](./PHASE5_2.md), [Phase 5.3](./PHASE5_3.md), [Phase 5.4](./PHASE5_4.md), [Phase 5.5](./PHASE5_5.md), [Phase 5.6](./PHASE5_6.md), [Phase 5.7](./PHASE5_7.md), [Phase 5.8](./PHASE5_8.md)에 나눠 기록했다.
 
 기능 전반의 동등성은 F2 목록의 목표이며 현재 달성한 상태가 아니다. Phase 4의 명시적 제출과 실패 복구는 자동 검증했지만, resource/draft 결합과 실제 UI 투영, M2 수동 시나리오는 아직 검증하지 않았다. 다음 단계의 정확한 범위와 검증 기준은 [HANDOFF](./HANDOFF.md)에 있다.
 

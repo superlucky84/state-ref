@@ -22,6 +22,8 @@ import type {
   AutomaticRefetchOptions,
   SyncEnvironment,
 } from './automatic-refetch';
+import { checkNetworkMode, createNetworkGate } from './network';
+import type { NetworkMode } from './network';
 import {
   checkInfiniteData,
   checkInfiniteOptions,
@@ -37,7 +39,10 @@ import type {
 } from './infinite';
 
 export { hashQueryKey } from './key';
+export { createBrowserSyncEnvironment } from './browser-environment';
+export type { BrowserSyncHost } from './browser-environment';
 export type { QueryKey } from './key';
+export type { NetworkMode } from './network';
 export { MutationRejectedError } from './mutation';
 export type {
   ResourceChange,
@@ -80,7 +85,7 @@ export type {
 
 export type QueryStatus = Readonly<{
   status: 'pending' | 'success' | 'error';
-  fetchStatus: 'idle' | 'fetching';
+  fetchStatus: 'idle' | 'fetching' | 'paused';
   loaded: boolean;
   error: unknown | null;
   updatedAt: number | null;
@@ -102,6 +107,7 @@ export type QueryOptions<T> = Readonly<{
   gcTime?: number;
   retry?: number;
   retryDelay?: (attempt: number) => number;
+  networkMode?: NetworkMode;
   /** A known server value used only while the key has no baseline. */
   initialData?: T;
   /** Timestamp of initialData; defaults to the time it is installed. */
@@ -228,6 +234,7 @@ class QueryEntry<T> {
     options: QueryOptions<T>,
     private readonly ssr: boolean,
     private readonly evict: (hash: string, entry: QueryEntry<T>) => void,
+    private readonly network: ReturnType<typeof createNetworkGate>,
     readonly kind: 'query' | 'infinite' = 'query'
   ) {
     this.options = options;
@@ -525,18 +532,34 @@ class QueryEntry<T> {
     const controller = new AbortController();
     this.controller = controller;
     const options = requestOptions;
+    const mode = options.networkMode ?? 'online';
     const retry = options.retry ?? (this.ssr ? 0 : 3);
     checkDuration(retry, 'retry');
     const delay =
       options.retryDelay ??
       ((attempt: number) => Math.min(1000 * 2 ** attempt, 30_000));
-    this.publish({ fetchStatus: 'fetching', error: null });
+    this.publish({
+      fetchStatus:
+        mode === 'online' && !this.network.isOnline() ? 'paused' : 'fetching',
+      error: null,
+    });
 
     const task = (async () => {
       let attempt = 0;
       while (true) {
         let value: T;
         try {
+          aborted(controller.signal);
+          if (
+            (mode === 'online' || (mode === 'offlineFirst' && attempt > 0)) &&
+            !this.network.isOnline()
+          ) {
+            if (currentEpoch === this.epoch)
+              this.publish({ fetchStatus: 'paused' });
+            await this.network.wait(controller.signal);
+            if (currentEpoch === this.epoch)
+              this.publish({ fetchStatus: 'fetching' });
+          }
           aborted(controller.signal);
           value = (await options.queryFn({ signal: controller.signal })) as T;
         } catch (error) {
@@ -547,6 +570,8 @@ class QueryEntry<T> {
           }
           const ms = delay(attempt++);
           checkDuration(ms, 'retryDelay');
+          if (mode !== 'always' && !this.network.isOnline())
+            this.publish({ fetchStatus: 'paused' });
           await waitRetry(ms, controller.signal);
           continue;
         }
@@ -602,6 +627,7 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
   const handles = new WeakMap<object, QueryEntry<any>>();
   const scopes = new Map<string, Promise<void>>();
   const pageScopes = new Map<string, Promise<void>>();
+  const network = createNetworkGate(options.environment, options.ssr ?? false);
   const automaticRefetch = createAutomaticRefetchManager(
     options.environment,
     options.ssr ?? false
@@ -647,6 +673,7 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
     checkDuration(queryOptions.staleTime ?? 0, 'staleTime');
     checkDuration(queryOptions.gcTime ?? 0, 'gcTime');
     checkAutomaticRefetchOptions(queryOptions);
+    checkNetworkMode(queryOptions.networkMode);
     if (queryOptions.initialUpdatedAt !== undefined) {
       if (
         !Number.isFinite(queryOptions.initialUpdatedAt) ||
@@ -676,6 +703,7 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
         queryOptions,
         options.ssr ?? false,
         evict,
+        network,
         kind
       );
       try {
@@ -1129,6 +1157,7 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
             },
             options.ssr ?? false,
             evict,
+            network,
             seed.kind ?? 'query'
           );
           prepared.push([hash, entry]);

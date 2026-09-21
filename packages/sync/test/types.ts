@@ -1,9 +1,15 @@
-import { createSyncClient, MutationRejectedError } from '@stateref/sync';
+import {
+  createBrowserSyncEnvironment,
+  createSyncClient,
+  MutationRejectedError,
+} from '@stateref/sync';
 import type {
   AutomaticRefetchPolicy,
+  BrowserSyncHost,
   InfiniteData,
   InfiniteQueryHandle,
   MutationResult,
+  NetworkMode,
   ResourceSubmission,
   SyncClientOptions,
   SyncEnvironment,
@@ -202,6 +208,26 @@ const automatic = createSyncClient(automaticOptions).query({
   refetchIntervalInBackground: true,
 });
 void automatic.load().then(() => automatic.dispose());
+
+const browserHost: BrowserSyncHost = {
+  window,
+  document,
+  navigator,
+};
+const browserEnvironment: SyncEnvironment =
+  createBrowserSyncEnvironment(browserHost);
+const networkMode: NetworkMode = 'offlineFirst';
+const networkQuery = createSyncClient({
+  environment: browserEnvironment,
+}).query({
+  queryKey: ['network'],
+  queryFn: () => ({ n: 1 }),
+  networkMode,
+});
+const networkFetchStatus: 'idle' | 'fetching' | 'paused' =
+  networkQuery.status.fetchStatus.value;
+void networkFetchStatus;
+networkQuery.dispose();
 
 async function infiniteDisplay() {
   const feed: InfiniteQueryHandle<{ id: number }, number> = createSyncClient({

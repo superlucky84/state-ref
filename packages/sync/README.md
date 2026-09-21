@@ -220,31 +220,12 @@ parameter and `maxPages` policy.
 Focus, reconnect, and polling policies become active after a handle's first
 `load()` or `refetch()`. An active `liveView` performs that first load
 automatically. Provide a client-scoped environment when the host has focus and
-connectivity events:
+connectivity events. Call the browser adapter only where browser globals exist:
 
 ```ts
-import type { SyncEnvironment } from '@stateref/sync';
+import { createBrowserSyncEnvironment } from '@stateref/sync';
 
-const environment: SyncEnvironment = {
-  isFocused: () => document.visibilityState !== 'hidden',
-  isOnline: () => navigator.onLine,
-  subscribe(listener) {
-    const focus = () => listener('focus');
-    const visible = () => {
-      if (document.visibilityState !== 'hidden') listener('focus');
-    };
-    const reconnect = () => listener('reconnect');
-    window.addEventListener('focus', focus);
-    window.addEventListener('online', reconnect);
-    document.addEventListener('visibilitychange', visible);
-    return () => {
-      window.removeEventListener('focus', focus);
-      window.removeEventListener('online', reconnect);
-      document.removeEventListener('visibilitychange', visible);
-    };
-  },
-};
-
+const environment = createBrowserSyncEnvironment();
 const client = createSyncClient({ environment });
 const account = client.query({
   queryKey: ['account', 1],
@@ -259,8 +240,8 @@ await account.load();
 ```
 
 `false` disables a focus or reconnect policy. Events run only while the
-environment is focused and online. Polling is opt-in, always pauses offline,
-and pauses in the background unless explicitly enabled. Same-key observers and
+environment is focused; online modes also require connectivity. Polling is
+opt-in and pauses in the background unless explicitly enabled. Same-key observers and
 already running READs share one request. Automatic results use the normal
 resource rebase rules, so local edits remain and overlapping server changes
 become conflicts. Linked WRITEs block automatic READs. Disposing the last
@@ -268,6 +249,20 @@ started observer removes the environment subscription, and disposing each
 handle clears its polling timer. SSR clients create neither event subscriptions
 nor polling timers. Without an environment there are no focus/reconnect events;
 polling treats the host as focused and online.
+
+Each query can choose `networkMode: 'online' | 'always' | 'offlineFirst'`.
+`online` is the default: an offline READ stays pending with
+`status.fetchStatus.value === 'paused'`, then resumes on reconnect. `always`
+runs and retries offline; its default reconnect refetch policy is `false`,
+though an explicit `refetchOnReconnect` can enable it. `offlineFirst` tries
+the query function once while offline, allowing a local cache hit, and pauses
+a failed retry until reconnect. `always` queries can also refetch on focus or
+poll while offline. A paused request keeps its previous data and local edits;
+invalidation or disposal cancels the wait. SSR treats the environment as
+online. `navigator.onLine` is only a browser connectivity hint, so hosts can
+inject their own `SyncEnvironment` and queries that do not need network access
+can use `always`. Mutations retain their explicit retry and unknown-result
+rules; offline WRITE persistence and resume need a separate contract.
 
 Independent mutations run concurrently by default. Pass the same `scope`
 string to `run` to execute those operations in start order, including their

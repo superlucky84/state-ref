@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { createSyncClient } from '../dist/stateref-sync.mjs';
+import {
+  createBrowserSyncEnvironment,
+  createSyncClient,
+} from '../dist/stateref-sync.mjs';
 import { create } from 'state-ref';
 
 const bundle = await readFile(
@@ -158,8 +161,31 @@ const infiniteRestored = infiniteRestoredClient.infiniteQuery({
 assert.deepEqual(infiniteRestored.ref.value.pageParams, [0, 1]);
 infinite.dispose();
 infiniteRestored.dispose();
+const browserWindow = new EventTarget();
+const browserDocument = Object.assign(new EventTarget(), {
+  visibilityState: 'visible',
+});
+const browserNavigator = { onLine: false };
+const browserEnvironment = createBrowserSyncEnvironment({
+  window: browserWindow,
+  document: browserDocument,
+  navigator: browserNavigator,
+});
+const browserClient = createSyncClient({ environment: browserEnvironment });
+const offlineQuery = browserClient.query({
+  queryKey: ['network-bundle'],
+  queryFn: () => ({ count: 1 }),
+});
+const offlineLoad = offlineQuery.load();
+assert.equal(offlineQuery.status.fetchStatus.value, 'paused');
+browserNavigator.onLine = true;
+browserWindow.dispatchEvent(new Event('online'));
+await offlineLoad;
+assert.equal(offlineQuery.ref.count.value, 1);
+offlineQuery.dispose();
+assert.equal(browserClient.remove(['network-bundle']), true);
 assert.equal(submitted.changes.length, 1);
 query.dispose();
 console.log(
-  'sync ESM bundle: query, mutation, hydration, cache, views, automatic refetch and infinite query PASS'
+  'sync ESM bundle: query, mutation, hydration, cache, views, automatic refetch, infinite query and network mode PASS'
 );
