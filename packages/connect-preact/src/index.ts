@@ -1,26 +1,32 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
-import type { StateRefStore, Watch } from 'state-ref';
+import type { Renew, StateRefStore, Watch } from 'state-ref';
+
+export type ViewWatch<R> = (
+  renew?: Renew<R>,
+  option?: { cache?: boolean }
+) => R;
+
+function connectWatch<R>(watch: ViewWatch<R>) {
+  return () => {
+    const [, setDummy] = useState(0);
+    const abortController = useRef(new AbortController());
+    const forceUpdateRef = useRef((_: R, isFirst: boolean) => {
+      if (!isFirst) setDummy(prev => prev + 1);
+      return abortController.current.signal;
+    });
+    useEffect(() => () => abortController.current.abort(), []);
+    return watch(forceUpdateRef.current);
+  };
+}
 
 /**
  * Preact V10 type A
  */
 export function connectPreact<T>(watch: Watch<T>) {
-  const useForceUpdate = () => {
-    const [, setDummy] = useState(0);
-    const abortController = useRef(new AbortController());
-    const forceUpdateRef = useRef((_: StateRefStore<T>, isFirst: boolean) => {
-      if (!isFirst) {
-        setDummy(prev => prev + 1);
-      }
+  return connectWatch<StateRefStore<T>>(watch);
+}
 
-      return abortController.current.signal;
-    });
-
-    // Unsubscribe if the component is unmounted.
-    useEffect(() => () => abortController.current.abort(), []);
-
-    return forceUpdateRef.current;
-  };
-
-  return () => watch(useForceUpdate());
+/** Connect a readonly query view without granting display-value setters. */
+export function connectPreactView<R>(watch: ViewWatch<R>) {
+  return connectWatch(watch);
 }

@@ -35,6 +35,14 @@ const incrementFromProfile = () => {
 </template>
 ```
 
+## Readonly query views
+
+`connectVueView(live.watch)(select)` returns a readonly Vue ref for a `@stateref/sync` view. It follows key changes and stops its subscription on component unmount. The owner of `live` calls `live.dispose()` when the view is no longer needed. Edit actual data through `live.query?.ref` after it loads.
+
+```ts
+const city = connectVueView(live.watch)(view => view.data.value);
+```
+
 ## npm
 * [state-ref](https://www.npmjs.com/package/state-ref)
 * [connect-react](https://www.npmjs.com/package/@stateref/connect-react)
@@ -43,4 +51,3 @@ const incrementFromProfile = () => {
 * [connect-svelte](https://www.npmjs.com/package/@stateref/connect-svelte)
 * [connect-vue](https://www.npmjs.com/package/@stateref/connect-vue)
 * [lithent](https://www.npmjs.com/package/lithent)
-

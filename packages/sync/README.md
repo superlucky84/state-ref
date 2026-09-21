@@ -175,8 +175,12 @@ is the current handle or `null`. Each source update reconnects with its new
 options, including when the key is unchanged. The old handle is disposed. An
 unowned in-flight READ is aborted and cannot install a late result; another
 owner of the same key keeps its shared READ. Neither placeholder nor selected
-display data enters the shared cache. Connector-specific lifecycle wiring is
-still pending.
+display data enters the shared cache. One-way lifecycle wiring is available
+through `connectReactView`, `connectPreactView`, `connectVueView`,
+`connectSvelteView`, and `connectSolidView`. Each connector ends its UI
+subscription on unmount; the owner of `live` calls `live.dispose()` when the
+view itself is no longer needed. Edit actual data through `live.query?.ref`
+after it loads.
 
 Independent mutations run concurrently by default. Pass the same `scope`
 string to `run` to execute those operations in start order, including their

@@ -36,13 +36,14 @@
     "state-ref"
   ],
   "peerDependencies": {
-    "state-ref": "^3.0.0",
-    "preact": "^10.0.0"
+    "preact": "^10.0.0",
+    "state-ref": "^3.0.0"
   },
   "devDependencies": {
-    "state-ref": "workspace:*",
+    "@stateref/sync": "workspace:^",
+    "@testing-library/preact": "^3.2.4",
     "preact": "^10.24.1",
-    "@testing-library/preact": "^3.2.4"
+    "state-ref": "workspace:*"
   },
   "volta": {
     "node": "20.3.0"

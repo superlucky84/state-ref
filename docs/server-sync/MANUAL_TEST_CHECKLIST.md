@@ -205,6 +205,8 @@
 
 각 커넥터에서 M2-04/05/08/12~18을 수행하고 core+draft만의 흐름도 확인한다.
 
+- [ ] 각 UI에서 `liveView`의 disabled→enabled, key 전환, 늦은 결과 차단, 로컬 resource 편집 반영과 화면 해제 후 구독 종료를 확인한다. 공유 view를 한 화면에서만 해제했을 때 다른 화면의 조회·표시는 유지한다.
+
 | 커넥터 | 로컬 draft | 서버 ref + draft | mount/unmount·타입 | 결과 |
 |---|---|---|---|---|
 | React | [ ] | [ ] | [ ] | 미수행 |

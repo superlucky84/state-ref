@@ -1,9 +1,31 @@
-import { reactive, watch, onUnmounted } from 'vue';
-import type { Reactive, UnwrapRef } from 'vue';
+import { reactive, watch, onUnmounted, shallowRef, readonly } from 'vue';
+import type { Reactive, UnwrapRef, Ref, ShallowRef } from 'vue';
 import { cloneDeep } from 'state-ref';
-import type { StateRefStore, Watch } from 'state-ref';
+import type { Renew, StateRefStore, Watch } from 'state-ref';
 // import { cloneDeep } from 'state-ref';
 // import type { StateRefStore, Watch } from 'state-ref';
+
+export type ViewWatch<R> = (
+  renew?: Renew<R>,
+  option?: { cache?: boolean }
+) => R;
+
+/** One-way Vue value for a readonly query view. */
+export function connectVueView<R>(viewWatch: ViewWatch<R>) {
+  return <V>(select: (ref: R) => V): Readonly<Ref<V>> => {
+    const abortController = new AbortController();
+    let valueRef!: ShallowRef<V>;
+    onUnmounted(() => abortController.abort());
+    viewWatch((ref, first) => {
+      const value = select(ref);
+      if (valueRef) valueRef.value = value;
+      else valueRef = shallowRef(value) as ShallowRef<V>;
+      if (first) return abortController.signal;
+      return undefined;
+    });
+    return readonly(valueRef) as Readonly<Ref<V>>;
+  };
+}
 
 /**
  * Vue V3

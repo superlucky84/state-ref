@@ -44,6 +44,17 @@ function handleClick() {
 
 You can customize it by referring to the [connectSvelte implementation code](https://github.com/superlucky84/state-ref/blob/main/packages/connect-svelte/src/index.ts).
 
+## Readonly query views
+
+`connectSvelteView(live.watch)(select)` returns a Svelte `Readable` for a `@stateref/sync` view. Call it during component initialization. Destroying the component ends its subscription; the owner of `live` calls `live.dispose()` when the view is no longer needed. Edit actual data through `live.query?.ref` after it loads.
+
+```svelte
+<script lang="ts">
+  const city = connectSvelteView(live.watch)(view => view.data.value);
+</script>
+<span>{$city ?? 'Loading'}</span>
+```
+
 ## npm
 * [state-ref](https://www.npmjs.com/package/state-ref)
 * [connect-react](https://www.npmjs.com/package/@stateref/connect-react)

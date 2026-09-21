@@ -57,6 +57,18 @@ In the example above, `useProfileStore` directly returns `stateRef`, allowing ea
 
 You can create your own custom connection pattern by referring to the [connectReact implementation code](https://github.com/superlucky84/state-ref/blob/main/packages/connect-react/src/index.ts).
 
+## Readonly query views
+
+Use `connectReactView(live.watch)` for a `@stateref/sync` view. The returned hook exposes the view's readonly ref; edit actual data through `live.query?.ref` after it loads. Unmounting ends this component's subscription. The owner of `live` calls `live.dispose()` when the view is no longer needed.
+
+```tsx
+const useView = connectReactView(live.watch);
+function AccountCity() {
+  const view = useView();
+  return <span>{view.data.value ?? 'Loading'}</span>;
+}
+```
+
 ## npm
 * [state-ref](https://www.npmjs.com/package/state-ref)
 * [connect-react](https://www.npmjs.com/package/@stateref/connect-react)

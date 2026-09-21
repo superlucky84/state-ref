@@ -1,7 +1,29 @@
 import { onDestroy } from 'svelte';
 import { writable } from 'svelte/store';
-import type { Writable } from 'svelte/store';
-import type { StateRefStore, Watch } from 'state-ref';
+import type { Readable, Writable } from 'svelte/store';
+import type { Renew, StateRefStore, Watch } from 'state-ref';
+
+export type ViewWatch<R> = (
+  renew?: Renew<R>,
+  option?: { cache?: boolean }
+) => R;
+
+/** One-way Svelte store for a readonly query view. */
+export function connectSvelteView<R>(viewWatch: ViewWatch<R>) {
+  return <V>(select: (ref: R) => V): Readable<V> => {
+    const abortController = new AbortController();
+    let signalValue!: Writable<V>;
+    onDestroy(() => abortController.abort());
+    viewWatch((ref, first) => {
+      const value = select(ref);
+      if (signalValue) signalValue.set(value);
+      else signalValue = writable(value);
+      if (first) return abortController.signal;
+      return undefined;
+    });
+    return { subscribe: signalValue.subscribe };
+  };
+}
 
 /**
  * Svelte V4

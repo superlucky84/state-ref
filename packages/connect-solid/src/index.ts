@@ -1,7 +1,29 @@
 import { createSignal, onCleanup, createEffect } from 'solid-js';
-import type { Signal } from 'solid-js';
-import type { StateRefStore, Watch } from 'state-ref';
+import type { Accessor, Signal } from 'solid-js';
+import type { Renew, StateRefStore, Watch } from 'state-ref';
 // import type { StateRefStore, Capture } from 'state-ref';
+
+export type ViewWatch<R> = (
+  renew?: Renew<R>,
+  option?: { cache?: boolean }
+) => R;
+
+/** One-way Solid accessor for a readonly query view. */
+export function connectSolidView<R>(viewWatch: ViewWatch<R>) {
+  return <V>(select: (ref: R) => V): Accessor<V> => {
+    const abortController = new AbortController();
+    let signalValue!: Signal<V>;
+    onCleanup(() => abortController.abort());
+    viewWatch((ref, first) => {
+      const value = select(ref);
+      if (signalValue) signalValue[1](() => value);
+      else signalValue = createSignal<V>(value);
+      if (first) return abortController.signal;
+      return undefined;
+    });
+    return signalValue[0];
+  };
+}
 
 /**
  * Solid-js V1

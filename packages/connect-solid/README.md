@@ -46,6 +46,15 @@ function handleClick() {
 }
 ```
 
+## Readonly query views
+
+`connectSolidView(live.watch)(select)` returns a Solid accessor for a `@stateref/sync` view. Dispose the owning root to end its subscription; the owner of `live` calls `live.dispose()` when the view is no longer needed. Edit actual data through `live.query?.ref` after it loads.
+
+```tsx
+const city = connectSolidView(live.watch)(view => view.data.value);
+const label = () => city() ?? 'Loading';
+```
+
 ## npm
 * [state-ref](https://www.npmjs.com/package/state-ref)
 * [connect-react](https://www.npmjs.com/package/@stateref/connect-react)
