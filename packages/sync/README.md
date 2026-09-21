@@ -313,6 +313,62 @@ value. Keep this storage key separate from the clean baseline and command
 queue. A saved local snapshot does not contain an active mutation's DTO or
 submission record and cannot resume a linked WRITE.
 
+For one linked submission, keep its DTO and local recovery snapshot together
+under another storage key. Stage the exact selected changes, then explicitly
+send after the host is online:
+
+```ts
+import { openPersistedLinkedMutation } from '@stateref/sync';
+
+const linked = await openPersistedLinkedMutation({
+  storage: localStorage,
+  key: 'account-linked',
+  buster: 'api-v1',
+  isOnline: () => navigator.onLine,
+});
+await linked.stage(client, account, {
+  id: 'city-42',
+  input: { city: account.ref.address.city.value },
+  idempotencyKey: 'city-42',
+  ids: account
+    .changes()
+    .filter(change => change.path.join('.') === 'address.city')
+    .map(change => change.id),
+  accept: 'submitted',
+});
+const outcome = await linked.send(client, account, save); // null while offline
+
+// On a new client, before opening query handles:
+const restarted = createSyncClient();
+const saved = await openPersistedLinkedMutation({
+  storage: localStorage,
+  key: 'account-linked',
+  buster: 'api-v1',
+});
+saved.restore(restarted); // restores local data; does not send a WRITE
+const restoredAccount = restarted.query({
+  queryKey: ['account', 1],
+  queryFn: ({ signal }) => api.readAccount(1, { signal }),
+});
+```
+
+`send` checks the staged query baseline and edits, writes an `inFlight`
+marker and an unconfirmed recovery snapshot before calling `mutationFn`, and
+records the result afterward. A failed marker write prevents the WRITE. On
+restart, `inFlight` becomes `unknown`; inspect and reconcile it with the
+server before calling `discard()`. It is never replayed automatically. A
+successful linked record stays available until discarded. `send` accepts one
+query and the serializable `none`, `submitted`, or `refetch` acceptance policy;
+`response.select` and multiple links require direct `mutation.run`. A
+pre-send edit or baseline change requires discarding and staging again. If the
+result record cannot be saved, the WRITE may already have occurred and the
+next startup treats its `inFlight` marker as unknown. Follow-up edits during
+an active WRITE are captured after it settles when local dehydration succeeds;
+apps needing continuous persistence during that interval must checkpoint
+those edits separately. Save any remaining local edits to a separate local
+snapshot before discarding a completed linked record. Use one writer per storage key and separate keys for
+linked submissions, clean baselines, local snapshots, and standalone commands.
+
 For an independent command, register a mutation handle and queue a JSON DTO
 with a server-supported idempotency key. Call `resume()` after confirming the
 host is online:

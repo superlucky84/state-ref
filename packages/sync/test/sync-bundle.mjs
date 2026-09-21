@@ -4,6 +4,7 @@ import {
   createBrowserSyncEnvironment,
   createSyncClient,
   openPersistedMutationQueue,
+  openPersistedLinkedMutation,
   restoreSyncSnapshot,
   saveSyncSnapshot,
   saveLocalSyncSnapshot,
@@ -260,6 +261,26 @@ const localRestored = localRestoredClient.query({
 });
 assert.equal(localRestored.ref.count.value, 2);
 assert.equal(localRestored.isDirty(), true);
+const linkedJournal = await openPersistedLinkedMutation({
+  storage,
+  key: 'linked',
+  buster: 'v1',
+});
+await linkedJournal.stage(localRestoredClient, localRestored, {
+  id: 'linked-one',
+  input: { count: 2 },
+  idempotencyKey: 'linked-server-key',
+  accept: 'submitted',
+});
+const linkedWrite = localRestoredClient.mutation({
+  mutationFn: input => input.count,
+});
+assert.equal(
+  (await linkedJournal.send(localRestoredClient, localRestored, linkedWrite))
+    .kind,
+  'success'
+);
+assert.equal(localRestored.isDirty(), false);
 editable.dispose();
 localRestored.dispose();
 cleanQuery.dispose();

@@ -53,6 +53,13 @@ export {
   saveLocalSyncSnapshot,
   restoreLocalSyncSnapshot,
 } from './persistence';
+export { openPersistedLinkedMutation } from './linked-persistence';
+export type {
+  PersistedLinkedMutation,
+  PersistedLinkedMutationJob,
+  PersistedLinkedMutationOptions,
+  StageLinkedMutation,
+} from './linked-persistence';
 export type {
   SyncStorage,
   SyncPersistenceOptions,
@@ -141,6 +148,7 @@ export type SyncClientOptions = Readonly<{
 }>;
 
 export type QueryHandle<T> = Readonly<{
+  queryKey: QueryKey;
   ref: StateRefStore<T>;
   watch: Watch<T>;
   status: StateRefStore<QueryStatus>;
@@ -822,6 +830,10 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
       true
     );
     const handle: QueryHandle<T> = {
+      get queryKey() {
+        assertActive();
+        return JSON.parse(entry!.hash) as QueryKey;
+      },
       get ref() {
         assertActive();
         return guardData(entry!.getResource().ref);

@@ -3,6 +3,7 @@ import {
   createSyncClient,
   MutationRejectedError,
   openPersistedMutationQueue,
+  openPersistedLinkedMutation,
   restoreSyncSnapshot,
   saveSyncSnapshot,
   saveLocalSyncSnapshot,
@@ -22,6 +23,7 @@ import type {
   SyncEnvironmentEvent,
   SyncStorage,
   PersistedMutationQueue,
+  PersistedLinkedMutation,
   SyncSnapshot,
 } from '@stateref/sync';
 import { createDraft } from 'state-ref/draft';
@@ -340,6 +342,50 @@ async function recoveredLocalEdits() {
 }
 
 void recoveredLocalEdits;
+
+async function persistedLinkedSubmission() {
+  const client = createSyncClient({ ssr: true });
+  const query = client.query({
+    queryKey: ['linked'],
+    queryFn: () => ({ city: '서울' }),
+  });
+  await query.load();
+  query.ref.city.value = '부산';
+  const values = new Map<string, string>();
+  const storage: SyncStorage = {
+    getItem: key => values.get(key) ?? null,
+    setItem: (key, value) => {
+      values.set(key, value);
+    },
+    removeItem: key => {
+      values.delete(key);
+    },
+  };
+  const journal: PersistedLinkedMutation = await openPersistedLinkedMutation({
+    storage,
+    key: 'linked',
+    buster: 'v1',
+  });
+  await journal.stage(client, query, {
+    id: 'one',
+    input: { city: '부산' },
+    idempotencyKey: 'server-key',
+    ids: query.changes().map(change => change.id),
+    accept: 'submitted',
+  });
+  const mutation = client.mutation({
+    mutationFn: (input: { city: string }) => input.city,
+  });
+  const result: MutationResult<string> | null = await journal.send(
+    client,
+    query,
+    mutation
+  );
+  void result;
+  query.dispose();
+}
+
+void persistedLinkedSubmission;
 
 createSyncClient().query({
   queryKey: ['bad-automatic-policy'],

@@ -1,6 +1,6 @@
 # 서버 동기화·독립 Draft 현재 인계
 
-기준일: 2026-09-21. 저장소 `/Users/superlucky84/project/state-ref`, 브랜치 `feat/server-sync-draft`. Phase 5.10의 시작 기준 커밋은 Phase 5.9의 `2d830a2` (`feat(sync): persist clean baselines and queued mutations`)이고, Phase 5.10 구현·검증·문서는 이 문서와 같은 커밋에 있다. 작업 재개 시 `git log -1 --oneline`과 `git status --short --branch`로 최신 커밋과 작업 트리를 확인한다.
+기준일: 2026-09-21. 저장소 `/Users/superlucky84/project/state-ref`, 브랜치 `feat/server-sync-draft`. Phase 5.11의 시작 기준 커밋은 Phase 5.10의 `485f7dc` (`feat(sync): restore local resource state`)다. Phase 5.11 구현·검증·문서는 이 문서와 같은 커밋에 있다. 작업 재개 시 `git log -1 --oneline`과 `git status --short --branch`로 최신 커밋과 작업 트리를 확인한다.
 
 ## 먼저 읽을 문서
 
@@ -8,7 +8,7 @@
 2. [REQUIREMENTS](./REQUIREMENTS.md): R2 수용 기준과 이전 결정의 대체 관계.
 3. [DESIGN](./DESIGN.md): helper 경계, DC2/IC2 결정, F2 기능 목록.
 4. [IMPLEMENT](./IMPLEMENT.md): T2 테스트 계약과 Phase 5~8의 진입·종료 조건.
-5. [Phase 5.10](./PHASE5_10.md): 로컬 편집·미확정 기준의 별도 복구 snapshot. [Phase 5.9](./PHASE5_9.md)는 clean 기준 영속화와 독립 명령 queue, [Phase 5.8](./PHASE5_8.md)은 query network mode와 브라우저 adapter, [Phase 5.7](./PHASE5_7.md)은 page-key pagination·infinite, [Phase 5.6](./PHASE5_6.md)은 client별 자동 재조회, [Phase 5.5](./PHASE5_5.md)는 5종 UI 읽기 전용 view 연결, [Phase 5.4](./PHASE5_4.md)는 자동 key 전환, [Phase 5.3](./PHASE5_3.md)는 placeholder/select view, [Phase 5.2](./PHASE5_2.md)는 캐시 준비, [Phase 5.1](./PHASE5_1.md)은 clean SSR 기준 전달이다. [Phase 3](./PHASE3.md), [Phase 3.5](./PHASE3_5.md), [Phase 4](./PHASE4.md)는 이전 단계의 증거다. Phase 0~2는 결정의 배경과 기본 계약 기록이다.
+5. [Phase 5.11](./PHASE5_11.md): 단일 연결 제출 기록과 durable 전송 장벽. [Phase 5.10](./PHASE5_10.md)은 로컬 편집·미확정 기준의 별도 복구 snapshot, [Phase 5.9](./PHASE5_9.md)는 clean 기준 영속화와 독립 명령 queue, [Phase 5.8](./PHASE5_8.md)은 query network mode와 브라우저 adapter, [Phase 5.7](./PHASE5_7.md)은 page-key pagination·infinite, [Phase 5.6](./PHASE5_6.md)은 client별 자동 재조회, [Phase 5.5](./PHASE5_5.md)는 5종 UI 읽기 전용 view 연결, [Phase 5.4](./PHASE5_4.md)는 자동 key 전환, [Phase 5.3](./PHASE5_3.md)는 placeholder/select view, [Phase 5.2](./PHASE5_2.md)는 캐시 준비, [Phase 5.1](./PHASE5_1.md)은 clean SSR 기준 전달이다. [Phase 3](./PHASE3.md), [Phase 3.5](./PHASE3_5.md), [Phase 4](./PHASE4.md)는 이전 단계의 증거다. Phase 0~2는 결정의 배경과 기본 계약 기록이다.
 6. [수동 체크리스트](./MANUAL_TEST_CHECKLIST.md): M2-01~20. 지금은 전부 미수행이며 Phase 8 출시 검증 대상이다.
 
 `PHASE0.md`~`PHASE4.md`의 “next”와 “미커밋” 문구는 **해당 단계 작성 당시의 이력**이다. 현재 재개 지점과 최신 구현 SHA는 이 문서가 우선한다.
@@ -31,6 +31,7 @@
 - **Phase 5.8:** query별 `online`·`always`·`offlineFirst` 정책은 오프라인 READ의 시작·retry pause와 reconnect 재개를 구분한다. `createBrowserSyncEnvironment()`는 명시적 브라우저 호출에서 focus/visibility/online을 client 환경으로 연결한다. 상세 계약은 [Phase 5.8](./PHASE5_8.md)에 있다.
 - **Phase 5.9:** `saveSyncSnapshot`/`restoreSyncSnapshot`은 기존 clean 기준에 별도 storage envelope, TTL·buster를 적용한다. `openPersistedMutationQueue`는 독립 명령의 JSON DTO·작업 ID·서버 지원 idempotency key를 저장한다. `resume()`은 online에서 순차 실행하고 각 WRITE 전에 durable `inFlight`를 기록한다. 재시작한 `inFlight`는 `unknown`이며 자동 재전송하지 않고 후속 명령도 막는다. 연결 제출 기록·dirty resource의 복원과 자동 resume는 미지원이다. 상세 계약은 [Phase 5.9](./PHASE5_9.md)에 있다.
 - **Phase 5.10:** `client.dehydrateLocal()`/`hydrateLocal()`은 schema 1 clean SSR snapshot과 별도인 schema 2에 서버 기준·dirty 값·변경 ID/충돌·미확정 표시를 보존한다. `saveLocalSyncSnapshot`/`restoreLocalSyncSnapshot`은 앱 storage의 별도 key에 TTL·buster를 적용한다. 진행 READ/연결 WRITE는 저장을 거절하고 복원은 자동 WRITE를 시작하지 않는다. 연결 제출 기록의 durable 재개는 남아 있다. 상세 계약은 [Phase 5.10](./PHASE5_10.md)에 있다.
+- **Phase 5.11:** `openPersistedLinkedMutation`은 별도 storage key에 연결 제출 1건의 JSON DTO·idempotency key·선택 변경과 로컬 snapshot을 한 기록으로 저장한다. 명시적 `send`는 staged 기준을 재검사하고 WRITE 직전에 durable `inFlight`와 보수적인 미확정 snapshot을 저장한다. 재시작한 `inFlight`는 unknown으로 보류하며 자동 재전송하지 않는다. 성공/거절/sync-error/unknown은 구분해 기록한다. 다중 연결·함수형 응답 매핑·진행 WRITE 중 로컬 편집의 연속 저장은 미지원이다. 상세 계약은 [Phase 5.11](./PHASE5_11.md)에 있다.
 - 비교 기준은 `@tanstack/query-core@5.103.1`의 기능 목록이다. TanStack 런타임·플러그인·API 호환 또는 F2 전체 동등성을 선언하지 않는다. 과거 `resource.save`, `draft.save`, draft 직접 서버 저장, 서버 부분 저장 scope 설계는 현재 계약이 아니다.
 
 주요 코드 위치: [core batch](../../packages/state-ref/src/batch/index.ts), [draft](../../packages/state-ref/src/draft/index.ts), [sync query/client](../../packages/sync/src/index.ts), [무한 조회](../../packages/sync/src/infinite.ts), [network gate](../../packages/sync/src/network.ts), [browser adapter](../../packages/sync/src/browser-environment.ts), [자동 재조회](../../packages/sync/src/automatic-refetch.ts), [view](../../packages/sync/src/view.ts), [live view](../../packages/sync/src/live-view.ts), [clean hydration 형식](../../packages/sync/src/hydration.ts), [로컬 복구 형식](../../packages/sync/src/local-hydration.ts), [영속화와 명령 queue](../../packages/sync/src/persistence.ts), [resource 기록](../../packages/sync/src/resource.ts), [mutation](../../packages/sync/src/mutation.ts). 소비자 예제는 [sync README](../../packages/sync/README.md)를 따른다.
@@ -47,15 +48,16 @@
 - Phase 5.8 변경에서 `pnpm gate` **PASS**. sync 런타임 **95개 테스트 PASS**, 소비자 타입·빌드 ESM network mode/browser adapter smoke PASS. 검증한 경계는 [PHASE5_8](./PHASE5_8.md)에 있다.
 - Phase 5.9 변경에서 `pnpm gate` **PASS**. sync 런타임 **107개 테스트 PASS**, 소비자 타입·빌드 ESM persistence smoke PASS. 검증한 경계는 [PHASE5_9](./PHASE5_9.md)에 있다.
 - Phase 5.10 변경에서 `pnpm gate` **PASS**. sync 런타임 **117개 테스트 PASS**, 소비자 타입·빌드 ESM local recovery smoke PASS. 검증한 경계는 [PHASE5_10](./PHASE5_10.md)에 있다.
-- 고정 Node 20.3.0의 기본 core 기준은 **3,455/3,500 B PASS**다. 이번 gate 경로 Node 24.11.1 측정은 **3,433/3,500 B PASS**다. Phase 5.10 별도 sync ESM은 이번 빌드에서 약 **70.64 kB raw / 17.24 kB gzip**이며 기본 core 빌드에 포함되지 않는다.
+- Phase 5.11 변경에서 `pnpm gate` **PASS**. sync 런타임 **123개 테스트 PASS**, 소비자 타입·빌드 ESM linked persistence smoke PASS. 검증한 경계는 [PHASE5_11](./PHASE5_11.md)에 있다.
+- 고정 Node 20.3.0의 기본 core 기준은 **3,455/3,500 B PASS**다. 이번 gate 경로 Node 24.11.1 측정은 **3,433/3,500 B PASS**다. Phase 5.11 별도 sync ESM은 이번 빌드에서 약 **78.68 kB raw / 18.82 kB gzip**이며 기본 core 빌드에 포함되지 않는다.
 - 구현을 바꾸면 해당 패키지 테스트·타입을 먼저 실행하고 전체 `pnpm gate`로 종료한다. 문서 변경은 `git diff --check`와 링크 경로를 확인한다.
 
-Phase 5.9 구현·테스트·문서 커밋은 `2d830a2`다. Phase 5.10 구현·테스트·문서는 이 문서와 같은 커밋에 있다. 최신 SHA는 `git log -1 --oneline`으로 확인한다.
+Phase 5.10 구현·테스트·문서 커밋은 `485f7dc`다. Phase 5.11 변경은 이 문서와 같은 커밋에 있다. 최신 SHA는 `git log -1 --oneline`으로 확인한다.
 
 ## 다음 단계와 완료 기준
 
-1. **Phase 5 계속:** [Phase 5.10](./PHASE5_10.md)에서 dirty resource·미확정 기준의 복구 snapshot을 검증했다. 무한 조회 전용 cache 준비·observer view 편의 API는 F2-05 차이로 남겨둔다. 이름만 같은 API를 동등성으로 세지 않는다.
-2. 이어서 연결 mutation의 제출 기록과 durable 전송 장벽을 별도로 설계하고, 관측·플러그인 경계를 실제 런타임 반례·타입/번들 증거와 함께 구현한다. 진행 중 WRITE의 서버 결과를 로컬 snapshot만으로 추정하지 않는다. Phase 5 전체 종료 조건은 [IMPLEMENT](./IMPLEMENT.md)의 F2별 증거이며, 일부 기능을 구현해도 전체 동등성 완료로 표시하지 않는다.
+1. **Phase 5 계속:** [Phase 5.11](./PHASE5_11.md)에서 단일 연결 제출의 durable 장벽과 unknown 보류를 검증했다. 다중 연결·진행 중 편집의 연속 저장과 자동 재개는 F2-07 차이로 남는다. 완료 기록을 버리기 전 후속 편집을 별도 저장해야 한다.
+2. F2-08 관측·플러그인 경계를 실제 런타임 반례·타입/번들 증거와 함께 구현한다. 무한 조회 전용 cache 준비·observer view 편의 API는 F2-05 차이로 남는다. Phase 5 전체 종료 조건은 [IMPLEMENT](./IMPLEMENT.md)의 F2별 증거이며, 일부 기능을 구현해도 전체 동등성 완료로 표시하지 않는다.
 3. **Phase 6:** resource가 이미 dirty이거나 mutation pending일 때 가지 draft를 만들고, 독립 편집→로컬 apply→resource 변경 검토→mutation까지 연결한다. 서울→부산→대전, 겹친 광주 갱신, 후속 입력·복구, 열린 draft가 resource 수명에 미치는 영향을 자동 검증한다.
 4. **Phase 7/8:** 독립 참조 모델·경쟁/수명 hardening, resource/draft/pending 5종 UI 전체 조합, M2-01~20 수동 시나리오를 진행한다. 수동 미수행을 PASS로 바꾸지 않는다.
 
