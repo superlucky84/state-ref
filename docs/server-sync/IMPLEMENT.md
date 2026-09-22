@@ -215,7 +215,7 @@
 - [x] 독립 참조 모델로 작업 실패 후 잔여 intent와 두 기준의 값을 비교한다. 144개 결과 조합 전수 대조. [Phase 7.2](./PHASE7_2.md).
 - [x] ABA·부모/자식 겹침·원본 소멸·배열 재정렬·동일 값 수렴·재진입 apply를 포함한다. 재진입 apply와 부모 타입 교체는 core draft 회귀가 이미 덮는다. [Phase 7.1](./PHASE7_1.md).
 - [ ] 구독·draft·캐시 생성/종료 반복, 복구 중 pin, 오류 후 해제와 메모리 보존 사유를 확인한다.
-- [ ] 타입 negative case·배포 exports·지원 모듈 형식·baseline 대비 비용을 검사한다.
+- [x] 타입 negative case·배포 exports·지원 모듈 형식·baseline 대비 비용을 검사한다. 배포 결함 3건 수정. [Phase 7.3](./PHASE7_3.md).
 
 **기준 테스트:** T2-01~26의 경계·이벤트 순서, F2별 실패·복원 조합, 기존 core stress/lifecycle/tree-lifetime와 성능 gate.
 
@@ -251,6 +251,13 @@
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
+
+### 2026-09-23 — Phase 7.3 타입 Negative Case와 배포 경계
+
+- done: [Phase 7.3](./PHASE7_3.md)에서 배포 결함 3건을 찾아 고쳤다. `"type": "module"` 패키지가 UMD를 `.js`로 내보내 CJS `require`가 6개 패키지에서 빈 네임스페이스나 예외였고, 배포 `.d.ts`의 확장자 없는 상대 import가 `node16` ESM 소비자까지 깨뜨렸으며, CJS 선언이 없었다. 별도 `.cjs` 산출물·선언 후처리·조건별 `types`로 해결했고 `packaging`·`negative-types` gate 단계를 추가했다. 기본 core gzip 3,433/3,500 B 불변. sync 170개·core 325개 테스트 PASS.
+- next: Phase 7의 수명 반복·복구 중 pin·메모리 보존 사유. 그 뒤 Phase 8.
+- blockers: 외부 차단 없음. `QueryKey` 정밀화와 status readonly화는 공개 API 변경으로 별도 결정. M2-01~20 미수행.
+- 시작 기준 commit: `68cb0cc` (Phase 7.2). Phase 7.3 변경은 이 문서와 같은 커밋에 있다.
 
 ### 2026-09-23 — Phase 7.2 독립 참조 모델 비교
 

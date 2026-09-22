@@ -27,10 +27,12 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src'),
       name: 'staterefConnectPreact',
+      formats: ['es', 'umd', 'cjs'],
       fileName: format => {
-        return format === 'umd'
-          ? 'stateref-connect-preact.umd.js'
-          : 'stateref-connect-preact.mjs';
+        if (format === 'umd') return 'stateref-connect-preact.umd.js';
+        // "type": "module" makes a .js file ESM, so the UMD output
+        // cannot serve the `require` condition.
+        return format === 'cjs' ? 'stateref-connect-preact.cjs' : 'stateref-connect-preact.mjs';
       },
     },
     rollupOptions: {

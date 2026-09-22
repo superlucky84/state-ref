@@ -5,7 +5,7 @@
   "private": false,
   "description": "Solid connector for state-ref",
   "packageManager": "pnpm@7.6.0",
-  "main": "./dist/stateref-connect-solid.umd.js",
+  "main": "./dist/stateref-connect-solid.cjs",
   "module": "./dist/stateref-connect-solid.mjs",
   "scripts": {
     "dev": "vite",
@@ -15,9 +15,14 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/stateref-connect-solid.mjs",
-      "require": "./dist/stateref-connect-solid.umd.js"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/stateref-connect-solid.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/stateref-connect-solid.cjs"
+      }
     }
   },
   "types": "./dist/index.d.ts",

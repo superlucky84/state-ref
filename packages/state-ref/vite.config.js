@@ -29,8 +29,12 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src'),
       name: 'stateRef',
+      formats: ['es', 'umd', 'cjs'],
       fileName: format => {
-        return format === 'umd' ? 'state-ref.umd.js' : 'state-ref.mjs';
+        if (format === 'umd') return 'state-ref.umd.js';
+        // A separate CommonJS build: "type": "module" makes a .js file ESM,
+        // so the UMD output cannot serve the `require` condition.
+        return format === 'cjs' ? 'state-ref.cjs' : 'state-ref.mjs';
       },
     },
   },

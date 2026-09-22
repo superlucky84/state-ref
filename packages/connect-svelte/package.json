@@ -5,7 +5,7 @@
   "private": false,
   "description": "Svelte connector for state-ref",
   "packageManager": "pnpm@7.6.0",
-  "main": "./dist/stateref-connect-svelte.umd.js",
+  "main": "./dist/stateref-connect-svelte.cjs",
   "module": "./dist/stateref-connect-svelte.mjs",
   "scripts": {
     "dev": "vite",
@@ -15,9 +15,14 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/stateref-connect-svelte.mjs",
-      "require": "./dist/stateref-connect-svelte.umd.js"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/stateref-connect-svelte.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/stateref-connect-svelte.cjs"
+      }
     }
   },
   "types": "./dist/index.d.ts",

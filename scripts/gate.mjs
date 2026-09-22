@@ -112,6 +112,25 @@ const steps = [
     ],
   },
   {
+    name: 'negative-types',
+    cmd: 'pnpm',
+    args: [
+      '--filter',
+      '@stateref/sync',
+      'exec',
+      'tsc',
+      '--noEmit',
+      '--strict',
+      '--target',
+      'es2020',
+      '--module',
+      'esnext',
+      '--moduleResolution',
+      'bundler',
+      'test/negative-types.ts',
+    ],
+  },
+  {
     name: 'lint',
     cmd: 'pnpm',
     args: ['exec', 'eslint', ...sourceDirs, '--ext', '.ts,.tsx'],
@@ -131,6 +150,12 @@ const steps = [
     name: 'sync-bundle',
     cmd: 'node',
     args: ['packages/sync/test/sync-bundle.mjs'],
+  },
+  {
+    name: 'packaging',
+    cmd: 'node',
+    args: ['scripts/check-packaging.mjs'],
+    skip: quick && 'skipped (--quick)',
   },
   {
     name: 'bench',

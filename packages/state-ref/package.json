@@ -5,7 +5,7 @@
   "private": false,
   "description": "Universal state management library that can be easily integrated into UI libraries",
   "packageManager": "pnpm@7.6.0",
-  "main": "./dist/state-ref.umd.js",
+  "main": "./dist/state-ref.cjs",
   "module": "./dist/state-ref.mjs",
   "scripts": {
     "dev": "vite",
@@ -16,29 +16,48 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/state-ref.mjs",
-      "require": "./dist/state-ref.umd.js"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/state-ref.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/state-ref.cjs"
+      }
     },
     "./plugin": {
-      "types": "./dist/plugin/index.d.ts",
-      "import": "./dist/plugin.mjs"
+      "import": {
+        "types": "./dist/plugin/index.d.ts",
+        "default": "./dist/plugin.mjs"
+      }
     },
     "./draft": {
-      "types": "./dist/draft/index.d.ts",
-      "import": "./dist/state-ref.draft.mjs",
-      "require": "./dist/state-ref.draft.umd.js"
+      "import": {
+        "types": "./dist/draft/index.d.ts",
+        "default": "./dist/state-ref.draft.mjs"
+      },
+      "require": {
+        "types": "./dist/draft/index.d.cts",
+        "default": "./dist/state-ref.draft.cjs"
+      }
     },
     "./batch": {
-      "types": "./dist/batch/index.d.ts",
-      "import": "./dist/state-ref.batch.mjs",
-      "require": "./dist/state-ref.batch.umd.js"
+      "import": {
+        "types": "./dist/batch/index.d.ts",
+        "default": "./dist/state-ref.batch.mjs"
+      },
+      "require": {
+        "types": "./dist/batch/index.d.cts",
+        "default": "./dist/state-ref.batch.cjs"
+      }
     }
   },
   "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
-      "batch": ["dist/batch/index.d.ts"]
+      "batch": [
+        "dist/batch/index.d.ts"
+      ]
     }
   },
   "files": [

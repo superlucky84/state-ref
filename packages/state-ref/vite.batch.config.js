@@ -14,9 +14,13 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src/batch/index.ts'),
       name: 'stateRefBatch',
-      formats: ['es', 'umd'],
-      fileName: format =>
-        format === 'umd' ? 'state-ref.batch.umd.js' : 'state-ref.batch.mjs',
+      formats: ['es', 'umd', 'cjs'],
+      fileName: format => {
+        if (format === 'umd') return 'state-ref.batch.umd.js';
+        return format === 'cjs'
+          ? 'state-ref.batch.cjs'
+          : 'state-ref.batch.mjs';
+      },
     },
     rollupOptions: {
       external: ['state-ref'],

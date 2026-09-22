@@ -29,10 +29,12 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src'),
       name: 'staterefConnectSolid',
+      formats: ['es', 'umd', 'cjs'],
       fileName: format => {
-        return format === 'umd'
-          ? 'stateref-connect-solid.umd.js'
-          : 'stateref-connect-solid.mjs';
+        if (format === 'umd') return 'stateref-connect-solid.umd.js';
+        // "type": "module" makes a .js file ESM, so the UMD output
+        // cannot serve the `require` condition.
+        return format === 'cjs' ? 'stateref-connect-solid.cjs' : 'stateref-connect-solid.mjs';
       },
     },
     rollupOptions: {

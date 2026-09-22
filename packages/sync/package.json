@@ -8,11 +8,15 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/stateref-sync.mjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/stateref-sync.mjs"
+      }
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "vite build",
     "test": "vitest run --reporter verbose"

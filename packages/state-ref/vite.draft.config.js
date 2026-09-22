@@ -14,9 +14,13 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src/draft/index.ts'),
       name: 'stateRefDraft',
-      formats: ['es', 'umd'],
-      fileName: format =>
-        format === 'umd' ? 'state-ref.draft.umd.js' : 'state-ref.draft.mjs',
+      formats: ['es', 'umd', 'cjs'],
+      fileName: format => {
+        if (format === 'umd') return 'state-ref.draft.umd.js';
+        return format === 'cjs'
+          ? 'state-ref.draft.cjs'
+          : 'state-ref.draft.mjs';
+      },
     },
     rollupOptions: {
       external: ['state-ref'],

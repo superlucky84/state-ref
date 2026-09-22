@@ -29,10 +29,12 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src'),
       name: 'stateref-connect-vue',
+      formats: ['es', 'umd', 'cjs'],
       fileName: format => {
-        return format === 'umd'
-          ? 'stateref-connect-vue.umd.js'
-          : 'stateref-connect-vue.mjs';
+        if (format === 'umd') return 'stateref-connect-vue.umd.js';
+        // "type": "module" makes a .js file ESM, so the UMD output
+        // cannot serve the `require` condition.
+        return format === 'cjs' ? 'stateref-connect-vue.cjs' : 'stateref-connect-vue.mjs';
       },
     },
     rollupOptions: {

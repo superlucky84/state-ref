@@ -14,7 +14,6 @@
     "dev:svelte": "pnpm watch:core & pnpm --filter @stateref/connect-svelte dev",
     "dev:solid": "pnpm watch:core & pnpm --filter @stateref/connect-solid dev",
     "dev:docs": "pnpm --filter state-ref-docs dev",
-
     "build:core": "pnpm --filter state-ref build",
     "build:docs": "pnpm --filter state-ref-docs build",
     "build:!core": "pnpm --filter '!state-ref' build",
@@ -24,10 +23,8 @@
     "build:svelte": "pnpm --filter @stateref/connect-svelte build",
     "build:solid": "pnpm --filter @stateref/connect-solid build",
     "build:sync": "pnpm --filter @stateref/sync build",
-    "build": "pnpm build:core && pnpm build:!core && node scripts/copy-skills.mjs",
-
+    "build": "pnpm build:core && pnpm build:!core && node scripts/fix-declarations.mjs packages/state-ref packages/connect-react packages/connect-preact packages/connect-vue packages/connect-svelte packages/connect-solid packages/sync && node scripts/copy-skills.mjs",
     "gate": "node scripts/gate.mjs",
-
     "test": "pnpm -r test",
     "test:core": "pnpm --filter state-ref test",
     "test:core:dev": "pnpm --filter state-ref test:dev",
@@ -42,10 +39,10 @@
     "test:solid": "pnpm --filter @stateref/connect-solid test",
     "test:solid:dev": "pnpm --filter @stateref/connect-solid test:dev",
     "test:sync": "pnpm --filter @stateref/sync test",
-
     "clean": "pnpm clean:dist && pnpm clean:module",
     "clean:dist": "pnpm -r exec rm -rf dist && rm -rf dist",
-    "clean:module": "pnpm -r exec rm -rf dist node_modules && rm -rf node_modules"
+    "clean:module": "pnpm -r exec rm -rf dist node_modules && rm -rf node_modules",
+    "check:packaging": "node scripts/check-packaging.mjs"
   },
   "author": "superlucky84",
   "repository": {

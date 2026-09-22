@@ -41,6 +41,7 @@
 - **Phase 6:** resource 원본의 `createDraft`는 원본의 현재 값에서 clean하게 분기하고 부모의 변경 기록을 복사하지 않는다. `apply()`는 네트워크 없이 병합값을 root에 한 번 쓰므로 원본에는 root 경로 변경 1건이 남고, 경로별 선택 제출이 필요하면 apply 전에 `capture`한다. 원본이 다른 draft·직접 편집·연결 WRITE 수용으로 바뀌면 겹친 경로는 conflict가 되고 입력은 보존되며 `resolve`로만 해소한다. 원본의 로컬 편집은 재조회 기준보다 우선하므로 그 경로에는 겹침이 생기지 않는다. 열린 draft는 원본 수명을 연장하지 않고, 해제된 원본의 쓰기 실패는 `missing-source`로 보고한다. 상세 계약은 [Phase 6](./PHASE6.md)에 있다.
 - **Phase 7.1:** 순서·경계 계약을 반례로 고정했다. draft 충돌은 현재 원본 값의 함수라 A→B→A는 해소되고 수렴한 edit은 `applied: 0`으로 사라진다. 배열 재정렬처럼 같은 경로가 다른 요소를 가리키면 apply를 거절한다. 로컬 apply는 진행 중 READ의 늦은 기준보다 우선한다. 캐시는 역순 완료에서도 최신 epoch만 받고, 제거·재생성 뒤 늦은 결과를 차단하며, `invalidate()`는 진행 중 READ를 abort한다(signal을 무시하는 `queryFn`은 **캐시에 반영되지 않는 값으로 resolve**된다). 연결 WRITE 중에는 READ를 거절하고 WRITE 이전에 시작한 READ의 기준도 받지 않으며, 장벽 뒤 취소는 `unknown`·`unconfirmed`로 입력을 보존한다. 상세 계약은 [Phase 7.1](./PHASE7_1.md)에 있다.
 - **Phase 7.2:** 결과 행렬 144개 조합을 독립 참조 모델과 전수 대조했다. `unknown`·`sync-error`는 모두 미확정으로 두고 입력을 보존하며, 확정 거절은 `remove` 정책에서만 제출 입력을 되돌린다. **`refetch` 수용은 제출한 입력을 소비**하므로 재조회 기준이 제출 경로를 덮고 미제출 후속 입력만 살아남는다([Phase 7.1](./PHASE7_1.md)의 "로컬 입력 우선"은 미제출 입력에만 적용된다). 재조회나 `acceptServer`로 확정 기준을 얻으면 미확정이 해소되고 소비되지 않은 입력은 새 기준 위에 남는다. 상세 계약은 [Phase 7.2](./PHASE7_2.md)에 있다.
+- **Phase 7.3:** 배포 경계에서 결함 3건을 찾아 고쳤다. `"type": "module"` 패키지가 UMD를 `.js`로 내보내 Node가 ESM으로 파싱했고, CJS `require`가 `state-ref`·`draft`·커넥터 5종에서 **빈 네임스페이스**, `state-ref/batch`에서 **예외**였다. 배포 `.d.ts`의 확장자 없는 상대 import 때문에 `node16`/`nodenext` **ESM 소비자**도 TS2834로 깨졌고, CJS 선언은 아예 없었다. 이제 `exports.require`·`main`이 별도 `dist/*.cjs`를 가리키고(`dist/*.umd.js`는 `<script>`용으로 유지), 빌드 후처리가 선언의 상대 import에 `.js`를 붙이며 `require`를 광고하는 패키지에만 `.d.cts` 트리를 만든다. `state-ref/plugin`과 `@stateref/sync`는 ESM 전용이라 `require`가 `ERR_PACKAGE_PATH_NOT_EXPORTED`로 명확히 실패한다 — 조용한 빈 객체를 주지 않는 것이 계약이다. `QueryKey`의 비-JSON 값과 reactive status 쓰기는 타입이 아니라 런타임이 거절한다. 상세 계약은 [Phase 7.3](./PHASE7_3.md)에 있다.
 - 비교 기준은 `@tanstack/query-core@5.103.1`의 기능 목록이다. TanStack 런타임·플러그인·API 호환 또는 F2 전체 동등성을 선언하지 않는다. 과거 `resource.save`, `draft.save`, draft 직접 서버 저장, 서버 부분 저장 scope 설계는 현재 계약이 아니다.
 
 주요 코드 위치: [core batch](../../packages/state-ref/src/batch/index.ts), [draft](../../packages/state-ref/src/draft/index.ts), [sync query/client](../../packages/sync/src/index.ts), [무한 조회](../../packages/sync/src/infinite.ts), [network gate](../../packages/sync/src/network.ts), [browser adapter](../../packages/sync/src/browser-environment.ts), [자동 재조회](../../packages/sync/src/automatic-refetch.ts), [view](../../packages/sync/src/view.ts), [live view](../../packages/sync/src/live-view.ts), [clean hydration 형식](../../packages/sync/src/hydration.ts), [로컬 복구 형식](../../packages/sync/src/local-hydration.ts), [영속화와 명령 queue](../../packages/sync/src/persistence.ts), [resource 기록](../../packages/sync/src/resource.ts), [mutation](../../packages/sync/src/mutation.ts). 소비자 예제는 [sync README](../../packages/sync/README.md)를 따른다.
@@ -67,17 +68,18 @@
 - Phase 6 변경에서 `pnpm gate` **PASS**. sync 런타임 **154개 테스트 PASS**, core **325개 PASS**(불변), 소비자 선언 타입·빌드 ESM draft 분기 smoke PASS. 구현 변경은 `draft.apply()`의 쓰기 실패 분류 한 곳이며 반례로 load-bearing임을 확인했다. 검증한 경계는 [PHASE6](./PHASE6.md)에 있다.
 - Phase 7.1 변경에서 `pnpm gate` **PASS**. sync 런타임 **166개 테스트 PASS**, core **325개 PASS**(불변). 정확성 결함 0건이며 구현 변경은 없다. 반례는 sync 내부 가드 3종을 제거해 모두 실패함을 확인했다. 검증한 경계는 [PHASE7_1](./PHASE7_1.md)에 있다.
 - Phase 7.2 변경에서 `pnpm gate` **PASS**. sync 런타임 **168개 테스트 PASS**. 정확성 결함 0건이며 구현 변경은 없다. 대조의 검증력은 잘못된 모델 규칙과 구현 결함 주입 3종 양쪽으로 확인했다. 검증한 경계는 [PHASE7_2](./PHASE7_2.md)에 있다.
+- Phase 7.3 변경에서 `pnpm gate` **PASS**. gate에 `packaging`·`negative-types` 단계를 추가했다. sync 런타임 **170개 테스트 PASS**, core **325개 PASS**. 배포 검사는 원래 결함을 재현해 잡는지 확인했다. 기본 core gzip은 **3,433/3,500 B 불변**이며, `@stateref/sync`는 불필요한 `.d.cts`를 빼 패킹 43.8 → **36.7 kB**로 줄었다. 검증한 경계는 [PHASE7_3](./PHASE7_3.md)에 있다.
 - 고정 Node 20.3.0의 기본 core 기준은 **3,455/3,500 B PASS**다. 이번 gate 번들 측정은 **3,433/3,500 B PASS**다. Phase 5.17 별도 sync ESM은 약 **86.19 kB raw / 20.68 kB gzip**이며 기본 core 빌드에 포함되지 않는다.
 - 구현을 바꾸면 해당 패키지 테스트·타입을 먼저 실행하고 전체 `pnpm gate`로 종료한다. 문서 변경은 `git diff --check`와 링크 경로를 확인한다.
 
-Phase 7.1 구현·테스트·문서 커밋은 `a937c58`다. Phase 7.2 변경은 이 인계 문서와 같은 커밋에 있다. 최신 SHA는 `git log -1 --oneline`으로 확인한다.
+Phase 7.2 구현·테스트·문서 커밋은 `68cb0cc`다. Phase 7.3 변경은 이 인계 문서와 같은 커밋에 있다. 최신 SHA는 `git log -1 --oneline`으로 확인한다.
 
 ## 다음 단계와 완료 기준
 
 1. **Phase 5/6 종료 범위:** [Phase 5.17](./PHASE5_17.md)에서 F2-07의 남은 차이를, [Phase 6](./PHASE6.md)에서 resource/draft 조합과 IC2-05를 닫았다. F2-08의 개발 도구 UI·플랫폼 자동 설치는 Phase 8 범위로 남는다. Phase 5 전체 종료 조건은 [IMPLEMENT](./IMPLEMENT.md)의 F2별 증거이며, 일부 기능을 구현해도 전체 동등성 완료로 표시하지 않는다.
 2. `unknown`은 재조정이나 폐기 전까지 전송할 수 없다. 연결 제출의 자동 재개는 계약상 제공하지 않는다. 완료 기록을 버리기 전 후속 편집을 별도 저장해야 한다.
 3. **Phase 6 완료:** dirty·미확정 WRITE 중인 원본에서 가지 draft를 만들고 독립 편집→로컬 apply→변경 재검토→mutation까지 연결하는 흐름을 자동 검증했다. 서울→부산→대전과 겹친 광주 갱신, 열린 draft의 수명 경계를 포함한다.
-4. **Phase 7 계속:** [Phase 7.1](./PHASE7_1.md)에서 순서·경계 반례를, [Phase 7.2](./PHASE7_2.md)에서 결과 행렬의 모델 대조를 마쳤다. 남은 하위 범위는 수명 반복·복구 중 pin·메모리 보존 사유와 타입 negative case·배포 exports·모듈 형식·baseline 대비 비용이다.
+4. **Phase 7 계속:** [Phase 7.1](./PHASE7_1.md) 순서·경계 반례, [Phase 7.2](./PHASE7_2.md) 결과 행렬 모델 대조, [Phase 7.3](./PHASE7_3.md) 배포 경계를 마쳤다. 남은 하위 범위는 수명 반복·복구 중 pin·메모리 보존 사유뿐이다. `QueryKey` 정밀화와 status readonly화는 공개 API 변경이라 별도 결정으로 남는다.
 5. **Phase 8:** resource/draft/pending 5종 UI 전체 조합과 M2-01~20 수동 시나리오, 개발 도구 UI를 진행한다. 수동 미수행을 PASS로 바꾸지 않는다.
 
 현재 즉시 작업을 막는 외부 blocker는 없다. 남은 위험은 F2 기능/영속 복원 계약의 큰 범위, resource/draft pending 결합과 전체 UI 조합 미검증, 수동 M2 부재다. 특히 `sync-error`나 `unknown`을 실패한 WRITE로 오인해 재전송하지 말고, 연결 작업의 다음 제출은 최신 snapshot으로 다시 만든다.
