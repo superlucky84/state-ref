@@ -225,7 +225,7 @@ Phase 0에서 서버 엔진의 참조 버전과 key/epoch/기본 타이밍 계�
 
 ## 6. 서버 기능 동등성 목록
 
-이는 제품 목표의 범위를 잃지 않기 위한 목록이다. 비교 기준 버전과 Phase 0 하위 시나리오는 [Phase 0 기록](./PHASE0.md)에 고정했다. 기능군별 범위는 [Phase 5.1 표](./PHASE5_1.md#phase-51-시점-f2-기능별-상태), [Phase 5.2](./PHASE5_2.md#f2-상태-갱신과-검증), [Phase 5.3](./PHASE5_3.md#f2-범위와-증거), [Phase 5.4](./PHASE5_4.md), [Phase 5.5](./PHASE5_5.md), [Phase 5.6](./PHASE5_6.md), [Phase 5.7](./PHASE5_7.md), [Phase 5.8](./PHASE5_8.md), [Phase 5.9](./PHASE5_9.md), [Phase 5.10](./PHASE5_10.md), [Phase 5.11](./PHASE5_11.md), [Phase 5.12](./PHASE5_12.md), [Phase 5.13](./PHASE5_13.md), [Phase 5.14](./PHASE5_14.md), [Phase 5.15](./PHASE5_15.md), [Phase 5.16](./PHASE5_16.md), [Phase 5.17](./PHASE5_17.md), [Phase 6](./PHASE6.md)의 갱신에 있다. 복원·플랫폼의 상세 계약은 IC2-06에서 추적한다. 단계별 구현과 '전체 동등성 완료'를 구분한다.
+이는 제품 목표의 범위를 잃지 않기 위한 목록이다. 비교 기준 버전과 Phase 0 하위 시나리오는 [Phase 0 기록](./PHASE0.md)에 고정했다. 기능군별 범위는 [Phase 5.1 표](./PHASE5_1.md#phase-51-시점-f2-기능별-상태), [Phase 5.2](./PHASE5_2.md#f2-상태-갱신과-검증), [Phase 5.3](./PHASE5_3.md#f2-범위와-증거), [Phase 5.4](./PHASE5_4.md), [Phase 5.5](./PHASE5_5.md), [Phase 5.6](./PHASE5_6.md), [Phase 5.7](./PHASE5_7.md), [Phase 5.8](./PHASE5_8.md), [Phase 5.9](./PHASE5_9.md), [Phase 5.10](./PHASE5_10.md), [Phase 5.11](./PHASE5_11.md), [Phase 5.12](./PHASE5_12.md), [Phase 5.13](./PHASE5_13.md), [Phase 5.14](./PHASE5_14.md), [Phase 5.15](./PHASE5_15.md), [Phase 5.16](./PHASE5_16.md), [Phase 5.17](./PHASE5_17.md), [Phase 6](./PHASE6.md), [Phase 7.1](./PHASE7_1.md)의 갱신에 있다. 복원·플랫폼의 상세 계약은 IC2-06에서 추적한다. 단계별 구현과 '전체 동등성 완료'를 구분한다.
 
 | ID | 검증할 기능군 | 단계 |
 |---|---|---|

@@ -95,6 +95,8 @@ batch의 export 경로는 `state-ref/batch`로 확정했다. 그 밖의 미구�
 
 F2-08의 Phase 5.12 하위 수용 범위는 client별 현재 캐시 metadata 조회와 생성·변경·제거 구독이다. query payload·로컬 편집 값·mutation DTO는 이벤트에 포함하지 않고, listener 해제와 오류 격리는 T2-23/M2-19에서 확인한다. [Phase 5.12 계약](./PHASE5_12.md)을 따른다.
 
+Phase 7.1의 수용 범위는 순서·경계 계약의 고정이다. 충돌은 현재 원본 값의 함수이고, 배열 재정렬은 apply를 거절하며, 로컬 입력은 늦게 도착한 기준보다 우선한다. 캐시는 최신 epoch의 READ만 받고 `invalidate()`는 진행 중 READ를 abort한다. 연결 WRITE 중에는 READ를 시작하지 않고 이전 READ의 기준도 받지 않는다. T2-01~26 및 [Phase 7.1 계약](./PHASE7_1.md)을 따른다.
+
 Phase 6의 수용 범위는 resource 원본과 draft의 조합이다. draft는 원본의 현재 값에서 clean하게 분기하고 부모의 변경 기록을 복사하지 않는다. `apply()`는 네트워크를 호출하지 않고 병합한 값을 root에 한 번 써서 원본의 변경 기록을 root 경로 1건으로 만든다. 겹친 갱신은 conflict로 표시하고 입력을 보존하며, 해제된 원본의 쓰기 실패는 `missing-source`로 보고한다. T2-01/05/06/10~22/26 및 [Phase 6 계약](./PHASE6.md)을 따른다.
 
 F2-07의 Phase 5.17 하위 수용 범위는 보관된 독립 명령의 자동 재개다. `autoResume`는 `resume()`을 부르는 시점만 자동화하고 순서·`unknown` 차단·`maxAge`·`isOnline`·직렬화 규칙을 바꾸지 않으며 `retryUnknown`을 호출하지 않는다. 연결 제출은 살아 있는 query handle과 최신 로컬 상태가 필요하므로 자동 재개 대상이 아니다. T2-23/M2-19 및 [Phase 5.17 계약](./PHASE5_17.md)을 따른다.

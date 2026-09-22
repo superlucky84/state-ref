@@ -211,9 +211,9 @@
 
 **진입:** Phase 5/6 종료, 출시 범위 정확성 계약에 미해소 TBD 없음.
 
-- [ ] fake clock과 수동 Promise로 READ·입력·apply·mutation·복구·해제 순서를 교차 검증한다.
+- [x] fake clock과 수동 Promise로 READ·입력·apply·mutation·복구·해제 순서를 교차 검증한다. [Phase 7.1](./PHASE7_1.md).
 - [ ] 독립 참조 모델로 작업 실패 후 잔여 intent와 두 기준의 값을 비교한다.
-- [ ] ABA·부모/자식 겹침·원본 소멸·배열 재정렬·동일 값 수렴·재진입 apply를 포함한다.
+- [x] ABA·부모/자식 겹침·원본 소멸·배열 재정렬·동일 값 수렴·재진입 apply를 포함한다. 재진입 apply와 부모 타입 교체는 core draft 회귀가 이미 덮는다. [Phase 7.1](./PHASE7_1.md).
 - [ ] 구독·draft·캐시 생성/종료 반복, 복구 중 pin, 오류 후 해제와 메모리 보존 사유를 확인한다.
 - [ ] 타입 negative case·배포 exports·지원 모듈 형식·baseline 대비 비용을 검사한다.
 
@@ -251,6 +251,13 @@
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
+
+### 2026-09-23 — Phase 7.1 순서와 경계 반례
+
+- done: [Phase 7.1](./PHASE7_1.md)에서 값 경계(ABA·수렴·배열 재정렬), READ epoch 우선순위와 `invalidate` abort, 연결 WRITE의 READ 차단·이전 READ 제외·취소 시 `unknown`, 해제·GC 뒤 `missing-source`를 반례 12개로 고정했다. 정확성 결함 0건, 구현 변경 없음. 내부 가드 3종 제거로 반례의 검증력을 확인했다. sync 166개 테스트·core 325개 PASS, `pnpm gate` PASS.
+- next: Phase 7의 독립 참조 모델 비교, 수명 반복·메모리, 타입 negative·배포 exports 검사.
+- blockers: 외부 차단 없음. M2-01~20 미수행. F2 전체 동등성 미완료.
+- 시작 기준 commit: `1671bb3` (Phase 6). Phase 7.1 변경은 이 문서와 같은 커밋에 있다.
 
 ### 2026-09-23 — Phase 6 ResourceRef와 Draft 조합
 

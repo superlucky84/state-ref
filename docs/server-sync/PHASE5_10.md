@@ -30,9 +30,11 @@
       복원된 query에 앱이 queryFn을 연결한 뒤 READ·재조정을 선택한다.
       dirty 값을 가진 상태에서 서버 응답이 오면 기존 resource rebase 규칙을
       사용한다.
-- [ ] **DC5-10-06 / 후속 TBD:** 연결 WRITE의 입력 DTO·제출 ID·수용 방식,
-      durable `inFlight` 장벽과 server idempotency 계약을 별도 형식으로 정한다.
-      임의 `accept.select` 함수는 직렬화하지 않는다. unknown을 자동 재전송하지
+- [x] **DC5-10-06 / 후속 형식 (해소):** 연결 WRITE의 입력 DTO·제출 ID·수용
+      방식과 durable `inFlight` 장벽, server idempotency 계약은
+      [Phase 5.11](./PHASE5_11.md)의 단일 제출 형식과
+      [Phase 5.15](./PHASE5_15.md)의 다중 연결 schema 2로 확정했다. 임의
+      `accept.select` 함수는 직렬화하지 않는다. unknown을 자동 재전송하지
       않고, 로컬 편집 snapshot만으로 WRITE 성공 여부를 추정하지 않는다.
 
 ## 구현 단계와 기준 테스트
