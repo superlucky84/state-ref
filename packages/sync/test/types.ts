@@ -19,6 +19,8 @@ import type {
   NetworkMode,
   ResourceSubmission,
   SyncClientOptions,
+  SyncCacheEntry,
+  SyncCacheEvent,
   SyncEnvironment,
   SyncEnvironmentEvent,
   SyncStorage,
@@ -50,6 +52,19 @@ async function edit() {
 void edit;
 
 const client = createSyncClient({ ssr: true });
+const cacheEntries: readonly SyncCacheEntry[] = client.inspectCache();
+// @ts-expect-error diagnostic snapshots omit caller-owned error objects
+cacheEntries[0].status.error;
+const stopCacheObservation: () => void = client.subscribeCache(
+  (event: SyncCacheEvent) => {
+    const owners: number = event.entry.owners;
+    const loaded: boolean = event.entry.status.loaded;
+    void owners;
+    void loaded;
+  }
+);
+void cacheEntries;
+stopCacheObservation();
 const resource = client.query({
   queryKey: ['edit'],
   queryFn: () => ({ city: '서울' }),

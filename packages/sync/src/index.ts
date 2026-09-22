@@ -124,6 +124,20 @@ export type QueryStatus = Readonly<{
   unconfirmed: boolean;
 }>;
 
+/** Read-only cache metadata for tooling; query data and mutation input are omitted. */
+export type SyncCacheEntry = Readonly<{
+  queryKey: QueryKey;
+  kind: 'query' | 'infinite';
+  owners: number;
+  /** Query status without the caller-owned error object. */
+  status: Omit<QueryStatus, 'error'>;
+}>;
+
+export type SyncCacheEvent = Readonly<{
+  type: 'added' | 'updated' | 'removed';
+  entry: SyncCacheEntry;
+}>;
+
 export type QueryOptions<T> = Readonly<{
   queryKey: QueryKey;
   queryFn: (context: { signal: AbortSignal }) => Promise<T> | T;
@@ -190,6 +204,10 @@ export type SyncClient = Readonly<{
   invalidate: (key: QueryKey) => void;
   remove: (key: QueryKey) => boolean;
   size: () => number;
+  /** Current metadata for this client's cache only. */
+  inspectCache: () => readonly SyncCacheEntry[];
+  /** Future cache events; delivery is deferred until after the current turn. */
+  subscribeCache: (listener: (event: SyncCacheEvent) => void) => () => void;
   dehydrate: () => SyncSnapshot;
   /** Restore into an empty client before creating query handles. */
   hydrate: (snapshot: SyncSnapshot) => void;
@@ -266,6 +284,7 @@ class QueryEntry<T> {
     private readonly ssr: boolean,
     private readonly evict: (hash: string, entry: QueryEntry<T>) => void,
     private readonly network: ReturnType<typeof createNetworkGate>,
+    private readonly changed: (entry: QueryEntry<T>) => void,
     readonly kind: 'query' | 'infinite' = 'query'
   ) {
     this.options = options;
@@ -299,7 +318,29 @@ class QueryEntry<T> {
     if (!this.staged) return;
     this.staged = false;
     this.statusStore.sync();
+    this.changed(this);
   };
+
+  inspect(): SyncCacheEntry {
+    const status = this.statusValue;
+    return Object.freeze({
+      queryKey: frozenCopy(JSON.parse(this.hash)) as QueryKey,
+      kind: this.kind,
+      owners: this.owners,
+      status: Object.freeze({
+        status: status.status,
+        fetchStatus: status.fetchStatus,
+        loaded: status.loaded,
+        updatedAt: status.updatedAt,
+        invalidated: status.invalidated,
+        dirty: status.dirty,
+        conflicts: status.conflicts,
+        version: status.version,
+        pending: status.pending,
+        unconfirmed: status.unconfirmed,
+      }),
+    });
+  }
 
   private publish(patch: Partial<QueryStatus> = {}) {
     this.snapshot(patch);
@@ -310,12 +351,14 @@ class QueryEntry<T> {
     if (this.removed) throw new Error('This query entry has expired.');
     this.owners += 1;
     this.cancelGc();
+    this.changed(this);
   }
 
   detach() {
     this.owners -= 1;
     if (this.owners === 0 && this.pending && !this.linked) this.invalidate();
     this.scheduleGc();
+    this.changed(this);
   }
 
   private cancelGc() {
@@ -693,6 +736,44 @@ class QueryEntry<T> {
 /** One client owns one cache. Construct a new client for each SSR request. */
 export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
   const entries = new Map<string, QueryEntry<any>>();
+  const listeners = new Set<{
+    listener: (event: SyncCacheEvent) => void;
+  }>();
+  const eventQueue: Array<{
+    event: SyncCacheEvent;
+    targets: Array<{ listener: (event: SyncCacheEvent) => void }>;
+  }> = [];
+  let deliveryQueued = false;
+  const queueEvent = (type: SyncCacheEvent['type'], entry: SyncCacheEntry) => {
+    if (!listeners.size) return;
+    eventQueue.push({
+      event: Object.freeze({ type, entry }),
+      targets: Array.from(listeners),
+    });
+    if (deliveryQueued) return;
+    deliveryQueued = true;
+    queueMicrotask(() => {
+      deliveryQueued = false;
+      while (eventQueue.length) {
+        const { event, targets } = eventQueue.shift()!;
+        for (const target of targets) {
+          if (!listeners.has(target)) continue;
+          try {
+            target.listener(event);
+          } catch {
+            // Diagnostic observers cannot change query or mutation outcomes.
+          }
+        }
+      }
+    });
+  };
+  const changed = (entry: QueryEntry<any>) => {
+    if (listeners.size && entries.get(entry.hash) === entry)
+      queueEvent('updated', entry.inspect());
+  };
+  const emit = (type: SyncCacheEvent['type'], entry: QueryEntry<any>) => {
+    if (listeners.size) queueEvent(type, entry.inspect());
+  };
   const handles = new WeakMap<object, QueryEntry<any>>();
   const scopes = new Map<string, Promise<void>>();
   const pageScopes = new Map<string, Promise<void>>();
@@ -730,8 +811,10 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
       entry.statusValuePending()
     )
       return;
+    const snapshot = listeners.size ? entry.inspect() : null;
     entries.delete(hash);
     entry.expire();
+    if (snapshot) queueEvent('removed', snapshot);
   };
   const getOrCreate = <T>(
     queryOptions: QueryOptions<T>,
@@ -773,6 +856,7 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
         options.ssr ?? false,
         evict,
         network,
+        changed,
         kind
       );
       try {
@@ -787,6 +871,7 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
         throw error;
       }
       entries.set(hash, entry);
+      emit('added', entry);
     }
     return entry;
   };
@@ -1231,6 +1316,7 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
             options.ssr ?? false,
             evict,
             network,
+            changed,
             seed.kind ?? 'query'
           );
           prepared.push([hash, entry]);
@@ -1241,6 +1327,7 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
         throw error;
       }
       prepared.forEach(([hash, entry]) => entries.set(hash, entry));
+      prepared.forEach(([, entry]) => emit('added', entry));
     },
     dehydrateLocal(): LocalSyncSnapshot {
       const queries: LocalHydratedQuery[] = [];
@@ -1278,6 +1365,7 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
             options.ssr ?? false,
             evict,
             network,
+            changed,
             seed.kind ?? 'query'
           );
           prepared.push([hash, entry]);
@@ -1288,6 +1376,7 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
         throw error;
       }
       prepared.forEach(([hash, entry]) => entries.set(hash, entry));
+      prepared.forEach(([, entry]) => emit('added', entry));
     },
     invalidate(key: QueryKey) {
       entries.get(hashQueryKey(key))?.invalidate();
@@ -1307,6 +1396,16 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
       return true;
     },
     size: () => entries.size,
+    inspectCache: () =>
+      Object.freeze(Array.from(entries.values(), entry => entry.inspect())),
+    subscribeCache(listener: (event: SyncCacheEvent) => void) {
+      const subscription = { listener };
+      listeners.add(subscription);
+      return () => {
+        listeners.delete(subscription);
+        if (!listeners.size) eventQueue.length = 0;
+      };
+    },
   });
   return client;
 }

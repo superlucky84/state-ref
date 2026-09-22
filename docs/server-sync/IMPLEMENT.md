@@ -1,8 +1,8 @@
 # IMPLEMENT — 독립 Draft와 ref 기반 서버 동기화
 
 - 기준: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md).
-- 개정일: 2026-09-21. 기준 SHA: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
-- 상태: `feat/server-sync-draft`에서 Phase 4 mutation 이후 [Phase 5.1](./PHASE5_1.md)의 clean baseline SSR 전달, [Phase 5.2](./PHASE5_2.md)의 확정 초기 기준·캐시 준비, [Phase 5.3](./PHASE5_3.md)의 관찰자별 view, [Phase 5.4](./PHASE5_4.md)의 자동 enabled/key 전환, [Phase 5.5](./PHASE5_5.md)의 5종 UI 읽기 전용 view 연결, [Phase 5.6](./PHASE5_6.md)의 client별 focus/reconnect/polling, [Phase 5.7](./PHASE5_7.md)의 pagination/infinite, [Phase 5.8](./PHASE5_8.md)의 query network mode·브라우저 adapter, [Phase 5.9](./PHASE5_9.md)의 clean 기준 영속화·독립 명령 queue, [Phase 5.10](./PHASE5_10.md)의 로컬 편집·미확정 기준 복원, [Phase 5.11](./PHASE5_11.md)의 단일 연결 제출 기록 하위 범위까지 구현했다. F2 전체 동등성은 미완료다. [Phase 0](./PHASE0.md), [Phase 1](./PHASE1.md), [Phase 2](./PHASE2.md), [Phase 3](./PHASE3.md), [Phase 3.5](./PHASE3_5.md), [Phase 4](./PHASE4.md) 실행 기록도 참조한다.
+- 개정일: 2026-09-22. 기준 SHA: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
+- 상태: `feat/server-sync-draft`에서 Phase 4 mutation 이후 Phase 5.1~5.11의 조회·view·UI 연결·영속화·연결 제출 하위 범위와 [Phase 5.12](./PHASE5_12.md)의 읽기 전용 캐시 관측 경계를 구현했다. F2 전체 동등성은 미완료다. 상세 이력은 [HANDOFF](./HANDOFF.md)와 단계별 문서를 따른다.
 - 현재 재개 지점은 [HANDOFF](./HANDOFF.md)를 따른다. 아래 날짜별 인계는 작성 당시의 기록이므로 현재 커밋과 혼동하지 않는다.
 - 이전 T/Phase 범위는 기준 commit의 이력이다. 이번 T2/Phase 계획으로 대체한다.
 
@@ -177,6 +177,8 @@
 
 [Phase 5.11](./PHASE5_11.md)에서 F2-07의 단일 연결 제출 기록과 durable `inFlight` 장벽을 추가했다. 재시작 unknown은 자동 재전송하지 않고 로컬 상태만 복원한다. 다중 연결·진행 중 편집의 연속 checkpoint, 자동 재개, 관측·개발 도구는 열린 상태다.
 
+[Phase 5.12](./PHASE5_12.md)에서 F2-08의 client별 읽기 전용 캐시 snapshot과 생성·변경·제거 구독을 추가했다. 이벤트는 동기 캐시 변경 호출 스택 뒤 microtask로 전달하고 관측자 오류를 격리한다. mutation 이벤트·개발 도구 UI·플랫폼 자동 설치는 열린 상태다.
+
 **기준 테스트:** T2-23의 모든 F2 하위 시나리오, T2-03/04/07/10~13/22/25의 복원·네트워크 상태 조합.
 
 **종료:** 해당 출시 범위의 모든 기능에 구현·테스트 증거 존재. 전체 동등성 선언은 전체 목록 통과 시에만 가능하며, 부분 출시라면 미지원 항목을 명시함.
@@ -231,14 +233,21 @@
 | 항목 | 현재 확인 결과 |
 |---|---|
 | 문서 링크·ID·단계 구조·공백 정합성 | 과거 단계의 정적 검사 결과는 [PHASE2](./PHASE2.md)에 기록. 현재 handoff 링크와 문서 상태는 [HANDOFF](./HANDOFF.md)를 따른다 |
-| core/커넥터 baseline와 gate | Phase 5.11 `pnpm gate` PASS. 기본 core minified gzip은 gate 경로 Node 24.11.1에서 3,433/3,500 B PASS; 고정 Node 20.3.0의 기존 기준 3,455/3,500 B 유지 |
+| core/커넥터 baseline와 gate | Phase 5.12 `pnpm gate` PASS. 기본 core minified gzip은 gate 경로 Node 22.13.0에서 3,433/3,500 B PASS; 고정 Node 20.3.0의 기존 기준 3,455/3,500 B 유지 |
 | 선택적 plugin export | ESM 빌드·공개 선언 타입 검사 PASS; Phase 2 `clearEntries` 추가 후 크기는 별도 산출물로 측정 |
 | 일반 원본 draft 타입·테스트·빌드 | Phase 2 `state-ref/draft` ESM·UMD, 선언 타입 fixture, live·충돌·apply·수명 테스트와 browser smoke PASS. [실행 기록](./PHASE2.md) |
-| 서버 sync 타입·테스트·빌드 | Phase 5.11 sync ESM·선언 타입·소비자 fixture, query/resource/mutation/hydration/cache/view/자동 재조회·infinite·network·persistence·local recovery·linked persistence 런타임 123개 테스트와 bundle smoke PASS. [Phase 5.11](./PHASE5_11.md) |
-| 기능 동등성 F2 세부 검증 | Phase 3/4 기반, Phase 5.1 clean SSR 전달, Phase 5.2 확정 초기 기준·fetch/prefetch/ensure, Phase 5.3 관찰자별 placeholder/select·수동 의존/병렬 READ, Phase 5.4 자동 enabled/key 전환·소유자별 취소, Phase 5.5 읽기 전용 UI view 연결, Phase 5.6 focus/reconnect/polling·client 환경 수명, Phase 5.7 pagination/infinite, Phase 5.8 query network mode·브라우저 adapter, Phase 5.9 clean 기준 영속화·독립 명령 queue, Phase 5.10 dirty resource·미확정 기준 복원, Phase 5.11 단일 연결 제출 기록 하위 범위만 검증. F2 전체 동등성은 미완료. [기준 표](./PHASE5_1.md#phase-51-시점-f2-기능별-상태), [5.11 갱신](./PHASE5_11.md) |
+| 서버 sync 타입·테스트·빌드 | Phase 5.12 sync ESM·선언 타입·소비자 fixture, 기존 query/resource/mutation/복원과 캐시 관측을 포함한 런타임 127개 테스트 및 bundle smoke PASS. [Phase 5.12](./PHASE5_12.md) |
+| 기능 동등성 F2 세부 검증 | Phase 3/4 기반과 Phase 5.1~5.11의 단계별 하위 범위, Phase 5.12 client별 캐시 관측만 검증. F2 전체 동등성은 미완료. [기준 표](./PHASE5_1.md#phase-51-시점-f2-기능별-상태), [5.12 갱신](./PHASE5_12.md) |
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
+
+### 2026-09-22 — Phase 5.12 읽기 전용 캐시 관측
+
+- done: [Phase 5.12](./PHASE5_12.md)의 client별 metadata snapshot·생성/변경/제거 이벤트, microtask 전달·예외 격리·해제 수명 구현. sync 127개 테스트·소비자 타입·빌드 ESM smoke와 `pnpm gate` PASS. 기본 core gzip 3,433/3,500 B PASS.
+- next: F2-05 infinite 전용 cache 준비/observer 편의 API 또는 F2-08 mutation 관측·개발 도구 UI를 새 단계로 설계한다. Phase 6 resource/draft pending 조합과 Phase 7/8 검증은 남는다.
+- blockers: 외부 차단 없음. M2-01~20 미수행. F2 전체 동등성 미완료.
+- 시작 기준 commit: `3f2152a` (Phase 5.11). Phase 5.12 변경은 이 문서와 같은 커밋에 있다.
 
 ### 2026-09-21 — Phase 5.11 연결 제출 기록과 전송 장벽
 

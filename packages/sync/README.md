@@ -21,6 +21,26 @@ account.isDirty(); // true
 account.changes(); // server baseline -> current local edit
 ```
 
+Tools can inspect cache metadata without reading query payloads:
+
+```ts
+const stopObserving = client.subscribeCache(event => {
+  // event.type: 'added' | 'updated' | 'removed'
+  console.log(event.type, event.entry.queryKey, event.entry.status);
+});
+const currentCache = client.inspectCache();
+stopObserving();
+```
+
+`inspectCache()` returns the current client only. Events retain their metadata
+from the change and arrive in order in a microtask, after the current synchronous
+cache transition. The entry also includes `kind` and active handle count (`owners`).
+Query data, local edits, mutation inputs, and the caller-owned `status.error`
+object are omitted. Dispose the listener
+with its returned function when the tool or plugin closes. Listener errors do
+not change query outcomes. This is a read-only integration boundary, not a
+TanStack devtools or plugin compatibility API.
+
 Mutation input can have a different shape from query data. Capture the edits
 you intend to submit immediately before `run`; the capture contains an immutable
 value and change snapshot. A captured version becomes stale if the resource is

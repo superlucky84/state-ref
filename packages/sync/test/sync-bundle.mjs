@@ -24,6 +24,23 @@ const query = createSyncClient({ ssr: true }).query({
   queryKey: ['bundle'],
   queryFn: () => ({ count: 1 }),
 });
+const observedClient = createSyncClient({ ssr: true });
+const cacheEvents = [];
+const stopCacheObservation = observedClient.subscribeCache(event =>
+  cacheEvents.push(event)
+);
+const observed = observedClient.query({
+  queryKey: ['observed-bundle'],
+  queryFn: () => ({ count: 1 }),
+});
+assert.equal(observedClient.inspectCache()[0].owners, 1);
+await observed.load();
+observed.dispose();
+assert.equal(observedClient.remove(['observed-bundle']), true);
+await Promise.resolve();
+assert.equal(cacheEvents[0].type, 'added');
+assert.equal(cacheEvents.at(-1).type, 'removed');
+stopCacheObservation();
 await query.load();
 assert.equal(query.ref.count.value, 1);
 query.ref.count.value = 2;

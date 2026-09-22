@@ -1,6 +1,6 @@
 # state-ref 서버 동기화와 독립 Draft 설계
 
-상태: 2026-09-21 Phase 4 mutation 이후 Phase 5.1~5.11의 SSR 기준 전달, 캐시 준비·view, 자동 key 전환·재조회, 5종 UI 읽기 전용 view, pagination/infinite, query network mode·브라우저 adapter, clean/로컬 기준 영속화·독립 명령 queue·단일 연결 제출 기록 하위 범위까지 구현했다. **Phase 5의 나머지 기능과 Phase 6 resource/draft 조합은 다음 작업**이다. state-ref 코어·서버 동기화 헬퍼·draft 헬퍼를 선택적으로 조합한다. 서버 기능은 계속 추진하며, TanStack Query의 query/mutation 모델과 기능을 참고하되 런타임 독립을 지향한다.
+상태: 2026-09-22 Phase 4 mutation 이후 Phase 5.1~5.12의 조회·view·UI 연결·영속화·연결 제출·읽기 전용 캐시 관측 하위 범위까지 구현했다. **Phase 5의 나머지 기능과 Phase 6 resource/draft 조합은 다음 작업**이다. state-ref 코어·서버 동기화 헬퍼·draft 헬퍼를 선택적으로 조합한다. 서버 기능은 계속 추진하며, TanStack Query의 query/mutation 모델과 기능을 참고하되 런타임 독립을 지향한다.
 
 서버 싱크는 코어 빌드에 합치지 않고 별도로 설치·import하는 `@stateref/sync` 패키지로 개발한다. draft와 batch는 같은 `state-ref` 패키지의 선택적 `state-ref/draft`·`state-ref/batch` 진입점으로 제공한다. 코어의 범용 `onWrite` 연결은 draft 편집과 서버 resourceRef 직접 편집의 기록에 모두 쓴다. sync는 query/resource와 독립 mutation·명시적 저장 수용을 제공한다.
 
@@ -31,6 +31,8 @@ UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우�
 19. [PHASE5_8](./PHASE5_8.md): query network mode의 pause·재개와 브라우저 환경 adapter.
 20. [PHASE5_9](./PHASE5_9.md): clean 서버 기준 영속화와 독립 mutation DTO의 durable queue.
 21. [PHASE5_10](./PHASE5_10.md): 로컬 편집·충돌·미확정 기준의 schema 2 복구 snapshot.
+22. [PHASE5_11](./PHASE5_11.md): 단일 연결 제출 기록과 durable 전송 장벽.
+23. [PHASE5_12](./PHASE5_12.md): client별 읽기 전용 캐시 관측·구독 수명.
 
 ## Phase 3.5 완료 — 명시적 동기 batch
 
@@ -84,6 +86,10 @@ query별 `online`·`always`·`offlineFirst`는 오프라인 READ 시작과 retry
 
 `openPersistedLinkedMutation`은 한 storage key에 연결 제출 1건의 JSON DTO·선택한 변경·idempotency key와 로컬 snapshot을 함께 저장한다. 명시적 `send` 전에 현재 편집을 재검사하고, WRITE 직전에 `inFlight`와 보수적인 미확정 snapshot을 저장한다. 재시작한 `inFlight`는 `unknown`으로 보류하며 자동 재전송하지 않는다. 결과와 후속 로컬 상태는 가능할 때 저장한다. 다중 연결·함수형 응답 매핑·진행 중 편집의 연속 저장은 지원하지 않는다. 범위와 반례는 [Phase 5.11 기록](./PHASE5_11.md)에 있다.
 
+## Phase 5.12 진행 — Client 캐시 관측 경계
+
+`client.inspectCache()`와 `subscribeCache()`는 client별 query key·kind·소유자 수·상태를 읽기 전용으로 제공한다. 생성·변경·제거 이벤트는 해당 시점의 metadata를 microtask에서 순서대로 전달하며, 구독자 오류와 해제는 query 실행에 영향을 주지 않는다. payload와 mutation DTO는 자동 노출하지 않는다. 범위와 반례는 [Phase 5.12 기록](./PHASE5_12.md)에 있다.
+
 ## 확정한 사용 의미
 
 | 대상 | 변경 비교 기준 | 자기 변경을 반영하는 곳 |
@@ -103,7 +109,7 @@ query별 `online`·`always`·`offlineFirst`는 오프라인 READ 시작과 retry
 
 ## 남은 구현 사항
 
-`createDraft`/`apply`, `createSyncClient`/`client.query`와 자유로운 DTO의 `client.mutation`·제출 기록 연결, 깨끗한 서버 기준의 SSR 전달, 확정 초기 기준·캐시 준비, 관찰자별 view, 자동 enabled/key 전환, 5종 UI 읽기 전용 연결, client별 자동 재조회, pagination/infinite와 query network mode·브라우저 adapter, clean/로컬 기준 영속화·독립 명령 queue·단일 연결 제출 기록 하위 범위를 구현했다. 독립 엔진의 참조 버전·기본 설계는 [Phase 0](./PHASE0.md)에 고정했고 구현·검증 결과는 [Phase 3](./PHASE3.md), [Phase 4](./PHASE4.md), [Phase 5.1](./PHASE5_1.md), [Phase 5.2](./PHASE5_2.md), [Phase 5.3](./PHASE5_3.md), [Phase 5.4](./PHASE5_4.md), [Phase 5.5](./PHASE5_5.md), [Phase 5.6](./PHASE5_6.md), [Phase 5.7](./PHASE5_7.md), [Phase 5.8](./PHASE5_8.md), [Phase 5.9](./PHASE5_9.md), [Phase 5.10](./PHASE5_10.md), [Phase 5.11](./PHASE5_11.md)에 나눠 기록했다.
+`createDraft`/`apply`와 `@stateref/sync`의 query·mutation, SSR 전달, 캐시·view·UI 연결, 자동 재조회, pagination/infinite, network mode·브라우저 adapter, 영속화·연결 제출, client별 캐시 관측 하위 범위를 구현했다. 독립 엔진의 참조 버전·기본 설계는 [Phase 0](./PHASE0.md)에 고정했고 구현·검증 결과는 [Phase 3](./PHASE3.md), [Phase 4](./PHASE4.md), [Phase 5.1](./PHASE5_1.md), [Phase 5.2](./PHASE5_2.md), [Phase 5.3](./PHASE5_3.md), [Phase 5.4](./PHASE5_4.md), [Phase 5.5](./PHASE5_5.md), [Phase 5.6](./PHASE5_6.md), [Phase 5.7](./PHASE5_7.md), [Phase 5.8](./PHASE5_8.md), [Phase 5.9](./PHASE5_9.md), [Phase 5.10](./PHASE5_10.md), [Phase 5.11](./PHASE5_11.md), [Phase 5.12](./PHASE5_12.md)에 나눠 기록했다.
 
 기능 전반의 동등성은 F2 목록의 목표이며 현재 달성한 상태가 아니다. Phase 4의 명시적 제출과 실패 복구는 자동 검증했지만, resource/draft 결합과 실제 UI 투영, M2 수동 시나리오는 아직 검증하지 않았다. 다음 단계의 정확한 범위와 검증 기준은 [HANDOFF](./HANDOFF.md)에 있다.
 
