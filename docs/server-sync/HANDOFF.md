@@ -38,6 +38,7 @@
 - **Phase 5.15:** 연결 제출 1건은 `links` 배열을 갖는 schema 2 기록이며 각 link에 query key·revision·선택 변경·수용/거절 정책을 고정한다. 같은 key는 한 번만 연결한다. `stage(client, input)`은 모든 link를 확인한 뒤에만 저장하고, `send(client, queries, mutation)`은 저장된 모든 link를 재검사한 뒤에만 durable 장벽을 쓴다. 장벽 snapshot은 연결된 모든 query를 `invalidated`·`unconfirmed`로 표시한다. 결과는 작업 단위이며 일부 link의 조정 실패는 `sync-error`다. 함수형 `response.select`·작업 다건 보관·진행 중 편집 연속 저장·자동 재개는 미지원이고 schema 1 기록은 마이그레이션하지 않는다. 상세 계약은 [Phase 5.15](./PHASE5_15.md)에 있다.
 - **Phase 5.16:** `dehydrateLocal({ inFlight: 'unconfirmed' })`는 진행 중 READ·연결 WRITE를 거절하지 않고 보수적으로 저장한다. 연결 WRITE 중인 query는 `unconfirmed`·`invalidated`, 진행 READ만 있는 query는 `invalidated`로 표시하며 기본값 `'reject'`는 기존 계약을 유지한다. `checkpoint: true`로 연 연결 기록의 `send`는 WRITE 중 캐시 변경을 구독해 같은 기록의 snapshot을 갱신하고, 연속 변경을 마지막 한 번으로 합치며, 결과를 기록하기 전에 진행 중 저장을 기다린다. checkpoint는 작업 상태를 바꾸지 않고 실패해도 WRITE를 취소하지 않는다. 상세 계약은 [Phase 5.16](./PHASE5_16.md)에 있다.
 - **Phase 5.17:** `queue.autoResume(environment, handlers?)`는 `resume()`을 부르는 시점만 자동화한다. `reconnect`에만 반응하고 `focus`는 무시하며, 실행 직전 `isOnline()`을 확인하고 연결된 상태로 연결하면 한 번 즉시 실행한다. 실행은 겹치지 않고 그 사이 사건은 마지막 한 번으로 합치며, 해제는 대기 중인 실행까지 막는다. 결과는 `onSettled`, `resume()` 실패는 `onError`로 보고하고 callback 예외는 격리한다. 순서·`unknown` 차단·`maxAge`·직렬화는 그대로이며 자동 경로는 `retryUnknown`을 부르지 않는다. 연결 제출은 살아 있는 handle과 최신 로컬 상태가 필요해 자동 재개 대상이 아니다. 상세 계약은 [Phase 5.17](./PHASE5_17.md)에 있다.
+- **Phase 6:** resource 원본의 `createDraft`는 원본의 현재 값에서 clean하게 분기하고 부모의 변경 기록을 복사하지 않는다. `apply()`는 네트워크 없이 병합값을 root에 한 번 쓰므로 원본에는 root 경로 변경 1건이 남고, 경로별 선택 제출이 필요하면 apply 전에 `capture`한다. 원본이 다른 draft·직접 편집·연결 WRITE 수용으로 바뀌면 겹친 경로는 conflict가 되고 입력은 보존되며 `resolve`로만 해소한다. 원본의 로컬 편집은 재조회 기준보다 우선하므로 그 경로에는 겹침이 생기지 않는다. 열린 draft는 원본 수명을 연장하지 않고, 해제된 원본의 쓰기 실패는 `missing-source`로 보고한다. 상세 계약은 [Phase 6](./PHASE6.md)에 있다.
 - 비교 기준은 `@tanstack/query-core@5.103.1`의 기능 목록이다. TanStack 런타임·플러그인·API 호환 또는 F2 전체 동등성을 선언하지 않는다. 과거 `resource.save`, `draft.save`, draft 직접 서버 저장, 서버 부분 저장 scope 설계는 현재 계약이 아니다.
 
 주요 코드 위치: [core batch](../../packages/state-ref/src/batch/index.ts), [draft](../../packages/state-ref/src/draft/index.ts), [sync query/client](../../packages/sync/src/index.ts), [무한 조회](../../packages/sync/src/infinite.ts), [network gate](../../packages/sync/src/network.ts), [browser adapter](../../packages/sync/src/browser-environment.ts), [자동 재조회](../../packages/sync/src/automatic-refetch.ts), [view](../../packages/sync/src/view.ts), [live view](../../packages/sync/src/live-view.ts), [clean hydration 형식](../../packages/sync/src/hydration.ts), [로컬 복구 형식](../../packages/sync/src/local-hydration.ts), [영속화와 명령 queue](../../packages/sync/src/persistence.ts), [resource 기록](../../packages/sync/src/resource.ts), [mutation](../../packages/sync/src/mutation.ts). 소비자 예제는 [sync README](../../packages/sync/README.md)를 따른다.
@@ -61,16 +62,17 @@
 - Phase 5.15 변경에서 `pnpm gate` **PASS**. sync 런타임 **139개 테스트 PASS**, 소비자 선언 타입·빌드 ESM 다중 연결 smoke PASS. 검증한 경계는 [PHASE5_15](./PHASE5_15.md)에 있다.
 - Phase 5.16 변경에서 `pnpm gate` **PASS**. sync 런타임 **144개 테스트 PASS**, 소비자 선언 타입·빌드 ESM checkpoint smoke PASS. 검증한 경계는 [PHASE5_16](./PHASE5_16.md)에 있다.
 - Phase 5.17 변경에서 `pnpm gate` **PASS**. sync 런타임 **149개 테스트 PASS**, 소비자 선언 타입·빌드 ESM 자동 재개 smoke PASS. 새 반례는 구현 결함 6종을 주입해 모두 실패함을 확인했다. 검증한 경계는 [PHASE5_17](./PHASE5_17.md)에 있다.
+- Phase 6 변경에서 `pnpm gate` **PASS**. sync 런타임 **154개 테스트 PASS**, core **325개 PASS**(불변), 소비자 선언 타입·빌드 ESM draft 분기 smoke PASS. 구현 변경은 `draft.apply()`의 쓰기 실패 분류 한 곳이며 반례로 load-bearing임을 확인했다. 검증한 경계는 [PHASE6](./PHASE6.md)에 있다.
 - 고정 Node 20.3.0의 기본 core 기준은 **3,455/3,500 B PASS**다. 이번 gate 번들 측정은 **3,433/3,500 B PASS**다. Phase 5.17 별도 sync ESM은 약 **86.19 kB raw / 20.68 kB gzip**이며 기본 core 빌드에 포함되지 않는다.
 - 구현을 바꾸면 해당 패키지 테스트·타입을 먼저 실행하고 전체 `pnpm gate`로 종료한다. 문서 변경은 `git diff --check`와 링크 경로를 확인한다.
 
-Phase 5.16 구현·테스트·문서 커밋은 `1d32ad6`다. Phase 5.17 변경은 이 인계 문서와 같은 커밋에 있다. 최신 SHA는 `git log -1 --oneline`으로 확인한다.
+Phase 5.17 구현·테스트·문서 커밋은 `a2a894c`다. Phase 6 변경은 이 인계 문서와 같은 커밋에 있다. 최신 SHA는 `git log -1 --oneline`으로 확인한다.
 
 ## 다음 단계와 완료 기준
 
-1. **Phase 5 계속:** [Phase 5.17](./PHASE5_17.md)에서 보관 명령의 자동 재개를 검증해 F2-07의 남은 차이를 닫았다. 다음 범위로 F2-08의 개발 도구 UI·플랫폼 자동 설치를 설계하거나 Phase 6으로 넘어간다. Phase 5 전체 종료 조건은 [IMPLEMENT](./IMPLEMENT.md)의 F2별 증거이며, 일부 기능을 구현해도 전체 동등성 완료로 표시하지 않는다.
+1. **Phase 5/6 종료 범위:** [Phase 5.17](./PHASE5_17.md)에서 F2-07의 남은 차이를, [Phase 6](./PHASE6.md)에서 resource/draft 조합과 IC2-05를 닫았다. F2-08의 개발 도구 UI·플랫폼 자동 설치는 Phase 8 범위로 남는다. Phase 5 전체 종료 조건은 [IMPLEMENT](./IMPLEMENT.md)의 F2별 증거이며, 일부 기능을 구현해도 전체 동등성 완료로 표시하지 않는다.
 2. `unknown`은 재조정이나 폐기 전까지 전송할 수 없다. 연결 제출의 자동 재개는 계약상 제공하지 않는다. 완료 기록을 버리기 전 후속 편집을 별도 저장해야 한다.
-3. **Phase 6:** resource가 이미 dirty이거나 mutation pending일 때 가지 draft를 만들고, 독립 편집→로컬 apply→resource 변경 검토→mutation까지 연결한다. 서울→부산→대전, 겹친 광주 갱신, 후속 입력·복구, 열린 draft가 resource 수명에 미치는 영향을 자동 검증한다.
+3. **Phase 6 완료:** dirty·미확정 WRITE 중인 원본에서 가지 draft를 만들고 독립 편집→로컬 apply→변경 재검토→mutation까지 연결하는 흐름을 자동 검증했다. 서울→부산→대전과 겹친 광주 갱신, 열린 draft의 수명 경계를 포함한다.
 4. **Phase 7/8:** 독립 참조 모델·경쟁/수명 hardening, resource/draft/pending 5종 UI 전체 조합, M2-01~20 수동 시나리오를 진행한다. 수동 미수행을 PASS로 바꾸지 않는다.
 
 현재 즉시 작업을 막는 외부 blocker는 없다. 남은 위험은 F2 기능/영속 복원 계약의 큰 범위, resource/draft pending 결합과 전체 UI 조합 미검증, 수동 M2 부재다. 특히 `sync-error`나 `unknown`을 실패한 WRITE로 오인해 재전송하지 말고, 연결 작업의 다음 제출은 최신 snapshot으로 다시 만든다.

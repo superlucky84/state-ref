@@ -53,6 +53,15 @@ async function edit() {
   query.ref.city.value = city;
   const draft = createDraft(query.ref);
   draft.ref.city.value = city;
+  const applied = draft.apply();
+  if (!applied.ok) {
+    const reason:
+      | 'readonly'
+      | 'missing-source'
+      | 'invalid-source'
+      | 'conflict' = applied.reason;
+    void reason;
+  }
   draft.discard();
   query.dispose();
 }

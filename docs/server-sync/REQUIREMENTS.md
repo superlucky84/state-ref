@@ -95,6 +95,8 @@ batch의 export 경로는 `state-ref/batch`로 확정했다. 그 밖의 미구�
 
 F2-08의 Phase 5.12 하위 수용 범위는 client별 현재 캐시 metadata 조회와 생성·변경·제거 구독이다. query payload·로컬 편집 값·mutation DTO는 이벤트에 포함하지 않고, listener 해제와 오류 격리는 T2-23/M2-19에서 확인한다. [Phase 5.12 계약](./PHASE5_12.md)을 따른다.
 
+Phase 6의 수용 범위는 resource 원본과 draft의 조합이다. draft는 원본의 현재 값에서 clean하게 분기하고 부모의 변경 기록을 복사하지 않는다. `apply()`는 네트워크를 호출하지 않고 병합한 값을 root에 한 번 써서 원본의 변경 기록을 root 경로 1건으로 만든다. 겹친 갱신은 conflict로 표시하고 입력을 보존하며, 해제된 원본의 쓰기 실패는 `missing-source`로 보고한다. T2-01/05/06/10~22/26 및 [Phase 6 계약](./PHASE6.md)을 따른다.
+
 F2-07의 Phase 5.17 하위 수용 범위는 보관된 독립 명령의 자동 재개다. `autoResume`는 `resume()`을 부르는 시점만 자동화하고 순서·`unknown` 차단·`maxAge`·`isOnline`·직렬화 규칙을 바꾸지 않으며 `retryUnknown`을 호출하지 않는다. 연결 제출은 살아 있는 query handle과 최신 로컬 상태가 필요하므로 자동 재개 대상이 아니다. T2-23/M2-19 및 [Phase 5.17 계약](./PHASE5_17.md)을 따른다.
 
 F2-07의 Phase 5.16 하위 수용 범위는 전송 중 로컬 편집의 durable 보존이다. `dehydrateLocal({ inFlight: 'unconfirmed' })`는 진행 중 READ·연결 WRITE를 거절하지 않고 보수적으로 표시해 저장하고, `checkpoint: true` 기록의 `send`는 WRITE 중 변경을 같은 기록에 합쳐 갱신한다. checkpoint는 작업 상태를 바꾸지 않고 실패해도 WRITE를 취소하지 않으며, 연결 query는 계속 미확정이다. T2-23/M2-19 및 [Phase 5.16 계약](./PHASE5_16.md)을 따른다.

@@ -197,11 +197,11 @@
 
 **진입:** Phase 2/4 종료, Phase 5의 통합 대상 계약 고정.
 
-- [ ] resourceRef 한 가지의 현재 값을 받아 clean draft를 만든다. 부모 dirty 기록을 복사하지 않는다.
-- [ ] dirty 원본에서 생성→독립 편집→검토→apply→resource 변경 재검토→mutation을 연결한다.
-- [ ] 다른 draft 적용과 서버 refetch/낙관적 복구가 원본 갱신으로 전달될 때 충돌·입력을 보존한다.
-- [ ] 열린 draft와 resource 수명 연결이 sync 전용 타입에 의존하지 않는지 확인한다.
-- [ ] 세 구성의 상태와 화면 이탈 집계, 적용 뒤 draft clean/resource dirty를 검증한다.
+- [x] resourceRef 한 가지의 현재 값을 받아 clean draft를 만든다. 부모 dirty 기록을 복사하지 않는다.
+- [x] dirty 원본에서 생성→독립 편집→검토→apply→resource 변경 재검토→mutation을 연결한다. apply는 root 경로 변경 1건을 남기므로 경로별 선택 제출은 apply 전에 `capture`한다.
+- [x] 다른 draft 적용과 서버 refetch/낙관적 복구가 원본 갱신으로 전달될 때 충돌·입력을 보존한다. 원본의 로컬 편집이 재조회 기준보다 우선하므로 그 경로에는 겹침이 생기지 않는다.
+- [x] 열린 draft와 resource 수명 연결이 sync 전용 타입에 의존하지 않는지 확인한다. 해제된 원본의 쓰기 실패는 `missing-source`로 보고한다.
+- [x] 세 구성의 상태와 화면 이탈 집계, 적용 뒤 draft clean/resource dirty를 검증한다. [Phase 6](./PHASE6.md)에 기록한다.
 
 **기준 테스트:** T2-01/05/06/10~22/26 조합. 서울→부산→대전과 적용 전 폐기·겹친 광주 변경 반례를 필수로 포함한다.
 
@@ -251,6 +251,13 @@
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
+
+### 2026-09-23 — Phase 6 ResourceRef와 Draft 조합
+
+- done: [Phase 6](./PHASE6.md)에서 dirty 원본의 clean 분기, 로컬 apply와 서버 WRITE 구분, 겹친 갱신의 conflict·입력 보존, 해제된 원본의 `missing-source` 보고, 세 구성 집계를 검증했다. 구현 변경은 `draft.apply()`의 원본 쓰기 실패 분류 한 곳뿐이며 Phase 2 단독 계약과 core 325개 테스트는 불변이다. sync 154개 테스트·소비자 선언 타입·빌드 ESM smoke 및 `pnpm gate` PASS. IC2-05 해소.
+- next: Phase 7 hardening과 Phase 8의 5종 UI 전체 조합·개발 도구 UI. 수동 M2-01~20은 남는다.
+- blockers: 외부 차단 없음. 여러 draft 사이 병합 정책·draft의 서버 직접 저장은 계약상 미제공. M2-01~20 미수행. F2 전체 동등성 미완료.
+- 시작 기준 commit: `a2a894c` (Phase 5.17). Phase 6 변경은 이 문서와 같은 커밋에 있다.
 
 ### 2026-09-23 — Phase 5.17 Queued 명령의 자동 재개
 

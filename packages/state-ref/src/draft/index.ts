@@ -397,7 +397,15 @@ export function createDraft<T>(source: StateRefStore<T>): Draft<T> {
     }));
     const applied = submitted.length;
     if (applied > 0) {
-      source.value = next as T;
+      try {
+        source.value = next as T;
+      } catch {
+        // A source whose owner is gone refuses the write. That is reported in
+        // the draft's own vocabulary, never rethrown, so a draft stays
+        // independent of whatever created its source.
+        sourceReason = 'missing-source';
+        return { ok: false, reason: sourceReason };
+      }
     }
     // Auto-sync sources already called rebase from their runner. Manual-sync
     // sources have not, so also settle only the edits frozen at apply entry.

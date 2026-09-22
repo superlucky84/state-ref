@@ -11,6 +11,7 @@ import {
   restoreLocalSyncSnapshot,
 } from '../dist/stateref-sync.mjs';
 import { create } from 'state-ref';
+import { createDraft } from 'state-ref/draft';
 
 const bundle = await readFile(
   new URL('../dist/stateref-sync.mjs', import.meta.url),
@@ -313,6 +314,27 @@ while (queue.entries().length)
   await new Promise(resolve => setTimeout(resolve));
 assert.deepEqual(autoResumed, ['auto']);
 stopAutoResume();
+const branchedClient = createSyncClient({ ssr: true });
+const branched = branchedClient.query({
+  queryKey: ['branched-bundle'],
+  queryFn: () => ({ city: '서울' }),
+});
+await branched.load();
+branched.ref.city.value = '부산';
+const branchedDraft = createDraft(branched.ref);
+assert.equal(branchedDraft.isDirty(), false);
+branchedDraft.ref.city.value = '대전';
+assert.equal(branched.ref.city.value, '부산');
+assert.deepEqual(branchedDraft.apply(), { ok: true, applied: 1 });
+assert.equal(branched.ref.city.value, '대전');
+branched.dispose(); // A dirty entry stays cached, but its handle is closed.
+branchedDraft.ref.city.value = '광주';
+assert.deepEqual(branchedDraft.apply(), {
+  ok: false,
+  reason: 'missing-source',
+});
+branchedDraft.discard();
+
 const editableClient = createSyncClient({ ssr: true });
 const editable = editableClient.query({
   queryKey: ['local-bundle'],
@@ -371,5 +393,5 @@ restoredClean.dispose();
 assert.equal(submitted.changes.length, 1);
 query.dispose();
 console.log(
-  'sync ESM bundle: query, mutation, hydration, cache and mutation observation, views, automatic refetch, infinite query helpers, network mode and persistence PASS'
+  'sync ESM bundle: query, mutation, hydration, cache and mutation observation, views, automatic refetch, infinite query helpers, network mode, persistence and draft branching PASS'
 );
