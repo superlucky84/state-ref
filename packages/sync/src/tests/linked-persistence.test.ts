@@ -578,3 +578,277 @@ describe('persisted linked submission across several queries', () => {
     await sending;
   });
 });
+
+describe('local edits made while a linked WRITE is in flight', () => {
+  it('refuses a default dehydration and stores a conservative one instead', async () => {
+    const { client, profile, prefs } = clientWithTwoEdits();
+    await profile.load();
+    await prefs.load();
+    profile.ref.city.value = '부산';
+    const pending = deferred<string>();
+    const sending = client
+      .mutation({ mutationFn: () => pending.promise })
+      .run(null, { links: [{ query: profile }] });
+    await Promise.resolve();
+
+    expect(() => client.dehydrateLocal()).toThrow('linked WRITE');
+    const checkpoint = client.dehydrateLocal({ inFlight: 'unconfirmed' });
+    const linked = checkpoint.queries.find(
+      item => item.queryKey[0] === 'profile'
+    )!;
+    const untouched = checkpoint.queries.find(
+      item => item.queryKey[0] === 'prefs'
+    )!;
+    expect(linked.unconfirmed).toBe(true);
+    expect(linked.invalidated).toBe(true);
+    expect(untouched.unconfirmed).toBe(false);
+    expect(untouched.invalidated).toBe(false);
+    expect(() =>
+      client.dehydrateLocal({
+        inFlight: 'nope' as unknown as 'reject',
+      })
+    ).toThrow('Unsupported in-flight dehydration mode');
+
+    const restored = createSyncClient({ ssr: true });
+    restored.hydrateLocal(checkpoint);
+    const restoredProfile = restored.query({
+      queryKey: ['profile'],
+      queryFn: () => ({ city: '서버', name: 'A' }),
+    });
+    expect(restoredProfile.ref.city.value).toBe('부산');
+    expect(restoredProfile.status.unconfirmed.value).toBe(true);
+    pending.resolve('saved');
+    await sending;
+  });
+
+  it('keeps follow-up edits durable only when checkpointing is enabled', async () => {
+    const run = async (checkpoint: boolean) => {
+      const { storage, values } = memoryStorage();
+      const options = { storage, key: 'linked', buster: 'v1', checkpoint };
+      const { client, profile, prefs } = clientWithTwoEdits();
+      await profile.load();
+      await prefs.load();
+      profile.ref.city.value = '부산';
+      const journal = await openPersistedLinkedMutation(options);
+      await journal.stage(client, {
+        id: 'save',
+        input: { ok: true },
+        idempotencyKey: 'key-1',
+        links: [{ query: profile, accept: 'submitted' }],
+      });
+      const pending = deferred<string>();
+      const sending = journal.send(
+        client,
+        [profile],
+        client.mutation({ mutationFn: () => pending.promise })
+      );
+      await vi.waitFor(() =>
+        expect(JSON.parse(values.get('linked')!).job.state).toBe('inFlight')
+      );
+
+      // An unrelated query is edited while the WRITE is still running.
+      const storedTheme = () =>
+        JSON.parse(values.get('linked')!).snapshot.queries.find(
+          (item: { queryKey: string[] }) => item.queryKey[0] === 'prefs'
+        ).local?.current.theme;
+      prefs.ref.theme.value = 'dark';
+      if (checkpoint) {
+        await vi.waitFor(() => expect(storedTheme()).toBe('dark'));
+      } else {
+        // Without checkpointing the record must stay at the staged value.
+        await new Promise(resolve => setTimeout(resolve, 0));
+        expect(storedTheme()).toBe('light');
+      }
+      const midFlight = JSON.parse(values.get('linked')!);
+      const linked = midFlight.snapshot.queries.find(
+        (item: { queryKey: string[] }) => item.queryKey[0] === 'profile'
+      );
+      // Even a checkpoint keeps the linked query unconfirmed.
+      expect(midFlight.job.state).toBe('inFlight');
+      expect(linked.unconfirmed).toBe(true);
+
+      pending.resolve('saved');
+      expect((await sending)?.kind).toBe('success');
+      expect(journal.entry()?.state).toBe('success');
+      const settled = JSON.parse(values.get('linked')!);
+      const settledPrefs = settled.snapshot.queries.find(
+        (item: { queryKey: string[] }) => item.queryKey[0] === 'prefs'
+      );
+      // A settled record always reflects the live client.
+      expect(settledPrefs.local?.current.theme).toBe('dark');
+    };
+    await run(true);
+    await run(false);
+  });
+
+  it('keeps the last checkpoint when the settling dehydration fails', async () => {
+    const { storage, values } = memoryStorage();
+    const options = { storage, key: 'linked', buster: 'v1', checkpoint: true };
+    const { client, profile, prefs } = clientWithTwoEdits();
+    await profile.load();
+    await prefs.load();
+    profile.ref.city.value = '부산';
+    const journal = await openPersistedLinkedMutation(options);
+    await journal.stage(client, {
+      id: 'save',
+      input: { ok: true },
+      idempotencyKey: 'key-1',
+      links: [{ query: profile, accept: 'submitted' }],
+    });
+    const storedTheme = () =>
+      JSON.parse(values.get('linked')!).snapshot.queries.find(
+        (item: { queryKey: string[] }) => item.queryKey[0] === 'prefs'
+      ).local?.current.theme;
+    const pending = deferred<string>();
+    const sending = journal.send(
+      client,
+      [profile],
+      client.mutation({ mutationFn: () => pending.promise })
+    );
+    await vi.waitFor(() =>
+      expect(JSON.parse(values.get('linked')!).job.state).toBe('inFlight')
+    );
+    prefs.ref.theme.value = 'dark';
+    await vi.waitFor(() => expect(storedTheme()).toBe('dark'));
+
+    // A READ that never settles makes the default dehydration throw.
+    const slow = client.query({
+      queryKey: ['slow'],
+      queryFn: () => new Promise<{ n: number }>(() => {}),
+    });
+    void slow.load();
+    await vi.waitFor(() =>
+      expect(slow.status.fetchStatus.value).toBe('fetching')
+    );
+    pending.resolve('saved');
+    expect((await sending)?.kind).toBe('success');
+
+    expect(journal.entry()?.state).toBe('success');
+    // The follow-up edit survives rather than reverting to the staged value.
+    expect(storedTheme()).toBe('dark');
+    slow.dispose();
+  });
+
+  it('lets an in-flight checkpoint finish before recording the result', async () => {
+    const values = new Map<string, string>();
+    let release!: () => void;
+    const held = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    let inFlightWrites = 0;
+    let holding = false;
+    const writes: string[] = [];
+    const storage: SyncStorage = {
+      getItem: key => values.get(key) ?? null,
+      setItem: async (key, value) => {
+        const state = JSON.parse(value).job.state;
+        // Hold the first checkpoint, not the barrier or the result.
+        if (state === 'inFlight') {
+          inFlightWrites += 1;
+          if (inFlightWrites > 1) {
+            holding = true;
+            await held;
+          }
+        }
+        values.set(key, value);
+        writes.push(state);
+      },
+      removeItem: key => {
+        values.delete(key);
+      },
+    };
+    const options = { storage, key: 'linked', buster: 'v1', checkpoint: true };
+    const { client, profile, prefs } = clientWithTwoEdits();
+    await profile.load();
+    await prefs.load();
+    profile.ref.city.value = '부산';
+    const journal = await openPersistedLinkedMutation(options);
+    await journal.stage(client, {
+      id: 'save',
+      input: { ok: true },
+      idempotencyKey: 'key-1',
+      links: [{ query: profile, accept: 'submitted' }],
+    });
+    const pending = deferred<string>();
+    const sending = journal.send(
+      client,
+      [profile],
+      client.mutation({ mutationFn: () => pending.promise })
+    );
+    await vi.waitFor(() =>
+      expect(JSON.parse(values.get('linked')!).job.state).toBe('inFlight')
+    );
+    prefs.ref.theme.value = 'dark';
+    await vi.waitFor(() => expect(holding).toBe(true));
+
+    // The WRITE settles while that checkpoint write is still held open.
+    pending.resolve('saved');
+    setTimeout(release, 0);
+    expect((await sending)?.kind).toBe('success');
+    // The result must be the last write; a late checkpoint cannot reopen it.
+    expect(writes).toEqual(['queued', 'inFlight', 'inFlight', 'success']);
+    expect(JSON.parse(values.get('linked')!).job.state).toBe('success');
+    expect(journal.entry()?.state).toBe('success');
+  });
+
+  it('coalesces bursts and survives a failing checkpoint write', async () => {
+    const values = new Map<string, string>();
+    let failNext = false;
+    const writes: string[] = [];
+    const storage: SyncStorage = {
+      getItem: key => values.get(key) ?? null,
+      setItem: (key, value) => {
+        if (failNext) throw new Error('quota exceeded');
+        writes.push(JSON.parse(value).job.state);
+        values.set(key, value);
+      },
+      removeItem: key => {
+        values.delete(key);
+      },
+    };
+    const options = { storage, key: 'linked', buster: 'v1', checkpoint: true };
+    const { client, profile, prefs } = clientWithTwoEdits();
+    await profile.load();
+    await prefs.load();
+    profile.ref.city.value = '부산';
+    const journal = await openPersistedLinkedMutation(options);
+    await journal.stage(client, {
+      id: 'save',
+      input: { ok: true },
+      idempotencyKey: 'key-1',
+      links: [{ query: profile, accept: 'submitted' }],
+    });
+    const pending = deferred<string>();
+    const sending = journal.send(
+      client,
+      [profile],
+      client.mutation({ mutationFn: () => pending.promise })
+    );
+    await vi.waitFor(() => expect(writes.at(-1)).toBe('inFlight'));
+    const afterBarrier = writes.length;
+
+    // Several synchronous edits collapse into one trailing checkpoint.
+    prefs.ref.theme.value = 'a';
+    prefs.ref.theme.value = 'b';
+    prefs.ref.theme.value = 'c';
+    await vi.waitFor(() => expect(writes.length).toBeGreaterThan(afterBarrier));
+    await Promise.resolve();
+    expect(writes.length - afterBarrier).toBe(1);
+    expect(
+      JSON.parse(values.get('linked')!).snapshot.queries.find(
+        (item: { queryKey: string[] }) => item.queryKey[0] === 'prefs'
+      ).local.current.theme
+    ).toBe('c');
+
+    // A failing checkpoint leaves the previous snapshot and does not stop the WRITE.
+    const beforeFailure = values.get('linked')!;
+    failNext = true;
+    prefs.ref.theme.value = 'd';
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(values.get('linked')).toBe(beforeFailure);
+    failNext = false;
+    pending.resolve('saved');
+    expect((await sending)?.kind).toBe('success');
+    expect(journal.entry()?.state).toBe('success');
+  });
+});

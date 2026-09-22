@@ -62,6 +62,11 @@ export type PersistedLinkedMutationOptions = Readonly<{
   /** Queued submissions older than this are held. Defaults to Infinity. */
   maxAge?: number;
   isOnline?: () => boolean;
+  /**
+   * Keep local edits made while a WRITE is in flight in the stored snapshot.
+   * Defaults to false; it trades storage writes for crash recovery.
+   */
+  checkpoint?: boolean;
 }>;
 
 export type PersistedLinkedMutation = Readonly<{
@@ -243,6 +248,21 @@ function parseRecord(raw: string, buster: string): StoredRecord {
   };
 }
 
+/** A stored snapshot must never imply that a linked WRITE was confirmed. */
+function markStaged(
+  snapshot: LocalSyncSnapshot,
+  staged: ReadonlySet<string>
+): LocalSyncSnapshot {
+  return {
+    ...snapshot,
+    queries: snapshot.queries.map(item =>
+      staged.has(hashQueryKey(item.queryKey))
+        ? { ...item, invalidated: true, unconfirmed: true }
+        : item
+    ),
+  };
+}
+
 /** One explicit linked submission per storage key; no automatic replay. */
 export async function openPersistedLinkedMutation(
   options: PersistedLinkedMutationOptions
@@ -256,6 +276,11 @@ export async function openPersistedLinkedMutation(
       options.maxAge < 0)
   )
     throw new RangeError('maxAge must be nonnegative.');
+  if (
+    options.checkpoint !== undefined &&
+    typeof options.checkpoint !== 'boolean'
+  )
+    throw new TypeError('checkpoint must be a boolean.');
   const raw = await options.storage.getItem(options.key);
   let record = raw === null ? null : parseRecord(raw, options.buster);
   const persist = async (next: StoredRecord) => {
@@ -415,20 +440,41 @@ export async function openPersistedLinkedMutation(
         const staged = new Set(
           job.links.map(link => hashQueryKey(link.queryKey))
         );
-        const conservative: LocalSyncSnapshot = {
-          ...previous.snapshot,
-          queries: previous.snapshot.queries.map(item =>
-            staged.has(hashQueryKey(item.queryKey))
-              ? { ...item, invalidated: true, unconfirmed: true }
-              : item
-          ),
-        };
+        const conservative = markStaged(previous.snapshot, staged);
         await persist({
           ...previous,
           savedAt: Date.now(),
           job: { ...job, state: 'inFlight' },
           snapshot: conservative,
         });
+        let checkpointing: Promise<void> = Promise.resolve();
+        let requested = false;
+        let checkpointsOpen = options.checkpoint === true;
+        const checkpoint = () => {
+          if (!checkpointsOpen) return;
+          requested = true;
+          checkpointing = checkpointing.then(async () => {
+            if (!checkpointsOpen || !requested) return;
+            requested = false;
+            try {
+              await persist({
+                ...previous,
+                savedAt: Date.now(),
+                job: { ...job, state: 'inFlight' },
+                snapshot: markStaged(
+                  client.dehydrateLocal({ inFlight: 'unconfirmed' }),
+                  staged
+                ),
+              });
+            } catch {
+              // A checkpoint never cancels the WRITE or the recorded result;
+              // the last snapshot that did store stays in place.
+            }
+          });
+        };
+        const stopCheckpoints = checkpointsOpen
+          ? client.subscribeCache(checkpoint)
+          : null;
         let result: MutationResult<T>;
         try {
           result = await mutation.run(copyJson(job.input) as I, {
@@ -438,7 +484,11 @@ export async function openPersistedLinkedMutation(
         } catch (error) {
           result = { kind: 'unknown', operationId: -1, error };
         }
-        let settledSnapshot = conservative;
+        stopCheckpoints?.();
+        checkpointsOpen = false;
+        await checkpointing;
+        // Keep the newest stored snapshot, which may be a checkpoint.
+        let settledSnapshot = record ? record.snapshot : conservative;
         try {
           settledSnapshot = client.dehydrateLocal();
         } catch {

@@ -185,6 +185,8 @@
 
 [Phase 5.15](./PHASE5_15.md)에서 F2-07의 연결 제출을 여러 query로 확장했다. 작업 1건은 link별 정책을 갖는 schema 2 기록이고, `send`는 모든 link를 재검사한 뒤에만 durable 장벽을 쓰며 장벽 snapshot은 연결된 모든 query를 미확정으로 표시한다. 진행 중 로컬 편집의 연속 checkpoint와 unknown 자동 재개는 열린 상태다.
 
+[Phase 5.16](./PHASE5_16.md)에서 F2-07의 전송 중 로컬 편집 보존을 추가했다. `dehydrateLocal`의 `inFlight: 'unconfirmed'` 모드가 진행 중 작업을 보수적으로 저장하고, `checkpoint: true` 기록은 WRITE 중 변경을 같은 기록에 합쳐 갱신하며 결과 기록 전에 진행 중 저장을 기다린다. `unknown`의 자동 재개는 열린 상태다.
+
 **기준 테스트:** T2-23의 모든 F2 하위 시나리오, T2-03/04/07/10~13/22/25의 복원·네트워크 상태 조합.
 
 **종료:** 해당 출시 범위의 모든 기능에 구현·테스트 증거 존재. 전체 동등성 선언은 전체 목록 통과 시에만 가능하며, 부분 출시라면 미지원 항목을 명시함.
@@ -247,6 +249,13 @@
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
+
+### 2026-09-23 — Phase 5.16 전송 중 편집의 연속 Checkpoint
+
+- done: [Phase 5.16](./PHASE5_16.md)의 `inFlight: 'unconfirmed'` dehydrate 모드, `checkpoint: true` 연속 저장, 변경 병합과 직렬화, 결과 기록 전 대기, 저장 실패 내성을 구현했다. sync 144개 테스트·소비자 선언 타입·빌드 ESM smoke 및 `pnpm gate` PASS. 기본 core gzip 3,433/3,500 B PASS.
+- next: `queued` 작업의 안전한 자동 재개를 별도 단계로 설계한다. `unknown`은 대상이 아니다. F2-08 개발 도구 UI, Phase 6 resource/draft pending 조합과 Phase 7/8 검증은 남는다.
+- blockers: 외부 차단 없음. 교차 탭 잠금 없음. M2-01~20 미수행. F2 전체 동등성 미완료.
+- 시작 기준 commit: `bcbba59` (Phase 5.15). Phase 5.16 변경은 이 문서와 같은 커밋에 있다.
 
 ### 2026-09-22 — Phase 5.15 다중 연결 제출 기록
 

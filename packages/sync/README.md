@@ -453,9 +453,19 @@ rolled back. A pre-send edit or baseline change on any link requires discarding
 and staging again. If the
 result record cannot be saved, the WRITE may already have occurred and the
 next startup treats its `inFlight` marker as unknown. Follow-up edits during
-an active WRITE are captured after it settles when local dehydration succeeds;
-apps needing continuous persistence during that interval must checkpoint
-those edits separately. Save any remaining local edits to a separate local
+an active WRITE are captured after it settles when local dehydration succeeds.
+Open the record with `checkpoint: true` to also keep those edits durable while
+the WRITE is still running: the stored snapshot is refreshed on every local
+change, bursts collapse into one trailing write, and a failed checkpoint leaves
+the previous snapshot without cancelling the WRITE or the recorded result. A
+checkpoint keeps every linked query marked unconfirmed, so a crash still
+recovers into a state that is never replayed automatically. Checkpointing costs
+one storage write per change, so it is off by default.
+
+`client.dehydrateLocal()` refuses a query with an active READ or linked WRITE.
+Pass `{ inFlight: 'unconfirmed' }` to store it conservatively instead — a linked
+WRITE marks the query unconfirmed and invalidated, an active READ only
+invalidated. That is the mode a checkpoint uses; the default stays `'reject'`. Save any remaining local edits to a separate local
 snapshot before discarding a completed linked record. Use one writer per storage key and separate keys for
 linked submissions, clean baselines, local snapshots, and standalone commands.
 

@@ -188,6 +188,18 @@ export type QueryOptions<T> = Readonly<{
 }> &
   AutomaticRefetchOptions;
 
+/**
+ * How a local dehydration treats a query with an active READ or linked WRITE.
+ * `reject` refuses the snapshot; `unconfirmed` stores it with conservative
+ * markings so a checkpoint can run while a WRITE is still in flight.
+ */
+export type InFlightDehydration = 'reject' | 'unconfirmed';
+
+export type LocalDehydrateOptions = Readonly<{
+  /** Defaults to `reject`. */
+  inFlight?: InFlightDehydration;
+}>;
+
 export type SyncClientOptions = Readonly<{
   ssr?: boolean;
   /** Client-scoped focus and connectivity events for automatic refetch. */
@@ -264,7 +276,7 @@ export type SyncClient = Readonly<{
   /** Restore into an empty client before creating query handles. */
   hydrate: (snapshot: SyncSnapshot) => void;
   /** Preserve editable local state separately from clean SSR snapshots. */
-  dehydrateLocal: () => LocalSyncSnapshot;
+  dehydrateLocal: (options?: LocalDehydrateOptions) => LocalSyncSnapshot;
   /** Restore into an empty client without starting a READ or WRITE. */
   hydrateLocal: (snapshot: LocalSyncSnapshot) => void;
 }>;
@@ -532,20 +544,31 @@ class QueryEntry<T> {
     });
   }
 
-  dehydrateLocal(): LocalHydratedQuery | null {
-    if (this.pending || this.linked)
+  dehydrateLocal(
+    inFlight: InFlightDehydration = 'reject'
+  ): LocalHydratedQuery | null {
+    const busy = this.pending !== null || this.linked > 0;
+    const conservative = inFlight === 'unconfirmed';
+    if (busy && !conservative)
       throw new Error(
         `Query ${this.hash} has an active READ or linked WRITE; it cannot be locally dehydrated.`
       );
     if (!this.statusValue.loaded) {
-      if (this.statusValue.unconfirmed)
+      if (this.statusValue.unconfirmed && !conservative)
         throw new Error(
           `Query ${this.hash} has an unloaded unconfirmed WRITE.`
         );
       return null;
     }
-    if (!this.resource || this.statusValue.updatedAt === null)
+    if (!this.resource || this.statusValue.updatedAt === null) {
+      // A checkpoint keeps the rest of the snapshot rather than failing.
+      if (conservative) return null;
       throw new Error(`Query ${this.hash} has no server baseline.`);
+    }
+    // A linked WRITE may already have changed the server; a READ only means
+    // the stored baseline is about to be replaced.
+    const unconfirmed =
+      this.statusValue.unconfirmed || (conservative && this.linked > 0);
     return Object.freeze({
       queryKey: JSON.parse(this.hash) as QueryKey,
       data: copyJson(this.resource.serverValue()),
@@ -553,9 +576,10 @@ class QueryEntry<T> {
       invalidated:
         this.statusValue.invalidated ||
         this.statusValue.status === 'error' ||
-        this.statusValue.unconfirmed,
+        unconfirmed ||
+        (conservative && busy),
       editable: this.options.editable ?? true,
-      unconfirmed: this.statusValue.unconfirmed,
+      unconfirmed,
       ...(this.kind === 'infinite' ? { kind: 'infinite' as const } : {}),
       ...(this.resource.editable
         ? { local: this.resource.recoveryState() }
@@ -1504,10 +1528,13 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
       prepared.forEach(([hash, entry]) => entries.set(hash, entry));
       prepared.forEach(([, entry]) => emit('added', entry));
     },
-    dehydrateLocal(): LocalSyncSnapshot {
+    dehydrateLocal(options: LocalDehydrateOptions = {}): LocalSyncSnapshot {
+      const inFlight = options.inFlight ?? 'reject';
+      if (inFlight !== 'reject' && inFlight !== 'unconfirmed')
+        throw new TypeError('Unsupported in-flight dehydration mode.');
       const queries: LocalHydratedQuery[] = [];
       for (const entry of entries.values()) {
-        const seed = entry.dehydrateLocal();
+        const seed = entry.dehydrateLocal(inFlight);
         if (seed) queries.push(seed);
       }
       return Object.freeze({

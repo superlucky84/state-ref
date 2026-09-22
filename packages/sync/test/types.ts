@@ -15,6 +15,7 @@ import type {
   InfiniteData,
   InfiniteQueryHandle,
   InfiniteQueryViewHandle,
+  InFlightDehydration,
   LocalSyncSnapshot,
   MutationResult,
   NetworkMode,
@@ -436,7 +437,14 @@ async function persistedLinkedSubmission() {
     storage,
     key: 'linked',
     buster: 'v1',
+    checkpoint: true,
   });
+  const checkpointed: LocalSyncSnapshot = client.dehydrateLocal({
+    inFlight: 'unconfirmed',
+  });
+  const mode: InFlightDehydration = 'reject';
+  void checkpointed;
+  void mode;
   await journal.stage(client, {
     id: 'one',
     input: { city: '부산' },

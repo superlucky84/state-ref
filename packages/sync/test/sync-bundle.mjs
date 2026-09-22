@@ -327,7 +327,12 @@ const linkedJournal = await openPersistedLinkedMutation({
   storage,
   key: 'linked',
   buster: 'v1',
+  checkpoint: true,
 });
+assert.equal(
+  localRestoredClient.dehydrateLocal({ inFlight: 'unconfirmed' }).schemaVersion,
+  2
+);
 await linkedJournal.stage(localRestoredClient, {
   id: 'linked-one',
   input: { count: 2 },
