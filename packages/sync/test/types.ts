@@ -30,6 +30,7 @@ import type {
   SyncStorage,
   PersistedMutationQueue,
   PersistedLinkedMutation,
+  PersistedLinkedMutationLink,
   SyncSnapshot,
 } from '@stateref/sync';
 import { createDraft } from 'state-ref/draft';
@@ -74,8 +75,13 @@ const mutationEntries: readonly SyncMutationEntry[] = client.inspectMutations();
 mutationEntries[0].error;
 const stopMutationObservation: () => void = client.subscribeMutations(
   (event: SyncMutationEvent) => {
-    const phase: 'queued' | 'pending' | 'success' | 'sync-error' | 'rejected' | 'unknown' =
-      event.entry.phase;
+    const phase:
+      | 'queued'
+      | 'pending'
+      | 'success'
+      | 'sync-error'
+      | 'rejected'
+      | 'unknown' = event.entry.phase;
     const scope: string | null = event.entry.scope;
     const linked: readonly QueryKey[] = event.entry.linkedKeys;
     void phase;
@@ -431,19 +437,27 @@ async function persistedLinkedSubmission() {
     key: 'linked',
     buster: 'v1',
   });
-  await journal.stage(client, query, {
+  await journal.stage(client, {
     id: 'one',
     input: { city: '부산' },
     idempotencyKey: 'server-key',
-    ids: query.changes().map(change => change.id),
-    accept: 'submitted',
+    links: [
+      {
+        query,
+        ids: query.changes().map(change => change.id),
+        accept: 'submitted',
+      },
+    ],
   });
+  const links: readonly PersistedLinkedMutationLink[] =
+    journal.entry()?.links ?? [];
+  void links;
   const mutation = client.mutation({
     mutationFn: (input: { city: string }) => input.city,
   });
   const result: MutationResult<string> | null = await journal.send(
     client,
-    query,
+    [query],
     mutation
   );
   void result;

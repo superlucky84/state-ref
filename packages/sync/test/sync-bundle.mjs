@@ -215,8 +215,13 @@ const helperOptions = {
   staleTime: Infinity,
 };
 await helperClient.prefetchInfinite(helperOptions);
-assert.deepEqual((await helperClient.ensureInfinite(helperOptions)).pageParams, [0]);
-assert.deepEqual((await helperClient.fetchInfinite(helperOptions)).pageParams, [0]);
+assert.deepEqual(
+  (await helperClient.ensureInfinite(helperOptions)).pageParams,
+  [0]
+);
+assert.deepEqual((await helperClient.fetchInfinite(helperOptions)).pageParams, [
+  0,
+]);
 const helperView = helperClient.infiniteView(helperOptions, {
   select: data => data.pages.length,
 });
@@ -323,17 +328,18 @@ const linkedJournal = await openPersistedLinkedMutation({
   key: 'linked',
   buster: 'v1',
 });
-await linkedJournal.stage(localRestoredClient, localRestored, {
+await linkedJournal.stage(localRestoredClient, {
   id: 'linked-one',
   input: { count: 2 },
   idempotencyKey: 'linked-server-key',
-  accept: 'submitted',
+  links: [{ query: localRestored, accept: 'submitted' }],
 });
+assert.equal(linkedJournal.entry().links.length, 1);
 const linkedWrite = localRestoredClient.mutation({
   mutationFn: input => input.count,
 });
 assert.equal(
-  (await linkedJournal.send(localRestoredClient, localRestored, linkedWrite))
+  (await linkedJournal.send(localRestoredClient, [localRestored], linkedWrite))
     .kind,
   'success'
 );

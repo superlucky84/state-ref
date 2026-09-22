@@ -2,6 +2,7 @@ import type { QueryHandle, SyncClient } from './index';
 import type { QueryKey } from './key';
 import { hashQueryKey } from './key';
 import type { MutationHandle, MutationResult } from './mutation';
+import type { ResourceChange } from './resource';
 import type { LocalHydratedQuery, LocalSyncSnapshot } from './local-hydration';
 import { parseLocalSnapshot } from './local-hydration';
 import { copyJson } from './hydration';
@@ -22,26 +23,36 @@ type SelectedChange = Readonly<{
   after: unknown;
 }>;
 
-export type PersistedLinkedMutationJob = Readonly<{
-  id: string;
-  input: unknown;
-  idempotencyKey: string;
+export type PersistedLinkedMutationLink = Readonly<{
   queryKey: QueryKey;
   version: number;
   selected: readonly SelectedChange[];
   accept: Acceptance;
   onReject: 'keep' | 'remove';
+}>;
+
+export type PersistedLinkedMutationJob = Readonly<{
+  id: string;
+  input: unknown;
+  idempotencyKey: string;
+  /** One entry per linked query; a query key appears at most once. */
+  links: readonly PersistedLinkedMutationLink[];
   enqueuedAt: number;
   state: JobState;
+}>;
+
+export type StageLinkedMutationLink = Readonly<{
+  query: QueryHandle<any>;
+  ids?: readonly number[];
+  accept?: Acceptance;
+  onReject?: 'keep' | 'remove';
 }>;
 
 export type StageLinkedMutation = Readonly<{
   id: string;
   input: unknown;
   idempotencyKey: string;
-  ids?: readonly number[];
-  accept?: Acceptance;
-  onReject?: 'keep' | 'remove';
+  links: readonly StageLinkedMutationLink[];
 }>;
 
 export type PersistedLinkedMutationOptions = Readonly<{
@@ -58,22 +69,21 @@ export type PersistedLinkedMutation = Readonly<{
   snapshot: () => LocalSyncSnapshot | null;
   /** Restore into an empty client before opening query handles. */
   restore: (client: SyncClient) => boolean;
-  stage: <T>(
-    client: SyncClient,
-    query: QueryHandle<T>,
-    input: StageLinkedMutation
-  ) => Promise<void>;
-  /** Returns null while offline or expired; only queued jobs can be sent. */
+  stage: (client: SyncClient, input: StageLinkedMutation) => Promise<void>;
+  /**
+   * Returns null while offline or expired; only queued jobs can be sent. The
+   * handles must match the stored link keys exactly, in any order.
+   */
   send: <I, T>(
     client: SyncClient,
-    query: QueryHandle<any>,
+    queries: readonly QueryHandle<any>[],
     mutation: MutationHandle<I, T>
   ) => Promise<MutationResult<T> | null>;
   discard: () => Promise<void>;
 }>;
 
 type StoredRecord = Readonly<{
-  schemaVersion: 1;
+  schemaVersion: 2;
   buster: string;
   savedAt: number;
   job: PersistedLinkedMutationJob;
@@ -94,6 +104,12 @@ function integer(value: unknown, name: string, minimum: number): number {
   if (!Number.isSafeInteger(value) || (value as number) < minimum)
     throw new TypeError(`${name} must be an integer at least ${minimum}.`);
   return value as number;
+}
+
+function assertDistinct(keys: readonly QueryKey[]) {
+  const hashes = keys.map(key => hashQueryKey(key));
+  if (new Set(hashes).size !== hashes.length)
+    throw new TypeError('A query may be linked only once per submission.');
 }
 
 function matchingQuery(
@@ -127,12 +143,63 @@ function selectedChanges(
   });
 }
 
+function parseLink(
+  value: unknown,
+  snapshot: LocalSyncSnapshot,
+  queued: boolean
+): PersistedLinkedMutationLink {
+  if (!value || typeof value !== 'object')
+    throw new TypeError('Invalid persisted linked mutation link.');
+  const link = value as Partial<PersistedLinkedMutationLink>;
+  integer(link.version, 'link version', 0);
+  if (
+    link.accept !== 'none' &&
+    link.accept !== 'submitted' &&
+    link.accept !== 'refetch'
+  )
+    throw new TypeError('Invalid persisted acceptance policy.');
+  if (link.onReject !== 'keep' && link.onReject !== 'remove')
+    throw new TypeError('Invalid persisted rejection policy.');
+  const key = JSON.parse(hashQueryKey(link.queryKey as QueryKey)) as QueryKey;
+  if (!Array.isArray(link.selected))
+    throw new TypeError('Selected changes must be an array.');
+  const selected = copyJson(link.selected) as readonly SelectedChange[];
+  const ids = selected.map(item => {
+    if (!item || typeof item !== 'object' || !Array.isArray(item.path))
+      throw new TypeError('Invalid selected change.');
+    integer(item.id, 'selected change ID', 1);
+    if (!item.path.every(part => typeof part === 'string'))
+      throw new TypeError('Invalid selected change path.');
+    return item.id;
+  });
+  if (new Set(ids).size !== ids.length)
+    throw new TypeError('Repeated selected change ID.');
+  const query = matchingQuery(snapshot, key);
+  if (queued) {
+    // An unsent job must still describe the snapshot it was captured from.
+    const expected = selectedChanges(query, ids);
+    if (link.version !== query.local!.revision)
+      throw new TypeError('Queued submission version differs from snapshot.');
+    if (
+      JSON.stringify(copyJson(selected)) !== JSON.stringify(copyJson(expected))
+    )
+      throw new TypeError('Queued selected changes differ from snapshot.');
+  }
+  return {
+    queryKey: key,
+    version: link.version as number,
+    selected,
+    accept: link.accept,
+    onReject: link.onReject,
+  };
+}
+
 function parseRecord(raw: string, buster: string): StoredRecord {
   const value: unknown = JSON.parse(raw);
   if (!value || typeof value !== 'object')
     throw new TypeError('Invalid persisted linked mutation.');
   const record = value as Partial<StoredRecord>;
-  if (record.schemaVersion !== 1)
+  if (record.schemaVersion !== 2)
     throw new TypeError('Unsupported linked mutation schema version.');
   nonempty(record.buster, 'persisted buster');
   timestamp(record.savedAt, 'persisted savedAt');
@@ -144,7 +211,6 @@ function parseRecord(raw: string, buster: string): StoredRecord {
   nonempty(job.id, 'job id');
   nonempty(job.idempotencyKey, 'job idempotencyKey');
   timestamp(job.enqueuedAt, 'job enqueuedAt');
-  integer(job.version, 'job version', 0);
   if (
     job.state !== 'queued' &&
     job.state !== 'inFlight' &&
@@ -154,52 +220,22 @@ function parseRecord(raw: string, buster: string): StoredRecord {
     job.state !== 'sync-error'
   )
     throw new TypeError('Invalid persisted linked mutation state.');
-  if (
-    job.accept !== 'none' &&
-    job.accept !== 'submitted' &&
-    job.accept !== 'refetch'
-  )
-    throw new TypeError('Invalid persisted acceptance policy.');
-  if (job.onReject !== 'keep' && job.onReject !== 'remove')
-    throw new TypeError('Invalid persisted rejection policy.');
-  const key = JSON.parse(hashQueryKey(job.queryKey as QueryKey)) as QueryKey;
-  if (!Array.isArray(job.selected))
-    throw new TypeError('Selected changes must be an array.');
+  if (!Array.isArray(job.links) || !job.links.length)
+    throw new TypeError('A linked submission requires at least one link.');
   const snapshot = copyJson(record.snapshot) as LocalSyncSnapshot;
-  const query = matchingQuery(snapshot, key);
-  const selected = copyJson(job.selected) as readonly SelectedChange[];
-  const ids = selected.map(item => {
-    if (!item || typeof item !== 'object' || !Array.isArray(item.path))
-      throw new TypeError('Invalid selected change.');
-    integer(item.id, 'selected change ID', 1);
-    if (!item.path.every(part => typeof part === 'string'))
-      throw new TypeError('Invalid selected change path.');
-    return item.id;
-  });
-  if (new Set(ids).size !== ids.length)
-    throw new TypeError('Repeated selected change ID.');
-  if (job.state === 'queued') {
-    const expected = selectedChanges(query, ids);
-    if (job.version !== query.local!.revision)
-      throw new TypeError('Queued submission version differs from snapshot.');
-    if (
-      JSON.stringify(copyJson(selected)) !== JSON.stringify(copyJson(expected))
-    )
-      throw new TypeError('Queued selected changes differ from snapshot.');
-  }
+  const links = job.links.map(link =>
+    parseLink(link, snapshot, job.state === 'queued')
+  );
+  assertDistinct(links.map(link => link.queryKey));
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     buster,
     savedAt: record.savedAt,
     job: {
       id: job.id,
       input: copyJson(job.input),
       idempotencyKey: job.idempotencyKey,
-      queryKey: key,
-      version: job.version as number,
-      selected,
-      accept: job.accept,
-      onReject: job.onReject,
+      links,
       enqueuedAt: job.enqueuedAt,
       state: job.state,
     },
@@ -252,62 +288,79 @@ export async function openPersistedLinkedMutation(
       client.hydrateLocal(copyJson(record.snapshot) as LocalSyncSnapshot);
       return true;
     },
-    stage: <T>(
-      client: SyncClient,
-      query: QueryHandle<T>,
-      input: StageLinkedMutation
-    ) =>
+    stage: (client: SyncClient, input: StageLinkedMutation) =>
       serialize(async () => {
         if (record)
           throw new Error('Discard the existing linked submission first.');
         nonempty(input.id, 'job id');
         nonempty(input.idempotencyKey, 'job idempotencyKey');
-        const accept = input.accept ?? 'none';
-        if (accept !== 'none' && accept !== 'submitted' && accept !== 'refetch')
-          throw new TypeError('Unsupported persisted acceptance policy.');
-        const onReject = input.onReject ?? 'keep';
-        if (onReject !== 'keep' && onReject !== 'remove')
-          throw new TypeError('Invalid persisted rejection policy.');
-        if (query.status.unconfirmed.value)
-          throw new Error('Reconcile the unconfirmed query before staging.');
-        const submission = query.capture(input.ids);
+        if (!Array.isArray(input.links) || !input.links.length)
+          throw new TypeError(
+            'A linked submission requires at least one link.'
+          );
+        assertDistinct(input.links.map(link => link.query.queryKey));
+        for (const link of input.links) {
+          if (link.query.status.unconfirmed.value)
+            throw new Error('Reconcile the unconfirmed query before staging.');
+        }
+        // Capture every link before writing, so one mismatch stores nothing.
         const snapshot = client.dehydrateLocal();
-        const key = JSON.parse(hashQueryKey(query.queryKey)) as QueryKey;
-        const matched = matchingQuery(snapshot, key);
-        if (
-          matched.local!.revision !== submission.version ||
-          hashQueryKey([matched.local!.current]) !==
-            hashQueryKey([submission.value])
-        )
-          throw new TypeError('Linked query differs from the client snapshot.');
-        const selected = selectedChanges(
-          matched,
-          submission.changes.map(change => change.id)
-        );
-        if (
-          hashQueryKey([selected]) !==
-          hashQueryKey([
-            submission.changes.map(change => ({
-              id: change.id,
-              path: change.path,
-              after: change.after.value,
-            })),
-          ])
-        )
-          throw new TypeError('Linked edits differ from the client snapshot.');
+        const links = input.links.map(link => {
+          const accept = link.accept ?? 'none';
+          if (
+            accept !== 'none' &&
+            accept !== 'submitted' &&
+            accept !== 'refetch'
+          )
+            throw new TypeError('Unsupported persisted acceptance policy.');
+          const onReject = link.onReject ?? 'keep';
+          if (onReject !== 'keep' && onReject !== 'remove')
+            throw new TypeError('Invalid persisted rejection policy.');
+          const submission = link.query.capture(link.ids);
+          const key = JSON.parse(hashQueryKey(link.query.queryKey)) as QueryKey;
+          const matched = matchingQuery(snapshot, key);
+          if (
+            matched.local!.revision !== submission.version ||
+            hashQueryKey([matched.local!.current]) !==
+              hashQueryKey([submission.value])
+          )
+            throw new TypeError(
+              'Linked query differs from the client snapshot.'
+            );
+          const selected = selectedChanges(
+            matched,
+            submission.changes.map((change: ResourceChange) => change.id)
+          );
+          if (
+            hashQueryKey([selected]) !==
+            hashQueryKey([
+              submission.changes.map((change: ResourceChange) => ({
+                id: change.id,
+                path: change.path,
+                after: change.after.value,
+              })),
+            ])
+          )
+            throw new TypeError(
+              'Linked edits differ from the client snapshot.'
+            );
+          return {
+            queryKey: key,
+            version: submission.version,
+            selected,
+            accept,
+            onReject,
+          };
+        });
         await persist({
-          schemaVersion: 1,
+          schemaVersion: 2,
           buster: options.buster,
           savedAt: Date.now(),
           job: {
             id: input.id,
             input: copyJson(input.input),
             idempotencyKey: input.idempotencyKey,
-            queryKey: key,
-            version: submission.version,
-            selected,
-            accept,
-            onReject,
+            links,
             enqueuedAt: Date.now(),
             state: 'queued',
           },
@@ -316,7 +369,7 @@ export async function openPersistedLinkedMutation(
       }),
     send: <I, T>(
       client: SyncClient,
-      query: QueryHandle<any>,
+      queries: readonly QueryHandle<any>[],
       mutation: MutationHandle<I, T>
     ) =>
       serialize(async (): Promise<MutationResult<T> | null> => {
@@ -327,23 +380,45 @@ export async function openPersistedLinkedMutation(
         const age = Date.now() - job.enqueuedAt;
         if (age < 0 || age > (options.maxAge ?? Infinity)) return null;
         if (options.isOnline && !options.isOnline()) return null;
-        if (hashQueryKey(query.queryKey) !== hashQueryKey(job.queryKey))
-          throw new TypeError('Linked query key differs from the submission.');
+        assertDistinct(queries.map(query => query.queryKey));
+        const byHash = new Map(
+          queries.map(query => [hashQueryKey(query.queryKey), query])
+        );
+        if (byHash.size !== job.links.length)
+          throw new TypeError(
+            'Linked query handles differ from the submission.'
+          );
         const current = client.dehydrateLocal();
-        const currentQuery = matchingQuery(current, job.queryKey);
-        const stagedQuery = matchingQuery(previous.snapshot, job.queryKey);
-        if (
-          JSON.stringify(copyJson(currentQuery)) !==
-          JSON.stringify(copyJson(stagedQuery))
-        )
-          throw new Error('Linked query changed; discard and stage again.');
-        const submission = query.capture(job.selected.map(item => item.id));
-        if (submission.version !== job.version)
-          throw new Error('Linked query changed; discard and stage again.');
+        const links = job.links.map(link => {
+          const query = byHash.get(hashQueryKey(link.queryKey));
+          if (!query)
+            throw new TypeError(
+              'Linked query handles differ from the submission.'
+            );
+          const currentQuery = matchingQuery(current, link.queryKey);
+          const stagedQuery = matchingQuery(previous.snapshot, link.queryKey);
+          if (
+            JSON.stringify(copyJson(currentQuery)) !==
+            JSON.stringify(copyJson(stagedQuery))
+          )
+            throw new Error('Linked query changed; discard and stage again.');
+          const submission = query.capture(link.selected.map(item => item.id));
+          if (submission.version !== link.version)
+            throw new Error('Linked query changed; discard and stage again.');
+          return {
+            query,
+            submission,
+            accept: { kind: link.accept },
+            onReject: link.onReject,
+          };
+        });
+        const staged = new Set(
+          job.links.map(link => hashQueryKey(link.queryKey))
+        );
         const conservative: LocalSyncSnapshot = {
           ...previous.snapshot,
           queries: previous.snapshot.queries.map(item =>
-            hashQueryKey(item.queryKey) === hashQueryKey(job.queryKey)
+            staged.has(hashQueryKey(item.queryKey))
               ? { ...item, invalidated: true, unconfirmed: true }
               : item
           ),
@@ -358,14 +433,7 @@ export async function openPersistedLinkedMutation(
         try {
           result = await mutation.run(copyJson(job.input) as I, {
             idempotencyKey: job.idempotencyKey,
-            links: [
-              {
-                query,
-                submission,
-                accept: { kind: job.accept },
-                onReject: job.onReject,
-              },
-            ],
+            links,
           });
         } catch (error) {
           result = { kind: 'unknown', operationId: -1, error };

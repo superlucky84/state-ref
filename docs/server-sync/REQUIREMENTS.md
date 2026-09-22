@@ -95,6 +95,8 @@ batch의 export 경로는 `state-ref/batch`로 확정했다. 그 밖의 미구�
 
 F2-08의 Phase 5.12 하위 수용 범위는 client별 현재 캐시 metadata 조회와 생성·변경·제거 구독이다. query payload·로컬 편집 값·mutation DTO는 이벤트에 포함하지 않고, listener 해제와 오류 격리는 T2-23/M2-19에서 확인한다. [Phase 5.12 계약](./PHASE5_12.md)을 따른다.
 
+F2-07의 Phase 5.15 하위 수용 범위는 연결 제출 1건이 여러 query를 묶는 schema 2 기록이다. 각 link는 query key·revision·선택 변경·수용/거절 정책을 갖고 같은 key는 한 번만 연결한다. `send`는 모든 link를 먼저 재검사하고 하나라도 다르면 WRITE를 시작하지 않으며, durable 장벽은 연결된 모든 query를 미확정으로 표시한다. 결과는 작업 단위로 기록한다. T2-23/M2-19 및 [Phase 5.15 계약](./PHASE5_15.md)을 따른다.
+
 F2-08의 Phase 5.14 하위 수용 범위는 client별 미종료 WRITE 작업 조회와 시작·전환·종료 구독이다. 작업 ID·관측 phase·scope·attempt·idempotency 사용 여부·연결 query key·시각만 제공하고 입력 DTO·응답·오류 객체·`idempotencyKey` 값은 이벤트에 포함하지 않는다. 종료한 작업은 client가 보관하지 않으며, 관측 결과를 재전송 근거로 쓰지 않는다. T2-23/M2-19 및 [Phase 5.14 계약](./PHASE5_14.md)을 따른다.
 
 F2-05의 Phase 5.13 하위 수용 범위는 무한 조회 결과의 임시 캐시 준비와 고정 key 관찰자별 placeholder/select 표시다. 같은 key의 활성 query 설정과 READ 소유권을 보존하고, 무한 페이지 값은 readonly로 유지한다. T2-23/M2-19 및 [Phase 5.13 계약](./PHASE5_13.md)을 따른다.

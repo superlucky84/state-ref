@@ -64,8 +64,10 @@ export { openPersistedLinkedMutation } from './linked-persistence';
 export type {
   PersistedLinkedMutation,
   PersistedLinkedMutationJob,
+  PersistedLinkedMutationLink,
   PersistedLinkedMutationOptions,
   StageLinkedMutation,
+  StageLinkedMutationLink,
 } from './linked-persistence';
 export type {
   SyncStorage,

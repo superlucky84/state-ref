@@ -183,6 +183,8 @@
 
 [Phase 5.14](./PHASE5_14.md)에서 F2-08의 client별 미종료 WRITE 작업 조회와 시작·전환·종료 구독을 추가했다. 두 관측 스트림은 구독자 집합을 나누고 전달 queue를 공유해 상대 순서를 유지하며, 입력·응답·오류 객체와 idempotency 값은 제외한다. 종료 작업은 client가 보관하지 않는다. 개발 도구 UI·TanStack devtools/plugin 호환·플랫폼 자동 설치·영속 queue 작업 관측은 열린 상태다.
 
+[Phase 5.15](./PHASE5_15.md)에서 F2-07의 연결 제출을 여러 query로 확장했다. 작업 1건은 link별 정책을 갖는 schema 2 기록이고, `send`는 모든 link를 재검사한 뒤에만 durable 장벽을 쓰며 장벽 snapshot은 연결된 모든 query를 미확정으로 표시한다. 진행 중 로컬 편집의 연속 checkpoint와 unknown 자동 재개는 열린 상태다.
+
 **기준 테스트:** T2-23의 모든 F2 하위 시나리오, T2-03/04/07/10~13/22/25의 복원·네트워크 상태 조합.
 
 **종료:** 해당 출시 범위의 모든 기능에 구현·테스트 증거 존재. 전체 동등성 선언은 전체 목록 통과 시에만 가능하며, 부분 출시라면 미지원 항목을 명시함.
@@ -245,6 +247,13 @@
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
+
+### 2026-09-22 — Phase 5.15 다중 연결 제출 기록
+
+- done: [Phase 5.15](./PHASE5_15.md)의 `links` 배열 schema 2 기록, 중복 key 거절과 저장 원자성, 전체 재검사 뒤 WRITE, handle 집합 일치, 모든 연결 query를 표시하는 보수적 장벽, link별 거절 정책, 재시작 unknown 보류를 구현했다. sync 139개 테스트·소비자 선언 타입·빌드 ESM smoke 및 `pnpm gate` PASS. 기본 core gzip 3,433/3,500 B PASS.
+- next: F2-07의 진행 중 편집 연속 checkpoint와 unknown 자동 재개를 별도 단계로 설계한다. F2-08 개발 도구 UI, Phase 6 resource/draft pending 조합과 Phase 7/8 검증은 남는다.
+- blockers: 외부 차단 없음. schema 1 기록은 마이그레이션하지 않는다. M2-01~20 미수행. F2 전체 동등성 미완료.
+- 시작 기준 commit: `26ea1b0` (Phase 5.14). Phase 5.15 변경은 이 문서와 같은 커밋에 있다.
 
 ### 2026-09-22 — Phase 5.14 Mutation 작업 관측
 

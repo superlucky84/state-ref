@@ -389,8 +389,9 @@ queue. A saved local snapshot does not contain an active mutation's DTO or
 submission record and cannot resume a linked WRITE.
 
 For one linked submission, keep its DTO and local recovery snapshot together
-under another storage key. Stage the exact selected changes, then explicitly
-send after the host is online:
+under another storage key. A submission may link several queries; stage the
+exact selected changes per link, then explicitly send after the host is
+online:
 
 ```ts
 import { openPersistedLinkedMutation } from '@stateref/sync';
@@ -401,17 +402,24 @@ const linked = await openPersistedLinkedMutation({
   buster: 'api-v1',
   isOnline: () => navigator.onLine,
 });
-await linked.stage(client, account, {
+await linked.stage(client, {
   id: 'city-42',
   input: { city: account.ref.address.city.value },
   idempotencyKey: 'city-42',
-  ids: account
-    .changes()
-    .filter(change => change.path.join('.') === 'address.city')
-    .map(change => change.id),
-  accept: 'submitted',
+  links: [
+    {
+      query: account,
+      ids: account
+        .changes()
+        .filter(change => change.path.join('.') === 'address.city')
+        .map(change => change.id),
+      accept: 'submitted',
+    },
+    { query: preferences, accept: 'refetch', onReject: 'remove' },
+  ],
 });
-const outcome = await linked.send(client, account, save); // null while offline
+// null while offline; the handles must match the staged keys, in any order
+const outcome = await linked.send(client, [account, preferences], save);
 
 // On a new client, before opening query handles:
 const restarted = createSyncClient();
@@ -429,13 +437,20 @@ const restoredAccount = restarted.query({
 
 `send` checks the staged query baseline and edits, writes an `inFlight`
 marker and an unconfirmed recovery snapshot before calling `mutationFn`, and
-records the result afterward. A failed marker write prevents the WRITE. On
+records the result afterward. The stored format is schema 2; an earlier
+single-link record is refused as an unsupported version, so change `buster`
+when upgrading. A failed marker write prevents the WRITE. On
 restart, `inFlight` becomes `unknown`; inspect and reconcile it with the
 server before calling `discard()`. It is never replayed automatically. A
-successful linked record stays available until discarded. `send` accepts one
-query and the serializable `none`, `submitted`, or `refetch` acceptance policy;
-`response.select` and multiple links require direct `mutation.run`. A
-pre-send edit or baseline change requires discarding and staging again. If the
+successful linked record stays available until discarded. Each link carries the
+serializable `none`, `submitted`, or `refetch` acceptance policy and its own
+rejection policy; `response.select` needs a function, so it still requires
+direct `mutation.run`. `send` rechecks every link first and starts no WRITE if
+any one of them changed, and the pre-WRITE recovery snapshot marks every linked
+query unconfirmed. The result is recorded per job: if only some links fail to
+reconcile, the job is `sync-error` and the links that already applied are not
+rolled back. A pre-send edit or baseline change on any link requires discarding
+and staging again. If the
 result record cannot be saved, the WRITE may already have occurred and the
 next startup treats its `inFlight` marker as unknown. Follow-up edits during
 an active WRITE are captured after it settles when local dehydration succeeds;
