@@ -1,6 +1,6 @@
 import { create } from 'state-ref';
 import type { StateRefStore, Watch } from 'state-ref';
-import type { QueryHandle } from './index';
+import type { QueryHandle, QueryKey } from './index';
 import type { ResourceSubmission } from './resource';
 import { guardRef, guardedWatch } from './ref-guard';
 
@@ -101,11 +101,34 @@ export type MutationHandle<I, T> = Readonly<{
 }>;
 
 export type PreparedLink<T> = {
+  /** Normalized key of the linked query, reported to diagnostic observers. */
+  queryKey: QueryKey;
   begin: () => void;
   success: (data: T) => Promise<void>;
   reject: () => void;
   uncertain: () => void;
   end: () => void;
+};
+
+/**
+ * Diagnostic hooks for one WRITE operation. They never change its outcome and
+ * never receive the input, the response, or caller-owned error objects.
+ */
+export type MutationObserver = {
+  started: (record: MutationOperationRecord) => void;
+  updated: (record: MutationOperationRecord) => void;
+  settled: (record: MutationOperationRecord) => void;
+};
+
+export type MutationOperationRecord = {
+  operationId: number;
+  phase: 'queued' | 'pending' | MutationResult<unknown>['kind'];
+  scope: string | null;
+  attempt: number;
+  idempotent: boolean;
+  linkedKeys: readonly QueryKey[];
+  startedAt: number;
+  settledAt: number | null;
 };
 
 const idle: MutationStatus = Object.freeze({
@@ -170,7 +193,8 @@ export function createMutation<I, T>(
   options: MutationOptions<I, T>,
   nextId: () => number,
   prepare: (links: readonly MutationLink<T>[]) => PreparedLink<T>[],
-  schedule: <R>(scope: string, task: () => Promise<R>) => Promise<R>
+  schedule: <R>(scope: string, task: () => Promise<R>) => Promise<R>,
+  observe: MutationObserver
 ): MutationHandle<I, T> {
   const shared = statusStore();
   let pending = 0;
@@ -226,7 +250,22 @@ export function createMutation<I, T>(
     }
     pending += 1;
     publish('pending');
+    const record: MutationOperationRecord = {
+      operationId: id,
+      phase: run.scope ? 'queued' : 'pending',
+      scope: run.scope ?? null,
+      attempt: 0,
+      idempotent: run.idempotencyKey !== undefined,
+      linkedKeys: Object.freeze(links.map(link => link.queryKey)),
+      startedAt: Date.now(),
+      settledAt: null,
+    };
+    observe.started(record);
     const execute = async (): Promise<MutationResult<T>> => {
+      if (record.phase === 'queued') {
+        record.phase = 'pending';
+        observe.updated(record);
+      }
       let outcome: MutationResult<T>;
       try {
         let data!: T;
@@ -234,6 +273,10 @@ export function createMutation<I, T>(
         let succeeded = false;
         for (let attempt = 0; attempt <= retry; attempt += 1) {
           try {
+            if (attempt !== record.attempt) {
+              record.attempt = attempt;
+              observe.updated(record);
+            }
             if (controller.signal.aborted) throw controller.signal.reason;
             data = await options.mutationFn(frozenInput, {
               signal: controller.signal,
@@ -315,6 +358,9 @@ export function createMutation<I, T>(
       if (callbackError !== undefined) outcome = { ...outcome, callbackError };
       pending -= 1;
       publish(outcome.kind, 'error' in outcome ? outcome.error : null);
+      record.phase = outcome.kind;
+      record.settledAt = Date.now();
+      observe.settled(record);
       run.signal?.removeEventListener('abort', abort);
       return Object.freeze(outcome);
     };

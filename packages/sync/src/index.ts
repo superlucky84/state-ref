@@ -7,7 +7,13 @@ import { ResourceStore } from './resource';
 import type { ResourceChange, ResourceSubmission } from './resource';
 import { frozenCopy } from './tree';
 import { createMutation } from './mutation';
-import type { MutationHandle, MutationLink, MutationOptions } from './mutation';
+import type {
+  MutationHandle,
+  MutationLink,
+  MutationOptions,
+  MutationOperationRecord,
+  MutationResult,
+} from './mutation';
 import { copyJson, parseSnapshot } from './hydration';
 import type { HydratedQuery, SyncSnapshot } from './hydration';
 import { parseLocalSnapshot } from './local-hydration';
@@ -140,6 +146,29 @@ export type SyncCacheEvent = Readonly<{
   entry: SyncCacheEntry;
 }>;
 
+/**
+ * Read-only WRITE metadata for tooling. The input, the response, and
+ * caller-owned error objects are omitted, and observation never implies that
+ * the server accepted the operation.
+ */
+export type SyncMutationEntry = Readonly<{
+  operationId: number;
+  /** Diagnostic phase; `queued` marks scope ordering and has no status equivalent. */
+  phase: 'queued' | 'pending' | MutationResult<unknown>['kind'];
+  scope: string | null;
+  attempt: number;
+  /** Whether the caller supplied an idempotency key; the value stays private. */
+  idempotent: boolean;
+  linkedKeys: readonly QueryKey[];
+  startedAt: number;
+  settledAt: number | null;
+}>;
+
+export type SyncMutationEvent = Readonly<{
+  type: 'started' | 'updated' | 'settled';
+  entry: SyncMutationEntry;
+}>;
+
 export type QueryOptions<T> = Readonly<{
   queryKey: QueryKey;
   queryFn: (context: { signal: AbortSignal }) => Promise<T> | T;
@@ -223,6 +252,12 @@ export type SyncClient = Readonly<{
   inspectCache: () => readonly SyncCacheEntry[];
   /** Future cache events; delivery is deferred until after the current turn. */
   subscribeCache: (listener: (event: SyncCacheEvent) => void) => () => void;
+  /** Unsettled WRITE operations started by this client, in start order. */
+  inspectMutations: () => readonly SyncMutationEntry[];
+  /** Future WRITE events; settled operations are not retained by the client. */
+  subscribeMutations: (
+    listener: (event: SyncMutationEvent) => void
+  ) => () => void;
   dehydrate: () => SyncSnapshot;
   /** Restore into an empty client before creating query handles. */
   hydrate: (snapshot: SyncSnapshot) => void;
@@ -336,10 +371,14 @@ class QueryEntry<T> {
     this.changed(this);
   };
 
+  key(): QueryKey {
+    return frozenCopy(JSON.parse(this.hash)) as QueryKey;
+  }
+
   inspect(): SyncCacheEntry {
     const status = this.statusValue;
     return Object.freeze({
-      queryKey: frozenCopy(JSON.parse(this.hash)) as QueryKey,
+      queryKey: this.key(),
       kind: this.kind,
       owners: this.owners,
       status: Object.freeze({
@@ -751,28 +790,31 @@ class QueryEntry<T> {
 /** One client owns one cache. Construct a new client for each SSR request. */
 export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
   const entries = new Map<string, QueryEntry<any>>();
-  const listeners = new Set<{
-    listener: (event: SyncCacheEvent) => void;
-  }>();
+  type Subscription<E> = { listener: (event: E) => void };
+  const listeners = new Set<Subscription<SyncCacheEvent>>();
+  const mutationListeners = new Set<Subscription<SyncMutationEvent>>();
+  /** Both streams share one queue so their relative order is preserved. */
   const eventQueue: Array<{
-    event: SyncCacheEvent;
-    targets: Array<{ listener: (event: SyncCacheEvent) => void }>;
+    event: SyncCacheEvent | SyncMutationEvent;
+    targets: Array<Subscription<any>>;
+    registry: Set<Subscription<any>>;
   }> = [];
   let deliveryQueued = false;
-  const queueEvent = (type: SyncCacheEvent['type'], entry: SyncCacheEntry) => {
-    if (!listeners.size) return;
+  const queueTo = <E>(registry: Set<Subscription<E>>, event: E) => {
+    if (!registry.size) return;
     eventQueue.push({
-      event: Object.freeze({ type, entry }),
-      targets: Array.from(listeners),
+      event: Object.freeze(event) as SyncCacheEvent | SyncMutationEvent,
+      targets: Array.from(registry),
+      registry,
     });
     if (deliveryQueued) return;
     deliveryQueued = true;
     queueMicrotask(() => {
       deliveryQueued = false;
       while (eventQueue.length) {
-        const { event, targets } = eventQueue.shift()!;
+        const { event, targets, registry } = eventQueue.shift()!;
         for (const target of targets) {
-          if (!listeners.has(target)) continue;
+          if (!registry.has(target)) continue;
           try {
             target.listener(event);
           } catch {
@@ -782,12 +824,51 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
       }
     });
   };
+  const queueEvent = (type: SyncCacheEvent['type'], entry: SyncCacheEntry) =>
+    queueTo(listeners, { type, entry });
+  const dropQueued = () => {
+    if (!listeners.size && !mutationListeners.size) eventQueue.length = 0;
+  };
   const changed = (entry: QueryEntry<any>) => {
     if (listeners.size && entries.get(entry.hash) === entry)
       queueEvent('updated', entry.inspect());
   };
   const emit = (type: SyncCacheEvent['type'], entry: QueryEntry<any>) => {
     if (listeners.size) queueEvent(type, entry.inspect());
+  };
+  /** Unsettled operations only; observers own any completed history. */
+  const operations = new Map<number, MutationOperationRecord>();
+  const inspectMutation = (
+    record: MutationOperationRecord
+  ): SyncMutationEntry =>
+    Object.freeze({
+      operationId: record.operationId,
+      phase: record.phase,
+      scope: record.scope,
+      attempt: record.attempt,
+      idempotent: record.idempotent,
+      linkedKeys: record.linkedKeys,
+      startedAt: record.startedAt,
+      settledAt: record.settledAt,
+    });
+  const emitMutation = (
+    type: SyncMutationEvent['type'],
+    record: MutationOperationRecord
+  ) => {
+    if (mutationListeners.size)
+      queueTo(mutationListeners, { type, entry: inspectMutation(record) });
+  };
+  const observeMutation = {
+    started: (record: MutationOperationRecord) => {
+      operations.set(record.operationId, record);
+      emitMutation('started', record);
+    },
+    updated: (record: MutationOperationRecord) =>
+      emitMutation('updated', record),
+    settled: (record: MutationOperationRecord) => {
+      operations.delete(record.operationId);
+      emitMutation('settled', record);
+    },
   };
   const handles = new WeakMap<object, QueryEntry<any>>();
   const scopes = new Map<string, Promise<void>>();
@@ -1336,6 +1417,7 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
               );
             }
             return {
+              queryKey: entry.key(),
               begin: () => {
                 if (submission) resource!.beginSubmission(submission);
                 try {
@@ -1366,7 +1448,8 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
           });
           return prepared;
         },
-        schedule
+        schedule,
+        observeMutation
       );
     },
     dehydrate(): SyncSnapshot {
@@ -1493,7 +1576,19 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
       listeners.add(subscription);
       return () => {
         listeners.delete(subscription);
-        if (!listeners.size) eventQueue.length = 0;
+        dropQueued();
+      };
+    },
+    inspectMutations: () =>
+      Object.freeze(
+        Array.from(operations.values(), record => inspectMutation(record))
+      ),
+    subscribeMutations(listener: (event: SyncMutationEvent) => void) {
+      const subscription = { listener };
+      mutationListeners.add(subscription);
+      return () => {
+        mutationListeners.delete(subscription);
+        dropQueued();
       };
     },
   });

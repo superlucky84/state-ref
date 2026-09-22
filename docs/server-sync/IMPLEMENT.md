@@ -181,6 +181,8 @@
 
 [Phase 5.13](./PHASE5_13.md)에서 F2-05의 무한 조회 `fetch/prefetch/ensure` 캐시 준비와 고정 key의 관찰자별 view를 추가했다. 임시 준비는 활성 query 설정을 바꾸지 않고, placeholder/select는 캐시에 들어가지 않는다. 반응형 infinite key 전환과 TanStack API 호환은 열린 상태다.
 
+[Phase 5.14](./PHASE5_14.md)에서 F2-08의 client별 미종료 WRITE 작업 조회와 시작·전환·종료 구독을 추가했다. 두 관측 스트림은 구독자 집합을 나누고 전달 queue를 공유해 상대 순서를 유지하며, 입력·응답·오류 객체와 idempotency 값은 제외한다. 종료 작업은 client가 보관하지 않는다. 개발 도구 UI·TanStack devtools/plugin 호환·플랫폼 자동 설치·영속 queue 작업 관측은 열린 상태다.
+
 **기준 테스트:** T2-23의 모든 F2 하위 시나리오, T2-03/04/07/10~13/22/25의 복원·네트워크 상태 조합.
 
 **종료:** 해당 출시 범위의 모든 기능에 구현·테스트 증거 존재. 전체 동등성 선언은 전체 목록 통과 시에만 가능하며, 부분 출시라면 미지원 항목을 명시함.
@@ -243,6 +245,13 @@
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
+
+### 2026-09-22 — Phase 5.14 Mutation 작업 관측
+
+- done: [Phase 5.14](./PHASE5_14.md)의 `inspectMutations()`/`subscribeMutations()`, 캐시와 공유하는 전달 queue, scope 대기·retry attempt 전환, 연결 query key와 결과 kind 구분, 관측자 예외·해제·시작 실패·client 격리를 구현했다. sync 136개 테스트·소비자 선언 타입·빌드 ESM smoke 및 `pnpm gate` PASS. 기본 core gzip 3,433/3,500 B PASS.
+- next: F2-08의 남은 개발 도구 UI·플랫폼 자동 설치 또는 F2-07 잔여 영속화 범위를 별도 단계로 설계한다. Phase 6 resource/draft pending 조합과 Phase 7/8 검증은 남는다.
+- blockers: 외부 차단 없음. M2-01~20 미수행. F2 전체 동등성 미완료.
+- 시작 기준 commit: `e844802` (Phase 5.13). Phase 5.14 변경은 이 문서와 같은 커밋에 있다.
 
 ### 2026-09-22 — Phase 5.13 무한 조회 캐시 준비·관찰자 View
 

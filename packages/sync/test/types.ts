@@ -18,10 +18,13 @@ import type {
   LocalSyncSnapshot,
   MutationResult,
   NetworkMode,
+  QueryKey,
   ResourceSubmission,
   SyncClientOptions,
   SyncCacheEntry,
   SyncCacheEvent,
+  SyncMutationEntry,
+  SyncMutationEvent,
   SyncEnvironment,
   SyncEnvironmentEvent,
   SyncStorage,
@@ -66,6 +69,22 @@ const stopCacheObservation: () => void = client.subscribeCache(
 );
 void cacheEntries;
 stopCacheObservation();
+const mutationEntries: readonly SyncMutationEntry[] = client.inspectMutations();
+// @ts-expect-error diagnostic snapshots omit the input, the response and errors
+mutationEntries[0].error;
+const stopMutationObservation: () => void = client.subscribeMutations(
+  (event: SyncMutationEvent) => {
+    const phase: 'queued' | 'pending' | 'success' | 'sync-error' | 'rejected' | 'unknown' =
+      event.entry.phase;
+    const scope: string | null = event.entry.scope;
+    const linked: readonly QueryKey[] = event.entry.linkedKeys;
+    void phase;
+    void scope;
+    void linked;
+  }
+);
+void mutationEntries;
+stopMutationObservation();
 const resource = client.query({
   queryKey: ['edit'],
   queryFn: () => ({ city: '서울' }),

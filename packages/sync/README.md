@@ -41,6 +41,30 @@ with its returned function when the tool or plugin closes. Listener errors do
 not change query outcomes. This is a read-only integration boundary, not a
 TanStack devtools or plugin compatibility API.
 
+WRITE operations are observable on a separate stream that shares the same
+delivery order:
+
+```ts
+const stopWatching = client.subscribeMutations(event => {
+  // event.type: 'started' | 'updated' | 'settled'
+  console.log(event.entry.operationId, event.entry.phase, event.entry.linkedKeys);
+});
+const running = client.inspectMutations();
+stopWatching();
+```
+
+`inspectMutations()` lists only operations that have not settled yet, in start
+order. `phase` is diagnostic: `queued` means the operation is waiting on its
+`scope`, and it differs from `MutationStatus.phase`. `updated` events report the
+`queued` to `pending` transition and each retry `attempt`. A `settled` event
+carries the final snapshot and the client then drops the operation, so keep your
+own history if you need one. An operation that throws before it becomes pending
+(a stale submission, for example) produces no event. The input, the response,
+caller-owned error objects and the `idempotencyKey` value are omitted;
+`idempotent` only reports whether a key was supplied. Observing a `success`
+phase is a diagnostic signal, never a reason to resend an `unknown` or
+`sync-error` operation.
+
 Mutation input can have a different shape from query data. Capture the edits
 you intend to submit immediately before `run`; the capture contains an immutable
 value and change snapshot. A captured version becomes stale if the resource is

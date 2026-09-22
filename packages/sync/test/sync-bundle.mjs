@@ -41,6 +41,28 @@ await Promise.resolve();
 assert.equal(cacheEvents[0].type, 'added');
 assert.equal(cacheEvents.at(-1).type, 'removed');
 stopCacheObservation();
+const mutationEvents = [];
+const stopMutationObservation = observedClient.subscribeMutations(event =>
+  mutationEvents.push(event)
+);
+const observedCommand = observedClient.mutation({
+  mutationFn: input => ({ echo: input.city }),
+});
+const observedTask = observedCommand.start({ city: '서울' });
+assert.equal(observedClient.inspectMutations()[0].phase, 'pending');
+assert.equal(observedClient.inspectMutations()[0].idempotent, false);
+await observedTask.result;
+await Promise.resolve();
+assert.deepEqual(
+  mutationEvents.map(event => event.type),
+  ['started', 'settled']
+);
+assert.equal(mutationEvents.at(-1).entry.phase, 'success');
+assert.doesNotMatch(JSON.stringify(mutationEvents), /서울/);
+assert.deepEqual(observedClient.inspectMutations(), []);
+stopMutationObservation();
+observedTask.dispose();
+observedCommand.dispose();
 await query.load();
 assert.equal(query.ref.count.value, 1);
 query.ref.count.value = 2;
@@ -323,5 +345,5 @@ restoredClean.dispose();
 assert.equal(submitted.changes.length, 1);
 query.dispose();
 console.log(
-  'sync ESM bundle: query, mutation, hydration, cache, views, automatic refetch, infinite query helpers, network mode and persistence PASS'
+  'sync ESM bundle: query, mutation, hydration, cache and mutation observation, views, automatic refetch, infinite query helpers, network mode and persistence PASS'
 );
