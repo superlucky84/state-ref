@@ -95,6 +95,8 @@ batch의 export 경로는 `state-ref/batch`로 확정했다. 그 밖의 미구�
 
 F2-08의 Phase 5.12 하위 수용 범위는 client별 현재 캐시 metadata 조회와 생성·변경·제거 구독이다. query payload·로컬 편집 값·mutation DTO는 이벤트에 포함하지 않고, listener 해제와 오류 격리는 T2-23/M2-19에서 확인한다. [Phase 5.12 계약](./PHASE5_12.md)을 따른다.
 
+Phase 7.2의 수용 범위는 결과별 잔여 intent와 두 기준의 모델 대조다. `unknown`과 `sync-error`는 미확정으로 두고 입력을 보존하며, 확정 거절은 `remove` 정책에서만 제출 입력을 되돌린다. `refetch` 수용은 제출한 입력을 소비하므로 미제출 입력만 새 기준보다 우선한다. 참조 모델은 구현의 병합·변경 추적을 재사용하지 않는다. [Phase 7.2 계약](./PHASE7_2.md)을 따른다.
+
 Phase 7.1의 수용 범위는 순서·경계 계약의 고정이다. 충돌은 현재 원본 값의 함수이고, 배열 재정렬은 apply를 거절하며, 로컬 입력은 늦게 도착한 기준보다 우선한다. 캐시는 최신 epoch의 READ만 받고 `invalidate()`는 진행 중 READ를 abort한다. 연결 WRITE 중에는 READ를 시작하지 않고 이전 READ의 기준도 받지 않는다. T2-01~26 및 [Phase 7.1 계약](./PHASE7_1.md)을 따른다.
 
 Phase 6의 수용 범위는 resource 원본과 draft의 조합이다. draft는 원본의 현재 값에서 clean하게 분기하고 부모의 변경 기록을 복사하지 않는다. `apply()`는 네트워크를 호출하지 않고 병합한 값을 root에 한 번 써서 원본의 변경 기록을 root 경로 1건으로 만든다. 겹친 갱신은 conflict로 표시하고 입력을 보존하며, 해제된 원본의 쓰기 실패는 `missing-source`로 보고한다. T2-01/05/06/10~22/26 및 [Phase 6 계약](./PHASE6.md)을 따른다.
