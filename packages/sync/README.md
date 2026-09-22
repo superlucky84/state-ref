@@ -495,7 +495,26 @@ await queue.enqueue({
   idempotencyKey: 'note-42',
 });
 await queue.resume();
+
+// Or let a reconnect call resume() for you:
+const stopAutoResume = queue.autoResume(environment, {
+  onSettled: results => console.log(results.map(item => item.result.kind)),
+  onError: error => report(error),
+});
 ```
+
+`autoResume(environment, handlers?)` automates only *when* `resume()` runs, never
+which jobs may run: every rule below still applies. It reacts to `reconnect`,
+not `focus`, checks `environment.isOnline()` first, and runs once immediately
+when it attaches while already online. Runs never overlap and events arriving
+during a run collapse into one trailing run. Results go to `onSettled`, a
+failure of `resume()` itself to `onError`, and a throwing handler does not stop
+later resumes. The returned disposer stops future runs, including one already
+queued behind a running resume. An automatic resume never calls
+`retryUnknown`, so an `unknown` job keeps blocking the queue until you decide.
+A linked submission is deliberately excluded: sending one needs live query
+handles and a local state only the app knows is still current, so it stays
+explicit.
 
 The queue writes an `inFlight` marker before every WRITE. On restart, an
 `inFlight` job becomes `unknown`; it and later queued jobs are held. An unknown

@@ -204,6 +204,7 @@
 - [ ] 별도 schema 2 복구 snapshot에서 dirty 값·변경 ID·충돌을 복원한다. 복원은 WRITE를 보내지 않아야 하며, 미확정 WRITE는 재조회나 알려진 서버 값 수용 전까지 clean SSR 저장을 막아야 한다. 진행 READ/연결 WRITE 중 저장은 거절해야 한다.
 - [ ] 독립 명령을 offline에서 보관한 뒤 online에서 명시적으로 재개한다. WRITE 직전 재시작한 작업은 `unknown`으로 보이고, 후속 명령도 멈추며 자동 재전송되지 않아야 한다. `maxAge`가 지난 명령도 보존·중단해야 한다. 서버 중복 방지 확인 뒤에만 같은 키로 명시적 재시도한다.
 - [ ] client별 `inspectCache()`와 `subscribeCache()`에서 조회 상태·소유자 수·생성/제거가 맞는지 확인한다. query payload와 mutation DTO는 이벤트에 없어야 하며, 구독 해제 뒤 이벤트가 더 오지 않아야 한다.
+- [ ] `autoResume`를 연결한 뒤 오프라인에서 보관한 명령이 재연결에서 자동으로 재개되고, focus나 오프라인 재연결에서는 실행되지 않는지 확인한다. `unknown` 작업은 재연결을 반복해도 재전송되지 않고 후속 명령을 막아야 하며, `retryUnknown` 뒤에만 다시 재개돼야 한다. 해제 뒤에는 재연결이 아무것도 시작하지 않아야 한다. 연결 제출은 자동 재개 대상이 아니다.
 - [ ] `checkpoint: true`로 연 기록에서 WRITE 진행 중 입력한 로컬 편집이 저장되고, 도중에 앱을 종료해도 복원에 남는지 확인한다. 저장된 작업 상태는 계속 `inFlight`이고 연결 query는 미확정이어야 하며, checkpoint 저장이 실패해도 WRITE와 결과 기록은 진행돼야 한다. `checkpoint`를 켜지 않으면 기존처럼 결과 시점에만 저장돼야 한다.
 - [ ] 여러 query를 묶은 연결 제출에서 한 link만 편집해도 WRITE가 시작되지 않고, 전달한 handle 집합이 저장된 key 집합과 다르면 거절되는지 확인한다. 전송 직전 복구 snapshot은 연결된 모든 query를 미확정으로 표시해야 하며, 재시작한 작업은 `unknown`으로 보류돼야 한다. 이전 단일 연결 기록은 마이그레이션되지 않으므로 `buster` 변경이 필요하다.
 - [ ] client별 `inspectMutations()`와 `subscribeMutations()`에서 미종료 WRITE만 보이고 scope 대기는 `queued`, 실행은 `pending`으로 구분되는지 확인한다. 입력 DTO·응답·오류 객체·idempotency 키 값이 이벤트에 없어야 하며, 종료 작업은 목록에서 빠지고 구독 해제 뒤 이벤트가 더 오지 않아야 한다. 관측된 `success`를 재전송 근거로 삼지 않는다.

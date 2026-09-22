@@ -1,4 +1,5 @@
 import type { SyncClient } from './index';
+import type { SyncEnvironment } from './automatic-refetch';
 import type { MutationHandle, MutationResult } from './mutation';
 import { copyJson } from './hydration';
 import type { SyncSnapshot } from './hydration';
@@ -163,6 +164,17 @@ export type PersistedMutationQueueOptions = Readonly<{
   isOnline?: () => boolean;
 }>;
 
+export type ResumedMutation = Readonly<{
+  id: string;
+  result: MutationResult<unknown>;
+}>;
+
+export type AutoResumeHandlers = Readonly<{
+  onSettled?: (results: readonly ResumedMutation[]) => void;
+  /** Receives a failure of `resume()` itself, not a rejected WRITE. */
+  onError?: (error: unknown) => void;
+}>;
+
 export type PersistedMutationQueue = Readonly<{
   entries: () => readonly PersistedMutationJob[];
   enqueue: (job: {
@@ -172,9 +184,15 @@ export type PersistedMutationQueue = Readonly<{
     idempotencyKey: string;
   }) => Promise<void>;
   /** Runs queued commands in order; never runs unknown jobs. */
-  resume: () => Promise<
-    readonly { id: string; result: MutationResult<unknown> }[]
-  >;
+  resume: () => Promise<readonly ResumedMutation[]>;
+  /**
+   * Call `resume()` on reconnect, and once now when already online. It changes
+   * only when a resume runs, never which jobs may run. Returns a disposer.
+   */
+  autoResume: (
+    environment: SyncEnvironment,
+    handlers?: AutoResumeHandlers
+  ) => () => void;
   /** Explicitly stage an unknown operation for replay with the same key. */
   retryUnknown: (id: string) => Promise<void>;
   discard: (id: string) => Promise<void>;
@@ -282,6 +300,47 @@ export async function openPersistedMutationQueue(
     if (!job) throw new Error(`No persisted mutation job: ${id}`);
     return job;
   };
+  const resume = (): Promise<readonly ResumedMutation[]> =>
+    serialize(async () => {
+      const results: { id: string; result: MutationResult<unknown> }[] = [];
+      for (const queued of [...jobs]) {
+        if (queued.state === 'unknown' || queued.state === 'inFlight') break;
+        if (queued.state === 'rejected') continue;
+        const age = Date.now() - queued.enqueuedAt;
+        if (age < 0 || age > (options.maxAge ?? Infinity)) break;
+        if (options.isOnline && !options.isOnline()) break;
+        const command = Object.prototype.hasOwnProperty.call(
+          options.commands,
+          queued.command
+        )
+          ? options.commands[queued.command]
+          : undefined;
+        if (!command)
+          throw new TypeError(
+            `No mutation command registered: ${queued.command}`
+          );
+        await replace(queued.id, 'inFlight');
+        let result: MutationResult<unknown>;
+        try {
+          result = await command.run(copyInput(queued.input), {
+            idempotencyKey: queued.idempotencyKey,
+          });
+        } catch (error) {
+          result = { kind: 'unknown', operationId: -1, error };
+        }
+        if (result.kind === 'success') {
+          await persist(jobs.filter(job => job.id !== queued.id));
+        } else {
+          await replace(
+            queued.id,
+            result.kind === 'rejected' ? 'rejected' : 'unknown'
+          );
+        }
+        results.push({ id: queued.id, result });
+        if (result.kind === 'unknown' || result.kind === 'sync-error') break;
+      }
+      return results;
+    });
   return Object.freeze({
     entries: () =>
       jobs.map(job => Object.freeze({ ...job, input: copyInput(job.input) })),
@@ -308,47 +367,47 @@ export async function openPersistedMutationQueue(
         });
         await persist([...jobs, next]);
       }),
-    resume: () =>
-      serialize(async () => {
-        const results: { id: string; result: MutationResult<unknown> }[] = [];
-        for (const queued of [...jobs]) {
-          if (queued.state === 'unknown' || queued.state === 'inFlight') break;
-          if (queued.state === 'rejected') continue;
-          const age = Date.now() - queued.enqueuedAt;
-          if (age < 0 || age > (options.maxAge ?? Infinity)) break;
-          if (options.isOnline && !options.isOnline()) break;
-          const command = Object.prototype.hasOwnProperty.call(
-            options.commands,
-            queued.command
-          )
-            ? options.commands[queued.command]
-            : undefined;
-          if (!command)
-            throw new TypeError(
-              `No mutation command registered: ${queued.command}`
-            );
-          await replace(queued.id, 'inFlight');
-          let result: MutationResult<unknown>;
+    resume,
+    autoResume(
+      environment: SyncEnvironment,
+      handlers: AutoResumeHandlers = {}
+    ) {
+      if (!environment || typeof environment.subscribe !== 'function')
+        throw new TypeError('Automatic resume requires a sync environment.');
+      let active = true;
+      let requested = false;
+      let chain: Promise<void> = Promise.resolve();
+      const request = () => {
+        if (!active) return;
+        requested = true;
+        chain = chain.then(async () => {
+          if (!active || !requested) return;
+          requested = false;
+          if (!environment.isOnline()) return;
+          let results: readonly ResumedMutation[] | null = null;
+          let failure: unknown;
           try {
-            result = await command.run(copyInput(queued.input), {
-              idempotencyKey: queued.idempotencyKey,
-            });
+            results = await resume();
           } catch (error) {
-            result = { kind: 'unknown', operationId: -1, error };
+            failure = error;
           }
-          if (result.kind === 'success') {
-            await persist(jobs.filter(job => job.id !== queued.id));
-          } else {
-            await replace(
-              queued.id,
-              result.kind === 'rejected' ? 'rejected' : 'unknown'
-            );
+          try {
+            if (results) handlers.onSettled?.(results);
+            else handlers.onError?.(failure);
+          } catch {
+            // A reporting callback cannot stop later automatic resumes.
           }
-          results.push({ id: queued.id, result });
-          if (result.kind === 'unknown' || result.kind === 'sync-error') break;
-        }
-        return results;
-      }),
+        });
+      };
+      const stop = environment.subscribe(event => {
+        if (event === 'reconnect') request();
+      });
+      if (environment.isOnline()) request();
+      return () => {
+        active = false;
+        stop();
+      };
+    },
     retryUnknown: id =>
       serialize(async () => {
         const job = get(id);

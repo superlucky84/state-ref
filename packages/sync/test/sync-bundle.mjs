@@ -298,6 +298,21 @@ await queue.enqueue({
 });
 assert.equal((await queue.resume())[0].result.kind, 'success');
 assert.deepEqual(queue.entries(), []);
+await queue.enqueue({
+  id: 'auto',
+  command: 'send',
+  input: { count: 5 },
+  idempotencyKey: 'request-auto',
+});
+const autoResumed = [];
+const stopAutoResume = queue.autoResume(
+  { subscribe: () => () => {}, isFocused: () => true, isOnline: () => true },
+  { onSettled: results => autoResumed.push(...results.map(item => item.id)) }
+);
+while (queue.entries().length)
+  await new Promise(resolve => setTimeout(resolve));
+assert.deepEqual(autoResumed, ['auto']);
+stopAutoResume();
 const editableClient = createSyncClient({ ssr: true });
 const editable = editableClient.query({
   queryKey: ['local-bundle'],

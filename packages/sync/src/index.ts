@@ -70,6 +70,8 @@ export type {
   StageLinkedMutationLink,
 } from './linked-persistence';
 export type {
+  AutoResumeHandlers,
+  ResumedMutation,
   SyncStorage,
   SyncPersistenceOptions,
   PersistedMutationJob,

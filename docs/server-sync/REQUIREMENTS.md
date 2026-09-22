@@ -95,6 +95,8 @@ batch의 export 경로는 `state-ref/batch`로 확정했다. 그 밖의 미구�
 
 F2-08의 Phase 5.12 하위 수용 범위는 client별 현재 캐시 metadata 조회와 생성·변경·제거 구독이다. query payload·로컬 편집 값·mutation DTO는 이벤트에 포함하지 않고, listener 해제와 오류 격리는 T2-23/M2-19에서 확인한다. [Phase 5.12 계약](./PHASE5_12.md)을 따른다.
 
+F2-07의 Phase 5.17 하위 수용 범위는 보관된 독립 명령의 자동 재개다. `autoResume`는 `resume()`을 부르는 시점만 자동화하고 순서·`unknown` 차단·`maxAge`·`isOnline`·직렬화 규칙을 바꾸지 않으며 `retryUnknown`을 호출하지 않는다. 연결 제출은 살아 있는 query handle과 최신 로컬 상태가 필요하므로 자동 재개 대상이 아니다. T2-23/M2-19 및 [Phase 5.17 계약](./PHASE5_17.md)을 따른다.
+
 F2-07의 Phase 5.16 하위 수용 범위는 전송 중 로컬 편집의 durable 보존이다. `dehydrateLocal({ inFlight: 'unconfirmed' })`는 진행 중 READ·연결 WRITE를 거절하지 않고 보수적으로 표시해 저장하고, `checkpoint: true` 기록의 `send`는 WRITE 중 변경을 같은 기록에 합쳐 갱신한다. checkpoint는 작업 상태를 바꾸지 않고 실패해도 WRITE를 취소하지 않으며, 연결 query는 계속 미확정이다. T2-23/M2-19 및 [Phase 5.16 계약](./PHASE5_16.md)을 따른다.
 
 F2-07의 Phase 5.15 하위 수용 범위는 연결 제출 1건이 여러 query를 묶는 schema 2 기록이다. 각 link는 query key·revision·선택 변경·수용/거절 정책을 갖고 같은 key는 한 번만 연결한다. `send`는 모든 link를 먼저 재검사하고 하나라도 다르면 WRITE를 시작하지 않으며, durable 장벽은 연결된 모든 query를 미확정으로 표시한다. 결과는 작업 단위로 기록한다. T2-23/M2-19 및 [Phase 5.15 계약](./PHASE5_15.md)을 따른다.

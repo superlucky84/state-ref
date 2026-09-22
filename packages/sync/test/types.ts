@@ -11,6 +11,7 @@ import {
 } from '@stateref/sync';
 import type {
   AutomaticRefetchPolicy,
+  AutoResumeHandlers,
   BrowserSyncHost,
   InfiniteData,
   InfiniteQueryHandle,
@@ -30,6 +31,7 @@ import type {
   SyncEnvironmentEvent,
   SyncStorage,
   PersistedMutationQueue,
+  ResumedMutation,
   PersistedLinkedMutation,
   PersistedLinkedMutationLink,
   SyncSnapshot,
@@ -376,7 +378,20 @@ async function persistedCommands() {
   });
   const state: 'queued' | 'inFlight' | 'unknown' | 'rejected' =
     queue.entries()[0].state;
-  const results = await queue.resume();
+  const results: readonly ResumedMutation[] = await queue.resume();
+  const handlers: AutoResumeHandlers = {
+    onSettled: settled => void settled.length,
+    onError: error => void error,
+  };
+  const stopAutoResume: () => void = queue.autoResume(
+    {
+      subscribe: () => () => {},
+      isFocused: () => true,
+      isOnline: () => true,
+    },
+    handlers
+  );
+  stopAutoResume();
   void restored;
   void state;
   void results;

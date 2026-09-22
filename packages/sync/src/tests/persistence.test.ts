@@ -526,3 +526,291 @@ describe('durable standalone mutation queue', () => {
     expect(values.get('jobs')).toBe(corrupt);
   });
 });
+
+function testEnvironment(online = true) {
+  const listeners = new Set<(event: 'focus' | 'reconnect') => void>();
+  return {
+    setOnline(value: boolean) {
+      online = value;
+    },
+    emit(event: 'focus' | 'reconnect') {
+      listeners.forEach(listener => listener(event));
+    },
+    listenerCount: () => listeners.size,
+    environment: {
+      subscribe(listener: (event: 'focus' | 'reconnect') => void) {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+      isFocused: () => true,
+      isOnline: () => online,
+    },
+  };
+}
+
+describe('automatic resume of queued commands', () => {
+  it('resumes on attach and reconnect, but not on focus or while offline', async () => {
+    const { storage } = memoryStorage();
+    const client = createSyncClient({ ssr: true });
+    const calls: string[] = [];
+    const command = client.mutation({
+      mutationFn: (input: { id: string }) => {
+        calls.push(input.id);
+        return input.id;
+      },
+    });
+    const host = testEnvironment(false);
+    const queue = await openPersistedMutationQueue({
+      storage,
+      key: 'jobs',
+      buster: 'v1',
+      commands: { update: command },
+      isOnline: () => host.environment.isOnline(),
+    });
+    await queue.enqueue({
+      id: 'one',
+      command: 'update',
+      input: { id: 'one' },
+      idempotencyKey: 'request-one',
+    });
+
+    const settled: string[][] = [];
+    const stop = queue.autoResume(host.environment, {
+      onSettled: results => settled.push(results.map(item => item.id)),
+    });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(calls).toEqual([]); // Attaching while offline sends nothing.
+    expect(settled).toEqual([]);
+
+    host.setOnline(true);
+    host.emit('focus');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(calls).toEqual([]); // Focus is not a reconnect, even when online.
+    expect(settled).toEqual([]);
+
+    host.setOnline(false);
+    host.emit('reconnect');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    // An offline reconnect does not run a resume at all, so nothing reports.
+    expect(settled).toEqual([]);
+
+    host.setOnline(true);
+    host.emit('reconnect');
+    await vi.waitFor(() => expect(calls).toEqual(['one']));
+    expect(settled).toEqual([['one']]);
+    expect(queue.entries()).toEqual([]);
+
+    await queue.enqueue({
+      id: 'two',
+      command: 'update',
+      input: { id: 'two' },
+      idempotencyKey: 'request-two',
+    });
+    stop();
+    expect(host.listenerCount()).toBe(0);
+    host.emit('reconnect');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(calls).toEqual(['one']); // A disposed auto-resume stays silent.
+    expect(queue.entries()).toHaveLength(1);
+  });
+
+  it('resumes immediately when it attaches while already online', async () => {
+    const { storage } = memoryStorage();
+    const client = createSyncClient({ ssr: true });
+    const calls: string[] = [];
+    const host = testEnvironment(true);
+    const options = {
+      storage,
+      key: 'jobs',
+      buster: 'v1',
+      commands: {
+        update: client.mutation({
+          mutationFn: (input: { id: string }) => {
+            calls.push(input.id);
+            return input.id;
+          },
+        }),
+      },
+      isOnline: () => host.environment.isOnline(),
+    };
+    const queue = await openPersistedMutationQueue(options);
+    await queue.enqueue({
+      id: 'one',
+      command: 'update',
+      input: { id: 'one' },
+      idempotencyKey: 'request-one',
+    });
+    const restarted = await openPersistedMutationQueue(options);
+    expect(restarted.entries()).toHaveLength(1);
+    restarted.autoResume(host.environment);
+    await vi.waitFor(() => expect(calls).toEqual(['one']));
+  });
+
+  it('never sends past an unknown job and needs an explicit retry', async () => {
+    const { storage } = memoryStorage();
+    const client = createSyncClient({ ssr: true });
+    const calls: string[] = [];
+    let failing = true;
+    const host = testEnvironment(true);
+    const queue = await openPersistedMutationQueue({
+      storage,
+      key: 'jobs',
+      buster: 'v1',
+      commands: {
+        update: client.mutation({
+          mutationFn: (input: { id: string }) => {
+            calls.push(input.id);
+            if (failing) throw new Error('timeout');
+            return input.id;
+          },
+        }),
+      },
+      isOnline: () => host.environment.isOnline(),
+    });
+    await queue.enqueue({
+      id: 'one',
+      command: 'update',
+      input: { id: 'one' },
+      idempotencyKey: 'request-one',
+    });
+    await queue.enqueue({
+      id: 'two',
+      command: 'update',
+      input: { id: 'two' },
+      idempotencyKey: 'request-two',
+    });
+    queue.autoResume(host.environment);
+    await vi.waitFor(() => expect(queue.entries()[0].state).toBe('unknown'));
+    expect(calls).toEqual(['one']);
+
+    failing = false;
+    // Reconnecting repeatedly must not resend an unknown job.
+    host.emit('reconnect');
+    host.emit('reconnect');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(calls).toEqual(['one']);
+    expect(queue.entries().map(job => job.state)).toEqual([
+      'unknown',
+      'queued',
+    ]);
+
+    // Only an explicit decision puts it back in line.
+    await queue.retryUnknown('one');
+    host.emit('reconnect');
+    await vi.waitFor(() => expect(calls).toEqual(['one', 'one', 'two']));
+    expect(queue.entries()).toEqual([]);
+  });
+
+  it('drops a trailing resume that was requested before disposal', async () => {
+    const { storage } = memoryStorage();
+    const client = createSyncClient({ ssr: true });
+    const host = testEnvironment(true);
+    const gate = deferred<string>();
+    const queue = await openPersistedMutationQueue({
+      storage,
+      key: 'jobs',
+      buster: 'v1',
+      commands: { update: client.mutation({ mutationFn: () => gate.promise }) },
+      isOnline: () => host.environment.isOnline(),
+    });
+    await queue.enqueue({
+      id: 'one',
+      command: 'update',
+      input: { id: 'one' },
+      idempotencyKey: 'request-one',
+    });
+    let runs = 0;
+    const stop = queue.autoResume(host.environment, {
+      onSettled: () => {
+        runs += 1;
+      },
+    });
+    await vi.waitFor(() => expect(queue.entries()[0].state).toBe('inFlight'));
+
+    host.emit('reconnect'); // Requests a trailing resume behind the running one.
+    stop();
+    gate.resolve('done');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    // The running resume still reports; the trailing one never starts.
+    expect(runs).toBe(1);
+    expect(queue.entries()).toEqual([]);
+  });
+
+  it('coalesces bursts and isolates a throwing report callback', async () => {
+    const { storage } = memoryStorage();
+    const client = createSyncClient({ ssr: true });
+    const host = testEnvironment(true);
+    const gate = deferred<string>();
+    let held = true;
+    const queue = await openPersistedMutationQueue({
+      storage,
+      key: 'jobs',
+      buster: 'v1',
+      commands: {
+        update: client.mutation({
+          mutationFn: () => (held ? gate.promise : 'later'),
+        }),
+        missing: client.mutation({ mutationFn: () => 'unused' }),
+      },
+      isOnline: () => host.environment.isOnline(),
+    });
+    await queue.enqueue({
+      id: 'one',
+      command: 'update',
+      input: { id: 'one' },
+      idempotencyKey: 'request-one',
+    });
+    let runs = 0;
+    const stop = queue.autoResume(host.environment, {
+      onSettled: () => {
+        runs += 1;
+        throw new Error('reporting failed');
+      },
+    });
+    await vi.waitFor(() => expect(queue.entries()[0].state).toBe('inFlight'));
+
+    // Five reconnects during one run collapse into a single trailing resume.
+    for (let index = 0; index < 5; index += 1) host.emit('reconnect');
+    held = false;
+    gate.resolve('done');
+    await vi.waitFor(() => expect(runs).toBe(2));
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(runs).toBe(2);
+    expect(queue.entries()).toEqual([]);
+    stop();
+
+    // A resume that throws is reported without stopping later ones.
+    const broken = await openPersistedMutationQueue({
+      storage,
+      key: 'jobs',
+      buster: 'v1',
+      commands: { update: client.mutation({ mutationFn: () => 'ok' }) },
+      isOnline: () => host.environment.isOnline(),
+    });
+    await broken.enqueue({
+      id: 'gone',
+      command: 'update',
+      input: { id: 'gone' },
+      idempotencyKey: 'request-gone',
+    });
+    const reopened = await openPersistedMutationQueue({
+      storage,
+      key: 'jobs',
+      buster: 'v1',
+      commands: { other: client.mutation({ mutationFn: () => 'ok' }) },
+      isOnline: () => host.environment.isOnline(),
+    });
+    const errors: string[] = [];
+    reopened.autoResume(host.environment, {
+      onError: error => {
+        errors.push((error as Error).message);
+        throw new Error('reporting failed');
+      },
+    });
+    await vi.waitFor(() => expect(errors).toHaveLength(1));
+    expect(errors[0]).toContain('No mutation command registered');
+    host.emit('reconnect');
+    await vi.waitFor(() => expect(errors).toHaveLength(2));
+  });
+});
