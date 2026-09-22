@@ -1,6 +1,6 @@
 # REQUIREMENTS — state-ref 서버 동기화와 독립 Draft
 
-- 개정일: 2026-09-22. 사용자 최종 결정 반영, Phase 4 mutation과 Phase 5.1~5.12의 SSR·cache/view·UI view·자동 재조회·pagination/infinite·query network mode·브라우저 adapter·영속화·단일 연결 제출 기록·읽기 전용 캐시 관측 하위 범위까지 자동 검증. 전체 서버 기능 동등성은 미완료.
+- 개정일: 2026-09-22. 사용자 최종 결정 반영, Phase 4 mutation과 Phase 5.1~5.13의 SSR·cache/view·UI view·자동 재조회·pagination/infinite·query network mode·브라우저 adapter·영속화·단일 연결 제출 기록·읽기 전용 캐시 관측·무한 조회 편의 API 하위 범위까지 자동 검증. 전체 서버 기능 동등성은 미완료.
 - 기준 commit: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`, `state-ref@3.0.2`.
 - 연계: [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 - `R2-*`는 이번 개정의 요구사항이다. 이전 `SR-*`는 당시 커밋의 기록이며 현재 계약으로 사용하지 않는다.
@@ -94,6 +94,8 @@ batch의 export 경로는 `state-ref/batch`로 확정했다. 그 밖의 미구�
 | R2-27 | 명시적 동기 batch | `watch` 콜백 ref와 반환/보관 ref의 쓰기, 중첩 호출, 최종 값 기준 구독자 1회 알림, 즉시 값 읽기, 동기 종료·예외·metadata·커넥터 경계를 검증한다. 기본 동기 쓰기와 manual sync 의미는 유지 | T2-27, M2-02 |
 
 F2-08의 Phase 5.12 하위 수용 범위는 client별 현재 캐시 metadata 조회와 생성·변경·제거 구독이다. query payload·로컬 편집 값·mutation DTO는 이벤트에 포함하지 않고, listener 해제와 오류 격리는 T2-23/M2-19에서 확인한다. [Phase 5.12 계약](./PHASE5_12.md)을 따른다.
+
+F2-05의 Phase 5.13 하위 수용 범위는 무한 조회 결과의 임시 캐시 준비와 고정 key 관찰자별 placeholder/select 표시다. 같은 key의 활성 query 설정과 READ 소유권을 보존하고, 무한 페이지 값은 readonly로 유지한다. T2-23/M2-19 및 [Phase 5.13 계약](./PHASE5_13.md)을 따른다.
 
 ## 5. 비기능 요구사항
 

@@ -2,7 +2,7 @@
 
 - 기준: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md).
 - 개정일: 2026-09-22. 기준 SHA: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
-- 상태: `feat/server-sync-draft`에서 Phase 4 mutation 이후 Phase 5.1~5.11의 조회·view·UI 연결·영속화·연결 제출 하위 범위와 [Phase 5.12](./PHASE5_12.md)의 읽기 전용 캐시 관측 경계를 구현했다. F2 전체 동등성은 미완료다. 상세 이력은 [HANDOFF](./HANDOFF.md)와 단계별 문서를 따른다.
+- 상태: `feat/server-sync-draft`에서 Phase 4 mutation 이후 Phase 5.1~5.11의 조회·view·UI 연결·영속화·연결 제출 하위 범위, [Phase 5.12](./PHASE5_12.md)의 읽기 전용 캐시 관측 및 [Phase 5.13](./PHASE5_13.md)의 무한 조회 편의 API를 구현했다. F2 전체 동등성은 미완료다. 상세 이력은 [HANDOFF](./HANDOFF.md)와 단계별 문서를 따른다.
 - 현재 재개 지점은 [HANDOFF](./HANDOFF.md)를 따른다. 아래 날짜별 인계는 작성 당시의 기록이므로 현재 커밋과 혼동하지 않는다.
 - 이전 T/Phase 범위는 기준 commit의 이력이다. 이번 T2/Phase 계획으로 대체한다.
 
@@ -179,6 +179,8 @@
 
 [Phase 5.12](./PHASE5_12.md)에서 F2-08의 client별 읽기 전용 캐시 snapshot과 생성·변경·제거 구독을 추가했다. 이벤트는 동기 캐시 변경 호출 스택 뒤 microtask로 전달하고 관측자 오류를 격리한다. mutation 이벤트·개발 도구 UI·플랫폼 자동 설치는 열린 상태다.
 
+[Phase 5.13](./PHASE5_13.md)에서 F2-05의 무한 조회 `fetch/prefetch/ensure` 캐시 준비와 고정 key의 관찰자별 view를 추가했다. 임시 준비는 활성 query 설정을 바꾸지 않고, placeholder/select는 캐시에 들어가지 않는다. 반응형 infinite key 전환과 TanStack API 호환은 열린 상태다.
+
 **기준 테스트:** T2-23의 모든 F2 하위 시나리오, T2-03/04/07/10~13/22/25의 복원·네트워크 상태 조합.
 
 **종료:** 해당 출시 범위의 모든 기능에 구현·테스트 증거 존재. 전체 동등성 선언은 전체 목록 통과 시에만 가능하며, 부분 출시라면 미지원 항목을 명시함.
@@ -233,14 +235,21 @@
 | 항목 | 현재 확인 결과 |
 |---|---|
 | 문서 링크·ID·단계 구조·공백 정합성 | 과거 단계의 정적 검사 결과는 [PHASE2](./PHASE2.md)에 기록. 현재 handoff 링크와 문서 상태는 [HANDOFF](./HANDOFF.md)를 따른다 |
-| core/커넥터 baseline와 gate | Phase 5.12 `pnpm gate` PASS. 기본 core minified gzip은 gate 경로 Node 22.13.0에서 3,433/3,500 B PASS; 고정 Node 20.3.0의 기존 기준 3,455/3,500 B 유지 |
+| core/커넥터 baseline와 gate | Phase 5.13 `pnpm gate` PASS. 기본 core minified gzip은 gate 경로 Node 22.13.0에서 3,433/3,500 B PASS; 고정 Node 20.3.0의 기존 기준 3,455/3,500 B 유지 |
 | 선택적 plugin export | ESM 빌드·공개 선언 타입 검사 PASS; Phase 2 `clearEntries` 추가 후 크기는 별도 산출물로 측정 |
 | 일반 원본 draft 타입·테스트·빌드 | Phase 2 `state-ref/draft` ESM·UMD, 선언 타입 fixture, live·충돌·apply·수명 테스트와 browser smoke PASS. [실행 기록](./PHASE2.md) |
-| 서버 sync 타입·테스트·빌드 | Phase 5.12 sync ESM·선언 타입·소비자 fixture, 기존 query/resource/mutation/복원과 캐시 관측을 포함한 런타임 127개 테스트 및 bundle smoke PASS. [Phase 5.12](./PHASE5_12.md) |
-| 기능 동등성 F2 세부 검증 | Phase 3/4 기반과 Phase 5.1~5.11의 단계별 하위 범위, Phase 5.12 client별 캐시 관측만 검증. F2 전체 동등성은 미완료. [기준 표](./PHASE5_1.md#phase-51-시점-f2-기능별-상태), [5.12 갱신](./PHASE5_12.md) |
+| 서버 sync 타입·테스트·빌드 | Phase 5.13 sync ESM·선언 타입·소비자 fixture, 무한 조회 편의 API를 포함한 런타임 132개 테스트 및 bundle smoke PASS. [Phase 5.13](./PHASE5_13.md) |
+| 기능 동등성 F2 세부 검증 | Phase 3/4 기반과 Phase 5.1~5.12의 단계별 하위 범위, Phase 5.13 무한 조회 편의 API만 검증. F2 전체 동등성은 미완료. [기준 표](./PHASE5_1.md#phase-51-시점-f2-기능별-상태), [5.13 갱신](./PHASE5_13.md) |
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
+
+### 2026-09-22 — Phase 5.13 무한 조회 캐시 준비·관찰자 View
+
+- done: [Phase 5.13](./PHASE5_13.md)의 `fetchInfinite`/`prefetchInfinite`/`ensureInfinite`, `infiniteView`, 기존 조회 설정 보존, pending READ 공유·소유권 해제, 미확정 기준 재검사, 표시 격리를 구현했다. sync 132개 테스트·소비자 타입·빌드 ESM smoke 및 `pnpm gate` PASS. 기본 core gzip 3,433/3,500 B PASS.
+- next: F2-08 mutation 관측·개발 도구 UI 또는 F2-07 잔여 영속화 범위를 별도 단계로 설계한다. Phase 6 resource/draft pending 조합과 Phase 7/8 검증은 남는다.
+- blockers: 외부 차단 없음. M2-01~20 미수행. F2 전체 동등성 미완료.
+- 시작 기준 commit: `3813ece` (Phase 5.12). Phase 5.13 변경은 이 문서와 같은 커밋에 있다.
 
 ### 2026-09-22 — Phase 5.12 읽기 전용 캐시 관측
 

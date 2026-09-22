@@ -237,6 +237,37 @@ its page data is JSON-compatible and no READ is pending; hydration restores its
 infinite query kind. Handles sharing a key must use the same initial page
 parameter and `maxPages` policy.
 
+For the same aggregate, `fetchInfinite`, `prefetchInfinite`, and
+`ensureInfinite` prepare the cache without retaining a query handle.
+`prefetchInfinite` swallows READ failures, while `ensureInfinite` can return a
+confirmed stale baseline. An unconfirmed baseline is checked by a READ.
+These calls do not replace an active infinite query's reader or automatic
+refetch policy. Use `infiniteView` for observer-local display state:
+
+```ts
+const feedOptions = {
+  queryKey: ['feed'],
+  queryFn: ({ pageParam, signal }: { pageParam: number; signal: AbortSignal }) =>
+    api.readFeed(pageParam, { signal }),
+  initialPageParam: 0,
+  getNextPageParam: (lastPage: { nextCursor: number | null }) =>
+    lastPage.nextCursor,
+};
+await client.prefetchInfinite(feedOptions);
+const cachedFeed = await client.ensureInfinite(feedOptions);
+const feedView = client.infiniteView(feedOptions, {
+  select: data => data.pages.length,
+});
+await feedView.query.load();
+if (feedView.query.hasNextPage()) await feedView.query.fetchNextPage();
+feedView.dispose();
+```
+
+The fixed-key infinite view uses the same readonly display state as `view`.
+Its placeholder, selection, and comparison belong to that observer and do not
+enter the shared cache. `view.query` exposes the infinite page methods. It
+does not start a READ until `load()` or another page method is called.
+
 Focus, reconnect, and polling policies become active after a handle's first
 `load()` or `refetch()`. An active `liveView` performs that first load
 automatically. Provide a client-scoped environment when the host has focus and

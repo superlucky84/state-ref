@@ -1,6 +1,6 @@
 import { hashQueryKey } from './key';
 import type { QueryHandle, QueryOptions } from './index';
-import type { QueryViewRef, QueryViewWatch } from './view';
+import type { QueryViewRef, QueryViewState, QueryViewWatch } from './view';
 
 export type InfiniteData<Page, Param> = Readonly<{
   pages: readonly Page[];
@@ -45,6 +45,13 @@ export type InfiniteQueryHandle<Page, Param> = Readonly<{
   hasNextPage: () => boolean;
   hasPreviousPage: () => boolean;
   invalidate: () => void;
+  dispose: () => void;
+}>;
+
+export type InfiniteQueryViewHandle<Page, Param, S> = Readonly<{
+  query: InfiniteQueryHandle<Page, Param>;
+  ref: QueryViewRef<QueryViewState<S>>;
+  watch: QueryViewWatch<QueryViewState<S>>;
   dispose: () => void;
 }>;
 

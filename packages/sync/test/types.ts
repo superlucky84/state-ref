@@ -14,6 +14,7 @@ import type {
   BrowserSyncHost,
   InfiniteData,
   InfiniteQueryHandle,
+  InfiniteQueryViewHandle,
   LocalSyncSnapshot,
   MutationResult,
   NetworkMode,
@@ -281,6 +282,36 @@ async function infiniteDisplay() {
 }
 
 void infiniteDisplay;
+
+async function prepareInfiniteDisplay() {
+  const client = createSyncClient({ ssr: true });
+  const options = {
+    queryKey: ['prepared-feed'],
+    queryFn: ({ pageParam }: { pageParam: number }) => ({ id: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam: (page: { id: number }) => page.id + 1,
+  };
+  await client.prefetchInfinite(options);
+  const fetched: InfiniteData<{ id: number }, number> =
+    await client.fetchInfinite(options);
+  const ensured: InfiniteData<{ id: number }, number> =
+    await client.ensureInfinite(options);
+  const view: InfiniteQueryViewHandle<{ id: number }, number, number> =
+    client.infiniteView(options, {
+      placeholderData: { pages: [{ id: -1 }], pageParams: [-1] },
+      select: data => data.pages.length,
+    });
+  const count: number | undefined = view.ref.data.value;
+  await view.query.fetchNextPage();
+  // @ts-expect-error selected infinite view data is readonly
+  view.ref.data.value = 3;
+  void fetched;
+  void ensured;
+  void count;
+  view.dispose();
+}
+
+void prepareInfiniteDisplay;
 
 async function persistedCommands() {
   const values = new Map<string, string>();

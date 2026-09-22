@@ -38,6 +38,7 @@ import type {
   InfiniteData,
   InfiniteQueryHandle,
   InfiniteQueryOptions,
+  InfiniteQueryViewHandle,
 } from './infinite';
 
 export { hashQueryKey } from './key';
@@ -107,6 +108,7 @@ export type {
   InfiniteData,
   InfiniteQueryHandle,
   InfiniteQueryOptions,
+  InfiniteQueryViewHandle,
 } from './infinite';
 
 export type QueryStatus = Readonly<{
@@ -184,6 +186,10 @@ export type SyncClient = Readonly<{
   infiniteQuery: <Page, Param>(
     options: InfiniteQueryOptions<Page, Param>
   ) => InfiniteQueryHandle<Page, Param>;
+  infiniteView: <Page, Param, S = InfiniteData<Page, Param>>(
+    options: InfiniteQueryOptions<Page, Param>,
+    viewOptions?: QueryViewOptions<InfiniteData<Page, Param>, S>
+  ) => InfiniteQueryViewHandle<Page, Param, S>;
   view: <T, S = T>(
     options: QueryOptions<T>,
     viewOptions?: QueryViewOptions<T, S>
@@ -200,6 +206,15 @@ export type SyncClient = Readonly<{
   prefetch: <T>(options: QueryOptions<T>) => Promise<void>;
   /** Return a confirmed cached baseline even when stale, or perform a READ. */
   ensure: <T>(options: QueryOptions<T>) => Promise<T>;
+  fetchInfinite: <Page, Param>(
+    options: InfiniteQueryOptions<Page, Param>
+  ) => Promise<InfiniteData<Page, Param>>;
+  prefetchInfinite: <Page, Param>(
+    options: InfiniteQueryOptions<Page, Param>
+  ) => Promise<void>;
+  ensureInfinite: <Page, Param>(
+    options: InfiniteQueryOptions<Page, Param>
+  ) => Promise<InfiniteData<Page, Param>>;
   mutation: <I, T>(options: MutationOptions<I, T>) => MutationHandle<I, T>;
   invalidate: (key: QueryKey) => void;
   remove: (key: QueryKey) => boolean;
@@ -877,9 +892,10 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
   };
   const openQuery = <T>(
     queryOptions: QueryOptions<T>,
-    kind: 'query' | 'infinite' = 'query'
+    kind: 'query' | 'infinite' = 'query',
+    configureExisting = true
   ): QueryHandle<T> => {
-    const entry = getOrCreate(queryOptions, true, kind);
+    const entry = getOrCreate(queryOptions, configureExisting, kind);
     entry.attach();
     const automatic = automaticRefetch.observe(
       entry,
@@ -993,6 +1009,170 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
     handles.set(frozen, entry);
     return frozen;
   };
+  const openInfinite = <Page, Param>(
+    infiniteOptions: InfiniteQueryOptions<Page, Param>,
+    configureExisting = true
+  ): {
+    query: QueryHandle<InfiniteData<Page, Param>>;
+    entry: QueryEntry<InfiniteData<Page, Param>>;
+    queryOptions: QueryOptions<InfiniteData<Page, Param>>;
+    handle: InfiniteQueryHandle<Page, Param>;
+  } => {
+    checkInfiniteOptions(infiniteOptions);
+    const hash = hashQueryKey(infiniteOptions.queryKey);
+    const policy = JSON.stringify([
+      hashQueryKey([infiniteOptions.initialPageParam]),
+      infiniteOptions.maxPages ?? null,
+    ]);
+    const existing = entries.get(hash);
+    if (existing?.infinitePolicy && existing.infinitePolicy !== policy)
+      throw new TypeError('A query key cannot mix infinite page policies.');
+    type Data = InfiniteData<Page, Param>;
+    let entry: QueryEntry<Data>;
+    const refresh = async ({
+      signal,
+    }: {
+      signal: AbortSignal;
+    }): Promise<Data> => {
+      const previous = entry.resource?.serverValue();
+      if (previous) checkInfiniteData(previous, infiniteOptions.maxPages);
+      const count = previous?.pages.length ?? 1;
+      const pages: Page[] = [];
+      const pageParams: Param[] = [];
+      let param = previous?.pageParams[0] ?? infiniteOptions.initialPageParam;
+      for (let index = 0; index < count; index += 1) {
+        aborted(signal);
+        const page = await infiniteOptions.queryFn({
+          signal,
+          pageParam: param,
+        });
+        aborted(signal);
+        pages.push(page);
+        pageParams.push(param);
+        if (index + 1 < count) {
+          const next = nextPageParam(
+            infiniteOptions,
+            makeInfiniteData(pages, pageParams)
+          );
+          if (next == null) break;
+          if (pageParams.some(item => samePageParam(item, next)))
+            throw new TypeError(
+              'Infinite page cursor repeated during refetch.'
+            );
+          param = next;
+        }
+      }
+      return makeInfiniteData(pages, pageParams);
+    };
+    const queryOptions: QueryOptions<Data> = {
+      ...infiniteOptions,
+      editable: false,
+      queryFn: refresh,
+      initialData: infiniteOptions.initialData
+        ? makeInfiniteData(
+            infiniteOptions.initialData.pages,
+            infiniteOptions.initialData.pageParams
+          )
+        : undefined,
+    };
+    const query = openQuery(queryOptions, 'infinite', configureExisting);
+    entry = handles.get(query) as QueryEntry<Data>;
+    try {
+      if (entry.resource)
+        checkInfiniteData(
+          entry.resource.serverValue(),
+          infiniteOptions.maxPages
+        );
+    } catch (error) {
+      query.dispose();
+      throw error;
+    }
+    entry.infinitePolicy = policy;
+    const current = (): Data | null =>
+      query.status.loaded.value ? query.ref.value : null;
+    const append = (direction: 'next' | 'previous'): Promise<Data> =>
+      scheduleWith(pageScopes, entry.hash, async () => {
+        if (
+          !query.status.loaded.value ||
+          query.status.fetchStatus.value === 'fetching'
+        )
+          await query.load();
+        const before = current()!;
+        checkInfiniteData(before, infiniteOptions.maxPages);
+        const candidate =
+          direction === 'next'
+            ? nextPageParam(infiniteOptions, before)
+            : previousPageParam(infiniteOptions, before);
+        if (candidate == null) return before;
+        if (before.pageParams.some(param => samePageParam(param, candidate)))
+          throw new TypeError('Infinite page cursor repeated.');
+        return entry.load(true, undefined, false, {
+          ...queryOptions,
+          queryFn: async ({ signal }) => {
+            const page = await infiniteOptions.queryFn({
+              signal,
+              pageParam: candidate,
+            });
+            aborted(signal);
+            const latest = entry.resource?.serverValue() ?? before;
+            checkInfiniteData(latest, infiniteOptions.maxPages);
+            if (
+              latest.pageParams.some(param => samePageParam(param, candidate))
+            )
+              return latest;
+            const pages =
+              direction === 'next'
+                ? [...latest.pages, page]
+                : [page, ...latest.pages];
+            const params =
+              direction === 'next'
+                ? [...latest.pageParams, candidate]
+                : [candidate, ...latest.pageParams];
+            const max = infiniteOptions.maxPages;
+            if (max !== undefined && pages.length > max) {
+              if (direction === 'next') {
+                pages.shift();
+                params.shift();
+              } else {
+                pages.pop();
+                params.pop();
+              }
+            }
+            return makeInfiniteData(pages, params);
+          },
+        });
+      });
+    const handle: InfiniteQueryHandle<Page, Param> = Object.freeze({
+      get ref() {
+        return query.ref as unknown as InfiniteQueryHandle<Page, Param>['ref'];
+      },
+      get watch() {
+        return query.watch as unknown as InfiniteQueryHandle<
+          Page,
+          Param
+        >['watch'];
+      },
+      status: query.status,
+      watchStatus: query.watchStatus,
+      load: query.load,
+      refetch: query.refetch,
+      fetchNextPage: () => append('next'),
+      fetchPreviousPage: () => append('previous'),
+      hasNextPage: () => {
+        const data = current();
+        return data !== null && nextPageParam(infiniteOptions, data) != null;
+      },
+      hasPreviousPage: () => {
+        const data = current();
+        return (
+          data !== null && previousPageParam(infiniteOptions, data) != null
+        );
+      },
+      invalidate: query.invalidate,
+      dispose: query.dispose,
+    });
+    return { query, entry, queryOptions, handle };
+  };
   const client: SyncClient = Object.freeze({
     query<T>(queryOptions: QueryOptions<T>): QueryHandle<T> {
       return openQuery(queryOptions);
@@ -1000,162 +1180,30 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
     infiniteQuery<Page, Param>(
       infiniteOptions: InfiniteQueryOptions<Page, Param>
     ): InfiniteQueryHandle<Page, Param> {
-      checkInfiniteOptions(infiniteOptions);
-      const hash = hashQueryKey(infiniteOptions.queryKey);
-      const policy = JSON.stringify([
-        hashQueryKey([infiniteOptions.initialPageParam]),
-        infiniteOptions.maxPages ?? null,
-      ]);
-      const existing = entries.get(hash);
-      if (existing?.infinitePolicy && existing.infinitePolicy !== policy)
-        throw new TypeError('A query key cannot mix infinite page policies.');
-      type Data = InfiniteData<Page, Param>;
-      let entry: QueryEntry<Data>;
-      const refresh = async ({
-        signal,
-      }: {
-        signal: AbortSignal;
-      }): Promise<Data> => {
-        const previous = entry.resource?.serverValue();
-        if (previous) checkInfiniteData(previous, infiniteOptions.maxPages);
-        const count = previous?.pages.length ?? 1;
-        const pages: Page[] = [];
-        const pageParams: Param[] = [];
-        let param = previous?.pageParams[0] ?? infiniteOptions.initialPageParam;
-        for (let index = 0; index < count; index += 1) {
-          aborted(signal);
-          const page = await infiniteOptions.queryFn({
-            signal,
-            pageParam: param,
-          });
-          aborted(signal);
-          pages.push(page);
-          pageParams.push(param);
-          if (index + 1 < count) {
-            const next = nextPageParam(
-              infiniteOptions,
-              makeInfiniteData(pages, pageParams)
-            );
-            if (next == null) break;
-            if (pageParams.some(item => samePageParam(item, next)))
-              throw new TypeError(
-                'Infinite page cursor repeated during refetch.'
-              );
-            param = next;
-          }
-        }
-        return makeInfiniteData(pages, pageParams);
-      };
-      const queryOptions: QueryOptions<Data> = {
-        ...infiniteOptions,
-        editable: false,
-        queryFn: refresh,
-        initialData: infiniteOptions.initialData
-          ? makeInfiniteData(
-              infiniteOptions.initialData.pages,
-              infiniteOptions.initialData.pageParams
-            )
-          : undefined,
-      };
-      const query = openQuery(queryOptions, 'infinite');
-      entry = handles.get(query) as QueryEntry<Data>;
+      return openInfinite(infiniteOptions).handle;
+    },
+    infiniteView<Page, Param, S = InfiniteData<Page, Param>>(
+      infiniteOptions: InfiniteQueryOptions<Page, Param>,
+      viewOptions?: QueryViewOptions<InfiniteData<Page, Param>, S>
+    ): InfiniteQueryViewHandle<Page, Param, S> {
+      if (viewOptions?.placeholderData !== undefined)
+        checkInfiniteData(
+          viewOptions.placeholderData,
+          infiniteOptions.maxPages
+        );
+      const { query, handle } = openInfinite(infiniteOptions);
       try {
-        if (entry.resource)
-          checkInfiniteData(
-            entry.resource.serverValue(),
-            infiniteOptions.maxPages
-          );
+        const view = createQueryView(query, viewOptions);
+        return Object.freeze({
+          query: handle,
+          ref: view.ref,
+          watch: view.watch,
+          dispose: view.dispose,
+        });
       } catch (error) {
-        query.dispose();
+        handle.dispose();
         throw error;
       }
-      entry.infinitePolicy = policy;
-      const current = (): Data | null =>
-        query.status.loaded.value ? query.ref.value : null;
-      const append = (direction: 'next' | 'previous'): Promise<Data> =>
-        scheduleWith(pageScopes, entry.hash, async () => {
-          if (
-            !query.status.loaded.value ||
-            query.status.fetchStatus.value === 'fetching'
-          )
-            await query.load();
-          const before = current()!;
-          checkInfiniteData(before, infiniteOptions.maxPages);
-          const candidate =
-            direction === 'next'
-              ? nextPageParam(infiniteOptions, before)
-              : previousPageParam(infiniteOptions, before);
-          if (candidate == null) return before;
-          if (before.pageParams.some(param => samePageParam(param, candidate)))
-            throw new TypeError('Infinite page cursor repeated.');
-          return entry.load(true, undefined, false, {
-            ...queryOptions,
-            queryFn: async ({ signal }) => {
-              const page = await infiniteOptions.queryFn({
-                signal,
-                pageParam: candidate,
-              });
-              aborted(signal);
-              const latest = entry.resource?.serverValue() ?? before;
-              checkInfiniteData(latest, infiniteOptions.maxPages);
-              if (
-                latest.pageParams.some(param => samePageParam(param, candidate))
-              )
-                return latest;
-              const pages =
-                direction === 'next'
-                  ? [...latest.pages, page]
-                  : [page, ...latest.pages];
-              const params =
-                direction === 'next'
-                  ? [...latest.pageParams, candidate]
-                  : [candidate, ...latest.pageParams];
-              const max = infiniteOptions.maxPages;
-              if (max !== undefined && pages.length > max) {
-                if (direction === 'next') {
-                  pages.shift();
-                  params.shift();
-                } else {
-                  pages.pop();
-                  params.pop();
-                }
-              }
-              return makeInfiniteData(pages, params);
-            },
-          });
-        });
-      return Object.freeze({
-        get ref() {
-          return query.ref as unknown as InfiniteQueryHandle<
-            Page,
-            Param
-          >['ref'];
-        },
-        get watch() {
-          return query.watch as unknown as InfiniteQueryHandle<
-            Page,
-            Param
-          >['watch'];
-        },
-        status: query.status,
-        watchStatus: query.watchStatus,
-        load: query.load,
-        refetch: query.refetch,
-        fetchNextPage: () => append('next'),
-        fetchPreviousPage: () => append('previous'),
-        hasNextPage: () => {
-          const data = current();
-          return data !== null && nextPageParam(infiniteOptions, data) != null;
-        },
-        hasPreviousPage: () => {
-          const data = current();
-          return (
-            data !== null && previousPageParam(infiniteOptions, data) != null
-          );
-        },
-        invalidate: query.invalidate,
-        dispose: query.dispose,
-      });
     },
     view<T, S = T>(
       queryOptions: QueryOptions<T>,
@@ -1206,6 +1254,48 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
         return await entry.load(false, undefined, false, queryOptions);
       } finally {
         entry.detach();
+      }
+    },
+    async fetchInfinite<Page, Param>(
+      infiniteOptions: InfiniteQueryOptions<Page, Param>
+    ): Promise<InfiniteData<Page, Param>> {
+      const { entry, queryOptions, handle } = openInfinite(
+        infiniteOptions,
+        false
+      );
+      try {
+        return await entry.load(false, undefined, false, queryOptions);
+      } finally {
+        handle.dispose();
+      }
+    },
+    async prefetchInfinite<Page, Param>(
+      infiniteOptions: InfiniteQueryOptions<Page, Param>
+    ): Promise<void> {
+      const { entry, queryOptions, handle } = openInfinite(
+        infiniteOptions,
+        false
+      );
+      try {
+        await entry.load(false, undefined, false, queryOptions);
+      } catch {
+        // Prefetch is best-effort; a later fetch still observes the error.
+      } finally {
+        handle.dispose();
+      }
+    },
+    async ensureInfinite<Page, Param>(
+      infiniteOptions: InfiniteQueryOptions<Page, Param>
+    ): Promise<InfiniteData<Page, Param>> {
+      const { entry, queryOptions, handle } = openInfinite(
+        infiniteOptions,
+        false
+      );
+      try {
+        if (entry.hasConfirmedBaseline()) return entry.serverValue();
+        return await entry.load(false, undefined, false, queryOptions);
+      } finally {
+        handle.dispose();
       }
     },
     mutation<I, T>(mutationOptions: MutationOptions<I, T>) {

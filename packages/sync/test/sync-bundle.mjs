@@ -184,6 +184,24 @@ const infiniteRestored = infiniteRestoredClient.infiniteQuery({
 assert.deepEqual(infiniteRestored.ref.value.pageParams, [0, 1]);
 infinite.dispose();
 infiniteRestored.dispose();
+const helperClient = createSyncClient({ ssr: true });
+const helperOptions = {
+  queryKey: ['infinite-helpers-bundle'],
+  queryFn: ({ pageParam }) => ({ id: pageParam }),
+  initialPageParam: 0,
+  getNextPageParam: page => page.id + 1,
+  staleTime: Infinity,
+};
+await helperClient.prefetchInfinite(helperOptions);
+assert.deepEqual((await helperClient.ensureInfinite(helperOptions)).pageParams, [0]);
+assert.deepEqual((await helperClient.fetchInfinite(helperOptions)).pageParams, [0]);
+const helperView = helperClient.infiniteView(helperOptions, {
+  select: data => data.pages.length,
+});
+assert.equal(helperView.ref.data.value, 1);
+await helperView.query.fetchNextPage();
+assert.equal(helperView.ref.data.value, 2);
+helperView.dispose();
 const browserWindow = new EventTarget();
 const browserDocument = Object.assign(new EventTarget(), {
   visibilityState: 'visible',
@@ -305,5 +323,5 @@ restoredClean.dispose();
 assert.equal(submitted.changes.length, 1);
 query.dispose();
 console.log(
-  'sync ESM bundle: query, mutation, hydration, cache, views, automatic refetch, infinite query, network mode and persistence PASS'
+  'sync ESM bundle: query, mutation, hydration, cache, views, automatic refetch, infinite query helpers, network mode and persistence PASS'
 );

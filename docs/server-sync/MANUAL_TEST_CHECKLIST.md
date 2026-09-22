@@ -204,6 +204,7 @@
 - [ ] 별도 schema 2 복구 snapshot에서 dirty 값·변경 ID·충돌을 복원한다. 복원은 WRITE를 보내지 않아야 하며, 미확정 WRITE는 재조회나 알려진 서버 값 수용 전까지 clean SSR 저장을 막아야 한다. 진행 READ/연결 WRITE 중 저장은 거절해야 한다.
 - [ ] 독립 명령을 offline에서 보관한 뒤 online에서 명시적으로 재개한다. WRITE 직전 재시작한 작업은 `unknown`으로 보이고, 후속 명령도 멈추며 자동 재전송되지 않아야 한다. `maxAge`가 지난 명령도 보존·중단해야 한다. 서버 중복 방지 확인 뒤에만 같은 키로 명시적 재시도한다.
 - [ ] client별 `inspectCache()`와 `subscribeCache()`에서 조회 상태·소유자 수·생성/제거가 맞는지 확인한다. query payload와 mutation DTO는 이벤트에 없어야 하며, 구독 해제 뒤 이벤트가 더 오지 않아야 한다.
+- [ ] 무한 조회 `prefetchInfinite`/`fetchInfinite`/`ensureInfinite`이 임시 소유권을 남기지 않고 기존 화면의 조회 설정을 바꾸지 않는지 확인한다. `infiniteView` 두 관찰자의 placeholder/select가 서로 다르고 페이지 추가 뒤 같은 캐시를 표시하며 한 view를 닫아도 다른 view는 유지돼야 한다.
 - [ ] 미지원/다른 동작은 표시하고 API 이름만으로 완전 호환·동등이라고 안내하지 않는다.
 
 **합격:** 출시 범위의 실제 기능과 제품 설명이 일치함. **결과: 미수행.**
