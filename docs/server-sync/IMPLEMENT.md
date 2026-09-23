@@ -227,7 +227,7 @@
 
 - [x] React·Preact·Vue·Svelte·Solid에서 로컬 draft와 서버 resource/draft 예제를 검증한다. 기존 editable `connectX`가 `query.watch`·`draft.watch`를 그대로 받는다. [Phase 8.1](./PHASE8_1.md).
 - [x] 두 소비자·독립 draft 2개·metadata 관측·mount/unmount를 검증하고 `connectSvelte`의 결함 2건을 고쳤다. SSR client 분리는 8.4로 남는다. [Phase 8.2](./PHASE8_2.md).
-- [ ] 조회 shape와 다른 DTO, 원본 로컬 적용, 제출 중 추가 입력, 기준 복구 실패를 UI에서 확인한다.
+- [x] 조회 shape와 다른 DTO, 원본 로컬 적용, 제출 중 추가 입력, 기준 복구 실패를 UI에서 확인한다. `dirty`는 서버 작업의 근거가 아니다. [Phase 8.3](./PHASE8_3.md).
 - [ ] 지원 프레임워크의 loading/error/hydration 연결과 기능 목록을 교차 확인한다.
 - [ ] 새 helper의 타입·테스트·빌드를 root gate에 포함하고 실제 문서 예제를 타입 검사한다.
 - [ ] M2-01~20을 수행하고 환경·구현 SHA·결과·증거를 기록한다. M2-02에 추가된 batch 시나리오도 포함한다.
@@ -251,6 +251,13 @@
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
+
+### 2026-09-23 — Phase 8.3 DTO·제출 중 입력·기준 복구 실패의 화면
+
+- done: [Phase 8.3](./PHASE8_3.md)에서 반례 25개를 더해 `sync-ui.*`를 57개로 늘렸다. 정확성 결함 0건, 구현 변경 없음. 표시 규칙을 고정했다: 로컬 apply는 `dirty`·`version`만 움직이고 `pending`·mutation phase를 건드리지 않으므로 **화면의 "저장 중"은 `dirty`가 아니라 `pending`과 phase로만 켜져야 한다**. `unconfirmed`는 성공/실패와 다른 축이고 `unknown`은 입력을 지킨 채, `sync-error`는 입력 없이 미확정이 된다. `submitted` 수용은 capture한 개정만 소비하므로 제출 중 입력이 살아남는다. `unknown` 뒤 `mutationFn` 재호출은 없다. 주입 3종(진행 중 `pending` 미보고, 미확정 미표시, idle이 pending으로 읽힘)으로 15칸 전수 검증했다. 커넥터 React 33·Vue 28·Svelte 26·Preact 25·Solid 25, sync 183개·core 325개 PASS, `pnpm gate` PASS.
+- next: 8.4 SSR client 분리와 loading/error·hydration 경계. DC8-05(SSR 검증 깊이)를 먼저 확정한다.
+- blockers: 외부 차단 없음. M2-01~20은 8.7까지 미수행이다.
+- 시작 기준 commit: `8d1cfdf` (Phase 8.2). Phase 8.3 변경은 이 문서와 같은 커밋에 있다.
 
 ### 2026-09-23 — Phase 8.2 두 소비자·Draft 2개·Metadata와 수명
 

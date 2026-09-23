@@ -10,15 +10,24 @@
  * a single change record rather than accumulating.
  */
 import { render, cleanup, fireEvent } from '@testing-library/vue';
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { nextTick } from 'vue';
 import { createSyncClient } from '@stateref/sync';
 import { createDraft } from 'state-ref/draft';
 import SyncPanel from '@/tests/vue/SyncPanel.vue';
 import ReleasePanel from '@/tests/vue/ReleasePanel.vue';
 import TwoDrafts from '@/tests/vue/TwoDrafts.vue';
+import WritePanel from '@/tests/vue/WritePanel.vue';
 
 type Address = { city: string; zip: string };
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>(accept => {
+    resolve = accept;
+  });
+  return { promise, resolve };
+}
 
 const load = async () => {
   const client = createSyncClient({ ssr: true });
@@ -264,6 +273,161 @@ describe('Vue two consumers and two drafts', () => {
     expect(client.inspectCache()[0]!.owners).toBe(1);
     left.discard();
     right.discard();
+    query.dispose();
+  });
+});
+
+describe('Vue tells a local apply from a server WRITE', () => {
+  afterEach(cleanup);
+
+  const mount = (query: any, mutation: any) =>
+    render(WritePanel, {
+      props: {
+        sourceWatch: query.watch,
+        statusWatch: query.watchStatus,
+        phaseWatch: mutation.watchStatus,
+      },
+    });
+
+  it('shows a local apply with no sign of a server call', async () => {
+    const { client, query } = await load();
+    const write = vi.fn(() => ({ ok: true }));
+    const mutation = client.mutation({ mutationFn: write });
+    const screen = mount(query, mutation);
+
+    const draft = createDraft(query.ref);
+    draft.ref.city.value = '부산';
+    expect(draft.apply()).toEqual({ ok: true, applied: 1 });
+    await nextTick();
+
+    // A local apply is not a save. `dirty` moves; the two marks a server call
+    // leaves - the linked count and the mutation phase - do not.
+    expect(screen.getByTestId('city').textContent).toBe('부산');
+    expect(screen.getByTestId('dirty').textContent).toBe('true');
+    expect(screen.getByTestId('pending').textContent).toBe('0');
+    expect(screen.getByTestId('phase').textContent).toBe('idle');
+    expect(write).not.toHaveBeenCalled();
+    draft.discard();
+    mutation.dispose();
+    query.dispose();
+  });
+
+  it('marks a WRITE in flight and takes an input unlike the query shape', async () => {
+    const { client, query } = await load();
+    const gate = deferred<{ accepted: boolean }>();
+    const write = vi.fn((_input: { full: string }) => gate.promise);
+    const mutation = client.mutation({ mutationFn: write });
+    const screen = mount(query, mutation);
+
+    query.ref.city.value = '부산';
+    const submission = query.capture();
+    const operation = mutation.start(
+      { full: '부산 01' },
+      { links: [{ query, submission, accept: { kind: 'submitted' } }] }
+    );
+    await Promise.resolve();
+    await nextTick();
+
+    expect(screen.getByTestId('pending').textContent).toBe('1');
+    expect(screen.getByTestId('phase').textContent).toBe('pending');
+    // The DTO is the caller's, not the query's shape.
+    expect(write.mock.calls[0]![0]).toEqual({ full: '부산 01' });
+
+    gate.resolve({ accepted: true });
+    expect((await operation.result).kind).toBe('success');
+    await nextTick();
+    expect(screen.getByTestId('pending').textContent).toBe('0');
+    expect(screen.getByTestId('phase').textContent).toBe('success');
+    expect(screen.getByTestId('dirty').textContent).toBe('false');
+    operation.dispose();
+    mutation.dispose();
+    query.dispose();
+  });
+
+  it('keeps input typed while the WRITE was in flight', async () => {
+    const { client, query } = await load();
+    const gate = deferred<{ accepted: boolean }>();
+    const mutation = client.mutation({ mutationFn: () => gate.promise });
+    const screen = mount(query, mutation);
+
+    query.ref.city.value = '부산';
+    const submission = query.capture();
+    const operation = mutation.start(
+      { full: '부산 01' },
+      { links: [{ query, submission, accept: { kind: 'submitted' } }] }
+    );
+    await Promise.resolve();
+    query.ref.city.value = '대전'; // same path, after the capture
+    query.ref.zip.value = '02'; // a path the submission never covered
+
+    gate.resolve({ accepted: true });
+    expect((await operation.result).kind).toBe('success');
+    await nextTick();
+    // Acceptance consumes the captured revision only, so everything typed
+    // after it survives and the query stays dirty.
+    expect(screen.getByTestId('city').textContent).toBe('대전');
+    expect(screen.getByTestId('zip').textContent).toBe('02');
+    expect(screen.getByTestId('dirty').textContent).toBe('true');
+    operation.dispose();
+    mutation.dispose();
+    query.dispose();
+  });
+
+  it('shows an unknown result as unconfirmed and never resends it', async () => {
+    const { client, query } = await load();
+    const write = vi.fn((_input: { full: string }) =>
+      Promise.reject(new Error('connection lost'))
+    );
+    const mutation = client.mutation({ mutationFn: write });
+    const screen = mount(query, mutation);
+
+    query.ref.city.value = '부산';
+    const result = await mutation.run(
+      { full: '부산 01' },
+      { links: [{ query, submission: query.capture() }] }
+    );
+    expect(result.kind).toBe('unknown');
+    await nextTick();
+
+    // Unknown is neither success nor a settled failure: the WRITE may have
+    // reached the server, so the input stays and the baseline is unconfirmed.
+    expect(screen.getByTestId('unconfirmed').textContent).toBe('true');
+    expect(screen.getByTestId('dirty').textContent).toBe('true');
+    expect(screen.getByTestId('city').textContent).toBe('부산');
+    expect(screen.getByTestId('phase').textContent).toBe('unknown');
+    expect(write).toHaveBeenCalledTimes(1); // no automatic resend
+    mutation.dispose();
+    query.dispose();
+  });
+
+  it('shows a failed baseline recovery as unconfirmed rather than as success', async () => {
+    const client = createSyncClient({ ssr: true });
+    const query = client.query<Address>({
+      queryKey: ['sync-error'],
+      queryFn: vi
+        .fn()
+        .mockResolvedValueOnce({ city: '서울', zip: '01' })
+        .mockRejectedValueOnce(new Error('read failed')),
+      retry: 0,
+    });
+    await query.load();
+    const mutation = client.mutation({ mutationFn: () => ({ ok: true }) });
+    const screen = mount(query, mutation);
+
+    const result = await mutation.run(
+      { full: '부산 01' },
+      { links: [{ query, accept: { kind: 'refetch' } }] }
+    );
+    expect(result.kind).toBe('sync-error');
+    await nextTick();
+
+    // The WRITE succeeded but the baseline could not be refetched. Showing
+    // this as success would invite a second submit against a baseline the
+    // client no longer has.
+    expect(screen.getByTestId('unconfirmed').textContent).toBe('true');
+    expect(screen.getByTestId('dirty').textContent).toBe('false');
+    expect(screen.getByTestId('phase').textContent).toBe('sync-error');
+    mutation.dispose();
     query.dispose();
   });
 });
