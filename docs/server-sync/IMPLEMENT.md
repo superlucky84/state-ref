@@ -225,7 +225,7 @@
 
 **진입:** Phase 7 종료, 기능 지원표와 공개 API 확정. 하위 단계 계획과 결정은 [Phase 8](./PHASE8.md)에 있다.
 
-- [ ] React·Preact·Vue·Svelte·Solid에서 로컬 draft와 서버 resource/draft 예제를 검증한다.
+- [x] React·Preact·Vue·Svelte·Solid에서 로컬 draft와 서버 resource/draft 예제를 검증한다. 기존 editable `connectX`가 `query.watch`·`draft.watch`를 그대로 받는다. [Phase 8.1](./PHASE8_1.md).
 - [ ] 두 소비자·독립 draft 2개·metadata UI·mount/unmount·SSR client 분리를 검증한다.
 - [ ] 조회 shape와 다른 DTO, 원본 로컬 적용, 제출 중 추가 입력, 기준 복구 실패를 UI에서 확인한다.
 - [ ] 지원 프레임워크의 loading/error/hydration 연결과 기능 목록을 교차 확인한다.
@@ -251,6 +251,13 @@
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
+
+### 2026-09-23 — Phase 8.1 커넥터의 Resource·Draft UI 조합
+
+- done: [Phase 8.1](./PHASE8_1.md)에서 5종 커넥터의 resource·draft 조합을 반례 21개로 고정했다. DC8-06 해소 — 기존 editable `connectX`가 `query.watch`·`draft.watch`를 그대로 받으므로 sync 전용 커넥터가 필요 없다. 정확성 결함 0건, 라이브러리 구현 변경 없음. 설정 변경은 커넥터 5종의 `moduleResolution`을 `"bundler"`로 맞춘 것뿐이다(`state-ref/draft` 서브패스를 타입 해석하지 못했다). 처음 쓴 React·Preact 언마운트 반례가 주입 C에도 통과해 — 렌더 횟수는 프레임워크가 보장하는 값이다 — `countingWatch`로 구독 자체를 관찰하도록 고쳤다. 결함 3종 × 5종 전수 주입으로 15칸 모두 잡힘을 확인했다. 커넥터 React 26·Vue 21·Preact 18·Svelte 18·Solid 18, sync 183개·core 325개 PASS, `pnpm gate` PASS.
+- next: 8.2 두 소비자·독립 draft 2개·metadata UI·mount/unmount.
+- blockers: 외부 차단 없음. M2-01~20은 8.7까지 미수행이다.
+- 시작 기준 commit: `7e16f14` (Phase 8 계획). Phase 8.1 변경은 이 문서와 같은 커밋에 있다.
 
 ### 2026-09-23 — Phase 7.4 수명 반복과 메모리 보존 사유
 
