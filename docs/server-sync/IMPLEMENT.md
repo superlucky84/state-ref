@@ -214,7 +214,7 @@
 - [x] fake clock과 수동 Promise로 READ·입력·apply·mutation·복구·해제 순서를 교차 검증한다. [Phase 7.1](./PHASE7_1.md).
 - [x] 독립 참조 모델로 작업 실패 후 잔여 intent와 두 기준의 값을 비교한다. 144개 결과 조합 전수 대조. [Phase 7.2](./PHASE7_2.md).
 - [x] ABA·부모/자식 겹침·원본 소멸·배열 재정렬·동일 값 수렴·재진입 apply를 포함한다. 재진입 apply와 부모 타입 교체는 core draft 회귀가 이미 덮는다. [Phase 7.1](./PHASE7_1.md).
-- [ ] 구독·draft·캐시 생성/종료 반복, 복구 중 pin, 오류 후 해제와 메모리 보존 사유를 확인한다.
+- [x] 구독·draft·캐시 생성/종료 반복, 복구 중 pin, 오류 후 해제와 메모리 보존 사유를 확인한다. 회수 가드는 관측 가능한 네 사유뿐이다. [Phase 7.4](./PHASE7_4.md).
 - [x] 타입 negative case·배포 exports·지원 모듈 형식·baseline 대비 비용을 검사한다. 배포 결함 3건 수정. [Phase 7.3](./PHASE7_3.md).
 
 **기준 테스트:** T2-01~26의 경계·이벤트 순서, F2별 실패·복원 조합, 기존 core stress/lifecycle/tree-lifetime와 성능 gate.
@@ -251,6 +251,13 @@
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
+
+### 2026-09-23 — Phase 7.4 수명 반복과 메모리 보존 사유
+
+- done: [Phase 7.4](./PHASE7_4.md)에서 보존 사유 4종의 단독 성립과 해소, 복구 중 pin(`unknown`·`sync-error`), 진행 READ 취소, 20회 반복의 복귀, 오류 뒤 해제와 해제 후 재사용 거절을 반례 13개로 고정했다. 정확성 결함 0건, 구현 변경 없음. 처음 쓴 dirty 반례가 결함 주입에도 통과해 — 소유자를 쥔 채 `remove()`를 불러 `owners` 가드가 대신 답하고 있었다 — 소유자 해제 뒤로 옮기고 타이머 무장 여부까지 확인하도록 고쳤다. 결함 6종 주입으로 검증력을 확인했다. sync 183개 테스트·core 325개 PASS, `pnpm gate` PASS.
+- next: Phase 7 종료. Phase 8의 5종 UI 전체 조합, 개발 도구 UI·플랫폼 자동 설치, 수동 M2-01~20.
+- blockers: 외부 차단 없음. M2-01~20 미수행. `QueryKey` 정밀화와 status readonly화는 공개 API 변경으로 별도 결정.
+- 시작 기준 commit: `4a1edf1` (Phase 7.3 + 아이디어 문서). Phase 7.4 변경은 이 문서와 같은 커밋에 있다.
 
 ### 2026-09-23 — Phase 7.3 타입 Negative Case와 배포 경계
 
