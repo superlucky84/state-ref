@@ -27,6 +27,10 @@ export {
   toSaveDto,
   withMemo,
 } from './scenario';
+export { AUTO_REFETCH, createDemoModel } from './model';
+export type { ComputedSource, DemoModel, DemoUi, DraftPair } from './model';
+export { OPERATION_GROUPS, OPERATION_IDS } from './operations';
+export type { OperationGroupId, OperationId } from './operations';
 export {
   draftChangeLines,
   draftPanel,

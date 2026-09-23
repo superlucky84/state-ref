@@ -42,7 +42,10 @@
     "clean": "pnpm clean:dist && pnpm clean:module",
     "clean:dist": "pnpm -r exec rm -rf dist && rm -rf dist",
     "clean:module": "pnpm -r exec rm -rf dist node_modules && rm -rf node_modules",
-    "check:packaging": "node scripts/check-packaging.mjs"
+    "check:packaging": "node scripts/check-packaging.mjs",
+    "types:examples": "pnpm -r --filter './examples/*' run --if-present typecheck",
+    "build:examples": "pnpm -r --filter './examples/*' run --if-present build",
+    "check:examples": "pnpm types:examples && pnpm build:examples && node scripts/check-example-operations.mjs"
   },
   "author": "superlucky84",
   "repository": {

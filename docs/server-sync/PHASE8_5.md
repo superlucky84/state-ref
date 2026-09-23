@@ -31,6 +31,10 @@ Phase 8.1~8.4는 자동 테스트로 계약을 고정했다. 8.5는 **사람이 
 - [x] **DC8-5-14 / 루트 `build`는 예제를 만들지 않는다:** `examples/*`를 워크스페이스에 넣자 `build:!core`의 `--filter '!state-ref'`가 예제까지 쓸어담아 gate의 build 단계가 깨졌다. 필터에 `--filter '!./examples/*'`를 더해 발행 대상 패키지와 문서 사이트만 빌드하도록 되돌렸다. 예제 빌드는 DC8-5-06대로 `check:examples`에만 있다.
 - [x] **DC8-5-11 / 발행 스코프와 이름을 섞지 않는다:** 예제 패키지 이름은 스코프 없는 `stateref-example-*`로 둔다. 발행 대상인 `@stateref/*` 스코프를 쓰면 목록에서 publish 대상으로 오해되기 쉽다. 모두 `private: true`이고 `files` 필드를 두지 않는다.
 
+- [x] **DC8-5-15 / 화면은 프레임워크 독립 모델을 렌더하기만 한다:** 구현 단계 3에서 확인한 것은 5종 UI를 각각 쓰면 조작·패널이 조용히 갈린다는 점이다. `examples/shared`의 `createDemoModel()`이 client·query 2개·readonly query·mutation·draft·환경·computed와 **조작 목록 자체**를 소유하고, 각 데모는 커넥터로 연결해 그리기만 한다. 조작 카탈로그(`OPERATION_GROUPS`)가 한 곳에 있으므로 5종의 조작 집합은 설계상 같다.
+- [x] **DC8-5-16 / 로드 전에는 `query.watch`를 건드릴 수 없다:** 구현 중 확인한 런타임 사실이다. 로드 전에는 필드 읽기뿐 아니라 **`query.watch`와 `query.ref`에 접근하는 것 자체가** `Query data is not loaded. Call load() first.`로 던진다. `query.status`/`watchStatus`만 처음부터 안전하다. 따라서 모든 데모는 status를 먼저 연결하고, 값을 읽는 컴포넌트는 `status.loaded`가 true가 된 뒤에만 마운트한다. 모델의 조작들도 같은 가드를 갖는다 — 조회 전에 "도시 → 부산"을 누르면 예외 대신 문장으로 답한다. 이 계약은 `fixture.test.ts`의 회귀로 고정했고, [M2-04](./MANUAL_TEST_CHECKLIST.md)의 "미로드 payload 접근을 명시적으로 처리"가 화면에서 뜻하는 바다.
+- [x] **DC8-5-17 / 조작 집합 대조는 소스 수준이며 그 한계를 적는다:** 처음 만든 검사는 **빌드 산출물에서 조작 id 문자열을 찾는 방식이었고, 데모 하나에서 조작 그룹을 통째로 걸러내도 통과했다** — id는 공유 카탈로그의 데이터라 렌더 여부와 무관하게 번들에 들어가기 때문이다. 검사는 데모 소스가 카탈로그를 좁히지 않고 통째로 렌더하는지, `data-operation`을 내보내는지, 카탈로그에 없는 조작을 부르지 않는지를 본다. **데모를 실행하지 않으므로 버튼이 화면에 실제로 나타났다는 증거는 아니다** — 그것은 8.7이다.
+
 ## 워크스페이스 구성
 
 `pnpm-workspace.yaml`에 `examples/*`를 추가한다.
@@ -107,6 +111,34 @@ Phase 8.1~8.4는 자동 테스트로 계약을 고정했다. 8.5는 **사람이 
 - `pnpm gate` **16단계 PASS**. 패키지별 테스트 수는 8.4와 같다 — core **338**, sync **183**, React **36**, Preact **27**, Vue **35**, Svelte **26**, Solid **25**. 달라진 것은 `test` 단계에 `examples/shared` **9개**가 더해진 것뿐이며 합계는 **679개 + 별도 SSR 3개**다. gate Node 24.11.1의 core gzip은 **3,696/3,800 B PASS**로 불변이다.
 - `packages/` 아래는 한 파일도 바뀌지 않았다(`git status -- packages/`가 비어 있다). 코어 산출물이 바뀔 수 있는 변경이 없으므로 고정 Node 20.3.0의 3,718 B는 재측정하지 않았다.
 
+### 단계 3~4 — 5종 데모 (완료)
+
+- `examples/shared`에 `createDemoModel()`과 조작 카탈로그 37개를 두고, React·Preact·Vue·Svelte·Solid가 같은 모델을 렌더한다. 커넥터 차이는 그대로 드러난다 — React·Preact는 스토어 전체를 받는 hook, Vue·Svelte·Solid는 **선택한 leaf마다** reactive/writable/signal을 받는다.
+- 모델 테스트 **10개 PASS**(총 19개). 대표 흐름(dirty 원본에서 clean draft 분기 → 대전 편집 → 로컬 apply, WRITE 0회), 광주 겹침의 충돌과 해소, 같은 key 두 handle의 `owners` 2, `unknown` WRITE의 미확정 유지와 재전송 없음, 로컬 apply와 서버 WRITE의 패널상 구분, 콜백 없는 computed의 객체 재사용·sync 전 최신 읽기·구독 콜백의 sync 대기.
+- **검증력 확인:** 로드 전 가드를 하나 제거하자 "모든 조작이 로드 전에도 던지지 않는다" 반례가 실패했다. 조작 집합 대조에는 결함 4종을 주입해 3종을 잡았다(카탈로그 좁히기, `data-operation` 제거, 카탈로그에 없는 조작 호출). 잡히지 않은 1종(Vue가 카탈로그 import를 잃는 경우)은 `vue-tsc`가 먼저 실패시킨다.
+- `pnpm check:examples` PASS — 7개 타입검사, 5종 빌드, 조작 대조. `examples/bundles`의 빌드는 진입점이 생기는 단계 6까지 스크립트를 두지 않았다.
+- `pnpm gate` **16단계 PASS**. 패키지별 수치 불변(core 338, sync 183, React 36, Preact 27, Vue 35, Svelte 26, Solid 25), `examples/shared`만 9 → **19개**. core gzip **3,696/3,800 B** 불변. `packages/` 아래는 여전히 한 파일도 바뀌지 않았다.
+
+#### 체크리스트 1절 fixture ↔ 데모 화면 대조
+
+| 체크리스트 1절이 요구하는 것 | 데모에서 어디에 | 상태 |
+| --- | --- | --- |
+| 같은 key의 resource 패널 2개 | `resource 패널 A` / `B` (같은 client, 같은 key) | 있음 |
+| 주소 draft 2개 | `draft A` / `draft B` (`branch-drafts`로 분기) | 있음 |
+| 원본·draft의 값·changes·dirty·pending·conflict | 각 카드의 행과 changes 표, `serverBusy`/`unconfirmed` 분리 | 있음 |
+| 서울 → 부산(공유) → 대전(draft) 대표 흐름 | `edit-busan`, `draft-a-daejeon`, `draft-a-apply` | 있음 |
+| 무관한 필드 변경 / 광주 겹침 | `edit-memo` / `edit-gwangju` | 있음 |
+| readonly / 부모 소멸 / 배열 재정렬 | `readonly-write` / `remove-office` / `reorder-contacts` | 있음 |
+| 조회와 다른 DTO의 mutation, 제출 기록 | `capture` → `save`(주소 DTO), `고정한 제출`·`mutation phase` 행 | 있음 |
+| 원격 거절 / unknown / 성공 후 READ 실패 | `next-write-rejected` / `next-write-unknown` / `next-write-sync-error` | 있음 |
+| READ/WRITE 횟수와 요청 ID·버전 | 서버 카드의 요청 표(ID·revision·결과·시작·종료) | 있음 |
+| 제어 가능한 Promise | `settle-read` / `settle-write` / `settle-all` | 있음 |
+| 자동 조회 정책과 시간 기록 | `자동 조회 정책` 행과 요청 표의 시각. **시간 제어는 없다(DC8-5-12)** | 부분 |
+| 로딩·오류 화면 | 로드 전 문구, `next-read-error` 뒤 오류 문구, `refetch`로 복구 | 있음 |
+| 콜백 없는 computed | computed 카드(값·계산 횟수·객체 동일성·구독 콜백이 본 값) | 있음 |
+| 서로 다른 client / SSR 요청 | **단계 5** | 미구현 |
+| core-only·draft-only·sync-only·전체 조합 번들 | **단계 6** | 미구현 |
+
 ### 단계 2 — 공유 fixture (완료)
 
 - `examples/shared`에 mock 서버, 제어 가능한 deferred, 주입형 `SyncEnvironment`, 시나리오 값, 패널 투영을 구현했다. 실제 `fetch`는 없다(DC8-5-07).
@@ -117,7 +149,8 @@ Phase 8.1~8.4는 자동 테스트로 계약을 고정했다. 8.5는 **사람이 
 
 ## 인계
 
-- done: 계획(DC8-5-01~11)과 구현 단계 1·2를 마쳤다. 예제 워크스페이스 7개가 설치·타입검사되고, 공유 fixture와 자체 테스트 9개가 통과하며 결함 주입 4종이 모두 잡힌다. `pnpm gate` 16단계 PASS이고 기존 패키지 수치는 불변이다. 구현 중 확인한 사실로 DC8-5-12~14를 추가했다 — **fixture는 sync의 시간을 제어할 수 없고**, 타입 검사 도구는 패키지마다 다르며, 루트 `build`는 예제를 제외해야 한다.
-- next: 구현 단계 3(React 데모)에서 체크리스트 1절의 패널을 모두 만들고 대조표를 이 문서에 남긴다. 그 다음이 단계 4의 나머지 4종이다. 데모는 반드시 `stateref-example-shared`의 fixture만 쓴다.
-- blockers: 없음. M2-01~20은 8.7까지 수동 미수행이다. Preact·Svelte·Solid의 hydration은 이 단계 범위 밖으로 명시했다. `staleTime`·`refetchInterval` 데모는 실제 시간으로 도는 것을 전제로 설계한다.
+- done: 계획과 구현 단계 1~4를 마쳤다. 5종 데모가 같은 모델·같은 조작 37개·같은 패널을 렌더하고, `pnpm check:examples`와 `pnpm gate` 16단계가 통과한다. 구현 중 확인한 사실로 DC8-5-15~17을 추가했다 — 화면은 공유 모델을 그리기만 하고, **로드 전에는 `query.watch` 접근 자체가 던지며**, 조작 집합 대조는 소스 수준이라 버튼이 화면에 났다는 증거가 아니다.
+- 이전 done: 계획(DC8-5-01~11)과 구현 단계 1·2를 마쳤다. 예제 워크스페이스 7개가 설치·타입검사되고, 공유 fixture와 자체 테스트 9개가 통과하며 결함 주입 4종이 모두 잡힌다. `pnpm gate` 16단계 PASS이고 기존 패키지 수치는 불변이다. 구현 중 확인한 사실로 DC8-5-12~14를 추가했다 — **fixture는 sync의 시간을 제어할 수 없고**, 타입 검사 도구는 패키지마다 다르며, 루트 `build`는 예제를 제외해야 한다.
+- next: 구현 단계 5(React·Vue의 실제 SSR과 hydration). 그 다음이 단계 6의 번들 조합과 경계 검사, 단계 7의 문서 예제 타입 검사, 단계 8의 gate 편입이다.
+- blockers: 없음. M2-01~20은 8.7까지 수동 미수행이다. Preact·Svelte·Solid의 hydration은 이 단계 범위 밖으로 명시했다. **데모를 브라우저에서 실행한 증거는 아직 없다** — 타입검사·빌드·소스 대조까지가 현재 자동 범위다.
 - 시작 기준 commit: `89a46e9` (Phase 8.4 및 콜백 없는 computed 캐시). 계획 commit은 `e0f6e3a`.

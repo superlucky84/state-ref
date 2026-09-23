@@ -49,8 +49,7 @@ export function draftChangeLines(
   }));
 }
 
-export type ResourcePanel<T> = Readonly<{
-  value: T;
+export type ResourcePanel = Readonly<{
   loaded: boolean;
   /** `pending` and the mutation phase are the only signs of a server WRITE. */
   serverBusy: boolean;
@@ -67,13 +66,18 @@ export type ResourcePanel<T> = Readonly<{
   changes: readonly ChangeLine[];
 }>;
 
-export function resourcePanel<T>(
-  value: T,
+/**
+ * The status half of a resource panel.
+ *
+ * It deliberately takes no value: `query.ref` throws before the first load,
+ * so the value belongs to a component that mounts only once `loaded` is true
+ * (M2-04). Status is readable from the start.
+ */
+export function resourcePanel(
   status: QueryStatus,
   changes: readonly ResourceChange[]
-): ResourcePanel<T> {
+): ResourcePanel {
   return {
-    value,
     loaded: status.loaded,
     serverBusy: status.pending > 0,
     dirty: status.dirty,
@@ -88,21 +92,18 @@ export function resourcePanel<T>(
   };
 }
 
-export type DraftPanel<T> = Readonly<{
-  value: T;
+export type DraftPanel = Readonly<{
   dirty: boolean;
   conflicts: number;
   version: number;
   changes: readonly ChangeLine[];
 }>;
 
-export function draftPanel<T>(
-  value: T,
+export function draftPanel(
   status: DraftStatus,
   changes: readonly DraftChange[]
-): DraftPanel<T> {
+): DraftPanel {
   return {
-    value,
     dirty: status.dirty,
     conflicts: status.conflicts,
     version: status.version,

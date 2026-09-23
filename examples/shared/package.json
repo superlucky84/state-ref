@@ -6,7 +6,8 @@
   "description": "Fixtures shared by the state-ref example demos: mock server, controllable clock, scenarios, panel data",
   "main": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./demo.css": "./src/demo.css"
   },
   "scripts": {
     "test": "vitest run --reporter verbose",

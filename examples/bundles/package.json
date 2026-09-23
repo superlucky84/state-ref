@@ -5,7 +5,6 @@
   "private": true,
   "description": "core-only, draft-only, sync-only and combined entry points that show the dependency boundary",
   "scripts": {
-    "build": "vite build",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

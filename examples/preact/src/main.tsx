@@ -1,10 +1,4 @@
 import { render } from 'preact';
-
-/** Step 1 skeleton; the panels arrive with step 4 of PHASE8_5.md. */
-function App() {
-  return (
-    <main>Preact 데모 뼈대 — 패널은 Phase 8.5 구현 단계 4에서 채운다.</main>
-  );
-}
+import App from './App';
 
 render(<App />, document.getElementById('app') as HTMLElement);

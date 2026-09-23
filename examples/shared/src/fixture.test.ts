@@ -180,6 +180,28 @@ describe('outcome controls', () => {
   });
 });
 
+describe('pre-load contract the demos are built around', () => {
+  it('throws on the query handle until the first load', () => {
+    const server = createMockServer(INITIAL_PROFILE);
+    const client = createSyncClient({ ssr: true });
+    const query = client.query<Profile>({
+      queryKey: ['profile'],
+      queryFn: server.read,
+    });
+
+    // Not just reading a field - touching `watch` or `ref` at all throws.
+    // That is why every demo connects `watchStatus` first and mounts the
+    // value-reading component only once `loaded` is true (M2-04).
+    expect(() => query.watch).toThrow(/not loaded/);
+    expect(() => query.ref).toThrow(/not loaded/);
+    // Status is readable from the start, and says nothing has loaded.
+    expect(query.status.loaded.value).toBe(false);
+    expect(query.status.status.value).toBe('pending');
+
+    query.dispose();
+  });
+});
+
 describe('draft scenarios', () => {
   it('makes a reordered array refuse a draft apply', async () => {
     const { server, query } = await loadedQuery();
