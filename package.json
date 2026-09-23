@@ -16,7 +16,7 @@
     "dev:docs": "pnpm --filter state-ref-docs dev",
     "build:core": "pnpm --filter state-ref build",
     "build:docs": "pnpm --filter state-ref-docs build",
-    "build:!core": "pnpm --filter '!state-ref' build",
+    "build:!core": "pnpm --filter '!state-ref' --filter '!./examples/*' build",
     "build:preact": "pnpm --filter @stateref/connect-preact build",
     "build:react": "pnpm --filter @stateref/connect-react build",
     "build:vue": "pnpm --filter @stateref/connect-vue build",

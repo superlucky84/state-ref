@@ -1,0 +1,20 @@
+{
+  "type": "module",
+  "name": "stateref-example-shared",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Fixtures shared by the state-ref example demos: mock server, controllable clock, scenarios, panel data",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run --reporter verbose",
+    "test:dev": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@stateref/sync": "workspace:*",
+    "state-ref": "workspace:*"
+  }
+}

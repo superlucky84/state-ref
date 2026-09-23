@@ -1,0 +1,16 @@
+{
+  "type": "module",
+  "name": "stateref-example-bundles",
+  "version": "0.0.0",
+  "private": true,
+  "description": "core-only, draft-only, sync-only and combined entry points that show the dependency boundary",
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@stateref/sync": "workspace:*",
+    "state-ref": "workspace:*",
+    "stateref-example-shared": "workspace:*"
+  }
+}

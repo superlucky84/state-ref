@@ -22,10 +22,13 @@ Phase 8.1~8.4는 자동 테스트로 계약을 고정했다. 8.5는 **사람이 
 - [x] **DC8-5-04 / 실제 SSR 서버는 Vue와 React만 붙인다:** [M2-04](./MANUAL_TEST_CHECKLIST.md)가 Vue `onServerPrefetch`로 로드한 값의 서버 HTML 반영과 브라우저 hydration 일치를 명시적으로 요구한다. React는 가장 흔한 SSR 경로라 함께 붙인다. **Preact·Svelte·Solid의 브라우저 hydration은 이 단계에서 미검증으로 명시한다.** [Phase 8.4](./PHASE8_4.md)의 Node SSR 자동 결과는 "서버 렌더가 구독을 남기지 않는다"는 것이지 hydration 일치가 아니므로, 그 결과를 hydration 증거로 바꿔 적지 않는다. (사용자 결정)
 - [x] **DC8-5-05 / 문서 예제는 fence를 추출해 공개 선언 타입으로 컴파일한다:** `README.md`·`packages/state-ref/README.md`·`packages/sync/README.md`의 ` ```ts `/` ```tsx ` 블록을 스크립트가 추출해 임시 파일로 만들고 빌드된 `dist/*.d.ts`를 대상으로 `tsc --noEmit`한다. 수기 fixture는 README가 바뀌어도 따라오지 않아 드리프트를 못 잡는다. 문맥이 생략돼 단독 컴파일이 불가능한 블록에는 명시적 스킵 마커를 달고, **검사 출력에 스킵한 블록 수와 위치를 남긴다** — 마커를 남발해 검사가 조용히 비는 것을 막기 위해서다. 마커 없는 블록의 컴파일 실패는 gate 실패다. (사용자 결정)
 - [x] **DC8-5-06 / gate에는 타입 검사 2단계만 넣는다:** `examples-types`와 `doc-examples`를 추가해 16 → **18단계**가 된다. 예제 앱의 프로덕션 빌드와 번들 경계 검사는 별도 `pnpm check:examples`에 두고 gate에 넣지 않는다. 5개 앱의 빌드는 gate를 눈에 띄게 늦추는데, 데모의 실제 동작 증거는 어차피 8.7의 수동 수행이다. gate의 기존 `lint` 단계는 `packages/*/src`만 스캔하므로 `examples/*/src`를 같은 규칙으로 추가한다(단계 수는 늘지 않는다). (사용자 결정)
-- [x] **DC8-5-07 / 데모는 실제 사용자 서버를 건드리지 않는다:** [DC8-02](./PHASE8.md)를 유지한다. 모든 READ/WRITE는 in-memory mock이며 실제 `fetch`를 쏘지 않는다. 지연은 제어 가능한 Promise로만 만들고, 자동 조회 tick은 제어 가능한 clock으로만 움직인다. 데모에 외부 URL을 넣지 않는다.
+- [x] **DC8-5-07 / 데모는 실제 사용자 서버를 건드리지 않는다:** [DC8-02](./PHASE8.md)를 유지한다. 모든 READ/WRITE는 in-memory mock이며 실제 `fetch`를 쏘지 않는다. 지연은 제어 가능한 Promise로만 만들고 데모에 외부 URL을 넣지 않는다.
 - [x] **DC8-5-08 / 번들 경계는 문자열이 아니라 모듈 그래프로 확인한다:** 소비자 빌드는 의존성을 인라인하므로 `from 'state-ref/draft'` 같은 import 문자열이 산출물에 남지 않는다. gate의 `draft-bundle`·`batch-bundle`·`sync-bundle`이 쓰는 문자열 단언은 **라이브러리 dist**에는 유효하지만 앱 번들에는 유효하지 않다. 따라서 `examples/bundles`의 네 진입점은 rollup 플러그인으로 각 진입점의 **해석된 모듈 id 목록**을 JSON으로 남기고, `check:examples`가 core-only 그래프에 `state-ref.draft`·`packages/sync` 산출물이 없고 draft-only 그래프에 sync가 없음을 단언한다. 이것이 M2-01이 브라우저에서 확인할 경계의 자동 대응이다.
 - [x] **DC8-5-09 / loading/error 화면은 "가짜 성공 payload 없음"을 보이는 것이 목적이다:** 데모는 로드 전 status, 첫 조회 실패, 명시적 복구, 정상 응답 교체 뒤 기존 ref의 최신 값 읽기를 각각 별도 조작으로 구동한다. placeholder를 쓰는 화면에서는 그 값이 캐시·SSR snapshot에 들어가지 않는다는 [Phase 5.3](./PHASE5_3.md)의 경계를 패널로 함께 보인다.
 - [x] **DC8-5-10 / 콜백 없는 computed를 화면에서 구분해 보인다:** [M2-04](./MANUAL_TEST_CHECKLIST.md)의 마지막 항목이자 [Phase 8.4](./PHASE8_4.md) 캐시 결정의 화면 대응이다. 반복 읽기에서 객체 참조가 유지되는 것, 의존 값이 바뀌면 `sync()` 전에도 최신 계산값을 읽는 것, 구독 콜백은 수동 `sync()` 때 알림을 받는 것을 각각 다른 패널로 보인다. 계산 횟수 카운터를 함께 표시해 재계산 0회를 눈으로 확인할 수 있게 한다.
+- [x] **DC8-5-12 / 시간은 fixture가 제어하지 못한다 — 대신 환경과 응답을 제어한다:** 구현 단계 1에서 확인한 사실이다. `SyncEnvironment`는 `subscribe`·`isFocused`·`isOnline`만 받고(`packages/sync/src/automatic-refetch.ts`), staleness는 `Date.now()`, polling은 `setInterval`을 **직접** 쓴다. 주입 가능한 `now`나 scheduler가 없으므로 **fixture의 clock이 자동 조회 tick을 움직인다는 애초 계획은 성립하지 않는다.** fixture가 실제로 제어하는 것은 셋이다: (1) 주입한 가짜 `SyncEnvironment`의 focus/reconnect/online 사건, (2) 제어 가능한 Promise로 결정하는 READ/WRITE의 settle 시점과 결과, (3) 각 요청에 `Date.now()`를 찍어 남기는 타임라인 기록. `staleTime`·`refetchInterval`은 실제 시간으로 흐르므로 데모에서 **작고 눈에 보이는 값**으로 설정해 노출하고, 시간을 멈춘 척하지 않는다. sync에 시간 주입 지점을 새로 만드는 것은 공개 API 변경이라 8.5 범위가 아니다.
+- [x] **DC8-5-13 / 타입 검사는 패키지마다 맞는 도구를 쓴다:** `.vue`와 `.svelte`는 `tsc`가 읽지 못한다. 데모를 SFC 없이 쓰면 검사는 단순해지지만 Vue의 `v-model` 같은 실제 사용 형태가 사라져 [M2-02](./MANUAL_TEST_CHECKLIST.md)의 양방향 입력 확인이 대표성을 잃는다. 각 예제 패키지에 `typecheck` 스크립트를 두고 Vue는 `vue-tsc`, Svelte는 `svelte-check`, 나머지는 `tsc --noEmit`을 쓴다. gate의 `examples-types` 단계는 blanket `tsc`가 아니라 `run --if-present typecheck`로 각 패키지의 도구를 호출한다.
+- [x] **DC8-5-14 / 루트 `build`는 예제를 만들지 않는다:** `examples/*`를 워크스페이스에 넣자 `build:!core`의 `--filter '!state-ref'`가 예제까지 쓸어담아 gate의 build 단계가 깨졌다. 필터에 `--filter '!./examples/*'`를 더해 발행 대상 패키지와 문서 사이트만 빌드하도록 되돌렸다. 예제 빌드는 DC8-5-06대로 `check:examples`에만 있다.
 - [x] **DC8-5-11 / 발행 스코프와 이름을 섞지 않는다:** 예제 패키지 이름은 스코프 없는 `stateref-example-*`로 둔다. 발행 대상인 `@stateref/*` 스코프를 쓰면 목록에서 publish 대상으로 오해되기 쉽다. 모두 `private: true`이고 `files` 필드를 두지 않는다.
 
 ## 워크스페이스 구성
@@ -49,10 +52,10 @@ Phase 8.1~8.4는 자동 테스트로 계약을 고정했다. 8.5는 **사람이 
 ## 구현 단계와 기준 테스트
 
 1. **워크스페이스 뼈대.** `pnpm-workspace.yaml`에 `examples/*`를 추가하고 7개 패키지의 `package.json`·`tsconfig.json`을 만든다. 워크스페이스 의존은 `workspace:*`로 걸고 커넥터·sync는 빌드된 dist를 소비한다.
-   **기준 테스트:** `pnpm install` 후 `pnpm -r --filter './examples/*' exec tsc --noEmit` 통과. 루트 `pnpm gate`의 기존 16단계 결과가 8.4와 같다 — core 338, 전체 670 + 별도 SSR 3, 고정 Node 20.3.0 core gzip 3,718/3,800 B. **예제 추가가 기존 단계의 수치를 바꾸면 그 자체가 결함이다.**
+   **기준 테스트:** `pnpm install` 후 `pnpm -r --filter './examples/*' run --if-present typecheck` 통과(DC8-5-13). 루트 `pnpm gate` 16단계 PASS이며 8.4 대비 달라지는 것은 **`test` 단계에 `examples/shared` fixture 테스트가 더해지는 것뿐**이다 — core 338, sync 183, 커넥터 5종(36·27·35·26·25), 별도 SSR 3, 고정 Node 20.3.0 core gzip 3,718/3,800 B는 그대로여야 한다. 예제 추가가 그 밖의 수치를 바꾸면 그 자체가 결함이다.
 
-2. **공유 fixture.** mock 서버(READ/WRITE 횟수, 요청 ID, 버전, 응답 지연, 원격 거절·`unknown`·성공 후 READ 실패), 제어 clock과 deferred, 시나리오(서울→부산→대전, 무관 필드 변경, 광주 겹침, 배열 재정렬, readonly, 부모 소멸), 조회 shape와 다른 DTO를 구현한다.
-   **기준 테스트:** shared 자체의 vitest. 요청 카운터가 실제 호출마다 증가하고, 제어 clock이 자동 조회 tick을 실제로 움직이며, `unknown` 시나리오가 resolve도 reject도 하지 않고, 배열 재정렬 fixture가 [Phase 7.1](./PHASE7_1.md)이 말한 apply 거절 상황을 실제로 만든다. **fixture가 시나리오를 못 만들면 5종 데모가 전부 거짓을 보이므로, 이 테스트는 데모보다 먼저 통과해야 한다.**
+2. **공유 fixture.** mock 서버(READ/WRITE 횟수, 요청 ID, 버전, 응답 지연, 원격 거절·`unknown`·성공 후 READ 실패), 제어 가능한 deferred와 가짜 `SyncEnvironment`, 요청 타임라인 기록(DC8-5-12), 시나리오(서울→부산→대전, 무관 필드 변경, 광주 겹침, 배열 재정렬, readonly, 부모 소멸), 조회 shape와 다른 DTO를 구현한다.
+   **기준 테스트:** shared 자체의 vitest. 요청 카운터와 요청 ID가 실제 호출마다 증가하고, 주입한 가짜 환경의 focus/reconnect 사건이 실제로 자동 조회를 일으키며, `unknown` 시나리오가 resolve도 reject도 하지 않고, 배열 재정렬 fixture가 [Phase 7.1](./PHASE7_1.md)이 말한 apply 거절 상황을 실제로 만든다. 시간 관련 단언은 DC8-5-12의 범위로 한정한다. **fixture가 시나리오를 못 만들면 5종 데모가 전부 거짓을 보이므로, 이 테스트는 데모보다 먼저 통과해야 한다.**
 
 3. **React 데모(기준 구현).** 체크리스트 1절의 패널을 모두 만든다 — 같은 key의 resource 패널 2개, 주소 draft 2개, 원본과 각 draft의 값·기준·changes·dirty·pending·conflict, READ/WRITE 횟수와 요청 ID·버전, 자동 조회 정책과 시각. DC8-5-09의 loading/error와 DC8-5-10의 computed 패널을 포함한다.
    **기준 테스트:** 타입검사와 `check:examples` 빌드 통과. 체크리스트 1절의 fixture 목록과 데모 화면 요소를 1:1 대조한 표를 이 문서에 남기고, 빠진 항목이 없을 것.
@@ -95,11 +98,26 @@ Phase 8.1~8.4는 자동 테스트로 계약을 고정했다. 8.5는 **사람이 
 
 ## 검증
 
-미수행. 구현 후 각 단계의 기준 테스트 결과, `pnpm gate` 18단계 결과, 결함 주입으로 확인한 검증력, 고정 Node 20.3.0 번들 수치를 여기에 기록한다. 측정하지 않은 항목은 비워 두고 추정치를 적지 않는다.
+단계 3~9는 미수행이다. 아래는 단계 1·2의 실측이며, 측정하지 않은 항목은 비워 둔다.
+
+### 단계 1 — 워크스페이스 뼈대 (완료)
+
+- `examples/*`를 워크스페이스에 넣자 **gate의 build 단계가 즉시 깨졌다.** `build:!core`의 `--filter '!state-ref'`가 예제까지 쓸어담아 `stateref-example-bundles`의 빌드(아직 진입점 HTML이 없다)에서 실패했다. DC8-5-14대로 `--filter '!./examples/*'`를 더해 되돌렸고, 필터가 고르는 대상이 예제 추가 전과 같음을 확인했다 — 커넥터 5종·sync·stateRefDocs.
+- 7개 패키지가 각자의 도구로 타입 검사를 통과한다(DC8-5-13): `tsc --noEmit` 5개, `vue-tsc --noEmit`, `svelte-check`(0 errors, 0 warnings).
+- `pnpm gate` **16단계 PASS**. 패키지별 테스트 수는 8.4와 같다 — core **338**, sync **183**, React **36**, Preact **27**, Vue **35**, Svelte **26**, Solid **25**. 달라진 것은 `test` 단계에 `examples/shared` **9개**가 더해진 것뿐이며 합계는 **679개 + 별도 SSR 3개**다. gate Node 24.11.1의 core gzip은 **3,696/3,800 B PASS**로 불변이다.
+- `packages/` 아래는 한 파일도 바뀌지 않았다(`git status -- packages/`가 비어 있다). 코어 산출물이 바뀔 수 있는 변경이 없으므로 고정 Node 20.3.0의 3,718 B는 재측정하지 않았다.
+
+### 단계 2 — 공유 fixture (완료)
+
+- `examples/shared`에 mock 서버, 제어 가능한 deferred, 주입형 `SyncEnvironment`, 시나리오 값, 패널 투영을 구현했다. 실제 `fetch`는 없다(DC8-5-07).
+- fixture 자체 테스트 **9개 PASS**. 요청 ID·카운터 증가와 진행 중 요청 표시, abort된 READ의 `aborted` 기록, 주입한 focus 사건이 실제로 자동 조회를 일으킴, unfocused에서는 일어나지 않음, `unknown` WRITE가 resolve도 reject도 하지 않음, WRITE 성공 뒤 복구 READ만 실패(`sync-error`의 재료), 결과 큐가 1회성이고 기본이 success, 배열 재정렬 뒤 `draft.apply()`가 `{ ok: false, reason: 'conflict' }`로 거절하며 입력이 남음, 무관한 필드 변경은 충돌을 만들지 않음.
+- **검증력 확인:** fixture에 결함 4종을 주입해 모두 잡히는 것을 확인했다 — `unknown`을 조용히 settle, READ 카운터 미증가, abort 미기록, focus 사건 미발행. 주입 후 소스는 원본과 동일하게 복원했다.
+- **DC8-5-12의 근거:** `SyncEnvironment`는 `subscribe`·`isFocused`·`isOnline`만 받고, staleness는 `Date.now()`, polling은 `setInterval`을 직접 쓴다(`packages/sync/src/automatic-refetch.ts`). 주입 가능한 시간 원천이 없다.
+- 예제 전체가 저장소의 eslint/prettier 규칙을 통과한다. gate의 `lint` 대상에 넣는 것은 단계 8이다.
 
 ## 인계
 
-- done: 계획 수립만 완료했다. DC8-5-01~11을 확정했고 구현 단계와 기준 테스트, 종료 기준을 정의했다. 구현·검증은 아직 없다.
-- next: 구현 단계 1(워크스페이스 뼈대)과 2(공유 fixture, 자체 테스트 우선)를 순서대로 진행한다. fixture 테스트가 통과하기 전에는 데모 UI를 쓰지 않는다.
-- blockers: 없음. M2-01~20은 8.7까지 수동 미수행이다. Preact·Svelte·Solid의 hydration은 이 단계 범위 밖으로 명시했다.
-- 시작 기준 commit: `89a46e9` (Phase 8.4 및 콜백 없는 computed 캐시).
+- done: 계획(DC8-5-01~11)과 구현 단계 1·2를 마쳤다. 예제 워크스페이스 7개가 설치·타입검사되고, 공유 fixture와 자체 테스트 9개가 통과하며 결함 주입 4종이 모두 잡힌다. `pnpm gate` 16단계 PASS이고 기존 패키지 수치는 불변이다. 구현 중 확인한 사실로 DC8-5-12~14를 추가했다 — **fixture는 sync의 시간을 제어할 수 없고**, 타입 검사 도구는 패키지마다 다르며, 루트 `build`는 예제를 제외해야 한다.
+- next: 구현 단계 3(React 데모)에서 체크리스트 1절의 패널을 모두 만들고 대조표를 이 문서에 남긴다. 그 다음이 단계 4의 나머지 4종이다. 데모는 반드시 `stateref-example-shared`의 fixture만 쓴다.
+- blockers: 없음. M2-01~20은 8.7까지 수동 미수행이다. Preact·Svelte·Solid의 hydration은 이 단계 범위 밖으로 명시했다. `staleTime`·`refetchInterval` 데모는 실제 시간으로 도는 것을 전제로 설계한다.
+- 시작 기준 commit: `89a46e9` (Phase 8.4 및 콜백 없는 computed 캐시). 계획 commit은 `e0f6e3a`.

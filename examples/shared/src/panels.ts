@@ -1,0 +1,132 @@
+import type { QueryStatus, ResourceChange } from '@stateref/sync';
+import type { DraftChange, DraftStatus } from 'state-ref/draft';
+import type { MockServer } from './mock-server';
+import type { RequestRecord } from './types';
+
+/**
+ * Framework-independent projections for the panels the manual checklist
+ * asks for. Each demo feeds in the value its own connector produced and
+ * renders the result, so the five screens show the same fields under the
+ * same names (step 4 of docs/server-sync/PHASE8_5.md).
+ */
+
+/** One row of a changes table. */
+export type ChangeLine = Readonly<{
+  id: number;
+  path: string;
+  before: string;
+  after: string;
+  conflict: boolean;
+}>;
+
+const formatPath = (path: readonly (string | symbol)[]) =>
+  path.length === 0 ? '(root)' : path.map(String).join('.');
+
+const formatValue = (present: boolean, value: unknown) =>
+  present ? JSON.stringify(value) : '(없음)';
+
+export function resourceChangeLines(
+  changes: readonly ResourceChange[]
+): readonly ChangeLine[] {
+  return changes.map(change => ({
+    id: change.id,
+    path: formatPath(change.path),
+    before: formatValue(change.before.exists, change.before.value),
+    after: formatValue(change.after.exists, change.after.value),
+    conflict: change.conflict,
+  }));
+}
+
+export function draftChangeLines(
+  changes: readonly DraftChange[]
+): readonly ChangeLine[] {
+  return changes.map(change => ({
+    id: change.id,
+    path: formatPath(change.path),
+    before: formatValue(change.before.exists, change.before.value),
+    after: formatValue(change.after.exists, change.after.value),
+    conflict: change.conflict,
+  }));
+}
+
+export type ResourcePanel<T> = Readonly<{
+  value: T;
+  loaded: boolean;
+  /** `pending` and the mutation phase are the only signs of a server WRITE. */
+  serverBusy: boolean;
+  /** Local divergence. A local `draft.apply()` sets this too (Phase 8.3). */
+  dirty: boolean;
+  /** Separate axis from success/failure: `unknown` and `sync-error` land here. */
+  unconfirmed: boolean;
+  invalidated: boolean;
+  version: number;
+  conflicts: number;
+  fetchStatus: QueryStatus['fetchStatus'];
+  status: QueryStatus['status'];
+  errorText: string | null;
+  changes: readonly ChangeLine[];
+}>;
+
+export function resourcePanel<T>(
+  value: T,
+  status: QueryStatus,
+  changes: readonly ResourceChange[]
+): ResourcePanel<T> {
+  return {
+    value,
+    loaded: status.loaded,
+    serverBusy: status.pending > 0,
+    dirty: status.dirty,
+    unconfirmed: status.unconfirmed,
+    invalidated: status.invalidated,
+    version: status.version,
+    conflicts: status.conflicts,
+    fetchStatus: status.fetchStatus,
+    status: status.status,
+    errorText: status.error == null ? null : String(status.error),
+    changes: resourceChangeLines(changes),
+  };
+}
+
+export type DraftPanel<T> = Readonly<{
+  value: T;
+  dirty: boolean;
+  conflicts: number;
+  version: number;
+  changes: readonly ChangeLine[];
+}>;
+
+export function draftPanel<T>(
+  value: T,
+  status: DraftStatus,
+  changes: readonly DraftChange[]
+): DraftPanel<T> {
+  return {
+    value,
+    dirty: status.dirty,
+    conflicts: status.conflicts,
+    version: status.version,
+    changes: draftChangeLines(changes),
+  };
+}
+
+export type RequestPanel = Readonly<{
+  readCount: number;
+  writeCount: number;
+  inFlight: number;
+  serverCity: string;
+  serverRevision: number;
+  rows: readonly RequestRecord[];
+}>;
+
+export function requestPanel(server: MockServer): RequestPanel {
+  const counts = server.counts();
+  return {
+    readCount: counts.read,
+    writeCount: counts.write,
+    inFlight: server.inFlight().length,
+    serverCity: server.value().city,
+    serverRevision: server.revision(),
+    rows: server.requests(),
+  };
+}
