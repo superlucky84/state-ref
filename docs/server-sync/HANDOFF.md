@@ -82,6 +82,6 @@ Phase 7.3 구현·테스트·문서 커밋은 `6433844`다. Phase 7.4 변경은 
 2. `unknown`은 재조정이나 폐기 전까지 전송할 수 없다. 연결 제출의 자동 재개는 계약상 제공하지 않는다. 완료 기록을 버리기 전 후속 편집을 별도 저장해야 한다.
 3. **Phase 6 완료:** dirty·미확정 WRITE 중인 원본에서 가지 draft를 만들고 독립 편집→로컬 apply→변경 재검토→mutation까지 연결하는 흐름을 자동 검증했다. 서울→부산→대전과 겹친 광주 갱신, 열린 draft의 수명 경계를 포함한다.
 4. **Phase 7 종료:** [Phase 7.1](./PHASE7_1.md) 순서·경계 반례, [Phase 7.2](./PHASE7_2.md) 결과 행렬 모델 대조, [Phase 7.3](./PHASE7_3.md) 배포 경계, [Phase 7.4](./PHASE7_4.md) 수명 반복·보존 사유를 모두 마쳤다. 하위 범위 5개에서 찾은 결함은 배포 3건뿐이고 정확성 결함은 0건이다. `QueryKey` 정밀화와 status readonly화는 공개 API 변경이라 별도 결정으로 남으며, 현재는 `packages/sync/src/tests/negative-runtime.test.ts`의 런타임 거절로 고정돼 있다.
-5. **Phase 8:** resource/draft/pending 5종 UI 전체 조합과 M2-01~20 수동 시나리오, 개발 도구 UI를 진행한다. 수동 미수행을 PASS로 바꾸지 않는다.
+5. **Phase 8:** 계획과 결정은 [Phase 8](./PHASE8.md)에 있다. resource/draft/pending 5종 UI 조합, 두 소비자·독립 draft 2개·metadata·mount/unmount, DTO·제출 중 입력·기준 복구 실패, SSR 격리, 새 `examples/` 워크스페이스 데모, F2 지원표 교차 확인, M2-01~20 수동 수행의 7개 하위 단계다. **개발 도구 UI와 플랫폼 자동 설치는 만들지 않고 F2 잔여로 명시한다**(DC8-01). 커넥터의 새 테스트는 `sync-ui.*`로 만든다 — 기존 `integration.*`은 `docs/core-improvement/`의 Phase 8이라 서로 다른 계획이다. 수동 미수행을 PASS로 바꾸지 않는다.
 
 현재 즉시 작업을 막는 외부 blocker는 없다. 남은 위험은 F2 기능/영속 복원 계약의 큰 범위, resource/draft pending 결합과 전체 UI 조합 미검증, 수동 M2 부재다. 특히 `sync-error`나 `unknown`을 실패한 WRITE로 오인해 재전송하지 말고, 연결 작업의 다음 제출은 최신 snapshot으로 다시 만든다.

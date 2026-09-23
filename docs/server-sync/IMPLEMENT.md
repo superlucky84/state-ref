@@ -223,7 +223,7 @@
 
 ### Phase 8 — Integration Test와 출시 검증
 
-**진입:** Phase 7 종료, 기능 지원표와 공개 API 확정.
+**진입:** Phase 7 종료, 기능 지원표와 공개 API 확정. 하위 단계 계획과 결정은 [Phase 8](./PHASE8.md)에 있다.
 
 - [ ] React·Preact·Vue·Svelte·Solid에서 로컬 draft와 서버 resource/draft 예제를 검증한다.
 - [ ] 두 소비자·독립 draft 2개·metadata UI·mount/unmount·SSR client 분리를 검증한다.
