@@ -75,7 +75,7 @@ export function create<V>(
   const onWrite = userCreateOption?.onWrite;
 
   const watch = (
-    renew: Renew<StateRefStore<V>> = () => {},
+    renew?: Renew<StateRefStore<V>>,
     userOption?: { cache?: boolean; editable?: boolean }
   ): StateRefStore<V> => {
     /**
@@ -113,7 +113,7 @@ export function create<V>(
   return {
     pathRoot,
     watch,
-    updateRef: watch(() => {}, { editable: true }),
+    updateRef: watch(undefined, { editable: true }),
     sync: () => {
       runner(storeRenderList);
     },

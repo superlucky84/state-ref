@@ -320,6 +320,15 @@ const result = computedWatch();
 // result.value is typed as { userName: string; doubleAge: number }`}
       />
 
+      <p>
+        Calling <code>computedWatch()</code> without a callback creates no
+        subscriptions. After the initial calculation, reads reuse the same result
+        object until a ref value read by the calculation changes. The next read
+        then computes from current inputs, even before a manual <code>sync()</code>.
+        Subscriber notifications still wait for <code>sync()</code> in manual mode.
+        Keep calculations pure and read dependencies through the supplied refs.
+      </p>
+
       <h2>Performance Considerations</h2>
 
       <ul>

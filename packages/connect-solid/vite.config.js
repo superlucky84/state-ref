@@ -50,6 +50,9 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     includeSource: ['src/tests/**/*.{js,ts,jsx,tsx}'],
+    // Server renders have their own config; running them here would put them
+    // in a DOM, where the connectors take the browser path they are not about.
+    exclude: ['**/node_modules/**', '**/dist/**', 'src/tests/**/*.ssr.test.*'],
     setupFiles: './test/setup.ts',
     globals: true,
   },

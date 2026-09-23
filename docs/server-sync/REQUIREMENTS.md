@@ -1,6 +1,6 @@
 # REQUIREMENTS — state-ref 서버 동기화와 독립 Draft
 
-- 개정일: 2026-09-22. 사용자 최종 결정 반영, Phase 4 mutation과 Phase 5.1~5.13의 SSR·cache/view·UI view·자동 재조회·pagination/infinite·query network mode·브라우저 adapter·영속화·단일 연결 제출 기록·읽기 전용 캐시 관측·무한 조회 편의 API 하위 범위까지 자동 검증. 전체 서버 기능 동등성은 미완료.
+- 개정일: 2026-09-23. Phase 8.4까지 자동 검증했다. 5종의 실제 서버 렌더는 구독을 남기지 않고, 별도 client의 편집 격리와 clean snapshot 왕복을 확인했다. 브라우저 hydration·loading/error 화면과 M2 수동 검증, 전체 서버 기능 동등성은 미완료다.
 - 기준 commit: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`, `state-ref@3.0.2`.
 - 연계: [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 - `R2-*`는 이번 개정의 요구사항이다. 이전 `SR-*`는 당시 커밋의 기록이며 현재 계약으로 사용하지 않는다.
@@ -71,7 +71,7 @@ batch의 export 경로는 `state-ref/batch`로 확정했다. 그 밖의 미구�
 | R2-04 | 로딩과 상태 | 미로드 payload 접근을 명시적으로 처리하고 가짜 데이터·오류 상태 혼동 없음 | T2-04, M2-04 |
 | R2-05 | resource 직접 편집 | 첫 setter부터 변경 기록, 편집만으로 WRITE 0회, 서버 기준은 유지 | T2-05, M2-05 |
 | R2-06 | resource dirty/changes | 마지막 수용 서버 값에 대한 차이를 readonly로 제공, 원상복귀는 변경 해소 | T2-06, M2-05 |
-| R2-07 | 공유와 격리 | 같은 key의 resource 편집 공유, 서로 다른 client/SSR 요청의 데이터·작업 격리 | T2-07, M2-03 |
+| R2-07 | 공유와 격리 | 같은 key의 resource 편집 공유, 서로 다른 client/SSR 요청의 데이터·작업 격리, helper 조합을 포함해 서버 렌더 뒤 커넥터 구독 0건 | T2-07, M2-03, M2-04 |
 | R2-08 | 독립 mutation | 조회 shape와 다른 DTO, resource 미지정 명령, 여러 결과 반영 대상을 명시 가능 | T2-08, M2-06 |
 | R2-09 | 명시적 기준 반영 | 재조회·응답 매핑·서버가 수용한 제출값 반영을 구분, 반영 자체가 새 편집/WRITE를 만들지 않음 | T2-09, M2-07 |
 | R2-10 | 제출과 후속 입력 | 제출 시 값·변경 버전 고정, DTO에 포함하지 않은 편집·후속 입력을 임의로 clean 처리하지 않음 | T2-10, M2-08 |
@@ -121,7 +121,7 @@ F2-05의 Phase 5.13 하위 수용 범위는 무한 조회 결과의 임시 캐�
 - **NFR2-04** key/배열 위치와 도메인 ID를 혼동하지 않는다. 원격 저장의 원자성·중복 방지·서버 취소를 클라이언트 기능으로 과장하지 않는다.
 - **NFR2-05** 현재 `pnpm gate`와 새 헬퍼의 타입·테스트·빌드·의존성 검사 모두를 출시 조건에 포함한다. 문서 정적 검사는 런타임 증거가 아니다.
 - **NFR2-06** Node·pnpm·TypeScript 버전, baseline, 성능·번들 예산을 Phase 0에서 기록하고 근거 없이 기존 예산을 늘리지 않는다.
-- **NFR2-07** client는 앱/SSR 요청별로 명시적으로 소유한다. 전역 singleton으로 서로 다른 사용자의 데이터를 공유하지 않는다.
+- **NFR2-07** client는 앱/SSR 요청별로 명시적으로 소유한다. 전역 singleton으로 서로 다른 사용자의 데이터를 공유하지 않는다. 서버 렌더는 해제할 수 없는 UI 구독을 생성하지 않는다.
 - **NFR2-08** changes는 현재 편집을 위한 정보이며 영구 감사 로그가 아니다. 값이나 요청 DTO를 자동 외부 전송·로그 출력하지 않는다.
 - **NFR2-09** 명시적 batch는 microtask/타이머/프레임워크 스케줄러에 알림 시점을 맡기지 않는다. 기본 core 번들·쓰기 성능 예산과 5종 커넥터의 실제 양방향 갱신을 재검증한다.
 
@@ -165,3 +165,7 @@ F2-05의 Phase 5.13 하위 수용 범위는 무한 조회 결과의 임시 캐�
 - next: IMPLEMENT Phase 0에서 공개 계약·기능 목록·독립 엔진과 draft 연결 실험.
 - blockers: 문서 개정 차단 없음. 상세 설계와 기능 구현·실행 검증은 미완료.
 - latest commit: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`. 이번 개정은 미커밋 문서 변경이다.
+
+- Phase 8.4 computed 캐시 보강: 콜백 없는 computed는 구독 없이 최신 원본을 읽되, 실제 의존 값이 같으면 재계산 없이 결과 객체를 재사용한다. 수동 `sync()`는 구독 알림의 경계다.
+
+- Phase 8.4 캐시 보강의 번들 예산은 고정 Node 20.3.0에서 minified gzip 3,800 B다. 이전 3,500 B 대비 약 0.22 kB의 실제 의존 값 캐시 비용을 수용하며 근거는 [PHASE8_4](./PHASE8_4.md)에 기록했다.

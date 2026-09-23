@@ -1,6 +1,6 @@
 # 서버 동기화·독립 Draft 현재 인계
 
-기준일: 2026-09-22. 브랜치 `feat/server-sync-draft`, Phase 5.13 시작 기준 커밋 `3813ece` (`feat(sync): add client cache observation`). Phase 5.13 구현·검증·문서는 이 인계 문서와 같은 커밋에 있다. 작업 재개 시 `git log -1 --oneline`과 `git status --short --branch`로 최신 커밋과 작업 트리를 확인한다.
+기준일: 2026-09-24. 브랜치 `feat/server-sync-draft`. Phase 8.4의 SSR 수정과 콜백 없는 computed 캐시까지 검증·커밋 대상으로 확정했다. 이 문서는 해당 구현과 함께 커밋되며, 확정 SHA와 재개 메모는 ctxbin의 `state-ref-root/feat/server-sync-draft`에 기록한다. 작업 재개 시 `git log -1 --oneline`과 `git status --short --branch`로 최신 커밋과 작업 트리를 확인한다.
 
 ## 먼저 읽을 문서
 
@@ -8,7 +8,7 @@
 2. [REQUIREMENTS](./REQUIREMENTS.md): R2 수용 기준과 이전 결정의 대체 관계.
 3. [DESIGN](./DESIGN.md): helper 경계, DC2/IC2 결정, F2 기능 목록.
 4. [IMPLEMENT](./IMPLEMENT.md): T2 테스트 계약과 Phase 5~8의 진입·종료 조건.
-5. [Phase 5.13](./PHASE5_13.md): 무한 조회 캐시 준비·관찰자 View. [Phase 5.12](./PHASE5_12.md)는 client별 읽기 전용 캐시 관측 경계다. 이전 단계는 [README](./README.md)의 문서 지도를 따른다.
+5. [Phase 8.4](./PHASE8_4.md): 실제 서버 렌더의 구독 수명과 SSR client 격리. 이전 단계는 [README](./README.md)의 문서 지도를 따른다.
 6. [수동 체크리스트](./MANUAL_TEST_CHECKLIST.md): M2-01~20. 지금은 전부 미수행이며 Phase 8 출시 검증 대상이다.
 
 `PHASE0.md`~`PHASE4.md`의 “next”와 “미커밋” 문구는 **해당 단계 작성 당시의 이력**이다. 현재 재개 지점과 최신 구현 SHA는 이 문서가 우선한다.
@@ -46,6 +46,7 @@
 - **Phase 8.1:** 5종 커넥터에서 서버 resource와 그 원본에서 분기한 draft를 **기존 editable `connectX`로** 함께 구동한다. `query.watch`와 `draft.watch`가 둘 다 `Watch<T>`라 sync 전용 커넥터가 필요 없고, 커넥터는 여전히 sync를 런타임 import하지 않는다. 원본이 dirty여도 draft는 clean에서 분기하고, draft 입력은 원본에 닿지 않으며, 겹친 원본 변경은 conflict가 되어 apply를 거절하고, 폐기는 원본을 보존하며, apply는 **root 변경 1건**으로 합쳐진다(경로별 제출은 apply 전에 `capture`). **해제된 query에 대한 UI 쓰기는 거절되지만 어느 프레임워크에서도 호출 지점으로 돌아오지 않는다** — React·Preact·Svelte·Solid는 uncaught error, Vue는 app 레벨 `errorHandler`다. 그래서 계약은 "앱이 잡는다"가 아니라 **query 수명을 컴포넌트 수명에 맞추는 것**이다. 커넥터 tsconfig의 `moduleResolution`은 `"bundler"`로 맞췄다. 상세 계약은 [Phase 8.1](./PHASE8_1.md)에 있다.
 - **Phase 8.2:** 같은 key의 handle 2개는 기준과 편집을 공유하고 `owners`는 **handle 수를 따른다** — 컴포넌트의 마운트·언마운트는 `owners`를 바꾸지 않는다. 한 원본의 draft 2개는 입력이 격리되고, 한쪽의 apply는 다른 쪽에 원본 갱신으로 도착해 같은 경로면 conflict가 된다. **`connectSvelte`의 결함 2건을 고쳤다**: (1) 쓰기 되돌림 구독이 파괴를 넘어 살아남아 파괴된 컴포넌트가 원본에 계속 썼다 — Svelte는 마크업의 `$store` 자동 구독만 정리하고 수동 `subscribe`는 정리하지 않으므로 커넥터가 직접 해제해야 한다. (2) 그 구독자가 던지면 Svelte의 전역 `subscriber_queue`가 비워지지 않아 **앱 전체의 스토어가 조용히 알림을 멈춘다**(그 뒤 새로 만든 스토어까지). 이제 구독자 본문 전체를 감싸 거절을 `reportError`로 밖에서 보고한다 — 폐기된 draft·해제된 query는 **읽기도** 던지므로 대입만 감싸면 부족하다. React·Preact는 미러를 만들지 않고 hook이 원본 ref를 그대로 돌려주므로 파괴 뒤 held ref로 쓰면 원본에 써지는 것이 정상이다. 상세 계약은 [Phase 8.2](./PHASE8_2.md)에 있다.
 - **Phase 8.3:** 화면이 로컬 적용과 서버 WRITE를 구분하는 근거는 `dirty`가 아니다 — **로컬 apply도 `dirty`를 만들고 `pending`·mutation phase는 건드리지 않으며 `mutationFn`을 부르지 않는다**. 진행 중 서버 작업은 `status.pending > 0`과 mutation phase `pending`으로만 드러난다. 입력 DTO는 조회 shape와 무관하다. `capture()` 이후의 입력은 같은 경로든 다른 경로든 보존되며 `submitted` 수용은 capture한 개정만 소비한다. `unconfirmed`는 성공/실패와 **다른 축**이다: `unknown`은 입력을 지킨 채 미확정, `sync-error`는 WRITE 성공 뒤 기준 복구 실패로 입력 없이 미확정이다. 둘 다 성공으로도 확정 실패로도 보이면 안 되고, `unknown` 뒤 자동 재전송 경로는 없다(반례가 호출 횟수로 고정). 상세 계약은 [Phase 8.3](./PHASE8_3.md)에 있다.
+- **Phase 8.4:** React·Preact·Vue·Solid의 실제 서버 렌더는 renew 없는 `watch()`로 값을 읽는다. 처음 수정은 프레임워크 갱신 콜백만 없앴다. 코어 경로 트리에서 콜백 없는 ref 11개가 no-op 구독 11개를 남기는 것을 뒤늦게 확인해, 콜백 없는 `watch()` 자체를 구독 없는 ref로 고쳤다. 수정 전에는 같은 store를 11회 렌더하고 쓴 뒤 네 커넥터가 각각 11회 renew를 받았다. 이는 **장수 store 재사용** 조건의 측정이며 요청마다 별도 store/client를 버리는 앱의 지속 누수를 입증하지 않는다. Svelte는 기존 `onDestroy`로 0회였으므로 구현을 유지했다. 네 커넥터의 읽기 전용 View, React의 별도 client 편집 격리·dirty snapshot 거절·clean 복원을 확인했다. 브라우저 hydration과 loading/error 화면은 8.5 데모와 8.7 수동 검증에 남긴다. 상세 기록은 [Phase 8.4](./PHASE8_4.md)에 있다.
 - 비교 기준은 `@tanstack/query-core@5.103.1`의 기능 목록이다. TanStack 런타임·플러그인·API 호환 또는 F2 전체 동등성을 선언하지 않는다. 과거 `resource.save`, `draft.save`, draft 직접 서버 저장, 서버 부분 저장 scope 설계는 현재 계약이 아니다.
 
 주요 코드 위치: [core batch](../../packages/state-ref/src/batch/index.ts), [draft](../../packages/state-ref/src/draft/index.ts), [sync query/client](../../packages/sync/src/index.ts), [무한 조회](../../packages/sync/src/infinite.ts), [network gate](../../packages/sync/src/network.ts), [browser adapter](../../packages/sync/src/browser-environment.ts), [자동 재조회](../../packages/sync/src/automatic-refetch.ts), [view](../../packages/sync/src/view.ts), [live view](../../packages/sync/src/live-view.ts), [clean hydration 형식](../../packages/sync/src/hydration.ts), [로컬 복구 형식](../../packages/sync/src/local-hydration.ts), [영속화와 명령 queue](../../packages/sync/src/persistence.ts), [resource 기록](../../packages/sync/src/resource.ts), [mutation](../../packages/sync/src/mutation.ts). 소비자 예제는 [sync README](../../packages/sync/README.md)를 따른다.
@@ -77,10 +78,12 @@
 - Phase 8.1 변경에서 `pnpm gate` **PASS**. 커넥터 테스트 React **26**·Vue **21**·Preact **18**·Svelte **18**·Solid **18**, sync **183개**·core **325개 PASS**(불변). 정확성 결함 0건이며 라이브러리 구현 변경은 없다. 반례는 결함 3종(draft 충돌 감지, 해제된 handle 가드, 커넥터 unmount abort)을 5종 전수 주입해 15칸 모두 실패함을 확인했다. 처음 쓴 React·Preact 언마운트 반례는 주입에도 통과해 `countingWatch`로 구독 자체를 관찰하도록 고쳤다. 기본 core gzip **3,433/3,500 B 불변**. 검증한 경계는 [PHASE8_1](./PHASE8_1.md)에 있다.
 - Phase 8.2 변경에서 `pnpm gate` **PASS**. 커넥터 테스트 React **28**·Vue **23**·Svelte **21**·Preact **20**·Solid **20**, sync **183개**·core **325개 PASS**(불변). `connectSvelte` 결함 2건을 반례를 먼저 쓴 뒤 고쳤고, 주입 3종(쓰기 되돌림 해제 제거, 구독자를 다시 flush 안에서 던지게 함, `owners` 미집계)으로 검증력을 확인했다. Svelte 기존 테스트 회귀 없음(`integration.test.ts` 4·`test.test.ts` 9·`live-view.test.ts` 1). 기본 core gzip **3,433/3,500 B 불변**. 검증한 경계는 [PHASE8_2](./PHASE8_2.md)에 있다.
 - Phase 8.3 변경에서 `pnpm gate` **PASS**. 커넥터 테스트 React **33**·Vue **28**·Svelte **26**·Preact **25**·Solid **25**, sync **183개**·core **325개 PASS**(불변). 정확성 결함 0건이며 구현 변경은 없다. 주입 3종(진행 중 연결 WRITE의 `pending` 미보고, `unknown`·`sync-error`의 미확정 미표시, idle mutation이 `pending`으로 읽힘)을 5종 전수 적용해 15칸 모두 실패함을 확인했다. 기본 core gzip **3,433/3,500 B 불변**. 검증한 경계는 [PHASE8_3](./PHASE8_3.md)에 있다.
-- 고정 Node 20.3.0의 기본 core 기준은 **3,455/3,500 B PASS**다. 이번 gate 번들 측정은 **3,433/3,500 B PASS**다. Phase 5.17 별도 sync ESM은 약 **86.19 kB raw / 20.68 kB gzip**이며 기본 core 빌드에 포함되지 않는다.
+- Phase 8.4 변경에서 `pnpm gate` **16단계 PASS**. React **36**·Preact **27**·Vue **30**개 테스트에 Node SSR이 포함되고, Svelte **26**·Solid **25**개 브라우저 테스트 뒤 별도 SSR 단계에서 Svelte **1**·Solid **2**개가 통과했다. sync **183개**·core **326개 PASS**. 네 커넥터의 서버 분기 제거를 반례가 잡았으며, Solid 읽기 전용 View 분기 제거는 11회 renew로 실패했다. 코어 경로 트리 반례는 수정 전 11개 no-op 구독을 검출하고 수정 후 0개로 통과했다. 기본 core gzip은 **3,442/3,500 B PASS**. 검증한 경계는 [PHASE8_4](./PHASE8_4.md)에 있다.
+- Phase 8.4 리뷰 보강(2026-09-24): Vue SSR getter로 `onServerPrefetch` 이후 최신값과 선택 경로를 반영하고, 콜백 없는 중첩 helper가 원본을 구독하지 않도록 수정했다. computed는 읽을 때 계산하며 `equals`로 동일 결과의 identity를 유지한다. 새 반례 8개는 수정 전 실패, 수정 후 통과했다. core **329개**·Vue **35개**, 전체 테스트 **661개 + 별도 SSR 3개**, gate **16단계 PASS**. 세부 계약과 증거는 [PHASE8_4](./PHASE8_4.md)에 있다.
+- 고정 Node 20.3.0의 기본 core 기준은 **3,455/3,500 B PASS**다. 리뷰 보강 후 측정은 고정 Node 20.3.0에서 **3,491/3,500 B PASS**, gate Node 24.11.1에서 **3,470/3,500 B PASS**다. Phase 5.17 별도 sync ESM은 약 **86.19 kB raw / 20.68 kB gzip**이며 기본 core 빌드에 포함되지 않는다.
 - 구현을 바꾸면 해당 패키지 테스트·타입을 먼저 실행하고 전체 `pnpm gate`로 종료한다. 문서 변경은 `git diff --check`와 링크 경로를 확인한다.
 
-Phase 8 계획은 `7e16f14`, Phase 8.1은 `70d65f2`, Phase 8.2는 `8d1cfdf`다. Phase 8.3 변경은 이 인계 문서와 같은 커밋에 있다. 최신 SHA는 `git log -1 --oneline`으로 확인한다.
+Phase 8 계획은 `7e16f14`, Phase 8.1은 `70d65f2`, Phase 8.2는 `8d1cfdf`, Phase 8.3은 `eff7f5b`다. Phase 8.4 및 computed 캐시 변경은 이 문서를 포함한 커밋에 함께 기록한다. 최신 SHA는 `git log -1 --oneline`으로 확인한다.
 
 ## 다음 단계와 완료 기준
 
@@ -88,6 +91,19 @@ Phase 8 계획은 `7e16f14`, Phase 8.1은 `70d65f2`, Phase 8.2는 `8d1cfdf`다. 
 2. `unknown`은 재조정이나 폐기 전까지 전송할 수 없다. 연결 제출의 자동 재개는 계약상 제공하지 않는다. 완료 기록을 버리기 전 후속 편집을 별도 저장해야 한다.
 3. **Phase 6 완료:** dirty·미확정 WRITE 중인 원본에서 가지 draft를 만들고 독립 편집→로컬 apply→변경 재검토→mutation까지 연결하는 흐름을 자동 검증했다. 서울→부산→대전과 겹친 광주 갱신, 열린 draft의 수명 경계를 포함한다.
 4. **Phase 7 종료:** [Phase 7.1](./PHASE7_1.md) 순서·경계 반례, [Phase 7.2](./PHASE7_2.md) 결과 행렬 모델 대조, [Phase 7.3](./PHASE7_3.md) 배포 경계, [Phase 7.4](./PHASE7_4.md) 수명 반복·보존 사유를 모두 마쳤다. 하위 범위 5개에서 찾은 결함은 배포 3건뿐이고 정확성 결함은 0건이다. `QueryKey` 정밀화와 status readonly화는 공개 API 변경이라 별도 결정으로 남으며, 현재는 `packages/sync/src/tests/negative-runtime.test.ts`의 런타임 거절로 고정돼 있다.
-5. **Phase 8:** 계획과 결정은 [Phase 8](./PHASE8.md)에 있다. resource/draft/pending 5종 UI 조합, 두 소비자·독립 draft 2개·metadata·mount/unmount, DTO·제출 중 입력·기준 복구 실패, SSR 격리, 새 `examples/` 워크스페이스 데모, F2 지원표 교차 확인, M2-01~20 수동 수행의 7개 하위 단계다. **개발 도구 UI와 플랫폼 자동 설치는 만들지 않고 F2 잔여로 명시한다**(DC8-01). 커넥터의 새 테스트는 `sync-ui.*`로 만든다 — 기존 `integration.*`은 `docs/core-improvement/`의 Phase 8이라 서로 다른 계획이다. 수동 미수행을 PASS로 바꾸지 않는다.
+5. **Phase 8:** [계획](./PHASE8.md)의 8.1~8.4 자동 범위는 완료했다. 다음은 8.5의 private `examples/` 워크스페이스와 브라우저 hydration·loading/error 화면, 8.6의 F2 지원표, 8.7의 M2-01~20 수동 수행이다. **개발 도구 UI와 플랫폼 자동 설치는 만들지 않고 F2 잔여로 명시한다**(DC8-01). 수동 미수행을 PASS로 바꾸지 않는다.
 
-현재 즉시 작업을 막는 외부 blocker는 없다. 남은 위험은 F2 기능/영속 복원 계약의 큰 범위, resource/draft pending 결합과 전체 UI 조합 미검증, 수동 M2 부재다. 특히 `sync-error`나 `unknown`을 실패한 WRITE로 오인해 재전송하지 말고, 연결 작업의 다음 제출은 최신 snapshot으로 다시 만든다.
+## 현재 인계
+
+- done: Phase 8.4의 구현·Node SSR 반례·코어의 직접 구독 수 반례·결함 주입·`pnpm gate`를 완료했다. README와 `stateRefDocs`의 언바운드 ref 사용 사례를 대조했고, 언바운드 ref로 이미 추적된 경로에 쓰면 기존 구독에 알림이 간다는 예제 설명 네 곳을 바로잡았다. [Phase 8.4 기록](./PHASE8_4.md)과 [IMPLEMENT](./IMPLEMENT.md)를 갱신했다.
+- next: Phase 8.5의 데모와 공개 타입 검증을 시작한다. 브라우저 hydration·loading/error 화면은 아직 미검증이다.
+- blockers: 외부 차단 없음. F2 전체 동등성과 M2-01~20 수동 결과는 미완료다. `unknown`을 자동 재전송하지 않는다.
+- 이전 구현 commit: `eff7f5b` (Phase 8.3). Phase 8.4 및 computed 캐시 변경은 이 문서를 포함한 커밋에 함께 기록한다.
+
+## 콜백 없는 computed 캐시 인계 (2026-09-24)
+
+- done: 입력 ref의 실제 `.value` 읽기와 배열 반복을 기록하는 캐시를 helper 안에 격리했다. 의존 값이 같으면 결과 객체를 재사용하고, 바뀌면 다음 읽기에서 재계산한다. `sync()` 전 최신 읽기, 콜백을 넘긴 구독의 기존 알림, 실패 후 재시도를 검증했다. 기본 proxy/collector는 이 보강에서 수정하지 않았다.
+- 검증: core 338개·전체 670개 + 별도 SSR 3개, `pnpm gate` 16단계 PASS. 원격 main `1c6460b`와 기본 동작 400회 쓰기 비교 일치. 고정 Node 20.3.0 core gzip 3,718 B(+227 B); 기능 비용을 수용해 새 예산은 3,800 B다. 이전 3,500 B는 초과하므로 이전 예산 통과로 해석하지 않는다.
+- next: Phase 8.5 예제와 브라우저 hydration 검증. 콜백 없는 계산은 전달받은 ref를 읽는 순수 함수로 작성한다.
+- blockers: 없음. 브라우저 hydration 수동 검증은 미수행.
+- commit: `eff7f5b` 이후의 Phase 8.4 및 캐시 구현을 이 문서와 함께 커밋한다. 확정 SHA는 ctxbin 인계 기록을 확인한다.

@@ -15,6 +15,13 @@ function connectWatch<R>(watch: ViewWatch<R>) {
       return abortController.current.signal;
     });
     useEffect(() => () => abortController.current.abort(), []);
+    /**
+     * A server render never unmounts, so the effect above never registers and
+     * a subscription made here could outlive the request if the store is
+     * shared. Reading without a renew keeps the value live without retaining
+     * this closure or registering a core subscription.
+     */
+    if (typeof window === 'undefined') return watch();
     return watch(forceUpdateRef.current);
   };
 }

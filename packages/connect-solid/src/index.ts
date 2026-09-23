@@ -11,6 +11,12 @@ export type ViewWatch<R> = (
 /** One-way Solid accessor for a readonly query view. */
 export function connectSolidView<R>(viewWatch: ViewWatch<R>) {
   return <V>(select: (ref: R) => V): Accessor<V> => {
+    // See `connectSolid`: a server render has no cleanup to release a
+    // subscription, so it reads without making one.
+    if (typeof window === 'undefined') {
+      const [value] = createSignal<V>(select(viewWatch()));
+      return value;
+    }
     const abortController = new AbortController();
     let signalValue!: Signal<V>;
     onCleanup(() => abortController.abort());
@@ -32,6 +38,15 @@ export function connectSolid<T>(watch: Watch<T>) {
   return <V>(
     callback: (store: StateRefStore<T>) => StateRefStore<V>
   ): Signal<V> => {
+    /**
+     * `onCleanup` does not run during a server render, so a subscription made
+     * there can outlive the request if the store is shared. Reading without a
+     * renew produces the same markup and subscribes to nothing.
+     */
+    if (typeof window === 'undefined') {
+      const serverRef = callback(watch());
+      return createSignal<V>(serverRef.value as V);
+    }
     const abortController = new AbortController();
     let signalValue!: Signal<V>;
     let stateRef!: StateRefStore<V>;

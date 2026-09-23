@@ -246,9 +246,9 @@ const untrackedStore = watch();
 trackedStore.count.value = 5;
 // ✓ 로그: "상태 변경됨: 5"
 
-// 추적되지 않는 참조를 통한 업데이트 - 콜백 트리거하지 않음
+// 추적되지 않는 참조로 써도, 이미 추적된 경로라면 콜백이 실행됩니다
 untrackedStore.count.value = 10;
-// ✗ 아무것도 로그하지 않음`}
+// ✓ 로그: "상태 변경됨: 10"`}
       />
 
       <h2>선택적 프로퍼티 추적</h2>

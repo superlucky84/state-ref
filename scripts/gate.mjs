@@ -137,6 +137,22 @@ const steps = [
   },
   { name: 'test', cmd: 'pnpm', args: ['test'] },
   {
+    // Server renders need their own configs: Svelte components must be
+    // compiled with `generate: 'ssr'` and `solid-js/web` only renders under
+    // the server conditions. The other three run in node inside their own
+    // suites, where `window` is absent and the connectors take the server path.
+    name: 'ssr',
+    cmd: 'pnpm',
+    args: [
+      '-r',
+      '--filter',
+      './packages/connect-*',
+      'run',
+      '--if-present',
+      'test:ssr',
+    ],
+  },
+  {
     name: 'draft-bundle',
     cmd: 'node',
     args: ['packages/state-ref/test/draft-bundle.mjs'],

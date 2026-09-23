@@ -102,7 +102,7 @@ const unboundRef = watch();
 // Read values
 console.log(unboundRef.count.value);  // 0
 
-// Write values - updates state but doesn't trigger subscriptions
+// Writes notify any existing subscriber that tracks count; this ref adds none
 unboundRef.count.value = 10;
 
 // This reference exists independently of any subscription`}

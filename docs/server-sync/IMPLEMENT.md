@@ -226,9 +226,10 @@
 **진입:** Phase 7 종료, 기능 지원표와 공개 API 확정. 하위 단계 계획과 결정은 [Phase 8](./PHASE8.md)에 있다.
 
 - [x] React·Preact·Vue·Svelte·Solid에서 로컬 draft와 서버 resource/draft 예제를 검증한다. 기존 editable `connectX`가 `query.watch`·`draft.watch`를 그대로 받는다. [Phase 8.1](./PHASE8_1.md).
-- [x] 두 소비자·독립 draft 2개·metadata 관측·mount/unmount를 검증하고 `connectSvelte`의 결함 2건을 고쳤다. SSR client 분리는 8.4로 남는다. [Phase 8.2](./PHASE8_2.md).
+- [x] 두 소비자·독립 draft 2개·metadata 관측·mount/unmount를 검증하고 `connectSvelte`의 결함 2건을 고쳤다. SSR client 분리는 8.4에서 검증했다. [Phase 8.2](./PHASE8_2.md).
 - [x] 조회 shape와 다른 DTO, 원본 로컬 적용, 제출 중 추가 입력, 기준 복구 실패를 UI에서 확인한다. `dirty`는 서버 작업의 근거가 아니다. [Phase 8.3](./PHASE8_3.md).
-- [ ] 지원 프레임워크의 loading/error/hydration 연결과 기능 목록을 교차 확인한다.
+- [x] 5종의 실제 서버 렌더가 구독을 남기지 않음을 확인하고, 별도 client의 편집 격리와 clean snapshot 왕복을 검증한다. [Phase 8.4](./PHASE8_4.md).
+- [ ] 브라우저 hydration과 loading/error 화면을 데모에서 확인하고 기능 목록과 교차 확인한다. 8.5·8.6·8.7 범위다.
 - [ ] 새 helper의 타입·테스트·빌드를 root gate에 포함하고 실제 문서 예제를 타입 검사한다.
 - [ ] M2-01~20을 수행하고 환경·구현 SHA·결과·증거를 기록한다. M2-02에 추가된 batch 시나리오도 포함한다.
 
@@ -251,6 +252,13 @@
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
+
+### 2026-09-23 — Phase 8.4 서버 렌더와 SSR 격리
+
+- done: [Phase 8.4](./PHASE8_4.md)에서 5종의 실제 서버 렌더를 검증했다. React·Preact·Vue·Solid는 서버에서 renew 없는 `watch()`로 현재 값을 읽는다. 코어의 콜백 없는 ref가 읽을 때 no-op 구독을 남기는 반례를 발견해, 그 경로도 구독 없이 동작하도록 고쳤다. 이로써 같은 store를 11회 렌더한 뒤 커넥터 renew와 코어 구독 모두 0개다. Svelte는 기존 `onDestroy`가 구독을 해제해 구현을 유지했다. 읽기 전용 View의 서버 경로도 네 커넥터에서 고정했다. React에서 별도 client 편집 격리, dirty snapshot 거절, clean snapshot 복원을 확인했다. `pnpm gate` 16단계 PASS; core 326개 테스트, 기본 core gzip 3,442/3,500 B PASS. 이 측정은 장수 store 재사용 조건이며 요청마다 폐기하는 store의 지속 누수를 뜻하지 않는다.
+- next: 8.5의 private `examples/` 워크스페이스, 브라우저 hydration과 loading/error 화면, 문서 예제의 공개 타입 검증.
+- blockers: 없음. M2-01~20은 8.7까지 수동 미수행이다.
+- 시작 기준 commit: `eff7f5b` (Phase 8.3). Phase 8.4 및 computed 캐시 변경은 이 문서를 포함한 커밋에 함께 기록한다. 확정 SHA는 ctxbin 인계 기록을 확인한다.
 
 ### 2026-09-23 — Phase 8.3 DTO·제출 중 입력·기준 복구 실패의 화면
 
@@ -512,3 +520,14 @@
 - blockers: 문서 개정 차단 없음. 상세 API·엔진·기능 동등성·타입·성능 검증은 미완료로 추적.
 - latest commit SHA: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`. 이번 문서 개정은 미커밋이며 push/publish 없음.
 - worktree: 기존 `aa.txt` 보존. 문서만 변경하며 소스·의존성·lockfile 변경 없음.
+
+### Phase 8.4 리뷰 보강 (2026-09-24)
+
+- [x] 콜백 없는 중첩 helper의 구독 0건과 live 읽기, manual-sync 및 computed equals 회귀 테스트.
+- [x] Vue 서버 getter의 prefetch 최신값·선택 경로와 helper SSR 회귀 테스트.
+- [x] 패키지 타입 검사와 전체 `pnpm gate` 통과, [Phase 8.4](./PHASE8_4.md)에 결과 기록.
+
+### 콜백 없는 computed 캐시 보강
+
+- [x] 실제 의존 값에 따른 결과 캐시와 실패 시 재시도. 기본 core proxy/collector 변경 없이 구현.
+- [x] 반복 읽기·중첩·조건 분기·manual-sync·구독 0건 회귀 테스트 및 전체 gate. 673개 테스트와 gate 16단계 PASS.

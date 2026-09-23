@@ -323,6 +323,8 @@ You can create your own custom connection pattern by referring to the [connectRe
 Unlike `createComputed`, which produces a **single derived value**, `combineWatch` focuses on **grouping multiple watches** so you can react to changes from any of them in a **single subscription**.
 When combined multiple times, the structure naturally **nests**, allowing you to build **hierarchical watch compositions**.
 
+Calling the combined watch without a callback returns live source refs without subscribing, including nested combinations.
+
 #### Basic Usage
 
 ```typescript
@@ -370,6 +372,8 @@ combinedAllWatch(([countTextRef, toggleRef], isFirst) => {
 `createComputed` is a helper function that combines multiple watches to produce a new computed (derived) value, and executes a specified callback function whenever that computed value changes.
 
 A Watch created with `createComputed` can be used just like any other watch, including in integrations such as `connectReact` or `connectPreact`.
+
+Calling the computed watch without a callback creates no source subscriptions. Its calculation runs initially. Later `.value` reads compare the ref values read by that calculation using `Object.is`: unchanged dependencies reuse the cached result object, while changed dependencies trigger one recalculation using current values even before a manual `sync()`. Conditional reads refresh the dependency set, and iterating ref arrays also tracks the collection. Keep the calculation free of side effects and read dependencies through the supplied refs; changes to unrelated closure variables are not tracked. `equals` (default `Object.is`) preserves the previous result when the next result is equivalent. Source writes alone do not run this unbound calculation; pass a subscriber callback when you need change notifications.
 
 Below is a simple usage example.
 

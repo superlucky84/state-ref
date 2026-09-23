@@ -11,7 +11,8 @@
     "dev": "vite",
     "build": "vite build",
     "test": "vitest run --reporter verbose",
-    "test:dev": "vitest"
+    "test:dev": "vitest",
+    "test:ssr": "vitest run --config vite.ssr.config.js --reporter verbose"
   },
   "exports": {
     ".": {

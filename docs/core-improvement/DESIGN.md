@@ -722,3 +722,7 @@ if (!Object.is(next, result)) { result = next; notify(); }
 | §3.6 헬퍼 | Phase 6 baseline |
 | 전체 회귀 | Phase 7 하드닝 / Phase 8 통합 / M-05 |
 | `DC-15` 게이트 정의 | Phase 7 — 실패 주입 3종(타입·번들·벤치)으로 게이트가 막는지 확인 |
+
+## 후속 computed 캐시의 번들 예산 (2026-09-24)
+
+서버 기능 Phase 8.4에서 콜백 없는 computed의 실제 의존 값 캐시를 추가한다. 기본 store의 읽기·쓰기 경로에 캡처를 넣지 않고 helper에 격리하는 대가로 고정 Node 20.3.0에서 약 0.22 kB gzip이 증가한다. 이 범위의 새 상한은 3,800 B다. 기존 3,500 B 기준을 통과한 변경으로 간주하지 않으며, 계약·회귀 테스트·실측은 [Phase 8.4](../server-sync/PHASE8_4.md)에 기록한다.

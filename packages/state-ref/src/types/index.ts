@@ -66,7 +66,9 @@ export type StateRefStore<S> = S extends readonly any[]
   : { value: S };
 
 /**
- * Subscribes, or hands back a reference when called with no callback.
+ * Subscribes, or hands back a live reference without subscribing when called
+ * with no callback. Reads and writes through that reference stay current but
+ * do not register a notification path.
  *
  * `cache` (default `true`) de-duplicates by callback identity: calling
  * `watch(fn)` twice with the same `fn` returns the same reference and

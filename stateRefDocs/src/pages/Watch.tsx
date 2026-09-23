@@ -248,9 +248,9 @@ const untrackedStore = watch();
 trackedStore.count.value = 5;
 // ✓ Logs: "State changed: 5"
 
-// Update via untracked reference - does NOT trigger callback
+// Writing a tracked path through an untracked ref still notifies subscribers
 untrackedStore.count.value = 10;
-// ✗ Does NOT log anything`}
+// ✓ Logs: "State changed: 10"`}
       />
 
       <h2>Selective Property Tracking</h2>

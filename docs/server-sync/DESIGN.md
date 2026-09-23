@@ -1,10 +1,10 @@
 # DESIGN — resource 변경 추적과 독립 Draft
 
-- 개정일: 2026-09-19. 기준: [REQUIREMENTS](./REQUIREMENTS.md).
+- 개정일: 2026-09-23. 기준: [REQUIREMENTS](./REQUIREMENTS.md).
 - 기준 commit: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
-- 상태: Phase 4 mutation 이후 [Phase 5.1](./PHASE5_1.md)의 clean baseline SSR 전달, [Phase 5.2](./PHASE5_2.md)의 초기 기준·캐시 준비, [Phase 5.3](./PHASE5_3.md)의 관찰자별 view, [Phase 5.4](./PHASE5_4.md)의 자동 enabled/key 전환, [Phase 5.5](./PHASE5_5.md)의 5종 UI 읽기 전용 view 연결, [Phase 5.6](./PHASE5_6.md)의 client별 focus/reconnect/polling, [Phase 5.7](./PHASE5_7.md)의 pagination/infinite, [Phase 5.8](./PHASE5_8.md)의 query network mode·브라우저 adapter, [Phase 5.9](./PHASE5_9.md)의 clean 기준 영속화·독립 명령 queue, [Phase 5.10](./PHASE5_10.md)의 로컬 편집·미확정 기준 복원, [Phase 5.11](./PHASE5_11.md)의 단일 연결 제출 기록 하위 범위까지 자동 검증했다. 전체 서버 기능 동등성은 미완료다. `[x]` 결정 행은 전체 서버 기능 동등성의 구현·테스트 통과가 아니다.
+- 상태: Phase 8.4까지 자동 검증했다. 5종 커넥터는 실제 서버 렌더 뒤 UI 구독을 남기지 않는다([Phase 8.4](./PHASE8_4.md)). 브라우저 hydration·loading/error 화면, M2 수동 검증과 전체 서버 기능 동등성은 미완료다. `[x]` 결정 행은 전체 서버 기능 동등성의 구현·테스트 통과가 아니다.
 - 최신 구현 SHA와 현재 재개 지점은 [HANDOFF](./HANDOFF.md)를 따른다. 아래 날짜별 인계는 당시의 기록이다.
-- draft 공개 API는 [Phase 2 기록](./PHASE2.md)에 고정했다. query/resource 기본 API와 지원 범위는 [Phase 3 기록](./PHASE3.md)에 남겼다. mutation과 UI 투영은 후속 검증 대상이다.
+- draft 공개 API는 [Phase 2 기록](./PHASE2.md)에, query/resource 기본 API는 [Phase 3 기록](./PHASE3.md)에 고정했다. mutation과 UI 투영의 현재 검증 범위는 [IMPLEMENT](./IMPLEMENT.md)와 [HANDOFF](./HANDOFF.md)를 따른다.
 
 ## 1. 결정 목록
 
@@ -240,6 +240,8 @@ Phase 0에서 서버 엔진의 참조 버전과 key/epoch/기본 타이밍 계�
 | F2-09 | 반응형 옵션·query 전환·타입 추론·모든 지원 커넥터 | Phase 0, 5, 8 |
 
 각 기능군에 reference version, 계약, 독립 테스트, 현재 지원 상태, 차이/제약, 배포 단계를 기록한다. 새로 발견한 기능을 목록 밖이라는 이유로 누락하지 않는다. 기존 TanStack 플러그인을 그대로 실행할 수 있다는 호환성 약속은 별도 검증 없이는 하지 않는다.
+
+F2-06의 서버 렌더 경계는 [Phase 8.4](./PHASE8_4.md)에 고정했다. React·Preact·Vue·Solid는 서버에서 renew 없는 `watch()`로 현재 값을 읽는다. 코어와 `combineWatch`·`createComputed`의 콜백 없는 ref는 경로 구독을 등록하지 않는다. 콜백 없는 computed는 실제로 읽은 ref의 `.value`를 기록한다. 읽기 시 의존 값이 바뀌었을 때만 계산하고 `equals`로 동일 결과의 identity를 유지한다. `sync()` 전에도 현재 원본을 읽고, 콜백을 넘긴 computed는 기존 구독 알림 시점을 유지한다. Vue 서버 반환값은 getter로 현재 원본을 읽어 `onServerPrefetch` 완료 후의 값과 선택 경로를 반영한다. Svelte는 서버 렌더의 `onDestroy`로 구독을 해제한다. 장수 store를 여러 요청에서 재사용할 때 구독이 누적될 수 있었으며, 요청별 store/client를 모두 폐기하는 앱의 지속 누수는 측정으로 입증하지 않았다. 브라우저 hydration과 loading/error UI는 [Phase 8 계획](./PHASE8.md)의 8.5·8.7 검증 대상이다.
 
 기능 정의 참고: [TanStack Query 개요](https://tanstack.com/query/latest/docs/framework/react/overview), [선택 구독과 구조 공유](https://tanstack.com/query/latest/docs/framework/react/guides/render-optimizations), [mutation](https://tanstack.com/query/latest/docs/framework/react/guides/mutations), [영속화](https://tanstack.com/query/latest/docs/framework/react/plugins/persistQueryClient). 기존 도구에도 유사 기능이 있음을 인정하고 독점 기능이나 측정하지 않은 성능 우위를 주장하지 않는다.
 

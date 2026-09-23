@@ -318,6 +318,14 @@ const result = computedWatch();
 // result.value는 { userName: string; doubleAge: number } 타입`}
       />
 
+      <p>
+        콜백 없는 <code>computedWatch()</code>는 구독을 만들지 않습니다.
+        최초 계산 후에는 읽었던 ref 값이 바뀌었을 때만 다음 읽기에서 다시 계산하고,
+        그대로면 같은 결과 객체를 재사용합니다. <code>sync()</code> 전에도 최신
+        원본을 읽으며, 구독 콜백에 대한 알림은 수동 모드의 <code>sync()</code>에서
+        실행됩니다. 계산은 전달받은 ref를 읽는 순수 함수로 작성하세요.
+      </p>
+
       <h2>성능 고려사항</h2>
 
       <ul>

@@ -1,4 +1,11 @@
-import { reactive, watch, onUnmounted, shallowRef, readonly } from 'vue';
+import {
+  reactive,
+  watch,
+  onUnmounted,
+  shallowRef,
+  readonly,
+  customRef,
+} from 'vue';
 import type { Reactive, UnwrapRef, Ref, ShallowRef } from 'vue';
 import { cloneDeep } from 'state-ref';
 import type { Renew, StateRefStore, Watch } from 'state-ref';
@@ -13,6 +20,19 @@ export type ViewWatch<R> = (
 /** One-way Vue value for a readonly query view. */
 export function connectVueView<R>(viewWatch: ViewWatch<R>) {
   return <V>(select: (ref: R) => V): Readonly<Ref<V>> => {
+    // See `connectVue`: a server render has no unmount to release a
+    // subscription, so it reads without making one.
+    if (typeof window === 'undefined') {
+      const serverRef = viewWatch();
+      // A custom getter avoids caching a value read before server prefetch.
+      // customRef is also available throughout our Vue 3 peer range.
+      return readonly(
+        customRef<V>(() => ({
+          get: () => select(serverRef),
+          set: () => {},
+        }))
+      ) as Readonly<Ref<V>>;
+    }
     const abortController = new AbortController();
     let valueRef!: ShallowRef<V>;
     onUnmounted(() => abortController.abort());
@@ -35,6 +55,22 @@ export function connectVue<T>(refWatch: Watch<T>) {
     callback: (store: StateRefStore<T>) => StateRefStore<V>
   ): Reactive<{ value: V }> => {
     type J = Reactive<{ value: V }>;
+    /**
+     * `onUnmounted` does not run during a server render, so a subscription
+     * made there can outlive the request if the store is shared. Reading
+     * without a renew produces the same markup and subscribes to nothing.
+     */
+    if (typeof window === 'undefined') {
+      const serverRef = refWatch();
+      return reactive({
+        get value() {
+          return callback(serverRef).value;
+        },
+        set value(value: V) {
+          callback(serverRef).value = value;
+        },
+      }) as J;
+    }
     const abortController = new AbortController();
     let reactiveValue!: J;
     let stateRef!: StateRefStore<V>;

@@ -102,7 +102,7 @@ const unboundRef = watch();
 // 값 읽기
 console.log(unboundRef.count.value);  // 0
 
-// 값 쓰기 - 상태는 업데이트하지만 구독을 트리거하지 않음
+// 값 쓰기 - count를 추적 중인 기존 구독에는 알림, 이 참조는 구독하지 않음
 unboundRef.count.value = 10;
 
 // 이 참조는 어떤 구독과도 독립적으로 존재합니다`}
