@@ -35,6 +35,9 @@ Phase 8.1~8.4는 자동 테스트로 계약을 고정했다. 8.5는 **사람이 
 - [x] **DC8-5-16 / 로드 전에는 `query.watch`를 건드릴 수 없다:** 구현 중 확인한 런타임 사실이다. 로드 전에는 필드 읽기뿐 아니라 **`query.watch`와 `query.ref`에 접근하는 것 자체가** `Query data is not loaded. Call load() first.`로 던진다. `query.status`/`watchStatus`만 처음부터 안전하다. 따라서 모든 데모는 status를 먼저 연결하고, 값을 읽는 컴포넌트는 `status.loaded`가 true가 된 뒤에만 마운트한다. 모델의 조작들도 같은 가드를 갖는다 — 조회 전에 "도시 → 부산"을 누르면 예외 대신 문장으로 답한다. 이 계약은 `fixture.test.ts`의 회귀로 고정했고, [M2-04](./MANUAL_TEST_CHECKLIST.md)의 "미로드 payload 접근을 명시적으로 처리"가 화면에서 뜻하는 바다.
 - [x] **DC8-5-17 / 조작 집합 대조는 소스 수준이며 그 한계를 적는다:** 처음 만든 검사는 **빌드 산출물에서 조작 id 문자열을 찾는 방식이었고, 데모 하나에서 조작 그룹을 통째로 걸러내도 통과했다** — id는 공유 카탈로그의 데이터라 렌더 여부와 무관하게 번들에 들어가기 때문이다. 검사는 데모 소스가 카탈로그를 좁히지 않고 통째로 렌더하는지, `data-operation`을 내보내는지, 카탈로그에 없는 조작을 부르지 않는지를 본다. **데모를 실행하지 않으므로 버튼이 화면에 실제로 나타났다는 증거는 아니다** — 그것은 8.7이다.
 
+- [x] **DC8-5-18 / SSR 페이지는 상호작용 데모와 별도로 둔다:** 상호작용 데모는 모듈 스코프에 모델 하나를 두는데, 그 형태를 서버에 올리면 **요청마다 같은 store를 재사용하는** 바로 그 조건([Phase 8.4](./PHASE8_4.md)이 측정한 장수 store)이 된다. SSR 페이지는 `createSsrModelOnServer()`로 요청마다 새 client를 만들고 요청과 함께 버린다. 브라우저는 HTML에 실린 clean snapshot을 `hydrate()`로 복원해 READ 없이 같은 기준에서 시작한다 — hydrate 뒤 handle이 `load()` 없이 쓸 수 있다는 것은 실제로 확인했다.
+- [x] **DC8-5-19 / computed는 원시값을 파생한다:** 커넥터는 `StateRefStore<T>`를 돌려주는데 `createComputed`의 반환은 `{ value: R }` 프록시다. R이 객체면 `store.label.value` 같은 읽기가 런타임에 없는 속성이 된다. 기존 커넥터 테스트도 computed로 `number`를 파생한다. SSR 페이지의 computed는 문자열 하나를 만들고, 캐스팅으로 타입을 눌러 덮지 않는다.
+
 ## 워크스페이스 구성
 
 `pnpm-workspace.yaml`에 `examples/*`를 추가한다.
@@ -136,8 +139,17 @@ Phase 8.1~8.4는 자동 테스트로 계약을 고정했다. 8.5는 **사람이 
 | 자동 조회 정책과 시간 기록 | `자동 조회 정책` 행과 요청 표의 시각. **시간 제어는 없다(DC8-5-12)** | 부분 |
 | 로딩·오류 화면 | 로드 전 문구, `next-read-error` 뒤 오류 문구, `refetch`로 복구 | 있음 |
 | 콜백 없는 computed | computed 카드(값·계산 횟수·객체 동일성·구독 콜백이 본 값) | 있음 |
-| 서로 다른 client / SSR 요청 | **단계 5** | 미구현 |
+| 서로 다른 client / SSR 요청 | React·Vue의 `src/ssr/`와 `dev:ssr` 서버 | 있음 (hydration 일치는 미검증) |
 | core-only·draft-only·sync-only·전체 조합 번들 | **단계 6** | 미구현 |
+
+### 단계 5 — React·Vue의 실제 서버 렌더 (완료)
+
+- 두 앱에 `src/ssr/`(페이지·서버 진입·클라이언트 진입), `ssr.html`, vite 미들웨어 모드 dev 서버(`pnpm --filter stateref-example-<app> dev:ssr`, 5191·5192)를 두었다. Vue는 [M2-04](./MANUAL_TEST_CHECKLIST.md)가 요구한 대로 `onServerPrefetch`에서 로드하고, 모델은 `useSSRContext`로 진입점에 전달한다.
+- `node scripts/check-example-ssr.mjs`가 **실제 서버 렌더 14개 검사 PASS**: 두 프레임워크 모두 HTML에 조회한 도시·`createComputed` 문자열·`combineWatch` 값이 들어가고, snapshot이 clean 기준을 담으며, 두 요청이 서로 영향을 주지 않고, **11회 렌더 뒤 쓰기 1회에 renew 0회**다. Vue는 prefetch 이전 placeholder가 HTML에 남지 않는 것도 본다.
+- **검증력 확인:** 결함 4종을 주입해 모두 잡혔다 — `onServerPrefetch`가 모델을 남기지 않음, Vue 커넥터가 prefetch 이전 값을 캐시함, React 서버 경로가 구독을 만듦(**renew 11회**로 실패, 8.4가 측정한 수치와 같다), 요청마다 client를 새로 만들지 않고 공유함.
+- `shared`에 SSR 모델 테스트 4개를 더했다(총 **23개**). 로드 후 파생값, clean snapshot의 복원, 두 요청의 격리와 dirty client의 dehydrate 거절, 그리고 **이 파일이 코어 구독 수를 셀 수 없다는 사실**을 주석과 단언으로 남겼다 — no-op 구독은 여기서 보이지 않으며, 그 측정은 코어의 경로 트리 테스트와 위 SSR 검사의 renew 카운트가 맡는다.
+- **hydration 일치는 여전히 미검증이다.** 브라우저가 없으므로 이 단계의 통과를 hydration 결과로 적지 않는다(DC8-5-04). Preact·Svelte·Solid에는 SSR 데모 자체가 없다.
+- `pnpm check:examples`에 SSR 검사를 넣었다. `pnpm gate` **16단계 PASS**, 패키지별 수치 불변, core gzip **3,696/3,800 B** 불변, `packages/` 변경 0.
 
 ### 단계 2 — 공유 fixture (완료)
 
@@ -149,8 +161,9 @@ Phase 8.1~8.4는 자동 테스트로 계약을 고정했다. 8.5는 **사람이 
 
 ## 인계
 
-- done: 계획과 구현 단계 1~4를 마쳤다. 5종 데모가 같은 모델·같은 조작 37개·같은 패널을 렌더하고, `pnpm check:examples`와 `pnpm gate` 16단계가 통과한다. 구현 중 확인한 사실로 DC8-5-15~17을 추가했다 — 화면은 공유 모델을 그리기만 하고, **로드 전에는 `query.watch` 접근 자체가 던지며**, 조작 집합 대조는 소스 수준이라 버튼이 화면에 났다는 증거가 아니다.
+- done: 계획과 구현 단계 1~5를 마쳤다. React·Vue의 실제 서버 렌더가 조회한 값과 파생 화면을 HTML에 담고, 11회 렌더 뒤 구독이 0이며, 결함 4종 주입이 모두 잡힌다. DC8-5-18·19를 추가했다 — SSR 페이지는 요청마다 client를 새로 만들고, computed는 원시값을 파생한다.
+- 이전 done: 계획과 구현 단계 1~4를 마쳤다. 5종 데모가 같은 모델·같은 조작 37개·같은 패널을 렌더하고, `pnpm check:examples`와 `pnpm gate` 16단계가 통과한다. 구현 중 확인한 사실로 DC8-5-15~17을 추가했다 — 화면은 공유 모델을 그리기만 하고, **로드 전에는 `query.watch` 접근 자체가 던지며**, 조작 집합 대조는 소스 수준이라 버튼이 화면에 났다는 증거가 아니다.
 - 이전 done: 계획(DC8-5-01~11)과 구현 단계 1·2를 마쳤다. 예제 워크스페이스 7개가 설치·타입검사되고, 공유 fixture와 자체 테스트 9개가 통과하며 결함 주입 4종이 모두 잡힌다. `pnpm gate` 16단계 PASS이고 기존 패키지 수치는 불변이다. 구현 중 확인한 사실로 DC8-5-12~14를 추가했다 — **fixture는 sync의 시간을 제어할 수 없고**, 타입 검사 도구는 패키지마다 다르며, 루트 `build`는 예제를 제외해야 한다.
-- next: 구현 단계 5(React·Vue의 실제 SSR과 hydration). 그 다음이 단계 6의 번들 조합과 경계 검사, 단계 7의 문서 예제 타입 검사, 단계 8의 gate 편입이다.
-- blockers: 없음. M2-01~20은 8.7까지 수동 미수행이다. Preact·Svelte·Solid의 hydration은 이 단계 범위 밖으로 명시했다. **데모를 브라우저에서 실행한 증거는 아직 없다** — 타입검사·빌드·소스 대조까지가 현재 자동 범위다.
+- next: 구현 단계 6(번들 조합 4개와 모듈 그래프 경계 검사). 그 다음이 단계 7의 문서 예제 타입 검사, 단계 8의 gate 편입이다.
+- blockers: 없음. M2-01~20은 8.7까지 수동 미수행이다. **브라우저에서 실행한 증거는 여전히 없다** — 현재 자동 범위는 타입검사·빌드·소스 대조와 Node 서버 렌더까지다. hydration 일치와 상호작용 데모의 화면 동작은 8.7이다. Preact·Svelte·Solid에는 SSR 데모가 없다.
 - 시작 기준 commit: `89a46e9` (Phase 8.4 및 콜백 없는 computed 캐시). 계획 commit은 `e0f6e3a`.

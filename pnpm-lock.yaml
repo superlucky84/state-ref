@@ -189,6 +189,9 @@ importers:
       '@vitejs/plugin-vue':
         specifier: ^5.1.4
         version: 5.1.4(vite@5.4.8(terser@5.18.1))(vue@3.5.10(typescript@5.6.3))
+      '@vue/server-renderer':
+        specifier: ^3.5.10
+        version: 3.5.10(vue@3.5.10(typescript@5.6.3))
       vue-tsc:
         specifier: ^2.1.6
         version: 2.2.12(typescript@5.6.3)

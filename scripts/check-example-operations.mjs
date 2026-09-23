@@ -87,7 +87,9 @@ for (const app of apps) {
   for (const [file, body] of sources) {
     for (const match of body.matchAll(/run\(\s*'([a-z-]+)'\s*\)/g)) {
       if (!known.has(match[1])) {
-        problems.push(`${file.slice(root.length + 1)} runs unknown '${match[1]}'`);
+        problems.push(
+          `${file.slice(root.length + 1)} runs unknown '${match[1]}'`
+        );
       }
     }
   }

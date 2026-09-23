@@ -30,6 +30,11 @@ export {
 export { AUTO_REFETCH, createDemoModel } from './model';
 export type { ComputedSource, DemoModel, DemoUi, DraftPair } from './model';
 export { OPERATION_GROUPS, OPERATION_IDS } from './operations';
+export {
+  createSsrModelFromSnapshot,
+  createSsrModelOnServer,
+} from './ssr-model';
+export type { SsrModel, SsrModelOptions, SsrPrefs } from './ssr-model';
 export type { OperationGroupId, OperationId } from './operations';
 export {
   draftChangeLines,

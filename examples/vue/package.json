@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit",
+    "dev:ssr": "node server.mjs"
   },
   "dependencies": {
     "@stateref/connect-vue": "workspace:*",
@@ -18,6 +19,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.1.4",
+    "@vue/server-renderer": "^3.5.10",
     "vue-tsc": "^2.1.6"
   }
 }

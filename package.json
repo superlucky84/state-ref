@@ -45,7 +45,7 @@
     "check:packaging": "node scripts/check-packaging.mjs",
     "types:examples": "pnpm -r --filter './examples/*' run --if-present typecheck",
     "build:examples": "pnpm -r --filter './examples/*' run --if-present build",
-    "check:examples": "pnpm types:examples && pnpm build:examples && node scripts/check-example-operations.mjs"
+    "check:examples": "pnpm types:examples && pnpm build:examples && node scripts/check-example-operations.mjs && node scripts/check-example-ssr.mjs"
   },
   "author": "superlucky84",
   "repository": {

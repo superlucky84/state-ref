@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dev:ssr": "node server.mjs"
   },
   "dependencies": {
     "@stateref/connect-react": "workspace:*",
