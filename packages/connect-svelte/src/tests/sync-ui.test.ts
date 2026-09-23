@@ -11,6 +11,10 @@ import { tick } from 'svelte';
 import { createSyncClient } from '@stateref/sync';
 import { createDraft } from 'state-ref/draft';
 import SyncPanel from '@/tests/svelte/SyncPanel.svelte';
+import ReleasePanel from '@/tests/svelte/ReleasePanel.svelte';
+import TwoDrafts from '@/tests/svelte/TwoDrafts.svelte';
+import { writable } from 'svelte/store';
+import type { Writable } from 'svelte/store';
 
 type Address = { city: string; zip: string };
 
@@ -140,5 +144,124 @@ describe('Svelte resource and draft in one component', () => {
 
     expect(uncaught).toContain('This query handle has been disposed.');
     draft.discard();
+  });
+});
+
+describe('Svelte releases its write-back on destroy', () => {
+  afterEach(cleanup);
+
+  it('stops writing into the resource once the component is gone', async () => {
+    const { query } = await load();
+    let mirror!: Writable<string>;
+    render(ReleasePanel, {
+      props: {
+        sourceWatch: query.watch,
+        onMirror: (value: unknown) => (mirror = value as Writable<string>),
+      },
+    });
+
+    mirror.set('부산'); // While mounted the mirror writes through, as it must.
+    expect(query.ref.city.value).toBe('부산');
+
+    cleanup();
+    mirror.set('대전');
+    // Svelte only auto-unsubscribes the `$store` reads in markup, so the
+    // connector has to release its own subscription. Without that the
+    // destroyed component keeps a live path into the resource.
+    expect(query.ref.city.value).toBe('부산');
+    query.dispose();
+  });
+
+  it('keeps every other store alive when a write is refused', async () => {
+    const { query } = await load();
+    let mirror!: Writable<string>;
+    render(ReleasePanel, {
+      props: {
+        sourceWatch: query.watch,
+        onMirror: (value: unknown) => (mirror = value as Writable<string>),
+      },
+    });
+    query.dispose(); // The next write through the mirror will be refused.
+
+    const uncaught: string[] = [];
+    const record = (event: ErrorEvent) => {
+      uncaught.push(event.error?.message ?? event.message);
+      event.preventDefault();
+    };
+    window.addEventListener('error', record);
+    mirror.set('부산');
+    window.removeEventListener('error', record);
+
+    // The refusal is reported, but not from inside the store flush: Svelte
+    // leaves its global subscriber queue unflushed when a subscriber throws,
+    // and every store in the process - including ones created afterwards -
+    // then stops notifying. That failure is silent, which is why it is pinned
+    // here rather than left to be discovered as an unrelated test failure.
+    expect(uncaught).toContain('This query handle has been disposed.');
+
+    const existing = writable(0);
+    let seen = -1;
+    const stop = existing.subscribe(value => (seen = value));
+    existing.set(1);
+    expect(seen).toBe(1);
+    stop();
+  });
+});
+
+describe('Svelte two consumers and two drafts', () => {
+  afterEach(cleanup);
+
+  it('counts owners by handle and keeps two drafts apart', async () => {
+    const { client, query } = await load();
+    const second = client.query<Address>({
+      queryKey: ['address'],
+      queryFn: () => ({ city: '서울', zip: '01' }),
+    });
+    // Owners follow handles, not components: a second handle on the same key
+    // makes two, and a component mounting or leaving changes neither.
+    expect(client.inspectCache()[0]!.owners).toBe(2);
+
+    const left = createDraft(query.ref);
+    const right = createDraft(query.ref);
+    const screen = render(TwoDrafts, {
+      props: {
+        sourceWatch: query.watch,
+        sharedWatch: second.watch,
+        leftWatch: left.watch,
+        rightWatch: right.watch,
+        rightStatusWatch: right.watchStatus,
+      },
+    });
+
+    // Two handles on one key share the baseline and the edits.
+    query.ref.city.value = '부산';
+    await tick();
+    expect(screen.getByTestId('shared').textContent).toBe('부산');
+    expect(client.inspectCache()[0]!.status.dirty).toBe(true);
+
+    // Each draft branched before that edit, so each holds its own value.
+    await fireEvent.click(screen.getByTestId('edit-left'));
+    await fireEvent.click(screen.getByTestId('edit-right'));
+    await tick();
+    expect(screen.getByTestId('left').textContent).toBe('대전');
+    expect(screen.getByTestId('right').textContent).toBe('광주');
+    expect(screen.getByTestId('source').textContent).toBe('부산');
+
+    // Applying one reaches the other as a source update on the same path,
+    // which is exactly what a conflict is.
+    expect(left.apply()).toEqual({ ok: true, applied: 1 });
+    await tick();
+    expect(screen.getByTestId('source').textContent).toBe('대전');
+    expect(screen.getByTestId('shared').textContent).toBe('대전');
+    expect(screen.getByTestId('right-conflicts').textContent).toBe('1');
+    expect(right.apply()).toEqual({ ok: false, reason: 'conflict' });
+
+    cleanup();
+    expect(client.inspectCache()[0]!.owners).toBe(2); // unmount owns nothing
+    second.dispose();
+    expect(client.inspectCache()[0]!.owners).toBe(1);
+    left.discard();
+    right.discard();
+    query.dispose();
   });
 });

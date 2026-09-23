@@ -226,7 +226,7 @@
 **진입:** Phase 7 종료, 기능 지원표와 공개 API 확정. 하위 단계 계획과 결정은 [Phase 8](./PHASE8.md)에 있다.
 
 - [x] React·Preact·Vue·Svelte·Solid에서 로컬 draft와 서버 resource/draft 예제를 검증한다. 기존 editable `connectX`가 `query.watch`·`draft.watch`를 그대로 받는다. [Phase 8.1](./PHASE8_1.md).
-- [ ] 두 소비자·독립 draft 2개·metadata UI·mount/unmount·SSR client 분리를 검증한다.
+- [x] 두 소비자·독립 draft 2개·metadata 관측·mount/unmount를 검증하고 `connectSvelte`의 결함 2건을 고쳤다. SSR client 분리는 8.4로 남는다. [Phase 8.2](./PHASE8_2.md).
 - [ ] 조회 shape와 다른 DTO, 원본 로컬 적용, 제출 중 추가 입력, 기준 복구 실패를 UI에서 확인한다.
 - [ ] 지원 프레임워크의 loading/error/hydration 연결과 기능 목록을 교차 확인한다.
 - [ ] 새 helper의 타입·테스트·빌드를 root gate에 포함하고 실제 문서 예제를 타입 검사한다.
@@ -251,6 +251,13 @@
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
+
+### 2026-09-23 — Phase 8.2 두 소비자·Draft 2개·Metadata와 수명
+
+- done: [Phase 8.2](./PHASE8_2.md)에서 반례 11개를 더해 `sync-ui.*`를 32개로 늘렸다. **`connectSvelte`의 결함 2건을 반례를 먼저 쓴 뒤 고쳤다**: 쓰기 되돌림 구독이 파괴를 넘어 살아남아 파괴된 컴포넌트가 원본에 계속 썼고, 그 구독자의 예외가 Svelte의 전역 `subscriber_queue`를 오염시켜 **앱 전체의 스토어가 조용히 멈췄다**(이후 새로 만든 스토어까지). 거절은 `reportError`(없으면 `error` 이벤트, 그것도 없으면 타이머)로 밖에서 보고해 다른 네 커넥터와 같은 표면을 유지한다. 계획의 DC8-2-01은 틀렸고 — React·Preact는 미러가 없어 held ref가 원본 그대로다 — 미러 유무로 갈라 다시 적었다. `owners`는 handle 수를 따르고 컴포넌트 수를 따르지 않음을 5종에서 고정했다. 주입 3종(해제 제거, flush 안 예외 복원, owners 미집계)으로 검증력을 확인했고 Svelte 기존 테스트는 회귀가 없다. 커넥터 React 28·Vue 23·Svelte 21·Preact 20·Solid 20, sync 183개·core 325개 PASS, `pnpm gate` PASS.
+- next: 8.3 조회와 다른 DTO·제출 중 추가 입력·기준 복구 실패의 UI 확인.
+- blockers: 외부 차단 없음. M2-01~20은 8.7까지 미수행이다.
+- 시작 기준 commit: `7e16f14` (Phase 8 계획). Phase 8.1·8.2 변경은 이 문서와 같은 커밋에 있다.
 
 ### 2026-09-23 — Phase 8.1 커넥터의 Resource·Draft UI 조합
 
