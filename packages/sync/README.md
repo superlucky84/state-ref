@@ -23,6 +23,7 @@ account.changes(); // server baseline -> current local edit
 
 Tools can inspect cache metadata without reading query payloads:
 
+<!-- doc-example: continue -->
 ```ts
 const stopObserving = client.subscribeCache(event => {
   // event.type: 'added' | 'updated' | 'removed'
@@ -44,6 +45,7 @@ TanStack devtools or plugin compatibility API.
 WRITE operations are observable on a separate stream that shares the same
 delivery order:
 
+<!-- doc-example: continue -->
 ```ts
 const stopWatching = client.subscribeMutations(event => {
   // event.type: 'started' | 'updated' | 'settled'
@@ -70,6 +72,7 @@ you intend to submit immediately before `run`; the capture contains an immutable
 value and change snapshot. A captured version becomes stale if the resource is
 edited before `run` starts.
 
+<!-- doc-example: continue -->
 ```ts
 const submission = account.capture();
 const save = client.mutation({
@@ -114,6 +117,7 @@ tracks the operation separately from `dirty`.
 
 For SSR, transfer only settled, clean server baselines between separate clients:
 
+<!-- doc-example: skip - uses the `options` object the next section introduces -->
 ```ts
 const server = createSyncClient({ ssr: true });
 const source = server.query(options);
@@ -138,6 +142,7 @@ Known server data may seed an empty cache entry before the first READ. Use
 editable baseline and can be included in an SSR snapshot. `initialUpdatedAt`
 defaults to the installation time and controls freshness with `staleTime`.
 
+<!-- doc-example: continue -->
 ```ts
 const options = {
   queryKey: ['account', 1],
@@ -161,6 +166,7 @@ data setup still rejects from `prefetch`. Editable results returned by
 Placeholder data and observer-specific selection live in a separate view
 instead of the shared cache:
 
+<!-- doc-example: skip - the query type comes from the reader's `api` module, and `StateRefStore<any>` has no property types -->
 ```ts
 const view = client.view(
   {
@@ -189,6 +195,7 @@ query shape. An optional `equals` compares selected values (default:
 The fixed-key `view` does not start a READ automatically. For a reactive key or
 dependent query, bind a `state-ref` source to `liveView`:
 
+<!-- doc-example: continue -->
 ```ts
 import { create } from 'state-ref';
 
@@ -233,6 +240,7 @@ Use `client.prefetch`, `fetch`, or `ensure` with the same page key to prepare it
 
 For an accumulating list, use one infinite query key:
 
+<!-- doc-example: continue -->
 ```ts
 const feed = client.infiniteQuery({
   queryKey: ['feed'],
@@ -268,6 +276,7 @@ confirmed stale baseline. An unconfirmed baseline is checked by a READ.
 These calls do not replace an active infinite query's reader or automatic
 refetch policy. Use `infiniteView` for observer-local display state:
 
+<!-- doc-example: continue -->
 ```ts
 const feedOptions = {
   queryKey: ['feed'],
@@ -297,6 +306,7 @@ Focus, reconnect, and polling policies become active after a handle's first
 automatically. Provide a client-scoped environment when the host has focus and
 connectivity events. Call the browser adapter only where browser globals exist:
 
+<!-- doc-example: skip - opens a second client to show the browser environment -->
 ```ts
 import { createBrowserSyncEnvironment } from '@stateref/sync';
 
@@ -342,6 +352,7 @@ rules. Offline standalone commands can use the explicit queue below.
 Clean server baselines can be stored with an app-owned string storage. Save
 and restore are explicit operations, and restore requires a new, empty client:
 
+<!-- doc-example: skip - reuses the name `options` for the persistence options -->
 ```ts
 import {
   createSyncClient,
@@ -367,6 +378,7 @@ recovery snapshot. It includes the server baseline, displayed value, change
 IDs and conflict origins. Restore it into an empty client before opening
 query handles:
 
+<!-- doc-example: continue -->
 ```ts
 import {
   saveLocalSyncSnapshot,
@@ -393,6 +405,7 @@ under another storage key. A submission may link several queries; stage the
 exact selected changes per link, then explicitly send after the host is
 online:
 
+<!-- doc-example: continue -->
 ```ts
 import { openPersistedLinkedMutation } from '@stateref/sync';
 
@@ -473,6 +486,7 @@ For an independent command, register a mutation handle and queue a JSON DTO
 with a server-supported idempotency key. Call `resume()` after confirming the
 host is online:
 
+<!-- doc-example: skip - uses the `environment` from the skipped browser-environment block -->
 ```ts
 import { openPersistedMutationQueue } from '@stateref/sync';
 

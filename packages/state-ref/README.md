@@ -90,6 +90,7 @@ Draft editing supports acyclic plain data and dense arrays. Arrays are merged as
 
 When you register a subscription function via `watch`, it is executed once initially to collect dependencies. The second argument `isFirst` indicates whether this is the first run.
 
+<!-- doc-example: skip - an excerpt: `watch` and the store it points at come from the prose above -->
 ```typescript
 const subscribeCallback = (innerRef, isFirst) => {
   const matrixCount = innerRef.rowCount.value * innerRef.columnCount.value;
@@ -108,6 +109,7 @@ const anotherRef = watch();
 - Both are **bound to the subscription** - accessing `.value` from either registers tracking
 - `anotherRef` is **unbound** - accessing `.value` doesn't register any tracking
 
+<!-- doc-example: skip - an excerpt: continues the store described above -->
 ```typescript
 // This WON'T trigger subscribeCallback when etcCount changes
 const anotherRef = watch();
@@ -134,6 +136,7 @@ Besides the `innerRef` reference object used inside the subscription function, a
 
 To illustrate, I’ll use my project, the component-based UI library [lithent](https://github.com/superlucky84/lithent), as an example.
 
+<!-- doc-example: skip - a lithent example; `mount` and its JSX are not part of this package -->
 ```typescript
 const Component = mount((renew) => {
     let count = 1;
@@ -156,18 +159,19 @@ The `renew` function requests an update for the component. In the example below,
 
 If you want to share store values using `state-ref` instead of the component’s internal `count` state, you can do so as follows.
 
+<!-- doc-example: skip - a lithent example; `mount` and its JSX are not part of this package -->
 ```typescript
 
 const watch = createStore(1);
 
 const Component = mount((renew) => {
-    count countRef = watch(renew);
+    const countRef = watch(renew);
   
     const change = () => {
       countRef.value += 1;
     };
   
-    return () => <button onClick={change}>{count.value}</button>;
+    return () => <button onClick={change}>{countRef.value}</button>;
 });
 ```
 
@@ -185,6 +189,7 @@ Building on this feature, you can also connect state easily in `React` and `Prea
 
 If you want to cancel the subscription, use `abortController` as shown in the example below.
 
+<!-- doc-example: skip - an excerpt: continues the store from the section above -->
 ```typescript
 const abortController = new AbortController();
 
@@ -204,6 +209,7 @@ The signal has to be returned from the callback's **first** run — that is when
 the store registers it. Returning `false` from any later run also removes the
 subscription:
 
+<!-- doc-example: skip - an excerpt: continues the subscription from the section above -->
 ```typescript
 watch((stateRef) => {
     if (stateRef.john.age.value > 40) {
@@ -221,6 +227,7 @@ just the one that happened to fire.
 
 **Primitive types** like numbers or strings can also be handled easily. Here's how:
 
+<!-- doc-example: skip - an excerpt: creates a store without showing the import -->
 ```typescript
 const watch = createStore<number>(3);
 
@@ -242,6 +249,7 @@ watch((stateRef) => {
 * Create the store and pass the `watch` to `connectReact` to create a state that can be used in components.
 
 > profileStore.ts
+<!-- doc-example: file profileStore.ts -->
 ```typescript
 import { connectReact } from "@stateref/connect-react";
 // import { connectPreact } from "@stateref/connect-preact"; // for Preact
@@ -282,7 +290,7 @@ function UserComponent() {
   return (
     <button onClick={increaseAge}>
         john's age: {ageRef.value}
-    </button>;
+    </button>
   );
 }
 ```
@@ -300,6 +308,7 @@ You can create your own custom connection pattern by referring to the [connectRe
 * [Solid](https://www.npmjs.com/package/@stateref/connect-solid)
 * Lithent
 
+<!-- doc-example: skip - a lithent example; `lithent` is not a dependency of this repository -->
     ```tsx
     import { mount, h } from 'lithent';
     import { watch } from 'profileStore';
@@ -350,6 +359,7 @@ countRef.value = 200;
 
 You can **nest `combineWatch`** to observe more complex structures:
 
+<!-- doc-example: skip - continues the example above and redeclares its stores -->
 ```typescript
 const countWatch = createStore<number>(100);
 const textWatch = createStore<string>("hello");
@@ -378,6 +388,7 @@ Calling the computed watch without a callback creates no source subscriptions. I
 Below is a simple usage example.
 
 ```typescript
+import { connectReact } from "@stateref/connect-react";
 import { createStore, createComputed } from "state-ref";
 import type { StateRefStore, Watch } from "state-ref";
 
@@ -388,7 +399,7 @@ const watch1 = createStore<Info>(
 );
 const watch2 = createStore<number>(20);
 
-const computedWatch = creatComputed<[Watch<Info>, Watch<number>], number>([watch1, watch2], ([ref1, ref2]) => {
+const computedWatch = createComputed<[Watch<Info>, Watch<number>], number>([watch1, watch2], ([ref1, ref2]) => {
     return ref1.age.value + ref2.value;
 });
 
@@ -423,7 +434,9 @@ In the default mode, values can be modified through the references created by `w
 
 To update values, you must use `updateRef`. To propagate the changes to subscribed code (and trigger subscription callbacks), you can manually execute the `sync` function at your desired time.
 
+<!-- doc-example: file profileStore.ts -->
 ```typescript
+import { connectReact } from "@stateref/connect-react";
 import { createStoreManualSync } from "state-ref";
 
 type Info = { age: number; house: { color: string; floor: number }[] };
@@ -432,6 +445,7 @@ type People = { john: Info; brown: Info; sara: Info };
 const { watch, updateRef, sync } = createStoreManualSync<People>({
     john: { age: 20, house: [ { color: "red", floor: 5 }] },
     brown: { age: 26, house: [{ color: "red", floor: 5 }] },
+    sara: { age: 26, house: [{ color: "red", floor: 5 }] },
 });
 
 export const useProfileStore = connectReact(watch);
@@ -478,7 +492,7 @@ function UserComponent() {
   return (
     <button onClick={increaseAge}>
         john's age: {ageRef.value}
-    </button>;
+    </button>
   );
 }
 ```
