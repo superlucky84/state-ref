@@ -59,6 +59,18 @@ export function removeOffice(profile: Profile): Profile {
  * The field names differ from `Profile` on purpose - M2-06 asks for a DTO
  * that does not mirror the query shape.
  */
+/**
+ * The query paths `toSaveDto` actually carries.
+ *
+ * `accept: { kind: 'submitted' }` moves the baseline for every change in the
+ * submission, on the app's word that the server took those values. sync does
+ * not read the DTO and will not infer which fields reached the server
+ * (docs/server-sync/PHASE4.md). So a capture must select the changes this DTO
+ * carries - capturing everything would mark an unsent edit as saved and hide
+ * the divergence behind `dirty=false` (B8-7-03).
+ */
+export const SAVED_PATHS: readonly string[] = ['city', 'zip'];
+
 export function toSaveDto(profile: Profile, revision: number): SaveAddressDto {
   return {
     addressLine: profile.city,

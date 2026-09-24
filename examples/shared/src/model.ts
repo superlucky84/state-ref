@@ -18,6 +18,7 @@ import {
   INITIAL_PROFILE,
   removeOffice,
   reorderContacts,
+  SAVED_PATHS,
   toSaveDto,
 } from './scenario';
 import type { OperationId } from './operations';
@@ -363,10 +364,19 @@ export function createDemoModel(): DemoModel {
 
       case 'capture': {
         if (!loaded()) return notLoaded(id);
-        submission = panelA.capture();
+        const all = panelA.changes();
+        const carried = all.filter(change =>
+          SAVED_PATHS.includes(String(change.path[0]))
+        );
+        submission = panelA.capture(carried.map(change => change.id));
         const text = `version ${submission.version}, 변경 ${submission.changes.length}건`;
         ui.captured.value = text;
-        return bump(id, `제출할 변경을 고정했다 — ${text}`);
+        return bump(
+          id,
+          `제출할 변경을 고정했다 — ${text}. 전체 ${
+            all.length
+          }건 중 DTO가 싣는 경로(${SAVED_PATHS.join('·')})만 골랐다.`
+        );
       }
       case 'save': {
         if (!submission) return bump(id, '먼저 제출할 변경을 고정한다.');

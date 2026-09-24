@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CITY,
+  INITIAL_PROFILE,
   OPERATION_IDS,
   QUERY_RETRY,
   READING_QUERIES,
@@ -186,6 +187,55 @@ describe('representative flow', () => {
       .inspectCache()
       .find(row => row.queryKey.length === 1);
     expect(entry?.owners).toBe(2);
+
+    model.dispose();
+  });
+});
+
+describe('selective submission', () => {
+  it('captures only the changes the DTO carries', async () => {
+    const model = await loaded();
+
+    model.run('edit-busan');
+    model.run('edit-memo');
+    expect(model.panelA.changes()).toHaveLength(2);
+
+    model.run('capture');
+
+    // `memo` is not in the DTO, so it must not be in the submission either:
+    // `submitted` would otherwise move the baseline for a value the server
+    // never received (B8-7-03).
+    expect(
+      model.panelA
+        .capture()
+        .changes.map(change => change.path.join('.'))
+        .sort()
+    ).toEqual(['city', 'memo']);
+    expect(readUi(model).captured).toBe('version 2, 변경 1건');
+
+    model.dispose();
+  });
+
+  it('keeps an unsent edit dirty after the WRITE succeeds', async () => {
+    const model = await loaded();
+
+    model.run('edit-busan');
+    model.run('edit-memo');
+    model.run('capture');
+    model.run('save');
+    model.run('settle-write');
+    // The link accepts the baseline before the result promise resolves, so a
+    // macrotask is what makes the settled phase observable.
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(readUi(model).mutationPhase).toBe('success');
+    expect(model.server.value().city).toBe(CITY.resource);
+    // The server never saw `memo`, so it stays a local difference.
+    expect(model.server.value().memo).toBe(INITIAL_PROFILE.memo);
+    expect(model.panelA.changes().map(change => change.path.join('.'))).toEqual(
+      ['memo']
+    );
+    expect(model.panelA.isDirty()).toBe(true);
 
     model.dispose();
   });
