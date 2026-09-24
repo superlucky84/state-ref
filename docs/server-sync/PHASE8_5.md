@@ -242,13 +242,37 @@ Phase 8.1~8.4는 자동 테스트로 계약을 고정했다. 8.5는 **사람이 
 - **아직 gate에 들어가 있지 않다.** `doc-examples` 단계 추가는 단계 8이다.
 
 
+### 단계 8 — gate 편입 (완료)
+
+- `scripts/gate.mjs`에 두 단계를 더해 **16 → 18단계**가 됐다. 둘 다 타입 묶음에 넣었다 — 빌드 산출물을 읽으므로 build 뒤에 와야 하고, 가장 싸게 실패하는 자리가 거기다.
+
+| 단계 | 명령 | 소요 |
+| --- | --- | --- |
+| `examples-types` | `pnpm types:examples` (= `run --if-present typecheck`, DC8-5-13) | 2.5초 |
+| `doc-examples` | `node scripts/check-doc-examples.mjs` | 2.4초 |
+
+- `lint` 단계의 스캔 대상을 `packages/`에서만 계산하던 것을 `packages/`와 `examples/` 양쪽에서 계산하도록 바꿨다. **단계 수는 늘지 않는다**(DC8-5-06). 대상은 7 → **14개 디렉터리**이고, 예제는 저장소의 기존 eslint/prettier 규칙을 그대로 받는다.
+- DC8-5-06대로 예제 앱 빌드·번들 경계 검사·SSR 검사는 gate에 넣지 않고 `pnpm check:examples`에 남겼다. 데모의 실제 동작 증거는 어차피 8.7의 수동 수행이다.
+- **검증력 확인 — 결함 3종을 주입해 3종 모두 gate를 실패시켰다.**
+
+| 주입한 결함 | gate가 멈춘 지점 |
+| --- | --- |
+| `examples/bundles/src`에 타입 오류 | `examples-types` FAIL |
+| README 예제가 없는 메서드를 호출 | `doc-examples` FAIL |
+| `examples/shared/src`에 포매팅 위반 | `lint` FAIL (`prettier/prettier`) |
+
+- `pnpm gate` **18단계 PASS**. 기존 16단계의 수치는 불변이다 — core **338**, sync **183**, React **36**, Preact **27**, Vue **35**, Svelte **26**, Solid **25**, `examples/shared` **23**, gate Node 24.11.1 core gzip **3,696/3,800 B**. gate 전체 소요는 약 5초 늘었다.
+- `packages/` 아래 소스 변경 0.
+
+
 ## 인계
 
-- done: 계획과 구현 단계 1~7을 마쳤다. README 3종의 예제 25개가 빌드된 공개 선언 타입으로 컴파일되고, 스킵 23개는 위치와 사유가 매번 출력된다. 이 검사가 README에서 결함 5종을 찾아내 고쳤고, 주입 5종이 모두 잡혔다. DC8-5-25~28을 추가했다 — 마커 세 종류와 epoch, 독자 소유 코드의 `any` 스텁과 그 대가, `noImplicitAny`만 끄는 이유, 들여쓴 fence.
+- done: 계획과 구현 단계 1~8을 마쳤다. `pnpm gate`가 **18단계**로 통과하고, `lint`가 `examples/*/src`까지 본다. 주입 3종이 모두 gate를 실패시켰다.
+- 이전 done: 계획과 구현 단계 1~7을 마쳤다. README 3종의 예제 25개가 빌드된 공개 선언 타입으로 컴파일되고, 스킵 23개는 위치와 사유가 매번 출력된다. 이 검사가 README에서 결함 5종을 찾아내 고쳤고, 주입 5종이 모두 잡혔다. DC8-5-25~28을 추가했다 — 마커 세 종류와 epoch, 독자 소유 코드의 `any` 스텁과 그 대가, `noImplicitAny`만 끄는 이유, 들여쓴 fence.
 - 이전 done: 계획과 구현 단계 1~6을 마쳤다. 네 조합이 각각 단독으로 빌드되고 모듈 그래프로 경계가 확인되며, UMD 페이지 4종이 jsdom에서 판정까지 도달한다. 결함 8종 주입이 모두 잡혔다. DC8-5-20~24를 추가했다 — 조합별 단독 빌드, 그래프가 문자열보다 강하다는 실측, "네트워크 구현 없음"의 정확한 뜻, UMD 페이지의 jsdom 실행, 조합 정책의 단일 출처.
 - 이전 done: 계획과 구현 단계 1~5를 마쳤다. React·Vue의 실제 서버 렌더가 조회한 값과 파생 화면을 HTML에 담고, 11회 렌더 뒤 구독이 0이며, 결함 4종 주입이 모두 잡힌다. DC8-5-18·19를 추가했다 — SSR 페이지는 요청마다 client를 새로 만들고, computed는 원시값을 파생한다.
 - 이전 done: 계획과 구현 단계 1~4를 마쳤다. 5종 데모가 같은 모델·같은 조작 37개·같은 패널을 렌더하고, `pnpm check:examples`와 `pnpm gate` 16단계가 통과한다. 구현 중 확인한 사실로 DC8-5-15~17을 추가했다 — 화면은 공유 모델을 그리기만 하고, **로드 전에는 `query.watch` 접근 자체가 던지며**, 조작 집합 대조는 소스 수준이라 버튼이 화면에 났다는 증거가 아니다.
 - 이전 done: 계획(DC8-5-01~11)과 구현 단계 1·2를 마쳤다. 예제 워크스페이스 7개가 설치·타입검사되고, 공유 fixture와 자체 테스트 9개가 통과하며 결함 주입 4종이 모두 잡힌다. `pnpm gate` 16단계 PASS이고 기존 패키지 수치는 불변이다. 구현 중 확인한 사실로 DC8-5-12~14를 추가했다 — **fixture는 sync의 시간을 제어할 수 없고**, 타입 검사 도구는 패키지마다 다르며, 루트 `build`는 예제를 제외해야 한다.
-- next: 구현 단계 8(gate 편입 — `examples-types`와 `doc-examples`로 16 → 18단계, `lint` 대상에 `examples/*/src` 추가). 그 다음이 단계 9의 문서 갱신이다.
+- next: 구현 단계 9(문서 갱신 — [IMPLEMENT](./IMPLEMENT.md) Phase 8 체크박스, [HANDOFF](./HANDOFF.md), [체크리스트 1절](./MANUAL_TEST_CHECKLIST.md)의 실행 명령과 데모 URL). **M2 결과란은 전부 미수행 그대로 둔다.** 그 다음이 Phase 8.6(F2 지원표)과 8.7(수동 M2-01~20)이다.
 - blockers: 없음. M2-01~20은 8.7까지 수동 미수행이다. **브라우저에서 실행한 증거는 여전히 없다** — 현재 자동 범위는 타입검사·빌드·소스 대조와 Node 서버 렌더까지다. hydration 일치와 상호작용 데모의 화면 동작은 8.7이다. Preact·Svelte·Solid에는 SSR 데모가 없다.
 - 시작 기준 commit: `89a46e9` (Phase 8.4 및 콜백 없는 computed 캐시). 계획 commit은 `e0f6e3a`.

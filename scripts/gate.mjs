@@ -15,10 +15,13 @@
  *                   measures a stale artifact and passes quietly, which is the
  *                   failure mode Phase 6 hit.
  *   2. types      - cheapest signal, fails fastest.
- *   3. lint
+ *   3. lint       - every `src` directory under packages/ and examples/.
  *   4. tests      - core + connectors.
  *   5. bench      - NFR-1 / NFR-2 / ACCUMULATION gates, exits 1 on regression.
  *   6. bundle     - NFR-3 budget (DC-09), exits 1 over the cap.
+ *
+ * The type group also covers the example workspaces and the README examples;
+ * both read built artifacts, so they sit after the build like everything else.
  *
  * Usage:  pnpm gate            run everything
  *         pnpm gate --quick    skip the build (only when dist/ is current)
@@ -31,11 +34,16 @@ import { dirname, resolve, join } from 'node:path';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const quick = process.argv.includes('--quick');
 
-// The child process runs without a shell, so a glob over the packages' src
+// The child process runs without a shell, so a glob over the source
 // directories would reach eslint unexpanded. Expand it here instead.
-const sourceDirs = readdirSync(join(root, 'packages'))
-  .map(pkg => join('packages', pkg, 'src'))
-  .filter(dir => existsSync(join(root, dir)));
+// `examples/` is linted under the same rules as `packages/` (DC8-5-06); it is
+// the same repository style, and a demo is read by the person performing the
+// manual checklist.
+const sourceDirs = ['packages', 'examples'].flatMap(group =>
+  readdirSync(join(root, group))
+    .map(pkg => join(group, pkg, 'src'))
+    .filter(dir => existsSync(join(root, dir)))
+);
 
 const steps = [
   {
@@ -129,6 +137,23 @@ const steps = [
       'bundler',
       'test/negative-types.ts',
     ],
+  },
+  {
+    // Each example package type-checks with the right tool for it: `vue-tsc`
+    // for Vue, `svelte-check` for Svelte, `tsc --noEmit` for the rest
+    // (DC8-5-13). A blanket `tsc` here would silently skip the SFCs.
+    name: 'examples-types',
+    cmd: 'pnpm',
+    args: ['types:examples'],
+  },
+  {
+    // Compiles the README examples against the built dist declarations, so a
+    // change to a published type breaks the documentation that uses it. The
+    // example builds and the bundle-boundary check stay out of the gate and
+    // live in `pnpm check:examples` (DC8-5-06).
+    name: 'doc-examples',
+    cmd: 'node',
+    args: ['scripts/check-doc-examples.mjs'],
   },
   {
     name: 'lint',
