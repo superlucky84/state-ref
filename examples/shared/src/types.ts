@@ -31,6 +31,15 @@ export type SaveAddressResponse = Readonly<{
   /** The server may normalise what it stored; the demo shows the correction. */
   storedCity: string;
   storedZip: string;
+  /**
+   * The whole record as the server now holds it.
+   *
+   * `accept: { kind: 'response' }` hands `select(data)`'s return value to the
+   * query as its new baseline, so the app needs the full record - not just
+   * the fields it submitted. Rebuilding one from the locally edited value
+   * would repeat B8-7-03 and claim unsent edits were saved.
+   */
+  stored: Profile;
 }>;
 
 /**
@@ -46,7 +55,9 @@ export type WriteOutcome =
   | 'rejected'
   | 'unknown'
   /** The WRITE lands but the baseline recovery READ fails: `sync-error`. */
-  | 'success-then-read-failure';
+  | 'success-then-read-failure'
+  /** The WRITE lands and the server normalises what it stored (M2-07/M2-08). */
+  | 'success-corrected';
 
 export type RequestKind = 'READ' | 'WRITE';
 

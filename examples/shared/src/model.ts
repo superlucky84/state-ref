@@ -236,6 +236,13 @@ export function createDemoModel(): DemoModel {
       case 'next-write-unknown':
         server.nextWrite('unknown');
         return bump(id, '다음 WRITE는 끝나지 않는다 (결과 불명)');
+      case 'next-write-corrected':
+        server.nextWrite('success-corrected');
+        return bump(
+          id,
+          '다음 WRITE는 성공하고 서버가 우편번호를 자기 형식(5자리)으로 보정한다'
+        );
+
       case 'next-write-sync-error':
         server.nextWrite('success-then-read-failure');
         return bump(id, '다음 WRITE는 성공하고 복구 READ가 실패한다');
@@ -380,6 +387,11 @@ export function createDemoModel(): DemoModel {
       }
       case 'save': {
         if (!submission) return bump(id, '먼저 제출할 변경을 고정한다.');
+        if (panelA.status.pending.value > 0)
+          return bump(
+            id,
+            '이 조회에 연결된 저장이 이미 진행 중이다. 먼저 완료한다.'
+          );
         const fixed = submission;
         const operation = mutation.start(
           toSaveDto(fixed.value, fixed.version),
@@ -400,6 +412,80 @@ export function createDemoModel(): DemoModel {
         });
         return bump(id, '저장을 시작했다. 조회 shape와 다른 DTO를 보냈다.');
       }
+      case 'save-with-response': {
+        if (!submission) return bump(id, '먼저 제출할 변경을 고정한다.');
+        if (panelA.status.pending.value > 0)
+          return bump(
+            id,
+            '이 조회에 연결된 저장이 이미 진행 중이다. 먼저 완료한다.'
+          );
+        const fixed = submission;
+        const operation = mutation.start(
+          toSaveDto(fixed.value, fixed.version),
+          {
+            links: [
+              {
+                query: panelA,
+                submission: fixed,
+                // The server answers with the record it stored, so the app
+                // maps that into the baseline instead of trusting what it
+                // sent. A correction lands here rather than being lost.
+                accept: {
+                  kind: 'response',
+                  select: (response: SaveAddressResponse) => response.stored,
+                },
+              },
+            ],
+          }
+        );
+        ui.mutationPhase.value = 'pending';
+        void operation.result.then(result => {
+          ui.mutationPhase.value = result.kind;
+          bump(
+            'save-with-response 결과',
+            `작업 ${result.operationId}: ${result.kind}`
+          );
+        });
+        return bump(
+          id,
+          '저장을 시작했다. 서버 응답의 저장된 레코드를 기준으로 삼는다.'
+        );
+      }
+
+      case 'save-with-refetch': {
+        if (!submission) return bump(id, '먼저 제출할 변경을 고정한다.');
+        if (panelA.status.pending.value > 0)
+          return bump(
+            id,
+            '이 조회에 연결된 저장이 이미 진행 중이다. 먼저 완료한다.'
+          );
+        const fixed = submission;
+        const operation = mutation.start(
+          toSaveDto(fixed.value, fixed.version),
+          {
+            links: [
+              // Unlike the other two, this one costs a READ: the baseline
+              // comes from reading the server again after the WRITE lands.
+              // That extra request is the whole point of the comparison in
+              // M2-07, so the demo has to settle it too.
+              { query: panelA, submission: fixed, accept: { kind: 'refetch' } },
+            ],
+          }
+        );
+        ui.mutationPhase.value = 'pending';
+        void operation.result.then(result => {
+          ui.mutationPhase.value = result.kind;
+          bump(
+            'save-with-refetch 결과',
+            `작업 ${result.operationId}: ${result.kind}`
+          );
+        });
+        return bump(
+          id,
+          '저장을 시작했다. 성공 뒤 서버를 다시 읽어 기준을 맞춘다 — READ 완료도 눌러야 한다.'
+        );
+      }
+
       case 'edit-after-capture':
         if (!loaded()) return notLoaded(id);
         panelA.ref.zip.value = `9${ui.tick.value}`;

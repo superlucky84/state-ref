@@ -59,6 +59,9 @@ type Pending = {
   finish: () => void;
 };
 
+/** The server's own postal-code format: five digits, zero padded. */
+const normaliseZip = (zip: string) => zip.padStart(5, '0');
+
 export function createMockServer(initial: Profile): MockServer {
   let value = initial;
   let revision = 1;
@@ -188,13 +191,19 @@ export function createMockServer(initial: Profile): MockServer {
           value = {
             ...value,
             city: input.addressLine,
-            zip: input.postalCode,
+            // A real server that normalises does it to what it was sent, not
+            // to what the client currently shows.
+            zip:
+              outcome === 'success-corrected'
+                ? normaliseZip(input.postalCode)
+                : input.postalCode,
           };
           if (outcome === 'success-then-read-failure') nextRead = 'error';
           deferred.resolve({
             revision,
             storedCity: value.city,
             storedZip: value.zip,
+            stored: value,
           });
         },
       };

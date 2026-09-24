@@ -19,6 +19,7 @@ export const OPERATION_GROUPS = [
       ['next-write-rejected', '다음 WRITE 확정 거절 예약'],
       ['next-write-unknown', '다음 WRITE 결과 불명 예약'],
       ['next-write-sync-error', '다음 WRITE 성공 + 복구 READ 실패 예약'],
+      ['next-write-corrected', '다음 WRITE 서버 보정 예약'],
     ],
   },
   {
@@ -63,7 +64,9 @@ export const OPERATION_GROUPS = [
     title: '서버 저장',
     operations: [
       ['capture', '제출할 변경 고정'],
-      ['save', '저장 실행 (조회와 다른 DTO)'],
+      ['save', '저장 실행 (제출값 수용)'],
+      ['save-with-response', '저장 실행 (응답 매핑 수용)'],
+      ['save-with-refetch', '저장 실행 (사후 재조회 수용)'],
       ['edit-after-capture', '제출 뒤 추가 입력'],
     ],
   },

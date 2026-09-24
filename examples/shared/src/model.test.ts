@@ -241,6 +241,89 @@ describe('selective submission', () => {
   });
 });
 
+describe('response mapping', () => {
+  it('takes the server correction into the baseline', async () => {
+    const model = await loaded();
+
+    model.run('edit-busan');
+    model.run('capture');
+    model.run('next-write-corrected');
+    model.run('save-with-response');
+    model.run('settle-write');
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(readUi(model).mutationPhase).toBe('success');
+    // The DTO carried zip "01"; the server stores its own five-digit form and
+    // the app maps the stored record back, so the correction is the baseline
+    // rather than a difference the user has to resolve.
+    expect(model.server.value().zip).toBe('00001');
+    expect(model.panelA.ref.zip.value).toBe('00001');
+    expect(model.panelA.changes()).toHaveLength(0);
+    expect(model.panelA.isDirty()).toBe(false);
+
+    model.dispose();
+  });
+
+  it('keeps an unsubmitted edit while accepting the response', async () => {
+    const model = await loaded();
+
+    model.run('edit-busan');
+    model.run('edit-memo');
+    model.run('capture');
+    model.run('next-write-corrected');
+    model.run('save-with-response');
+    model.run('settle-write');
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(readUi(model).mutationPhase).toBe('success');
+    // `memo` never reached the server, so accepting the response must not
+    // swallow it (the same rule as B8-7-03, on the other acceptance kind).
+    expect(model.panelA.changes().map(change => change.path.join('.'))).toEqual(
+      ['memo']
+    );
+    expect(model.server.value().memo).toBe(INITIAL_PROFILE.memo);
+
+    model.dispose();
+  });
+
+  it('costs one extra READ when the baseline comes from a refetch', async () => {
+    const model = await loaded();
+    const before = model.server.counts().read;
+
+    model.run('edit-busan');
+    model.run('capture');
+    model.run('save-with-refetch');
+    model.run('settle-write');
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    // This is what separates `refetch` from the other two kinds: the WRITE
+    // landing is not the end, a READ follows and has to settle as well.
+    expect(model.server.counts().read).toBe(before + 1);
+    model.run('settle-read');
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(readUi(model).mutationPhase).toBe('success');
+    expect(model.panelA.ref.city.value).toBe(CITY.resource);
+    expect(model.panelA.changes()).toHaveLength(0);
+    expect(model.panelA.isDirty()).toBe(false);
+
+    model.dispose();
+  });
+
+  it('refuses a second linked save instead of throwing', async () => {
+    const model = await loaded();
+
+    model.run('edit-busan');
+    model.run('capture');
+    model.run('save');
+    expect(() => model.run('save-with-response')).not.toThrow();
+    expect(readUi(model).lastResult).toContain('이미 진행 중');
+    expect(model.server.counts().write).toBe(1);
+
+    model.dispose();
+  });
+});
+
 describe('server outcomes on screen', () => {
   it('keeps an unknown WRITE pending and never resends it', async () => {
     const model = await loaded();
