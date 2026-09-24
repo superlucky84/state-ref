@@ -156,6 +156,14 @@ const steps = [
     args: ['scripts/check-doc-examples.mjs'],
   },
   {
+    // The F2 support table cites the tests that back each row. A renamed or
+    // deleted test would leave the citation pointing at nothing and the table
+    // still reading as if everything were fine (DC8-6-03).
+    name: 'support-table',
+    cmd: 'node',
+    args: ['scripts/check-support-table.mjs'],
+  },
+  {
     name: 'lint',
     cmd: 'pnpm',
     args: ['exec', 'eslint', ...sourceDirs, '--ext', '.ts,.tsx'],

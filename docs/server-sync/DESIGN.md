@@ -227,17 +227,19 @@ Phase 0에서 서버 엔진의 참조 버전과 key/epoch/기본 타이밍 계�
 
 이는 제품 목표의 범위를 잃지 않기 위한 목록이다. 비교 기준 버전과 Phase 0 하위 시나리오는 [Phase 0 기록](./PHASE0.md)에 고정했다. 기능군별 범위는 [Phase 5.1 표](./PHASE5_1.md#phase-51-시점-f2-기능별-상태), [Phase 5.2](./PHASE5_2.md#f2-상태-갱신과-검증), [Phase 5.3](./PHASE5_3.md#f2-범위와-증거), [Phase 5.4](./PHASE5_4.md), [Phase 5.5](./PHASE5_5.md), [Phase 5.6](./PHASE5_6.md), [Phase 5.7](./PHASE5_7.md), [Phase 5.8](./PHASE5_8.md), [Phase 5.9](./PHASE5_9.md), [Phase 5.10](./PHASE5_10.md), [Phase 5.11](./PHASE5_11.md), [Phase 5.12](./PHASE5_12.md), [Phase 5.13](./PHASE5_13.md), [Phase 5.14](./PHASE5_14.md), [Phase 5.15](./PHASE5_15.md), [Phase 5.16](./PHASE5_16.md), [Phase 5.17](./PHASE5_17.md), [Phase 6](./PHASE6.md), [Phase 7.1](./PHASE7_1.md), [Phase 7.2](./PHASE7_2.md), [Phase 7.3](./PHASE7_3.md)의 갱신에 있다. 복원·플랫폼의 상세 계약은 IC2-06에서 추적한다. 단계별 구현과 '전체 동등성 완료'를 구분한다.
 
-| ID | 검증할 기능군 | 단계 |
-|---|---|---|
-| F2-01 | key·캐시 공유·freshness·GC·진행 조회 공유·무효화·재조회 | Phase 3 |
-| F2-02 | 취소·조회 retry/backoff·focus/reconnect·polling·enabled | Phase 3, 5 |
-| F2-03 | query 상태·select·파생/의존/병렬 조회·초기/placeholder 데이터 | Phase 3, 5 |
-| F2-04 | mutation 상태·콜백·명시적 retry·경합/순서·낙관적 반영 | Phase 4 |
-| F2-05 | pagination·infinite query·prefetch·조회 데이터 보장 | Phase 5 |
-| F2-06 | SSR 요청 격리·dehydrate/hydrate·프레임워크별 로딩/오류 경계 | Phase 3, 5, 8 |
-| F2-07 | 영속화·복원·오프라인 조회/일시 중지 mutation·재개 | Phase 5 |
-| F2-08 | 개발 도구·관측·플러그인 경계·여러 환경의 lifecycle | Phase 5, 8 |
-| F2-09 | 반응형 옵션·query 전환·타입 추론·모든 지원 커넥터 | Phase 0, 5, 8 |
+| ID | 검증할 기능군 | 단계 | 현재 상태 |
+|---|---|---|---|
+| F2-01 | key·캐시 공유·freshness·GC·진행 조회 공유·무효화·재조회 | Phase 3 | 지원 |
+| F2-02 | 취소·조회 retry/backoff·focus/reconnect·polling·enabled | Phase 3, 5 | 지원 |
+| F2-03 | query 상태·select·파생/의존/병렬 조회·초기/placeholder 데이터 | Phase 3, 5 | 지원 |
+| F2-04 | mutation 상태·콜백·명시적 retry·경합/순서·낙관적 반영 | Phase 4 | 지원 |
+| F2-05 | pagination·infinite query·prefetch·조회 데이터 보장 | Phase 5 | 부분 지원 |
+| F2-06 | SSR 요청 격리·dehydrate/hydrate·프레임워크별 로딩/오류 경계 | Phase 3, 5, 8 | 부분 지원 |
+| F2-07 | 영속화·복원·오프라인 조회/일시 중지 mutation·재개 | Phase 5 | 지원 |
+| F2-08 | 개발 도구·관측·플러그인 경계·여러 환경의 lifecycle | Phase 5, 8 | 부분 지원 |
+| F2-09 | 반응형 옵션·query 전환·타입 추론·모든 지원 커넥터 | Phase 0, 5, 8 | 부분 지원 |
+
+**현재 상태 칸의 근거·계약·차이는 [Phase 8.6](./PHASE8_6.md)의 교차 확인 표에 있고, `scripts/check-support-table.mjs`가 gate에서 인용한 근거 파일의 실재를 확인한다.** 상태 어휘의 뜻은 [DC8-6-01](./PHASE8_6.md)에 고정했다. 어느 행도 **브라우저 증거가 아니며**, 부분 지원 4행이 달성할 수 없는 것을 이름으로 적는다 — 반응형 infinite key 전환, 브라우저 hydration과 Preact·Svelte·Solid의 SSR, 개발 도구 UI·플랫폼 자동 설치·TanStack 연동([DC8-01](./PHASE8.md)의 잔여), `QueryKey` 정밀화와 반응형 status readonly.
 
 각 기능군에 reference version, 계약, 독립 테스트, 현재 지원 상태, 차이/제약, 배포 단계를 기록한다. 새로 발견한 기능을 목록 밖이라는 이유로 누락하지 않는다. 기존 TanStack 플러그인을 그대로 실행할 수 있다는 호환성 약속은 별도 검증 없이는 하지 않는다.
 

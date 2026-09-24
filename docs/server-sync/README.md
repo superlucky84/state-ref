@@ -34,6 +34,22 @@ UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우�
 22. [PHASE5_11](./PHASE5_11.md): 단일 연결 제출 기록과 durable 전송 장벽.
 23. [PHASE5_12](./PHASE5_12.md): client별 읽기 전용 캐시 관측·구독 수명.
 24. [PHASE5_13](./PHASE5_13.md): 무한 조회 캐시 준비와 고정 key 관찰자별 표시.
+25. [PHASE5_14](./PHASE5_14.md): client별 읽기 전용 mutation 작업 관측과 전달 순서.
+26. [PHASE5_15](./PHASE5_15.md): 여러 query를 묶는 연결 제출 1건의 기록·재검사·장벽.
+27. [PHASE5_16](./PHASE5_16.md): 전송 중 로컬 편집의 durable checkpoint.
+28. [PHASE5_17](./PHASE5_17.md): 보관된 독립 명령의 안전한 자동 재개. F2-07 잔여 차이를 닫는다.
+29. [PHASE6](./PHASE6.md): dirty·미확정 resource에서 분기한 draft의 독립 편집과 수명 경계.
+30. [PHASE7_1](./PHASE7_1.md): 순서·경계 반례 보강.
+31. [PHASE7_2](./PHASE7_2.md): 결과 행렬의 모델 대조.
+32. [PHASE7_3](./PHASE7_3.md): 배포 경계와 패키징 검사.
+33. [PHASE7_4](./PHASE7_4.md): 수명 반복과 보존 사유.
+34. [PHASE8](./PHASE8.md): Integration Test·출시 검증 계획과 DC8-01~05. **DC8-01이 만들지 않기로 한 범위를 정한다.**
+35. [PHASE8_1](./PHASE8_1.md): 5종 커넥터의 로컬 draft·서버 resource 연결.
+36. [PHASE8_2](./PHASE8_2.md): 두 소비자·독립 draft·metadata 관측과 Svelte 결함 2건.
+37. [PHASE8_3](./PHASE8_3.md): 조회와 다른 DTO, 로컬 적용, 제출 중 추가 입력, 기준 복구 실패.
+38. [PHASE8_4](./PHASE8_4.md): 실제 서버 렌더의 구독 수명과 SSR client 격리.
+39. [PHASE8_5](./PHASE8_5.md): `examples/` 데모 워크스페이스, 번들 경계, 문서 예제 타입 검사. DC8-5-01~28.
+40. [PHASE8_6](./PHASE8_6.md): **F2-01~09 지원표 교차 확인.** 각 행의 계약·근거·상태·차이와 DC8-01의 잔여.
 
 ## Phase 3.5 완료 — 명시적 동기 batch
 
@@ -114,7 +130,7 @@ query별 `online`·`always`·`offlineFirst`는 오프라인 READ 시작과 retry
 
 ## 남은 구현 사항
 
-`createDraft`/`apply`와 `@stateref/sync`의 query·mutation, SSR 전달, 캐시·view·UI 연결, 자동 재조회, pagination/infinite, network mode·브라우저 adapter, 영속화·연결 제출, client별 캐시 관측·무한 조회 편의 API 하위 범위를 구현했다. 독립 엔진의 참조 버전·기본 설계는 [Phase 0](./PHASE0.md)에 고정했고 구현·검증 결과는 [Phase 3](./PHASE3.md), [Phase 4](./PHASE4.md), [Phase 5.1](./PHASE5_1.md), [Phase 5.2](./PHASE5_2.md), [Phase 5.3](./PHASE5_3.md), [Phase 5.4](./PHASE5_4.md), [Phase 5.5](./PHASE5_5.md), [Phase 5.6](./PHASE5_6.md), [Phase 5.7](./PHASE5_7.md), [Phase 5.8](./PHASE5_8.md), [Phase 5.9](./PHASE5_9.md), [Phase 5.10](./PHASE5_10.md), [Phase 5.11](./PHASE5_11.md), [Phase 5.12](./PHASE5_12.md), [Phase 5.13](./PHASE5_13.md)에 나눠 기록했다.
+`createDraft`/`apply`와 `@stateref/sync`의 query·mutation, SSR 전달, 캐시·view·UI 연결, 자동 재조회, pagination/infinite, network mode·브라우저 adapter, 영속화·연결 제출, client별 캐시 관측·무한 조회 편의 API 하위 범위를 구현했다. **현재 F2 지원 상태는 [Phase 8.6](./PHASE8_6.md)의 교차 확인 표가 한자리에 모아 두었고, 인용한 근거 파일의 실재는 gate가 확인한다.** 독립 엔진의 참조 버전·기본 설계는 [Phase 0](./PHASE0.md)에 고정했고 구현·검증 결과는 [Phase 3](./PHASE3.md), [Phase 4](./PHASE4.md), [Phase 5.1](./PHASE5_1.md), [Phase 5.2](./PHASE5_2.md), [Phase 5.3](./PHASE5_3.md), [Phase 5.4](./PHASE5_4.md), [Phase 5.5](./PHASE5_5.md), [Phase 5.6](./PHASE5_6.md), [Phase 5.7](./PHASE5_7.md), [Phase 5.8](./PHASE5_8.md), [Phase 5.9](./PHASE5_9.md), [Phase 5.10](./PHASE5_10.md), [Phase 5.11](./PHASE5_11.md), [Phase 5.12](./PHASE5_12.md), [Phase 5.13](./PHASE5_13.md)에 나눠 기록했다.
 
 기능 전반의 동등성은 F2 목록의 목표이며 현재 달성한 상태가 아니다. Phase 4의 명시적 제출과 실패 복구는 자동 검증했지만, resource/draft 결합과 실제 UI 투영, M2 수동 시나리오는 아직 검증하지 않았다. 다음 단계의 정확한 범위와 검증 기준은 [HANDOFF](./HANDOFF.md)에 있다.
 

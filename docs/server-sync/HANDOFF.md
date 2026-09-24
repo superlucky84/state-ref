@@ -1,6 +1,6 @@
 # 서버 동기화·독립 Draft 현재 인계
 
-기준일: 2026-09-24. 브랜치 `feat/server-sync-draft`. Phase 8.5의 `examples/` 워크스페이스와 문서 예제 타입 검사까지 커밋했다(구현 단계 1~8). 이 문서는 해당 구현과 함께 커밋되며, 확정 SHA와 재개 메모는 ctxbin의 `state-ref-root/feat/server-sync-draft`에 기록한다. 작업 재개 시 `git log -1 --oneline`과 `git status --short --branch`로 최신 커밋과 작업 트리를 확인한다.
+기준일: 2026-09-24. 브랜치 `feat/server-sync-draft`. Phase 8.5(예제 워크스페이스·번들 경계·문서 예제 타입 검사)와 Phase 8.6(F2 지원표 교차 확인)을 마쳤다. 남은 것은 Phase 8.7의 수동 수행뿐이다. 이 문서는 해당 구현과 함께 커밋되며, 확정 SHA와 재개 메모는 ctxbin의 `state-ref-root/feat/server-sync-draft`에 기록한다. 작업 재개 시 `git log -1 --oneline`과 `git status --short --branch`로 최신 커밋과 작업 트리를 확인한다.
 
 ## 먼저 읽을 문서
 
@@ -8,9 +8,10 @@
 2. [REQUIREMENTS](./REQUIREMENTS.md): R2 수용 기준과 이전 결정의 대체 관계.
 3. [DESIGN](./DESIGN.md): helper 경계, DC2/IC2 결정, F2 기능 목록.
 4. [IMPLEMENT](./IMPLEMENT.md): T2 테스트 계약과 Phase 5~8의 진입·종료 조건.
-5. [Phase 8.5](./PHASE8_5.md): `examples/` 워크스페이스, 번들 경계, 문서 예제 타입 검사. 결정 DC8-5-01~28과 단계별 검증 기록이 여기에 있다.
-6. [Phase 8.4](./PHASE8_4.md): 실제 서버 렌더의 구독 수명과 SSR client 격리. 이전 단계는 [README](./README.md)의 문서 지도를 따른다.
-7. [수동 체크리스트](./MANUAL_TEST_CHECKLIST.md): M2-01~20. 지금은 전부 미수행이며 Phase 8 출시 검증 대상이다.
+5. [Phase 8.6](./PHASE8_6.md): **F2-01~09 지원표.** 지금 무엇이 되고 무엇이 안 되는지 한자리에서 본다.
+6. [Phase 8.5](./PHASE8_5.md): `examples/` 워크스페이스, 번들 경계, 문서 예제 타입 검사. 결정 DC8-5-01~28과 단계별 검증 기록이 여기에 있다.
+7. [Phase 8.4](./PHASE8_4.md): 실제 서버 렌더의 구독 수명과 SSR client 격리. 이전 단계는 [README](./README.md)의 문서 지도를 따른다.
+8. [수동 체크리스트](./MANUAL_TEST_CHECKLIST.md): M2-01~20. 지금은 전부 미수행이며 Phase 8 출시 검증 대상이다.
 
 `PHASE0.md`~`PHASE4.md`의 “next”와 “미커밋” 문구는 **해당 단계 작성 당시의 이력**이다. 현재 재개 지점과 최신 구현 SHA는 이 문서가 우선한다.
 
@@ -92,14 +93,16 @@ Phase 8 계획은 `7e16f14`, Phase 8.1은 `70d65f2`, Phase 8.2는 `8d1cfdf`, Pha
 2. `unknown`은 재조정이나 폐기 전까지 전송할 수 없다. 연결 제출의 자동 재개는 계약상 제공하지 않는다. 완료 기록을 버리기 전 후속 편집을 별도 저장해야 한다.
 3. **Phase 6 완료:** dirty·미확정 WRITE 중인 원본에서 가지 draft를 만들고 독립 편집→로컬 apply→변경 재검토→mutation까지 연결하는 흐름을 자동 검증했다. 서울→부산→대전과 겹친 광주 갱신, 열린 draft의 수명 경계를 포함한다.
 4. **Phase 7 종료:** [Phase 7.1](./PHASE7_1.md) 순서·경계 반례, [Phase 7.2](./PHASE7_2.md) 결과 행렬 모델 대조, [Phase 7.3](./PHASE7_3.md) 배포 경계, [Phase 7.4](./PHASE7_4.md) 수명 반복·보존 사유를 모두 마쳤다. 하위 범위 5개에서 찾은 결함은 배포 3건뿐이고 정확성 결함은 0건이다. `QueryKey` 정밀화와 status readonly화는 공개 API 변경이라 별도 결정으로 남으며, 현재는 `packages/sync/src/tests/negative-runtime.test.ts`의 런타임 거절로 고정돼 있다.
-5. **Phase 8:** [계획](./PHASE8.md)의 8.1~8.4 자동 범위와 [8.5](./PHASE8_5.md)의 구현 단계 1~9를 완료했다. 다음은 8.6의 F2 지원표와 8.7의 M2-01~20 수동 수행이다. **브라우저에서 실행한 증거는 아직 없다** — hydration 일치와 상호작용 데모의 화면 동작은 8.7이며, Preact·Svelte·Solid에는 SSR 데모가 없다. **개발 도구 UI와 플랫폼 자동 설치는 만들지 않고 F2 잔여로 명시한다**(DC8-01). 수동 미수행을 PASS로 바꾸지 않는다.
+5. **Phase 8:** [계획](./PHASE8.md)의 8.1~8.4 자동 범위, [8.5](./PHASE8_5.md)의 구현 단계 1~9, [8.6](./PHASE8_6.md)의 F2 지원표를 완료했다. **남은 것은 8.7의 M2-01~20 수동 수행뿐이다.** **브라우저에서 실행한 증거는 아직 없다** — hydration 일치와 상호작용 데모의 화면 동작은 8.7이며, Preact·Svelte·Solid에는 SSR 데모가 없다. **개발 도구 UI와 플랫폼 자동 설치는 만들지 않고 F2 잔여로 명시한다**(DC8-01). 수동 미수행을 PASS로 바꾸지 않는다.
 
 ## 현재 인계
 
-- done: [Phase 8.5](./PHASE8_5.md)의 구현 단계 1~9를 마쳤다. private `examples/` 워크스페이스 7개에서 5종 커넥터 데모가 `examples/shared`의 한 모델과 같은 조작 37개를 렌더하고, React·Vue의 실제 서버 렌더가 조회한 값을 HTML에 담고 11회 렌더 뒤 구독 0개다. `examples/bundles`의 네 조합은 각각 단독 빌드되고 경계는 **해석된 모듈 그래프**로 단언한다(앱 번들은 의존성을 인라인하므로 import 문자열 검사가 성립하지 않는다). UMD 페이지 4종은 실제 dist를 로드해 jsdom에서 판정까지 도달한다. `scripts/check-doc-examples.mjs`가 README 3종의 예제 25개를 빌드된 공개 선언 타입으로 컴파일하고, 이 검사가 찾아낸 README 결함 5종을 고쳤다. `pnpm gate`가 **18단계**가 되었고 `lint`는 `examples/*/src`까지 본다.
+- done: [Phase 8.6](./PHASE8_6.md)에서 F2-01~09의 계약·테스트 근거·현재 상태·차이를 한 표로 모으고 `scripts/check-support-table.mjs`로 고정했다. **지원 5행·부분 지원 4행**이며, 부분 지원 행은 달성할 수 없는 것을 이름으로 적는다 — 반응형 infinite key 전환(F2-05), 브라우저 hydration과 Preact·Svelte·Solid의 SSR(F2-06), 개발 도구 UI·플랫폼 자동 설치·TanStack 연동(F2-08, [DC8-01](./PHASE8.md)의 잔여), `QueryKey` 정밀화와 반응형 status readonly(F2-09). 인용한 근거 28개 파일이 모두 실재하고 각각 vitest suite이거나 gate·루트 스크립트가 실행한다. gate는 **19단계**가 됐고, [DESIGN](./DESIGN.md)의 F2 표에 현재 상태 칸을, [README](./README.md)의 문서 지도에 PHASE5_14~PHASE8_6을 더했다.
+- **이 표는 기능 동등성 선언이 아니고 브라우저 증거도 아니다.** 9행 전부의 근거가 Node에서 도는 자동 테스트다.
+- 이전 done: [Phase 8.5](./PHASE8_5.md)의 구현 단계 1~9를 마쳤다. private `examples/` 워크스페이스 7개에서 5종 커넥터 데모가 `examples/shared`의 한 모델과 같은 조작 37개를 렌더하고, React·Vue의 실제 서버 렌더가 조회한 값을 HTML에 담고 11회 렌더 뒤 구독 0개다. `examples/bundles`의 네 조합은 각각 단독 빌드되고 경계는 **해석된 모듈 그래프**로 단언한다(앱 번들은 의존성을 인라인하므로 import 문자열 검사가 성립하지 않는다). UMD 페이지 4종은 실제 dist를 로드해 jsdom에서 판정까지 도달한다. `scripts/check-doc-examples.mjs`가 README 3종의 예제 25개를 빌드된 공개 선언 타입으로 컴파일하고, 이 검사가 찾아낸 README 결함 5종을 고쳤다. `pnpm gate`가 **18단계**가 되었고 `lint`는 `examples/*/src`까지 본다.
 - 검증: `pnpm gate` **18단계 PASS**, 기존 수치 불변 — core **338**, sync **183**, React **36**, Preact **27**, Vue **35**, Svelte **26**, Solid **25**, `examples/shared` **23**, gate Node 24.11.1 core gzip **3,696/3,800 B**. `pnpm check:examples` PASS. 결함 주입은 단계 6에서 8종, 단계 7에서 5종, 단계 8에서 3종을 넣어 **16종 모두 잡혔다**. `packages/` 소스는 8.5 전체에서 한 줄도 바뀌지 않았다(README 2건 제외).
 - **자동 결과를 수동 결과로 읽지 않는다:** 8.5의 증거 범위는 타입 검사·빌드·소스 대조·모듈 그래프·Node 서버 렌더·jsdom까지다. 데모가 존재한다는 사실은 어떤 M2도 통과시키지 않는다.
-- next: Phase 8.6의 F2 지원표 갱신, 그다음 8.7의 M2-01~20 수동 수행. 실행 절차와 데모 URL은 [체크리스트 1절](./MANUAL_TEST_CHECKLIST.md)에 있다.
+- next: **Phase 8.7 — 사람이 브라우저에서 M2-01~20을 수행한다.** 실행 절차와 데모 URL은 [체크리스트 1절](./MANUAL_TEST_CHECKLIST.md)에 있다. 이 단계만 자동화하지 않는다.
 - blockers: 없음. F2 전체 동등성과 M2-01~20 수동 결과는 미완료다. `unknown`을 자동 재전송하지 않는다.
 - 시작 기준 commit: `89a46e9` (Phase 8.4 및 computed 캐시). 8.5의 커밋은 `e0f6e3a`(계획)·`0d72401`·`5309c94`·`c86ae92`·`7d4fc60`·`bac2be6`·`2cc15a7`이며, 이 문서를 포함한 커밋이 단계 9다.
 
