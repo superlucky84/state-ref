@@ -69,7 +69,7 @@
     {/each}
 
     <section class="card">
-      <h2>서버와 요청</h2>
+      <h2>서버 상태와 요청 기록</h2>
       <div class="row">
         <span>서버 도시 / revision</span>
         <b>{requests.serverCity} / {requests.serverRevision}</b>
@@ -137,7 +137,7 @@
 
     {#if !drafts.a && !drafts.b}
       <section class="card">
-        <h2>독립 draft</h2>
+        <h2>draft 값과 변경</h2>
         <p class="note">아직 분기하지 않았다. 원본을 먼저 편집해 보라.</p>
       </section>
     {/if}
@@ -153,7 +153,7 @@
     {/if}
 
     <section class="card">
-      <h2>콜백 없는 computed</h2>
+      <h2>computed 읽기 결과</h2>
       <div class="row"><span>현재 값</span><b>{$computedValue}</b></div>
       <div class="row">
         <span>계산 실행 횟수</span><b>{$computedCalculations}</b>

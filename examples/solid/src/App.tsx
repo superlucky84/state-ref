@@ -233,7 +233,7 @@ export default function App() {
         </For>
 
         <section class="card">
-          <h2>서버와 요청</h2>
+          <h2>서버 상태와 요청 기록</h2>
           <Row
             label="서버 도시 / revision"
             value={`${requests().serverCity} / ${requests().serverRevision}`}
@@ -296,7 +296,7 @@ export default function App() {
 
         <Show when={!drafts().a && !drafts().b}>
           <section class="card">
-            <h2>독립 draft</h2>
+            <h2>draft 값과 변경</h2>
             <p class="note">아직 분기하지 않았다. 원본을 먼저 편집해 보라.</p>
           </section>
         </Show>
@@ -308,7 +308,7 @@ export default function App() {
         </Show>
 
         <section class="card">
-          <h2>콜백 없는 computed</h2>
+          <h2>computed 읽기 결과</h2>
           <Row label="현재 값" value={computedValue()} />
           <Row label="계산 실행 횟수" value={computedCalculations()} />
           <Flag label="직전 읽기와 같은 객체" on={computedIdentityStable()} />

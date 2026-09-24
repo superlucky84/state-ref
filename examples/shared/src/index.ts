@@ -27,7 +27,12 @@ export {
   toSaveDto,
   withMemo,
 } from './scenario';
-export { AUTO_REFETCH, createDemoModel } from './model';
+export {
+  AUTO_REFETCH,
+  QUERY_RETRY,
+  READING_QUERIES,
+  createDemoModel,
+} from './model';
 export type { ComputedSource, DemoModel, DemoUi, DraftPair } from './model';
 export { OPERATION_GROUPS, OPERATION_IDS } from './operations';
 export {

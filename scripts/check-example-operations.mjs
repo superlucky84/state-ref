@@ -40,6 +40,14 @@ if (new Set(ids).size !== ids.length) {
   process.exit(1);
 }
 
+const groupTitles = [...catalogue.matchAll(/title:\s*'([^']+)'/g)].map(
+  match => match[1]
+);
+if (groupTitles.length === 0) {
+  console.error('EXAMPLES: no group titles parsed from operations.ts.');
+  process.exit(2);
+}
+
 const sourcesOf = dir => {
   const out = [];
   const walk = current => {
@@ -81,6 +89,19 @@ for (const app of apps) {
   const narrowed = text.match(/OPERATION_GROUPS\s*\.\s*(filter|slice|find)\b/);
   if (narrowed) {
     problems.push(`narrows the catalogue with .${narrowed[1]}()`);
+  }
+  // A reading panel that borrows a button group's title (B8-7-02): the person
+  // running the manual pass is told to look at "서버와 요청" and finds two
+  // cards wearing that name. Nothing else catches it - both cards render.
+  for (const [file, body] of sources) {
+    for (const match of body.matchAll(/<h2[^>]*>([^<{]+)<\/h2>/g)) {
+      const heading = match[1].trim();
+      if (groupTitles.includes(heading)) {
+        problems.push(
+          `${file.slice(root.length + 1)} titles a panel '${heading}', which is already an operation group`
+        );
+      }
+    }
   }
   // A bespoke button naming an operation that no longer exists is silent
   // otherwise: `run()` would simply fall through its switch.

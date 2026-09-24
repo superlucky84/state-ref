@@ -44,6 +44,28 @@ export const AUTO_REFETCH = {
   refetchInterval: false as const,
 };
 
+/**
+ * The retry budget the panel queries state for themselves (DC8-5-29).
+ *
+ * The count matches sync's own default, so the demo keeps exercising the real
+ * default policy. The delay is flattened to 0 because the fixture cannot move
+ * sync's clock (DC8-5-12) - with the default backoff a person running M2-04
+ * would have to wait 1s, 2s and 4s between presses with nothing to press.
+ */
+export const QUERY_RETRY = 3;
+/**
+ * How many queries share `server.read`: the panel key and the readonly key.
+ *
+ * `load` starts both, and they draw from one queued-outcome list, so a run of
+ * failures has to cover every attempt of both or the panel quietly recovers on
+ * a later attempt (DC8-5-30).
+ */
+export const READING_QUERIES = 2;
+const RETRY_POLICY = {
+  retry: QUERY_RETRY,
+  retryDelay: () => 0,
+};
+
 export type DemoUi = Readonly<{
   /** Bumped after every operation so panels over non-reactive data repaint. */
   tick: number;
@@ -95,6 +117,7 @@ export function createDemoModel(): DemoModel {
     queryKey: ['profile'],
     queryFn: server.read,
     ...AUTO_REFETCH,
+    ...RETRY_POLICY,
   };
   const panelA = client.query<Profile>(queryOptions);
   const panelB = client.query<Profile>(queryOptions);
@@ -102,6 +125,7 @@ export function createDemoModel(): DemoModel {
     queryKey: ['profile', 'readonly'],
     queryFn: server.read,
     editable: false,
+    ...RETRY_POLICY,
   });
 
   const mutation = client.mutation<SaveAddressDto, SaveAddressResponse>({
@@ -196,6 +220,15 @@ export function createDemoModel(): DemoModel {
       case 'next-read-error':
         server.nextRead('error');
         return bump(id, '다음 READ는 실패한다');
+      case 'next-read-error-exhausted': {
+        const total = (QUERY_RETRY + 1) * READING_QUERIES;
+        server.nextRead('error', total);
+        return bump(
+          id,
+          `다음 READ ${total}회를 실패로 예약했다. 조회 ${READING_QUERIES}개(패널·readonly)가 각각 재시도 예산 ${QUERY_RETRY}회를 소진해 오류 상태에 이른다. 요청은 완료 버튼으로 직접 끝낸다.`
+        );
+      }
+
       case 'next-write-rejected':
         server.nextWrite('rejected');
         return bump(id, '다음 WRITE는 확정 거절된다');

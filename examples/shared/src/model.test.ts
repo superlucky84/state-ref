@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { CITY, OPERATION_IDS, createDemoModel, resourcePanel } from './index';
+import {
+  CITY,
+  OPERATION_IDS,
+  QUERY_RETRY,
+  READING_QUERIES,
+  createDemoModel,
+  resourcePanel,
+} from './index';
 import type { DemoModel } from './index';
 
 /**
@@ -48,6 +55,70 @@ describe('operation catalogue', () => {
     for (const id of OPERATION_IDS) {
       expect(() => model.run(id)).not.toThrow();
     }
+    model.dispose();
+  });
+});
+
+describe('retry budget', () => {
+  it('absorbs a single queued failure instead of showing an error', async () => {
+    const model = createDemoModel();
+    model.run('next-read-error');
+    model.run('load');
+    model.run('settle-read');
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // The READ failed on the server, but the query retried it rather than
+    // publishing an error - the reason M2-04 could not be performed before
+    // DC8-5-30.
+    expect(model.server.requests().some(row => row.outcome === 'error')).toBe(
+      true
+    );
+    expect(model.panelA.status.status.value).not.toBe('error');
+    model.dispose();
+  });
+
+  it('reaches an error status once the retry budget is exhausted', async () => {
+    const model = createDemoModel();
+    model.run('next-read-error-exhausted');
+    model.run('load');
+
+    // `retryDelay` is 0, so each retry is queued on a macrotask; settle the
+    // whole chain by draining it until the query gives up (DC8-5-29).
+    for (
+      let attempt = 0;
+      attempt <= (QUERY_RETRY + 1) * READING_QUERIES;
+      attempt += 1
+    ) {
+      model.run('settle-all');
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+
+    expect(model.panelA.status.status.value).toBe('error');
+    expect(model.panelA.status.loaded.value).toBe(false);
+    model.dispose();
+  });
+
+  it('recovers explicitly after the failed first load', async () => {
+    const model = createDemoModel();
+    model.run('next-read-error-exhausted');
+    model.run('load');
+    for (
+      let attempt = 0;
+      attempt <= (QUERY_RETRY + 1) * READING_QUERIES;
+      attempt += 1
+    ) {
+      model.run('settle-all');
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    expect(model.panelA.status.status.value).toBe('error');
+
+    model.run('refetch');
+    model.run('settle-all');
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(model.panelA.status.status.value).toBe('success');
+    expect(model.panelA.ref.city.value).toBe(CITY.server);
     model.dispose();
   });
 });

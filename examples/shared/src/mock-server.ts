@@ -31,8 +31,14 @@ export type MockServer = Readonly<{
   /** Requests that have not settled - `unknown` lives here forever. */
   inFlight: () => readonly RequestRecord[];
 
-  /** Queue the outcome of the next READ. Defaults to `success`. */
-  nextRead: (outcome: ReadOutcome) => void;
+  /**
+   * Queue the outcome of the next READ, or of the next `repeat` READs.
+   *
+   * A query retries a failed READ (DC8-5-29), so a single queued failure is
+   * swallowed by the retry chain and never reaches `status: 'error'`. Pass a
+   * repeat count to cover the whole chain (DC8-5-30).
+   */
+  nextRead: (outcome: ReadOutcome, repeat?: number) => void;
   /** Queue the outcome of the next WRITE. Defaults to `success`. */
   nextWrite: (outcome: WriteOutcome) => void;
 
@@ -59,6 +65,7 @@ export function createMockServer(initial: Profile): MockServer {
   let readCount = 0;
   let writeCount = 0;
   let nextRead: ReadOutcome = 'success';
+  let nextReadRepeat = 1;
   let nextWrite: WriteOutcome = 'success';
   const records: RequestRecord[] = [];
   const pending: Pending[] = [];
@@ -104,8 +111,12 @@ export function createMockServer(initial: Profile): MockServer {
     requests: () => records,
     inFlight: () => pending.map(entry => entry.record),
 
-    nextRead(outcome) {
+    nextRead(outcome, repeat = 1) {
+      if (!Number.isInteger(repeat) || repeat < 1) {
+        throw new RangeError('repeat must be a positive integer.');
+      }
       nextRead = outcome;
+      nextReadRepeat = repeat;
     },
     nextWrite(outcome) {
       nextWrite = outcome;
@@ -114,7 +125,13 @@ export function createMockServer(initial: Profile): MockServer {
     read({ signal }) {
       readCount += 1;
       const outcome = nextRead;
-      nextRead = 'success';
+      // The queue is consumed here, at call time, so a retry issued later
+      // gets the next queued outcome rather than the one this call used.
+      if (nextReadRepeat > 1) nextReadRepeat -= 1;
+      else {
+        nextRead = 'success';
+        nextReadRepeat = 1;
+      }
       let entry = record('READ', `READ-${readCount}`);
       records.push(entry);
       const deferred = createDeferred<Profile>();
