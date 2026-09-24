@@ -229,8 +229,9 @@
 - [x] 두 소비자·독립 draft 2개·metadata 관측·mount/unmount를 검증하고 `connectSvelte`의 결함 2건을 고쳤다. SSR client 분리는 8.4에서 검증했다. [Phase 8.2](./PHASE8_2.md).
 - [x] 조회 shape와 다른 DTO, 원본 로컬 적용, 제출 중 추가 입력, 기준 복구 실패를 UI에서 확인한다. `dirty`는 서버 작업의 근거가 아니다. [Phase 8.3](./PHASE8_3.md).
 - [x] 5종의 실제 서버 렌더가 구독을 남기지 않음을 확인하고, 별도 client의 편집 격리와 clean snapshot 왕복을 검증한다. [Phase 8.4](./PHASE8_4.md).
-- [ ] 브라우저 hydration과 loading/error 화면을 데모에서 확인하고 기능 목록과 교차 확인한다. 8.5·8.6·8.7 범위다.
-- [ ] 새 helper의 타입·테스트·빌드를 root gate에 포함하고 실제 문서 예제를 타입 검사한다.
+- [x] private `examples/` 워크스페이스에 5종 커넥터 데모와 공유 fixture, 네 번들 조합과 UMD 페이지 4종, React·Vue의 실제 서버 렌더를 만든다. 번들 경계는 해석된 모듈 그래프로 확인한다. [Phase 8.5](./PHASE8_5.md).
+- [ ] 브라우저 hydration과 loading/error 화면을 데모에서 **확인**하고 기능 목록과 교차 확인한다. 8.5가 대상을 만들었고 확인은 8.6·8.7이다. Preact·Svelte·Solid의 hydration은 미검증이다.
+- [x] 새 helper의 타입·테스트·빌드를 root gate에 포함하고 실제 문서 예제를 타입 검사한다. gate 18단계, `lint`가 `examples/*/src`까지 본다. [Phase 8.5](./PHASE8_5.md).
 - [ ] M2-01~20을 수행하고 환경·구현 SHA·결과·증거를 기록한다. M2-02에 추가된 batch 시나리오도 포함한다.
 
 **기준 테스트:** T2-01~27 통합 회귀, 각 커넥터의 T2-04/05/14~22/24/26/27, F2 플랫폼 시나리오, M2 전체 수동 검증.
@@ -252,6 +253,14 @@
 | 수동 시나리오 | M2-01~20 모두 미수행 |
 
 ## 5. 인계
+
+### 2026-09-24 — Phase 8.5 예제 워크스페이스와 문서 예제 타입 검사
+
+- done: [Phase 8.5](./PHASE8_5.md)의 구현 단계 1~8을 마쳤다. private `examples/` 워크스페이스 7개를 만들고, `examples/shared`의 한 모델 위에 5종 커넥터 데모가 같은 조작 37개를 렌더한다. React·Vue는 실제 Node 서버 렌더가 조회한 값을 HTML에 담고 11회 렌더 뒤 구독 0개다. `examples/bundles`의 네 조합은 각각 단독으로 빌드되고, 경계는 **해석된 모듈 그래프**로 단언한다 — 앱 번들은 의존성을 인라인하므로 import 문자열 검사가 성립하지 않는다. UMD 페이지 4종은 실제 dist를 로드해 jsdom에서 판정까지 도달한다. `scripts/check-doc-examples.mjs`가 README 3종의 예제 25개를 빌드된 공개 선언 타입으로 컴파일하며, 이 검사가 찾아낸 README 결함 5종을 고쳤다. `pnpm gate` **18단계 PASS**이고 기존 수치는 불변이다 — core 338, sync 183, React 36, Preact 27, Vue 35, Svelte 26, Solid 25, `examples/shared` 23, gate Node 24.11.1 core gzip 3,696/3,800 B.
+- **자동 검사의 한계:** 이 단계의 증거는 타입 검사·빌드·소스 대조·모듈 그래프·Node 서버 렌더·jsdom까지다. **브라우저에서 실행한 증거는 없다.** hydration 일치, 상호작용 데모의 화면 동작, UMD script 태그의 실제 로드는 8.7이다. Preact·Svelte·Solid에는 SSR 데모 자체가 없다.
+- next: 8.6의 F2 지원표 갱신, 그다음 8.7의 M2-01~20 수동 수행.
+- blockers: 없음. M2-01~20은 여전히 전부 미수행이다.
+- 시작 기준 commit: `89a46e9` (Phase 8.4 및 computed 캐시). 확정 SHA는 ctxbin 인계 기록을 확인한다.
 
 ### 2026-09-23 — Phase 8.4 서버 렌더와 SSR 격리
 

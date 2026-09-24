@@ -15,13 +15,45 @@
 - READ/WRITE 횟수와 요청 ID·버전, 제어 가능한 clock/Promise. 자동 조회 정책과 시간을 각 결과에 기록.
 - 서로 다른 client/SSR 요청, core-only/draft-only/sync-only/전체 조합 번들.
 
+[Phase 8.5](./PHASE8_5.md)가 이 fixture를 `examples/` 워크스페이스로 구현했다. 아래 표의 명령과 URL은 **수행 절차**이며, 결과는 아래 M2-01~20에 기록한다. 데모가 존재한다는 사실은 어떤 M2도 통과시키지 않는다.
+
+### 데모 실행 절차
+
+먼저 저장소 루트에서 `pnpm install`과 `pnpm build`를 실행한다. UMD 페이지가 `packages/*/dist`의 실제 산출물을 그대로 받으므로 빌드가 선행되어야 한다.
+
+| 데모 | 명령 | URL |
+|---|---|---|
+| React | `pnpm --filter stateref-example-react dev` | http://localhost:5181 |
+| Preact | `pnpm --filter stateref-example-preact dev` | http://localhost:5182 |
+| Vue | `pnpm --filter stateref-example-vue dev` | http://localhost:5183 |
+| Svelte | `pnpm --filter stateref-example-svelte dev` | http://localhost:5184 |
+| Solid | `pnpm --filter stateref-example-solid dev` | http://localhost:5185 |
+| 번들 조합 (ESM 4종 + UMD 4종) | `pnpm --filter stateref-example-bundles dev` | http://localhost:5186 |
+| React SSR / hydration | `pnpm --filter stateref-example-react dev:ssr` | http://localhost:5191 |
+| Vue SSR / hydration (`onServerPrefetch`) | `pnpm --filter stateref-example-vue dev:ssr` | http://localhost:5192 |
+
+다섯 커넥터 데모는 `examples/shared`의 같은 모델과 같은 조작 37개를 렌더한다. 번들 허브(5186)에 ESM 네 조합과 UMD 네 페이지의 링크가 있다. **Preact·Svelte·Solid에는 SSR 데모가 없다** — 그 hydration은 미검증이다([DC8-5-04](./PHASE8_5.md)).
+
+fixture는 시간을 제어하지 못한다([DC8-5-12](./PHASE8_5.md)). 제어 가능한 것은 주입한 환경 사건(focus·reconnect·online), READ/WRITE의 완료 시점과 결과, 요청 타임라인 기록이다. `staleTime`·`refetchInterval`은 실제 시간으로 흐른다.
+
+### 자동 검사 명령 (수동 수행의 대체가 아니다)
+
+| 명령 | 무엇을 보는가 |
+|---|---|
+| `pnpm gate` | 18단계. 예제 7종 타입 검사와 README 예제 타입 검사를 포함한다 |
+| `pnpm check:examples` | 예제 빌드, 조작 집합 대조, 번들 모듈 그래프 경계, Node 서버 렌더 |
+
+[DC8-04](./PHASE8.md)에 따라 자동으로 덮은 항목도 아래 결과란은 미수행으로 남긴다.
+
+### 실행 기록
+
 | 실행 기록 | 값 |
 |---|---|
 | 구현 SHA / 실행 일시 / 검증자 | 미기록 |
 | OS / 브라우저 / 프레임워크 | 미기록 |
 | Node / pnpm / TypeScript / helper 버전 | 미기록 |
 | 기능 비교 기준 버전 / F2 목록 | `@tanstack/query-core@5.103.1` / [Phase 0 목록](./PHASE0.md); 실행 결과 미기록 |
-| 실행 명령 / 데모 URL / 증거 위치 | 미기록 |
+| 실행 명령 / 데모 URL / 증거 위치 | 위 표의 절차를 사용한다. **실행 결과 미기록** |
 
 ## 2. 수동 시나리오
 
