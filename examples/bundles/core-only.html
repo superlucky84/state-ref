@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>state-ref 번들 조합 — core 단독</title>
+    <link rel="stylesheet" href="/page.css" />
+  </head>
+  <body>
+    <h1>core 단독</h1>
+    <p class="lead">두 helper도 서버 엔진도 없이 core만 사용한다.</p>
+    <nav><a href="/">← 조합 목록</a></nav>
+    <p>이 페이지가 빌드된 모듈 그래프는 <code>dist/esm/core-only/module-graph.json</code>에 기록된다. draft·batch·sync 모듈이 하나도 없어야 한다.</p>
+    <section>
+      <h2>조작</h2>
+      <div id="actions"></div>
+    </section>
+    <section>
+      <h2>패널</h2>
+      <dl id="panel"></dl>
+    </section>
+    <section>
+      <h2>기록 (최근이 위)</h2>
+      <ol id="log"></ol>
+    </section>
+    <script type="module" src="/src/core-only.ts"></script>
+  </body>
+</html>

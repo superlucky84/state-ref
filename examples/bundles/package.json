@@ -5,11 +5,12 @@
   "private": true,
   "description": "core-only, draft-only, sync-only and combined entry points that show the dependency boundary",
   "scripts": {
+    "dev": "vite",
+    "build": "node build.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@stateref/sync": "workspace:*",
-    "state-ref": "workspace:*",
-    "stateref-example-shared": "workspace:*"
+    "state-ref": "workspace:*"
   }
 }

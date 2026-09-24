@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>state-ref UMD — core → draft</title>
+    <link rel="stylesheet" href="/page.css" />
+  </head>
+  <body>
+    <h1>UMD — core → draft</h1>
+    <p class="lead">코어 스크립트 다음에 draft 스크립트를 로드한다.</p>
+    <nav><a href="/">← 조합 목록</a></nav>
+    <p>
+      확인할 것: <code>stateRef</code>와 <code>stateRefDraft</code>의 API가
+      함께 동작한다.
+    </p>
+
+    <script src="/vendor/state-ref.umd.js"></script>
+    <script src="/vendor/state-ref.draft.umd.js"></script>
+
+    <section>
+      <h2>결과</h2>
+      <dl id="panel"></dl>
+    </section>
+
+    <script>
+      (function () {
+        var panel = document.getElementById('panel');
+        function row(label, value) {
+          var dt = document.createElement('dt');
+          dt.textContent = label;
+          var dd = document.createElement('dd');
+          dd.textContent = String(value);
+          panel.appendChild(dt);
+          panel.appendChild(dd);
+        }
+
+        row('typeof stateRef', typeof window.stateRef);
+        row('typeof stateRefDraft', typeof window.stateRefDraft);
+
+        var source = window.stateRef.createStore({ city: '서울' })();
+        var draft = window.stateRefDraft.createDraft(source);
+        draft.ref.city.value = '대전';
+
+        row('draft 편집 후 원본', source.city.value);
+        row('draft 값', draft.ref.city.value);
+        row('changes', draft.changes().length);
+
+        var applied = draft.apply();
+        row('apply', JSON.stringify(applied));
+        row('apply 후 원본', source.city.value);
+        draft.discard();
+        row(
+          '판정',
+          applied.ok && source.city.value === '대전'
+            ? '두 전역이 함께 동작 — 정상'
+            : '예상과 다름'
+        );
+      })();
+    </script>
+  </body>
+</html>

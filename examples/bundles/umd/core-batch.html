@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>state-ref UMD — core → batch</title>
+    <link rel="stylesheet" href="/page.css" />
+  </head>
+  <body>
+    <h1>UMD — core → batch</h1>
+    <p class="lead">코어 스크립트 다음에 batch 스크립트를 로드한다.</p>
+    <nav><a href="/">← 조합 목록</a></nav>
+    <p>
+      확인할 것: <code>stateRefBatch.batch</code>로 두 경로를 쓰면 최종 값
+      알림이 구독당 1회다.
+    </p>
+
+    <script src="/vendor/state-ref.umd.js"></script>
+
+    <section>
+      <h2>결과</h2>
+      <dl id="panel"></dl>
+    </section>
+
+    <script>
+      window.__batchGlobalBeforeLoad = typeof window.stateRefBatch;
+    </script>
+    <script src="/vendor/state-ref.batch.umd.js"></script>
+
+    <script>
+      (function () {
+        var panel = document.getElementById('panel');
+        function row(label, value) {
+          var dt = document.createElement('dt');
+          dt.textContent = label;
+          var dd = document.createElement('dd');
+          dd.textContent = String(value);
+          panel.appendChild(dt);
+          panel.appendChild(dd);
+        }
+
+        row('코어만 로드했을 때 stateRefBatch', window.__batchGlobalBeforeLoad);
+        row('batch 로드 후 stateRefBatch', typeof window.stateRefBatch);
+
+        var seen = [];
+        var watch = window.stateRef.createStore({ b: 0, c: 0 });
+        watch(function (state) {
+          seen.push(state.b.value + ',' + state.c.value);
+        });
+        var ref = watch();
+
+        window.stateRefBatch.batch(function () {
+          ref.b.value = 3;
+          ref.c.value = 4;
+        });
+        var afterBatch = seen.slice();
+
+        ref.b.value = 5;
+        ref.c.value = 6;
+
+        row('batch 안 두 경로 쓰기 → 알림', afterBatch.join(' | '));
+        row('batch 밖 두 경로 쓰기 → 알림', seen.slice(afterBatch.length).join(' | '));
+        row(
+          '판정',
+          window.__batchGlobalBeforeLoad === 'undefined' &&
+            afterBatch.length === 2 &&
+            seen.length === 4
+            ? 'batch는 1회, 기본 쓰기는 쓰기마다 — 정상'
+            : '예상과 다름'
+        );
+      })();
+    </script>
+  </body>
+</html>

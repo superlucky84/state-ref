@@ -60,13 +60,3 @@ export type {
   SaveAddressResponse,
   WriteOutcome,
 } from './types';
-
-/** Names the demos use for the four helper combinations of M2-01. */
-export const BUNDLE_COMBINATIONS = [
-  'core-only',
-  'draft-only',
-  'sync-only',
-  'combined',
-] as const;
-
-export type BundleCombination = (typeof BUNDLE_COMBINATIONS)[number];

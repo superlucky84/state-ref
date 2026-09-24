@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>state-ref UMD — draft만 로드 (코어 누락)</title>
+    <link rel="stylesheet" href="/page.css" />
+  </head>
+  <body>
+    <h1>UMD — draft만 로드 (코어 누락)</h1>
+    <p class="lead">
+      코어 없이 draft 스크립트만 로드한다. 실패해야 정상인 페이지다.
+    </p>
+    <nav><a href="/">← 조합 목록</a></nav>
+    <p>확인할 것: 코어 누락 오류가 분명한 문장으로 표시된다.</p>
+
+    <script src="/vendor/state-ref.draft.umd.js"></script>
+
+    <section>
+      <h2>결과</h2>
+      <dl id="panel"></dl>
+    </section>
+
+    <script>
+      (function () {
+        var panel = document.getElementById('panel');
+        function row(label, value) {
+          var dt = document.createElement('dt');
+          dt.textContent = label;
+          var dd = document.createElement('dd');
+          dd.textContent = String(value);
+          panel.appendChild(dt);
+          panel.appendChild(dd);
+        }
+
+        row('typeof stateRef', typeof window.stateRef);
+        row('typeof stateRefDraft', typeof window.stateRefDraft);
+
+        var message = '(오류 없음 — 예상과 다름)';
+        var threw = false;
+        try {
+          window.stateRefDraft.createDraft({ value: 1 });
+        } catch (error) {
+          threw = true;
+          message = String(error && error.message ? error.message : error);
+        }
+
+        row('createDraft 호출', message);
+        row(
+          '판정',
+          threw && /core bundle/.test(message)
+            ? '코어 누락을 분명히 알린다 — 정상'
+            : '예상과 다름'
+        );
+      })();
+    </script>
+  </body>
+</html>

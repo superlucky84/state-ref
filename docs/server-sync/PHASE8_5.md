@@ -38,6 +38,12 @@ Phase 8.1~8.4는 자동 테스트로 계약을 고정했다. 8.5는 **사람이 
 - [x] **DC8-5-18 / SSR 페이지는 상호작용 데모와 별도로 둔다:** 상호작용 데모는 모듈 스코프에 모델 하나를 두는데, 그 형태를 서버에 올리면 **요청마다 같은 store를 재사용하는** 바로 그 조건([Phase 8.4](./PHASE8_4.md)이 측정한 장수 store)이 된다. SSR 페이지는 `createSsrModelOnServer()`로 요청마다 새 client를 만들고 요청과 함께 버린다. 브라우저는 HTML에 실린 clean snapshot을 `hydrate()`로 복원해 READ 없이 같은 기준에서 시작한다 — hydrate 뒤 handle이 `load()` 없이 쓸 수 있다는 것은 실제로 확인했다.
 - [x] **DC8-5-19 / computed는 원시값을 파생한다:** 커넥터는 `StateRefStore<T>`를 돌려주는데 `createComputed`의 반환은 `{ value: R }` 프록시다. R이 객체면 `store.label.value` 같은 읽기가 런타임에 없는 속성이 된다. 기존 커넥터 테스트도 computed로 `number`를 파생한다. SSR 페이지의 computed는 문자열 하나를 만들고, 캐스팅으로 타입을 눌러 덮지 않는다.
 
+- [x] **DC8-5-20 / 조합마다 별도로 빌드한다:** 구현 단계 6에서 확인한 것이다. 네 진입점을 한 빌드에 넣으면 vite가 공유 모듈을 공통 청크로 올리고, "이 모듈을 어느 진입점이 끌어왔나"가 귀속 논쟁이 된다. `examples/bundles/build.mjs`가 vite를 조합마다 한 번씩 호출해 각자의 디렉터리로 내보내므로, 질문의 답이 디렉터리 목록 자체가 된다. UMD 페이지와 허브는 다섯 번째 빌드로 따로 나간다.
+- [x] **DC8-5-21 / 모듈 그래프는 문자열 검사보다 강하다 — 실측했다:** core-only 진입점에 `state-ref/draft` import를 넣되 쓰지 않으면, tree shaking이 draft 코드를 지워 **문자열 검사는 통과하고 모듈 그래프만 실패한다.** 실제로 쓰면 둘 다 실패한다. 따라서 그래프가 경계의 증거이고, 산출물 문자열 검사는 기록 플러그인 자체의 결함을 잡는 **보조망**일 뿐이다. 두 검사를 같은 비중으로 적지 않는다.
+- [x] **DC8-5-22 / "네트워크 구현이 없다"의 정확한 뜻:** core·draft·batch·plugin 산출물은 `XMLHttpRequest`·`WebSocket`·`EventSource`·`sendBeacon`·`navigator.onLine` 중 어느 것도 참조하지 않는다(검사로 확인한다). sync 산출물의 `fetch(` 두 곳은 전역 호출이 아니라 자기 메서드 이름 `fetch`·`prefetch`다. **state-ref의 어떤 산출물도 스스로 네트워크를 부르지 않는다** — 부르는 것은 호출자의 `queryFn`이다. 네트워크가 가능한 엔진(조회 수명주기·재조회·focus/online 반응)은 sync이므로, draft-only 그래프에 sync가 없다는 것이 곧 네트워크 구현이 없다는 것이다. 앱 번들 쪽에서 같은 문자열 검사를 할 수는 없다 — 데모 페이지가 화면에 보여줄 호출 카운터를 위해 `fetch`와 `XMLHttpRequest`를 스스로 감싸기 때문이다. 그 카운터는 8.7에서 사람이 읽는 런타임 증거다.
+- [x] **DC8-5-23 / UMD 페이지는 jsdom으로 실행해 판정을 읽는다:** 파일이 생겼는지만 보면 인라인 스크립트의 오타를 8.7에서 사람이 발견하게 된다. 검사는 빌드된 네 페이지를 jsdom에서 선언된 순서대로 실행하고 각 페이지가 찍은 `판정` 행을 읽는다. 로드 순서 자체가 이때 실행된다. **jsdom은 브라우저가 아니므로 이것은 M2-01의 결과가 아니다** — `packages/state-ref/test/draft-bundle.mjs`가 이미 jsdom에서 통과하는 것과 같은 성격의 증거이고, DC8-04에 따라 수동 확인을 대체하지 않는다.
+- [x] **DC8-5-24 / 조합 이름의 단일 출처는 `examples/bundles/boundary.config.mjs`다:** 조합 이름·진입점·금지/필수 모듈 표식·UMD 페이지 목록·vendor 파일 목록을 한 파일이 갖고, `vite.config.js`·`build.mjs`·`scripts/check-example-bundles.mjs`가 모두 그것을 읽는다. 정책과 검사가 갈리지 않게 하려는 것이다. 이에 따라 `examples/shared`의 `BUNDLE_COMBINATIONS`/`BundleCombination`은 제거했다 — 이름만 있고 정책이 없는 두 번째 출처였고, 데모 다섯 종은 그것을 쓰지 않았다.
+
 ## 워크스페이스 구성
 
 `pnpm-workspace.yaml`에 `examples/*`를 추가한다.
@@ -140,7 +146,7 @@ Phase 8.1~8.4는 자동 테스트로 계약을 고정했다. 8.5는 **사람이 
 | 로딩·오류 화면 | 로드 전 문구, `next-read-error` 뒤 오류 문구, `refetch`로 복구 | 있음 |
 | 콜백 없는 computed | computed 카드(값·계산 횟수·객체 동일성·구독 콜백이 본 값) | 있음 |
 | 서로 다른 client / SSR 요청 | React·Vue의 `src/ssr/`와 `dev:ssr` 서버 | 있음 (hydration 일치는 미검증) |
-| core-only·draft-only·sync-only·전체 조합 번들 | **단계 6** | 미구현 |
+| core-only·draft-only·sync-only·전체 조합 번들 | `examples/bundles`의 네 ESM 페이지와 UMD 페이지 4종, 허브 `index.html` | 있음 |
 
 ### 단계 5 — React·Vue의 실제 서버 렌더 (완료)
 
@@ -159,11 +165,46 @@ Phase 8.1~8.4는 자동 테스트로 계약을 고정했다. 8.5는 **사람이 
 - **DC8-5-12의 근거:** `SyncEnvironment`는 `subscribe`·`isFocused`·`isOnline`만 받고, staleness는 `Date.now()`, polling은 `setInterval`을 직접 쓴다(`packages/sync/src/automatic-refetch.ts`). 주입 가능한 시간 원천이 없다.
 - 예제 전체가 저장소의 eslint/prettier 규칙을 통과한다. gate의 `lint` 대상에 넣는 것은 단계 8이다.
 
+### 단계 6 — 번들 조합과 경계 검사 (완료)
+
+- `examples/bundles`에 네 ESM 페이지(`core-only`·`draft-only`·`sync-only`·`combined`), UMD script 태그 페이지 4종, 그리고 개발 서버용 허브 `index.html`을 두었다. UMD 페이지는 `packages/*/dist`의 **실제 UMD 산출물**을 `/vendor/`로 그대로 받아 평범한 `<script src>`로 로드한다 — 로드 순서가 페이지 소스에 그대로 보인다. 검사는 emit된 vendor 파일이 라이브러리 dist와 바이트 단위로 같은지도 본다.
+- `build.mjs`가 조합마다 vite를 한 번씩 돌리고(DC8-5-20), 기록 플러그인이 각 진입점의 **해석된 모듈 그래프**를 `dist/esm/<조합>/module-graph.json`에 남긴다. 실측 그래프는 다음과 같다.
+
+| 조합 | 모듈 수 | 그래프에 든 라이브러리 산출물 |
+| --- | --- | --- |
+| core-only | 3 | `state-ref.mjs` |
+| draft-only | 4 | `state-ref.mjs`, `state-ref.draft.mjs` |
+| sync-only | 5 | `state-ref.mjs`, `plugin.mjs`, `stateref-sync.mjs` |
+| combined | 7 | `state-ref.mjs`, `plugin.mjs`, `state-ref.draft.mjs`, `state-ref.batch.mjs`, `stateref-sync.mjs` |
+
+- `scripts/check-example-bundles.mjs`가 조합마다 **금지 모듈 부재**와 **필수 모듈 존재**를 함께 단언한다. 필수 목록이 없으면 기록이 깨져 빈 그래프가 나와도 모든 "없어야 한다"를 만족하며 조용히 통과한다 — DC8-5-17에서 한 번 겪은 실패 방식이라 이번에는 처음부터 넣었다.
+- UMD 페이지 4종을 jsdom에서 실행해 각 페이지의 `판정` 행을 읽는다(DC8-5-23): 코어 단독은 쓰기마다 동기 알림이고 `stateRefDraft`·`stateRefBatch` 전역이 없으며, core→draft는 두 전역이 함께 동작하고, core→batch는 batch 안에서 구독당 1회·밖에서 쓰기마다 알림이며, draft만 로드하면 `state-ref/draft requires the stateRef core bundle.`로 분명히 실패한다.
+- core·draft·batch·plugin 산출물이 네트워크 API를 하나도 참조하지 않는다는 DC8-5-22의 전제도 검사가 매번 확인한다.
+- **검증력 확인 — 결함 8종을 주입해 8종 모두 잡혔다.**
+
+| 주입한 결함 | 무엇이 잡았나 |
+| --- | --- |
+| core-only가 `state-ref/draft`를 import (사용하지 않아 tree-shaken) | 모듈 그래프만. **문자열 검사는 통과했다**(DC8-5-21) |
+| core-only가 `createDraft`를 실제로 사용 | 모듈 그래프와 문자열 검사 둘 다 |
+| draft-only가 `createSyncClient`를 호출 | 모듈 그래프 (`stateref-sync.mjs`) |
+| core-only가 `state-ref`를 아예 import하지 않음 | 필수 모듈 부재 (빈 그래프 방지) |
+| 기록 플러그인의 진입점 경로가 어긋남 | **빌드가 실패한다** — 검사까지 가지 않는다 |
+| UMD core→batch 페이지가 `batch()` 호출을 잃음 | jsdom 판정이 `예상과 다름` |
+| UMD core 단독 페이지가 vendor 스크립트를 로드하지 않음 | "loads no /vendor/ script" 가드 |
+| draft 산출물에 `XMLHttpRequest` 참조를 추가 | 네트워크 전제 검사 |
+
+- 주입 뒤 모든 소스를 원본과 동일하게 복원했고(`diff`로 확인), 복원 후 검사가 다시 통과한다.
+- `pnpm check:examples`에 `check-example-bundles.mjs`를 넣었다. 실행 결과 PASS — 7개 타입검사, 5종 데모 빌드 + 번들 5회 빌드, 조작 대조 37개, 번들 경계, SSR 14개.
+- `pnpm gate` **16단계 PASS**. 패키지별 테스트 수 불변 — core **338**, sync **183**, React **36**, Preact **27**, Vue **35**, Svelte **26**, Solid **25**, `examples/shared` **23**. gate Node 24.11.1의 core gzip **3,696/3,800 B** 불변. `packages/` 아래 변경 0 — 이 단계에서 `packages/`는 소스도 산출물도 바뀌지 않았다(주입 실험 중 dist를 임시로 건드린 것은 복원했다).
+- **브라우저 증거는 여전히 없다.** 여기까지는 빌드 시점 그래프와 jsdom이다. 네 페이지가 화면에서 실제로 동작하는지, UMD script 태그가 진짜 브라우저에서 순서대로 뜨는지는 M2-01이며 8.7이다.
+
+
 ## 인계
 
-- done: 계획과 구현 단계 1~5를 마쳤다. React·Vue의 실제 서버 렌더가 조회한 값과 파생 화면을 HTML에 담고, 11회 렌더 뒤 구독이 0이며, 결함 4종 주입이 모두 잡힌다. DC8-5-18·19를 추가했다 — SSR 페이지는 요청마다 client를 새로 만들고, computed는 원시값을 파생한다.
+- done: 계획과 구현 단계 1~6을 마쳤다. 네 조합이 각각 단독으로 빌드되고 모듈 그래프로 경계가 확인되며, UMD 페이지 4종이 jsdom에서 판정까지 도달한다. 결함 8종 주입이 모두 잡혔다. DC8-5-20~24를 추가했다 — 조합별 단독 빌드, 그래프가 문자열보다 강하다는 실측, "네트워크 구현 없음"의 정확한 뜻, UMD 페이지의 jsdom 실행, 조합 정책의 단일 출처.
+- 이전 done: 계획과 구현 단계 1~5를 마쳤다. React·Vue의 실제 서버 렌더가 조회한 값과 파생 화면을 HTML에 담고, 11회 렌더 뒤 구독이 0이며, 결함 4종 주입이 모두 잡힌다. DC8-5-18·19를 추가했다 — SSR 페이지는 요청마다 client를 새로 만들고, computed는 원시값을 파생한다.
 - 이전 done: 계획과 구현 단계 1~4를 마쳤다. 5종 데모가 같은 모델·같은 조작 37개·같은 패널을 렌더하고, `pnpm check:examples`와 `pnpm gate` 16단계가 통과한다. 구현 중 확인한 사실로 DC8-5-15~17을 추가했다 — 화면은 공유 모델을 그리기만 하고, **로드 전에는 `query.watch` 접근 자체가 던지며**, 조작 집합 대조는 소스 수준이라 버튼이 화면에 났다는 증거가 아니다.
 - 이전 done: 계획(DC8-5-01~11)과 구현 단계 1·2를 마쳤다. 예제 워크스페이스 7개가 설치·타입검사되고, 공유 fixture와 자체 테스트 9개가 통과하며 결함 주입 4종이 모두 잡힌다. `pnpm gate` 16단계 PASS이고 기존 패키지 수치는 불변이다. 구현 중 확인한 사실로 DC8-5-12~14를 추가했다 — **fixture는 sync의 시간을 제어할 수 없고**, 타입 검사 도구는 패키지마다 다르며, 루트 `build`는 예제를 제외해야 한다.
-- next: 구현 단계 6(번들 조합 4개와 모듈 그래프 경계 검사). 그 다음이 단계 7의 문서 예제 타입 검사, 단계 8의 gate 편입이다.
+- next: 구현 단계 7(문서 예제 타입 검사, `scripts/check-doc-examples.mjs`). 그 다음이 단계 8의 gate 편입(16 → 18단계, `lint` 대상에 `examples/*/src` 추가)과 단계 9의 문서 갱신이다.
 - blockers: 없음. M2-01~20은 8.7까지 수동 미수행이다. **브라우저에서 실행한 증거는 여전히 없다** — 현재 자동 범위는 타입검사·빌드·소스 대조와 Node 서버 렌더까지다. hydration 일치와 상호작용 데모의 화면 동작은 8.7이다. Preact·Svelte·Solid에는 SSR 데모가 없다.
 - 시작 기준 commit: `89a46e9` (Phase 8.4 및 콜백 없는 computed 캐시). 계획 commit은 `e0f6e3a`.

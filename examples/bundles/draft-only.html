@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>state-ref 번들 조합 — core + draft</title>
+    <link rel="stylesheet" href="/page.css" />
+  </head>
+  <body>
+    <h1>core + draft</h1>
+    <p class="lead">독립 draft를 만들고 검토한 뒤 로컬로 적용한다. 서버 엔진은 없다.</p>
+    <nav><a href="/">← 조합 목록</a></nav>
+    <p><code>apply()</code>는 네트워크 WRITE가 아니라 원본에 대한 동기 로컬 쓰기다. 기록된 그래프는 <code>dist/esm/draft-only/module-graph.json</code>이며 sync 모듈이 없어야 한다.</p>
+    <section>
+      <h2>조작</h2>
+      <div id="actions"></div>
+    </section>
+    <section>
+      <h2>패널</h2>
+      <dl id="panel"></dl>
+    </section>
+    <section>
+      <h2>기록 (최근이 위)</h2>
+      <ol id="log"></ol>
+    </section>
+    <script type="module" src="/src/draft-only.ts"></script>
+  </body>
+</html>
