@@ -52,6 +52,7 @@ Phase 8.1~8.4는 자동 테스트로 계약을 고정했다. 8.5는 **사람이 
 - [x] **DC8-5-30 / 실패 예약에 반복 횟수를 주고, 재시도를 소진시키는 조작을 둔다:** `다음 READ 실패 예약`은 실패를 1회만 큐에 넣고 `read()`가 호출 시점에 소비해 곧바로 `success`로 되돌린다. 재시도 루프는 `attempt >= retry`일 때만 `status: 'error'`를 publish하므로(`packages/sync/src/index.ts:761-763`) **1회 실패로는 오류 화면에 도달할 수 없다** — M2-04의 "오류 UI"와 "첫 조회 실패 후 복구"가 수행 불가였다(B8-7-01). `nextRead(outcome, repeat)`에 반복 횟수를 주고, 조작 `next-read-error-exhausted`가 `(retry + 1) x 2 = 8`회를 예약해 사슬 전체를 실패시킨다. **2를 곱하는 이유**: `최초 조회`는 패널 조회와 readonly 조회를 함께 띄우고 둘이 같은 예약 목록에서 뽑아 쓴다. `retry + 1`회만 예약하면 실패가 두 조회에 나뉘어 패널이 세 번째 시도에서 조용히 성공한다 — 테스트로 먼저 확인한 사실이다. 조작은 37개에서 **38개**가 된다. 기존 `next-read-error`는 그대로 둔다 — 1회 실패가 재시도에 흡수되는 것 자체가 확인할 가치가 있는 동작이다.
 - [x] **DC8-5-31 / 재시도 정책은 화면 상단 정책 행이 아니라 조작 결과 문구로 알린다:** `자동 조회 정책` 행은 다섯 데모가 각자 조립하므로 항목 하나를 늘리면 React·Preact·Vue·Svelte·Solid의 서로 다른 템플릿 문법을 모두 건드려야 한다. 수행자에게 필요한 정보는 "이 버튼이 몇 번 실패를 예약했는가"뿐이므로, 새 조작의 `결과` 문구가 예약 횟수와 재시도 예산을 말한다. 화면 다섯 개를 고치는 위험보다 문구 한 줄이 낫다.
 - [x] **DC8-5-32 / 조작 그룹 제목과 읽기 패널 제목은 같을 수 없다:** B8-7-02로 확인했다. 수행자에게 "`서버와 요청` 카드를 보라"고 말하면 **버튼 카드와 읽기 카드 둘 다** 그 이름을 달고 있어 매번 되묻게 된다. 둘 다 정상 렌더되므로 기존 검사는 아무것도 잡지 못한다. 패널 제목은 **보이는 것**을, 조작 그룹은 **하는 일**을 부르도록 바꾸고(`서버 상태와 요청 기록`·`draft 값과 변경`·`computed 읽기 결과`), `check-example-operations.mjs`가 데모 소스의 `<h2>` 리터럴이 조작 그룹 제목과 겹치면 실패하게 했다. **검사를 넣고 나서 충돌이 하나가 아니라 셋이라는 것을 알았다** — 눈으로 찾은 것은 `서버와 요청` 하나뿐이었다.
+- [x] **DC8-5-33 / capture는 DTO가 싣는 경로만 고른다:** B8-7-03으로 확인했다. 데모는 `panelA.capture()`를 인자 없이 불러 전체 변경을 고정하고, DTO에는 `city`·`zip`만 실은 뒤 그 전체를 `submitted`로 선언했다. [Phase 4](./PHASE4.md)가 `submitted`를 "선택한 경로만 기준에 반영"으로 정의하고 "라이브러리는 DTO에 무엇이 들어갔는지 추론하지 않는다"고 못박으므로, sync는 시킨 대로 했고 **틀린 것은 데모다.** 보내지 않은 `memo` 변경이 기준으로 옮겨가 `dirty=false`가 divergence를 덮었다. 따라서 DTO가 읽는 경로를 `scenario.ts`의 `SAVED_PATHS`로 `toSaveDto` 바로 옆에 두고, `capture`는 그 경로의 변경 ID만 골라 넘긴다. 둘을 떨어뜨려 두면 DTO를 고칠 때 선택이 같이 따라가지 않는다. 검증: 인자 없는 옛 형태를 주입하면 새 테스트 2개가 모두 실패한다.
 
 ## 워크스페이스 구성
 
@@ -284,8 +285,9 @@ Phase 8.7의 수동 수행이 M2-04에서 막혀(B8-7-01) 8.5가 만든 fixture�
 
 - `examples/shared/src/mock-server.ts`: `nextRead(outcome, repeat?)`가 반복 횟수를 받는다. `read()`는 호출마다 한 번씩 소진하고 다 쓰면 `success`로 돌아간다. `nextWrite`는 그대로다.
 - `examples/shared/src/model.ts`: 패널 조회와 readonly 조회가 `retry`·`retryDelay`를 명시한다(DC8-5-29). `QUERY_RETRY`와 `READING_QUERIES`를 내보내 조작·테스트·문서가 같은 값을 쓴다.
-- `examples/shared/src/model.test.ts`: 재시도 예산 테스트 3개를 더했다 — 1회 실패가 재시도에 흡수되는 것, 예산 소진 뒤 `status: 'error'`에 이르는 것, 그 뒤 `재조회`로 복구되는 것. `examples/shared` 수치는 23개에서 **26개**가 된다.
+- `examples/shared/src/model.test.ts`: 재시도 예산 테스트 3개를 더했다 — 1회 실패가 재시도에 흡수되는 것, 예산 소진 뒤 `status: 'error'`에 이르는 것, 그 뒤 `재조회`로 복구되는 것. `examples/shared` 수치는 23개에서 26개가 된다(DC8-5-33까지 더하면 28개).
 - `examples/shared/src/operations.ts`: `server` 그룹에 `next-read-error-exhausted`를 넣었다. 다섯 데모가 같은 카탈로그를 렌더하므로 버튼 변경은 이 한 곳이다.
+- `examples/shared/src/scenario.ts`·`model.ts`: `SAVED_PATHS`를 `toSaveDto` 옆에 두고 `capture`가 그 경로의 변경만 고른다(DC8-5-33). 테스트 2개를 더해 `examples/shared`는 **28개**가 된다 — 고정한 제출에 `memo`가 없다는 것과, WRITE 성공 뒤에도 `memo`가 `changes()`에 남고 `dirty=true`라는 것.
 - 다섯 데모의 패널 제목 3종을 조작 그룹과 겹치지 않게 바꾸고(DC8-5-32), `scripts/check-example-operations.mjs`에 제목 충돌 검사를 더했다. 주입 1종으로 검사가 실패하는 것을 확인했고, 복원 후 통과한다.
 
 ## 인계

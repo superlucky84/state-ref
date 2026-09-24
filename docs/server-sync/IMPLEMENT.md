@@ -262,7 +262,9 @@
 - `pnpm gate` **19단계 PASS**, `pnpm check:examples` PASS. 다른 수치는 불변이다 — core 338, sync 183, React 36, Preact 27, Vue 35, Svelte 26, Solid 25, core gzip 3,696/3,800 B. gate 1회차에서 Svelte 테스트 26개가 모두 통과한 뒤 `fsevents` 네이티브 어서션으로 프로세스가 중단됐다. 단독 3회 재실행과 gate 재실행이 모두 통과해 환경 flake로 판단했고, 테스트 실패가 아니다.
 - next: 보강한 fixture로 M2-04의 오류 UI·복구를 다시 수행한다. 그다음 M2-06 이후를 진행하고, M2-04의 Vue `onServerPrefetch` 항목은 Vue SSR 데모(5192) 차례에 수행한다. M2-04의 "불필요한 갱신" 항목은 데모에 렌더 계측이 없어 React DevTools가 필요하다.
 - **B8-7-02도 해소했다([DC8-5-32](./PHASE8_5.md)):** 조작 그룹 제목과 읽기 패널 제목이 겹쳐 수행자가 매번 어느 카드인지 되물었다. 눈으로는 `서버와 요청` 하나만 보였는데, `check-example-operations.mjs`에 제목 충돌 검사를 넣자 `독립 draft`·`콜백 없는 computed`까지 **세 쌍**이 다섯 데모 전부에서 겹쳐 있었다. 패널 제목을 `서버 상태와 요청 기록`·`draft 값과 변경`·`computed 읽기 결과`로 바꿨고 조작 id와 버튼 이름은 그대로다. 주입 1종으로 검사가 실패하는 것을 확인했다.
-- blockers: 없다. B8-7-01·B8-7-02 모두 해소했다.
+- **M2-06 부분 수행(4개 중 2개)과 B8-7-03:** 조회 모델과 다른 DTO(`addressLine`/`postalCode`/`submittedRevision`) 전송, 고정과 전송의 분리, 저장 성공 후에도 `READ 횟수 2` 유지(앱이 수용 방식을 명시하고 라이브러리가 임의 재조회를 하지 않는다)를 확인했다. 수행 중 **데모가 보내지 않은 변경까지 기준으로 옮기는 결함**을 찾았다 — `capture()`를 인자 없이 불러 전체를 고정하고 `city`·`zip`만 보낸 뒤 전체를 `submitted`로 선언해, 서버가 받은 적 없는 `memo`가 `dirty=false`로 덮였다. [Phase 4](./PHASE4.md)의 `submitted` 정의상 **라이브러리는 계약대로 동작했고 틀린 것은 데모다.** [DC8-5-33](./PHASE8_5.md)으로 `SAVED_PATHS`를 `toSaveDto` 옆에 두고 그 경로의 변경만 고르게 고쳤다. 재수행 결과 `memo`는 `changes`에 남고 `dirty=true`다. **이 결함은 M2-08을 거짓 실패로 만들 뻔했다.**
+- `examples/shared` 테스트는 23개에서 **28개**가 되었다. 다른 수치는 불변이고 `pnpm gate` 19단계·`pnpm check:examples` 모두 PASS다. **`packages/` 소스 변경 0.**
+- blockers: 없다. B8-7-01·02·03 모두 해소했다.
 - 시작 기준 commit: `57388d8` (Phase 8.6 종료).
 
 ### 2026-09-24 — Phase 8.6 F2 지원표 교차 확인
