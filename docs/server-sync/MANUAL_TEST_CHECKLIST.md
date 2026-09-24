@@ -1,8 +1,8 @@
 # MANUAL_TEST_CHECKLIST — 두 변경 기준과 서버 동기화
 
-- 개정일: 2026-09-21. 기준 SHA: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
+- 개정일: 2026-09-24. 기준 SHA: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
 - 기준: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md).
-- 상태: 전 항목 미수행. 구현 후 Phase 8에서 사용할 절차이며 현재 기능 동작의 증거가 아니다.
+- 상태: Phase 8.7 수행 중. 2026-09-24 기준 M2-05 통과, M2-04 부분 수행, 나머지 18항목 미수행이다. 미수행 항목은 기능 동작의 증거가 아니다. 미해결 블로커: [B8-7-01](#b8-7-01).
 
 ## 1. 환경과 fixture
 
@@ -32,7 +32,7 @@
 | React SSR / hydration | `pnpm --filter stateref-example-react dev:ssr` | http://localhost:5191 |
 | Vue SSR / hydration (`onServerPrefetch`) | `pnpm --filter stateref-example-vue dev:ssr` | http://localhost:5192 |
 
-다섯 커넥터 데모는 `examples/shared`의 같은 모델과 같은 조작 37개를 렌더한다. 번들 허브(5186)에 ESM 네 조합과 UMD 네 페이지의 링크가 있다. **Preact·Svelte·Solid에는 SSR 데모가 없다** — 그 hydration은 미검증이다([DC8-5-04](./PHASE8_5.md)).
+다섯 커넥터 데모는 `examples/shared`의 같은 모델과 같은 조작 38개를 렌더한다. 번들 허브(5186)에 ESM 네 조합과 UMD 네 페이지의 링크가 있다. **Preact·Svelte·Solid에는 SSR 데모가 없다** — 그 hydration은 미검증이다([DC8-5-04](./PHASE8_5.md)).
 
 fixture는 시간을 제어하지 못한다([DC8-5-12](./PHASE8_5.md)). 제어 가능한 것은 주입한 환경 사건(focus·reconnect·online), READ/WRITE의 완료 시점과 결과, 요청 타임라인 기록이다. `staleTime`·`refetchInterval`은 실제 시간으로 흐른다.
 
@@ -40,7 +40,7 @@ fixture는 시간을 제어하지 못한다([DC8-5-12](./PHASE8_5.md)). 제어 �
 
 | 명령 | 무엇을 보는가 |
 |---|---|
-| `pnpm gate` | 18단계. 예제 7종 타입 검사와 README 예제 타입 검사를 포함한다 |
+| `pnpm gate` | 19단계. 예제 7종 타입 검사, README 예제 타입 검사, F2 지원 표 대조를 포함한다 |
 | `pnpm check:examples` | 예제 빌드, 조작 집합 대조, 번들 모듈 그래프 경계, Node 서버 렌더 |
 
 [DC8-04](./PHASE8.md)에 따라 자동으로 덮은 항목도 아래 결과란은 미수행으로 남긴다.
@@ -49,11 +49,11 @@ fixture는 시간을 제어하지 못한다([DC8-5-12](./PHASE8_5.md)). 제어 �
 
 | 실행 기록 | 값 |
 |---|---|
-| 구현 SHA / 실행 일시 / 검증자 | 미기록 |
-| OS / 브라우저 / 프레임워크 | 미기록 |
-| Node / pnpm / TypeScript / helper 버전 | 미기록 |
-| 기능 비교 기준 버전 / F2 목록 | `@tanstack/query-core@5.103.1` / [Phase 0 목록](./PHASE0.md); 실행 결과 미기록 |
-| 실행 명령 / 데모 URL / 증거 위치 | 위 표의 절차를 사용한다. **실행 결과 미기록** |
+| 구현 SHA / 실행 일시 / 검증자 | `57388d8` / 2026-09-24 / superlucky84 |
+| OS / 브라우저 / 프레임워크 | macOS 26.5.2 (arm64) / Chrome 153.0.8010.53 / React 데모 |
+| Node / pnpm / TypeScript / helper 버전 | v25.6.1 / 9.12.3 / 5.6.3 / `state-ref` 3.0.2 · `@stateref/sync` 0.1.0 |
+| 기능 비교 기준 버전 / F2 목록 | `@tanstack/query-core@5.103.1` / [Phase 0 목록](./PHASE0.md); 실행 결과는 [PHASE8_6](./PHASE8_6.md)의 표이며 브라우저 증거는 아직 없다 |
+| 실행 명령 / 데모 URL / 증거 위치 | `pnpm build` 후 `pnpm --filter stateref-example-react dev` / http://localhost:5181 / 증거는 각 M2 항목의 결과란 |
 
 ## 2. 수동 시나리오
 
@@ -92,23 +92,49 @@ fixture는 시간을 제어하지 못한다([DC8-5-12](./PHASE8_5.md)). 제어 �
 
 ### M2-04 — 로딩·오류·ref 유지 (R2-04)
 
-- [ ] 초기 로딩과 오류 UI가 가짜 성공 payload를 보여주지 않는다.
-- [ ] 첫 조회 실패 후 명시적으로 복구한다.
-- [ ] 정상 서버 응답 교체 뒤 기존 ref는 같은 경로의 최신 값을 읽는다.
-- [ ] Vue `onServerPrefetch`에서 로드한 값이 서버 HTML에 반영되고 브라우저 hydration에서도 일치한다. `combineWatch`·`createComputed`를 연결한 화면에서도 확인한다.
-- [ ] 변경 없는 leaf와 status만 바뀐 payload의 불필요한 갱신을 확인한다.
-- [ ] 콜백 없는 computed를 반복해서 읽으면 객체 참조가 유지되고, 의존 값이 바뀌면 `sync()` 전에도 최신 계산값을 읽는다. 구독 콜백은 수동 `sync()` 때 알림을 받는지 확인한다.
+- [x] 초기 로딩과 오류 UI가 가짜 성공 payload를 보여주지 않는다.
+- [x] 첫 조회 실패 후 명시적으로 복구한다.
+- [x] 정상 서버 응답 교체 뒤 기존 ref는 같은 경로의 최신 값을 읽는다.
+- [ ] Vue `onServerPrefetch`에서 로드한 값이 서버 HTML에 반영되고 브라우저 hydration에서도 일치한다. `combineWatch`·`createComputed`를 연결한 화면에서도 확인한다. — **Vue SSR 데모(5192) 차례에 수행.**
+- [ ] 변경 없는 leaf와 status만 바뀐 payload의 불필요한 갱신을 확인한다. — **데모에 렌더 횟수 계측이 없다. React DevTools의 하이라이트가 필요하다.**
+- [x] 콜백 없는 computed를 반복해서 읽으면 객체 참조가 유지되고, 의존 값이 바뀌면 `sync()` 전에도 최신 계산값을 읽는다. 구독 콜백은 수동 `sync()` 때 알림을 받는지 확인한다.
 
-**합격:** 데이터 준비와 오류·구독 의미가 분명함. **결과: 미수행.**
+**합격:** 데이터 준비와 오류·구독 의미가 분명함. **결과: 부분 수행.** 2026-09-24, React 데모(http://localhost:5181), 구현 SHA `57388d8` + fixture 보강([DC8-5-29~31](./PHASE8_5.md)), 검증자 superlucky84, Chrome 153.0.8010.53. 6개 항목 중 4개를 확인했다. 남은 둘은 Vue SSR 데모와 렌더 계측이 필요하며, 그때까지 통과가 아니다.
+
+- 초기 로딩: `최초 조회` 직후 resource 패널 A가 `아직 로드되지 않았다. 여기에 가짜 성공 값을 보이지 않는다`를 표시하고 `status/fetch=pending/fetching`, `version/conflicts=0 / 0`. 값 영역 자체가 마운트되지 않는다. 가짜 성공 payload 없음.
+- 오류 UI(fixture 보강 뒤 재수행): `다음 READ 연속 실패 (재시도 소진)` → `최초 조회` → `가능한 요청 모두 완료` 반복. 재시도 예산이 소진되자 resource 패널 A가 `오류: Error: READ-7 failed`와 `status/fetch=error/idle`을 표시했다. 값 영역은 마운트되지 않고 `dirty=false`, `version/conflicts=0 / 0`, `changes 변경 없음`이다. 오류 화면에 가짜 성공 payload가 없다.
+  - 패널 조회가 READ-1·3·5·7을, readonly 조회가 READ-2·4·6·8을 가져갔다. 두 조회가 한 예약 목록을 번갈아 쓴다는 [DC8-5-30](./PHASE8_5.md)의 계산과 일치한다.
+- 실패 후 복구: 오류 상태에서 `재조회` → `가능한 요청 모두 완료` 한 번으로 `status/fetch=success/idle`, `서울 / 01 / 최초 메모 / 김,이,박`, clean으로 돌아왔다. 자동 복구가 아니라 명시적 조작이 복구시켰다.
+- 응답 교체 뒤 ref: 복구된 READ가 도착하자 같은 패널이 `서울 / 01 / 최초 메모 / 김,이,박`을 읽고 `status/fetch=success/idle`, `changes 변경 없음`.
+- 콜백 없는 computed: `다시 읽기` 2회 → `계산 실행 횟수 2` 유지 + `직전 읽기와 같은 객체=true`(캐시 유효). `의존 값 변경` 후 읽기 → `doubled=4`, `계산 3`, `같은 객체=false`, **구독 콜백은 `doubled=2` 유지**(수동 sync 전). `수동 sync()` → 구독 콜백이 `doubled=4` 수신, 계산 횟수는 3 그대로. 설계한 계약과 일치한다.
+
+<a id="b8-7-01"></a>
+**B8-7-01 — 조회 실패 UI를 이 fixture로 재현할 수 없었다. 해소됨(fixture 보강, [DC8-5-29~31](./PHASE8_5.md)).** 조회의 기본 `retry`는 3회이고(`packages/sync/src/index.ts:730`) 데모는 이를 덮지 않는다(`examples/shared/src/model.ts:95-104`). `다음 READ 실패 예약`은 실패를 1회만 큐에 넣고 `read()`가 호출 시점에 소비해 곧바로 `success`로 되돌린다(`examples/shared/src/mock-server.ts:113-115`). 재시도 루프는 `attempt >= retry`일 때만 `status: 'error'`를 publish하므로(`packages/sync/src/index.ts:761-763`) 1회 실패는 화면에 오류로 나타나지 않는다.
+
+측정한 증거(요청 표): `READ-1 error 11:30:39` → `READ-3 시작 11:30:40`. 첫 백오프 `Math.min(1000 * 2**0, 30000)`=1000ms와 일치한다. 그 사이 패널은 `pending / fetching`을 유지했다. 서버 기록의 `error`와 조회 상태의 `error`는 별개다.
+
+부수 확인: `진행 중 READ 완료`는 같은 종류의 **가장 오래된** 요청을 완료시킨다(`mock-server.ts`의 `settle(kind)`). `최초 조회`가 readonly 조회(READ-2)도 함께 띄우므로, 패널의 재시도 READ보다 READ-2가 먼저 잡힌다. 수행 절차를 쓸 때 이 순서를 고려해야 한다.
+
+해소 내용: 패널 조회가 `retry: 3`·`retryDelay: () => 0`을 명시하고(DC8-5-29), `nextRead`가 반복 횟수를 받으며(DC8-5-30), 조작 `다음 READ 연속 실패 (재시도 소진)`이 `retry + 1`회를 예약한다. 재시도 지연이 0이므로 완료 버튼만으로 사슬을 진행시킬 수 있다. **이 보강 이후의 수행 결과는 아래 결과란에 새로 기록한다 — 위 부분 수행 기록은 보강 전 상태다.**
+
+**B8-7-02 — 조작 그룹과 읽기 패널이 같은 제목을 썼다. 해소됨([DC8-5-32](./PHASE8_5.md)).** 눈으로는 `서버와 요청` 하나만 보였으나, 검사를 넣고 보니 `독립 draft`와 `콜백 없는 computed`까지 **세 쌍**이 다섯 데모 전부에서 겹쳐 있었다. 패널 제목을 `서버 상태와 요청 기록`·`draft 값과 변경`·`computed 읽기 결과`로 바꿨다. 조작 id와 버튼 이름은 그대로다. `scripts/check-example-operations.mjs`가 앞으로 같은 충돌을 막는다(주입 1종으로 확인).
+
+**이 문서의 위 수행 기록에 나오는 `서버와 요청` 카드는 이제 `서버 상태와 요청 기록`이다.**
 
 ### M2-05 — Resource의 서버 기준 (R2-05/06)
 
-- [ ] 서버 서울을 조회하고 resource를 부산으로 수정한다.
-- [ ] changes는 서울 → 부산, dirty=true이며 서버 값과 WRITE 횟수는 그대로다.
-- [ ] 원본 값을 서울로 되돌리면 다른 변경이 없는 경우 changes가 비고 clean이 된다.
-- [ ] changes 조회만으로 READ/WRITE가 발생하지 않는다.
+- [x] 서버 서울을 조회하고 resource를 부산으로 수정한다.
+- [x] changes는 서울 → 부산, dirty=true이며 서버 값과 WRITE 횟수는 그대로다.
+- [x] 원본 값을 서울로 되돌리면 다른 변경이 없는 경우 changes가 비고 clean이 된다.
+- [x] changes 조회만으로 READ/WRITE가 발생하지 않는다.
 
-**합격:** resource는 마지막 수용 서버 기준으로 로컬 차이를 추적함. **결과: 미수행.**
+**합격:** resource는 마지막 수용 서버 기준으로 로컬 차이를 추적함. **결과: 통과.** 2026-09-24, React 데모(http://localhost:5181), 구현 SHA `57388d8`, 검증자 superlucky84, Chrome 153.0.8010.53.
+
+- 절차: `최초 조회` → `진행 중 READ 완료` → `도시 → 부산` → resource 패널 A의 `도시` 입력칸을 `서울`로 직접 수정.
+- 부산 편집 직후: `changes` 1줄 `city  "서울" → "부산"` 충돌 없음, `dirty=true`, `status/fetch=success/idle`, `version/conflicts=1 / 0`. `서버 도시/revision=서울 / 1`, `READ/WRITE=2 / 0`.
+- 서울로 되돌린 직후: `changes` **변경 없음**, `dirty=false`, `서버 도시/revision=서울 / 1`, `READ/WRITE=2 / 0`으로 동일.
+- `READ 2`와 `진행 중 1`은 편집이 아니라 `최초 조회`가 패널 조회와 readonly 조회를 함께 시작하고 `진행 중 READ 완료`가 같은 종류의 가장 오래된 요청 하나만 완료시키기 때문이다(`examples/shared/src/mock-server.ts`의 `settle(kind)`).
+- 관찰: 되돌린 뒤 `version`이 1에서 9로 올랐다. `version`은 로컬 변경 카운터이고 입력칸 타이핑이 한글 조합 단계마다 쓰기를 일으킨다. 서버 `revision`은 1로 고정이며 `READ/WRITE`도 늘지 않았다. 결함이 아니라 편집 경로의 차이로 기록한다.
 
 ### M2-06 — 자유로운 Mutation (R2-08)
 

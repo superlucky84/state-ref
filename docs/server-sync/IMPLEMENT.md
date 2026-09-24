@@ -254,6 +254,17 @@
 
 ## 5. 인계
 
+### 2026-09-24 — Phase 8.7 수동 수행 시작과 fixture 보강
+
+- done: 브라우저(Chrome 153.0.8010.53, macOS 26.5.2 arm64)에서 React 데모로 수동 수행을 시작했다. **M2-05 통과** — 서버 서울 기준에서 부산 편집이 `changes` 1줄과 `dirty=true`를 만들고 서버 값·WRITE 횟수는 불변이며, 입력칸으로 서울을 되돌리자 `changes`가 비고 clean으로 돌아왔다. **M2-04는 6개 항목 중 4개 확인(부분 수행)** — 초기 로딩 UI가 가짜 성공 값을 보이지 않는 것, 재시도 예산을 소진하자 `error / idle`과 `오류: Error: READ-7 failed`를 표시하고 값 영역을 마운트하지 않는 것, `재조회`로 명시적 복구가 되는 것, 응답 도착 뒤 ref가 최신 값을 읽는 것, 콜백 없는 computed의 캐시·`sync()` 타이밍이 설계한 계약과 일치하는 것을 확인했다. 실패한 READ 번호가 1·3·5·7로 찍혀 두 조회가 예약 목록을 번갈아 쓴다는 계산과 일치했다. 남은 둘은 Vue `onServerPrefetch`(5192 차례)와 렌더 계측이 필요한 항목이다.
+- **수행 중 발견한 블로커 B8-7-01과 그 해소:** 조회 기본 `retry`가 3회인데 `다음 READ 실패 예약`은 1회만 큐에 넣어, **오류 UI와 실패 후 복구를 수행할 방법이 없었다.** 요청 표의 `READ-1 error 11:30:39` → `READ-3 시작 11:30:40`이 첫 백오프 1,000ms와 일치해 원인을 확정했다. [DC8-5-29~31](./PHASE8_5.md)로 `examples/shared`를 보강했다 — 패널·readonly 조회가 `retry`·`retryDelay: () => 0`을 명시하고, `nextRead`가 반복 횟수를 받으며, 조작 `다음 READ 연속 실패 (재시도 소진)`이 `(retry+1) x 2 = 8`회를 예약한다. 2를 곱하는 이유는 `최초 조회`가 두 조회를 띄우고 둘이 한 예약 목록을 나눠 쓰기 때문이며, 이는 테스트가 먼저 잡아냈다.
+- 조작은 37개에서 **38개**가 되었고 다섯 데모 모두 38개를 렌더한다. `examples/shared` 테스트는 23개에서 **26개**가 되었다 — 1회 실패가 재시도에 흡수되는 것, 예산 소진 뒤 `status: 'error'`에 이르는 것, 그 뒤 복구되는 것. **`packages/` 아래 소스 변경 0.**
+- `pnpm gate` **19단계 PASS**, `pnpm check:examples` PASS. 다른 수치는 불변이다 — core 338, sync 183, React 36, Preact 27, Vue 35, Svelte 26, Solid 25, core gzip 3,696/3,800 B. gate 1회차에서 Svelte 테스트 26개가 모두 통과한 뒤 `fsevents` 네이티브 어서션으로 프로세스가 중단됐다. 단독 3회 재실행과 gate 재실행이 모두 통과해 환경 flake로 판단했고, 테스트 실패가 아니다.
+- next: 보강한 fixture로 M2-04의 오류 UI·복구를 다시 수행한다. 그다음 M2-06 이후를 진행하고, M2-04의 Vue `onServerPrefetch` 항목은 Vue SSR 데모(5192) 차례에 수행한다. M2-04의 "불필요한 갱신" 항목은 데모에 렌더 계측이 없어 React DevTools가 필요하다.
+- **B8-7-02도 해소했다([DC8-5-32](./PHASE8_5.md)):** 조작 그룹 제목과 읽기 패널 제목이 겹쳐 수행자가 매번 어느 카드인지 되물었다. 눈으로는 `서버와 요청` 하나만 보였는데, `check-example-operations.mjs`에 제목 충돌 검사를 넣자 `독립 draft`·`콜백 없는 computed`까지 **세 쌍**이 다섯 데모 전부에서 겹쳐 있었다. 패널 제목을 `서버 상태와 요청 기록`·`draft 값과 변경`·`computed 읽기 결과`로 바꿨고 조작 id와 버튼 이름은 그대로다. 주입 1종으로 검사가 실패하는 것을 확인했다.
+- blockers: 없다. B8-7-01·B8-7-02 모두 해소했다.
+- 시작 기준 commit: `57388d8` (Phase 8.6 종료).
+
 ### 2026-09-24 — Phase 8.6 F2 지원표 교차 확인
 
 - done: [Phase 8.6](./PHASE8_6.md)에서 F2-01~09의 계약·테스트 근거·현재 상태·차이를 한 표로 모으고 `scripts/check-support-table.mjs`로 고정했다. 지원 5행(F2-01·02·03·04·07), 부분 지원 4행(F2-05·06·08·09)이며 각 부분 지원 행은 **달성할 수 없는 것**을 이름으로 적는다 — 반응형 infinite key 전환, 브라우저 hydration과 Preact·Svelte·Solid의 SSR, 개발 도구 UI·플랫폼 자동 설치·TanStack 연동(DC8-01의 잔여), `QueryKey` 정밀화와 반응형 status readonly. 인용한 근거 28개 파일이 모두 실재하며 각각 vitest suite이거나 gate·루트 스크립트가 실행한다. gate는 **19단계**가 됐다. [DESIGN](./DESIGN.md)의 F2 표에 현재 상태 칸을 더하고 [README](./README.md)의 문서 지도를 PHASE5_13에서 PHASE8_6까지 이어 붙였다.
