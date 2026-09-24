@@ -2,7 +2,7 @@
 
 - 개정일: 2026-09-24. 기준 SHA: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
 - 기준: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md).
-- 상태: Phase 8.7 수행 중. 2026-09-25 기준 M2-05 통과, M2-04·M2-06 부분 수행, 나머지 17항목 미수행이다. 미수행 항목은 기능 동작의 증거가 아니다. 수행 중 찾은 블로커 B8-7-01·02·03은 모두 해소했다.
+- 상태: Phase 8.7 수행 중. 2026-09-25 기준 **M2-05·M2-07·M2-08 통과**, M2-04·M2-06 부분 수행, 나머지 15항목 미수행이다. 미수행 항목은 기능 동작의 증거가 아니다. 수행 중 찾은 블로커 B8-7-01~04는 모두 해소했다.
 
 ## 1. 환경과 fixture
 
@@ -32,7 +32,7 @@
 | React SSR / hydration | `pnpm --filter stateref-example-react dev:ssr` | http://localhost:5191 |
 | Vue SSR / hydration (`onServerPrefetch`) | `pnpm --filter stateref-example-vue dev:ssr` | http://localhost:5192 |
 
-다섯 커넥터 데모는 `examples/shared`의 같은 모델과 같은 조작 38개를 렌더한다. 번들 허브(5186)에 ESM 네 조합과 UMD 네 페이지의 링크가 있다. **Preact·Svelte·Solid에는 SSR 데모가 없다** — 그 hydration은 미검증이다([DC8-5-04](./PHASE8_5.md)).
+다섯 커넥터 데모는 `examples/shared`의 같은 모델과 같은 조작 41개를 렌더한다. 번들 허브(5186)에 ESM 네 조합과 UMD 네 페이지의 링크가 있다. **Preact·Svelte·Solid에는 SSR 데모가 없다** — 그 hydration은 미검증이다([DC8-5-04](./PHASE8_5.md)).
 
 fixture는 시간을 제어하지 못한다([DC8-5-12](./PHASE8_5.md)). 제어 가능한 것은 주입한 환경 사건(focus·reconnect·online), READ/WRITE의 완료 시점과 결과, 요청 타임라인 기록이다. `staleTime`·`refetchInterval`은 실제 시간으로 흐른다.
 
@@ -159,24 +159,52 @@ fixture는 시간을 제어하지 못한다([DC8-5-12](./PHASE8_5.md)). 제어 �
 
 수정 후 재수행 결과: `고정한 제출 version 2, 변경 1건`(전체 2건 중 `city`만), 저장 성공 후 `changes`에 `memo` 한 줄만 남고 `dirty=true`, `서버 도시 / revision = 부산 / 2`, `READ / WRITE = 2 / 1`.
 
+<a id="m2-07"></a>
+
 ### M2-07 — 서버 기준 수용 (R2-09)
 
-- [ ] 사후 재조회, 응답 매핑, 계약한 제출값 수용 각각의 READ 횟수와 기준값을 확인한다.
-- [ ] 서버가 보정한 값과 revision을 반영한다.
-- [ ] 기준 반영 자체가 새 dirty 입력/WRITE를 만들지 않고 기존 미제출 편집은 보존한다.
+- [x] 사후 재조회, 응답 매핑, 계약한 제출값 수용 각각의 READ 횟수와 기준값을 확인한다.
+- [ ] 서버가 보정한 값과 revision을 반영한다. — **값은 확인.** `revision` 문구는 [R2-09](./REQUIREMENTS.md)에 없는 부연이고, 이 fixture의 질의 모델에 revision 필드가 없어 클라이언트가 반영할 대상이 없다. fixture 모델의 한계로 닫는다([DC8-5-37](./PHASE8_5.md)) — 라이브러리 공백이 아니다.
+- [x] 기준 반영 자체가 새 dirty 입력/WRITE를 만들지 않고 기존 미제출 편집은 보존한다.
 
-**합격:** 받아들인 서버 결과와 사용자 편집을 구별함. **결과: 미수행.**
+**합격:** 받아들인 서버 결과와 사용자 편집을 구별함. **결과: 통과 (R2-09 기준).** 2026-09-25, React 데모, 구현 SHA `5a95a7c` + [DC8-5-34·36](./PHASE8_5.md), 검증자 superlucky84, Chrome 153.0.8010.53. R2-09이 요구하는 세 방식 구분과 "반영이 새 편집/WRITE를 만들지 않음"을 모두 확인했다. 체크리스트 둘째 항목의 `revision` 문구만 미확인이며 그 사유는 위에 적었다.
+
+- **세 수용 방식의 READ 비용이 갈렸다.** 같은 `도시 → 부산` 제출을 기준선 `READ / WRITE = 2 / 0`에서 시작해 비교했다.
+
+| 수용 방식 | 저장 후 READ / WRITE | 추가 READ | 기준값의 출처 |
+|---|---|---|---|
+| 응답 매핑 (`response`) | `2 / 1` | 0회 | 서버가 돌려준 저장 레코드 — 우편번호가 `01`에서 `00001`로 보정됨 |
+| 제출값 수용 (`submitted`) | `2 / 2` | 0회 | 보낸 값 그대로 — 도시 광주, 서버 `광주 / 3` |
+| 사후 재조회 (`refetch`) | `3 / 1` | **1회** | WRITE 뒤 새로 읽은 서버 값 |
+
+- `refetch`의 추가 READ는 요청 표에서 확인된다: `WRITE-1`이 12:58:42에 끝나고 **같은 시각** `READ-3`이 시작해 `revision 2`로 기록됐다. 이 READ를 완료시키기 전까지 `mutation phase`는 `pending`이고 패널의 `진행 중 WRITE`는 1이다 — **WRITE가 끝나도 작업은 끝나지 않는다.** READ를 완료하자 `READ / WRITE = 3 / 1`, 패널은 도시 부산·`dirty=false`·`변경 없음`이 되었다.
+- 기준 반영이 새 입력이나 WRITE를 만들지 않았다: 두 번 모두 반영 직후 `dirty=false`·`changes 변경 없음`이고 WRITE 횟수는 각각 1회씩만 늘었다. 미제출 편집 보존은 [M2-08](#m2-08)의 수행에서 확인했다 — `memo`와 제출 후 입력한 `zip`이 성공 뒤에도 `changes`에 남았다.
 
 <a id="m2-08"></a>
 
 ### M2-08 — 제출 뒤 추가 입력 (R2-10)
 
-- [ ] resource의 B 입력을 제출하고, 완료 전에 C로 다시 편집한다.
-- [ ] 요청에는 B만 있고, 성공 후에도 C는 새 입력으로 남는다.
-- [ ] 요청 DTO에서 제외한 편집이 성공과 함께 clean으로 바뀌지 않는다.
-- [ ] 서버 보정 응답을 자기 제출과 연결하여 처리한다.
+- [x] resource의 B 입력을 제출하고, 완료 전에 C로 다시 편집한다.
+- [x] 요청에는 B만 있고, 성공 후에도 C는 새 입력으로 남는다.
+- [x] 요청 DTO에서 제외한 편집이 성공과 함께 clean으로 바뀌지 않는다.
+- [x] 서버 보정 응답을 자기 제출과 연결하여 처리한다.
 
-**합격:** 실제로 제출한 변경만 확정하고 미제출/후속 입력 보존. **결과: 미수행.**
+**합격:** 실제로 제출한 변경만 확정하고 미제출/후속 입력 보존. **결과: 통과.** 2026-09-25, React 데모, 구현 SHA `5a95a7c` + [DC8-5-34](./PHASE8_5.md), 검증자 superlucky84, Chrome 153.0.8010.53.
+
+- 제출(B)과 후속 입력(C): `도시 → 부산`과 `무관한 필드 변경` 뒤 고정한 제출은 `version 2, 변경 1건`(city만)이다. `저장 실행` 직후 패널은 `serverBusy=true`·`invalidated=true`이고 `changes`는 `1 city 서울→부산`·`2 memo 최초 메모→메모 4` 두 줄이다. **WRITE가 떠 있는 동안** `제출 뒤 추가 입력`으로 zip을 96으로 바꾸자 `3 zip "01"→"96"`이 더해지고 version이 3이 되었다. WRITE는 그대로 1건이다.
+- 성공 후: `changes`가 `2 memo`·`3 zip` 두 줄로 남고 `dirty=true`, version 4, `serverBusy=false`·`invalidated=false`. 제출한 `1 city`만 사라졌다. `mutation phase=success`, `작업 1: success`, `서버 도시/revision = 부산 / 2`, `READ/WRITE = 2 / 1`.
+- **`3 zip`의 before가 `"01"`이라는 점이 중요하다.** 고정은 zip 편집 **이전**에 이뤄졌으므로 DTO의 `postalCode`는 옛 값 `01`을 실어 갔고, 서버도 `01`을 저장했다. 그래서 새 기준 대비 zip 차이가 그대로 남는다. 제출한 값과 제출 후 입력이 서로 섞이지 않았다.
+- 저장 성공이 자동 READ를 일으키지 않았다(`READ 2` 유지).
+- 서버 보정 응답(B8-7-04 해소 후 수행): `도시 → 부산` 고정 뒤 `다음 WRITE 서버 보정 예약` → `저장 실행 (응답 매핑 수용)` → 완료. 요청 표에 `WRITE-1 success-corrected`가 남고, 우편번호가 보낸 값 `01`이 아니라 서버 형식 `00001`로 패널에 나타났다. `changes 변경 없음`·`dirty=false`이므로 **보정값이 기준으로 들어온 것이지 사용자가 해소해야 할 차이로 남지 않았다.** `READ / WRITE = 2 / 1` — 보정 반영에 추가 READ가 없었다.
+
+<a id="b8-7-04"></a>
+**B8-7-04 — 데모는 수용 방식 네 가지 중 `submitted` 하나만 썼다. 해소됨([DC8-5-34](./PHASE8_5.md)).** `examples/shared/src/model.ts`의 link는 `accept: { kind: 'submitted' }` 하나뿐이고, mock 서버의 WRITE는 받은 `addressLine`·`postalCode`를 그대로 저장한다(`mock-server.ts`). 따라서 **서버가 값을 보정하는 상황 자체가 만들어지지 않고**, `response`(응답 매핑)·`refetch`(사후 재조회)·`none` 수용은 화면에서 한 번도 실행되지 않는다.
+
+막히는 항목: [M2-08](#m2-08)의 "서버 보정 응답을 자기 제출과 연결하여 처리한다", 그리고 **[M2-07](#m2-07)의 첫 두 항목** — "사후 재조회, 응답 매핑, 계약한 제출값 수용 각각의 READ 횟수와 기준값"과 "서버가 보정한 값과 revision을 반영한다".
+
+네 수용 방식의 런타임 계약 자체는 [Phase 4](./PHASE4.md)의 자동 검증 범위다(`submitted`·`response`·`refetch`·`none` 모두 `packages/sync/src/tests/`에 있다). 막혔던 것은 **브라우저에서의 수동 확인**이며, 라이브러리 커버리지의 공백이 아니었다.
+
+해소 내용: 조작 `다음 WRITE 서버 보정 예약`이 우편번호를 서버 형식(5자리)으로 정규화하는 WRITE를 예약하고, `저장 실행 (응답 매핑 수용)`이 `accept: { kind: 'response' }`로 **서버가 돌려준 저장된 레코드**를 기준으로 삼는다. 기존 `저장 실행 (제출값 수용)`은 그대로 남아 두 수용 방식을 나란히 비교할 수 있다. `refetch`·`none` 수용은 여전히 데모에 없다. 조작은 38개에서 **40개**가 되었다.
 
 ### M2-09 — 실패한 작업만 복구 (R2-11)
 
