@@ -34,7 +34,7 @@ export {
   createDemoModel,
 } from './model';
 export type { ComputedSource, DemoModel, DemoUi, DraftPair } from './model';
-export { OPERATION_GROUPS, OPERATION_IDS } from './operations';
+export { OPERATION_GROUPS, OPERATION_IDS, operationLabel } from './operations';
 export {
   createSsrModelFromSnapshot,
   createSsrModelOnServer,

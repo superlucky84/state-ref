@@ -6,6 +6,7 @@ import {
   QUERY_RETRY,
   READING_QUERIES,
   createDemoModel,
+  operationLabel,
   resourcePanel,
 } from './index';
 import type { DemoModel } from './index';
@@ -537,6 +538,278 @@ describe('failure recovery (M2-09)', () => {
     expect(model.server.counts().write).toBe(0);
     expect(readUi(model).mutationPhase).toBe('idle');
 
+    model.dispose();
+  });
+});
+
+/**
+ * R2-12 on screen.
+ *
+ * A WRITE that landed but left the baseline unrecovered, and a WRITE that may
+ * or may not have been stored at all, are two different results - and neither
+ * was reachable from the demo. The recovery READ is an ordinary query load and
+ * retries like one, so a single queued failure was absorbed and the operation
+ * reported a plain success (B8-7-10); and once DC8-5-38 typed every rejection,
+ * nothing was left that reached a *settled* `unknown` (B8-7-11). These tests
+ * fail on the old fixture.
+ */
+describe('baseline recovery (M2-10)', () => {
+  const settled = () => new Promise(resolve => setTimeout(resolve, 0));
+
+  /**
+   * Settle the WRITE and then every attempt of the recovery READ.
+   *
+   * Each attempt costs two passes: one settles the request that is in flight,
+   * and the retry is only issued during the macrotask after it. Rather than
+   * work that factor into a count, loop until the linked operation is over -
+   * `pending` drops back to 0 whichever way it ends.
+   */
+  async function drain(model: DemoModel) {
+    for (let pass = 0; pass < 4 * (QUERY_RETRY + 2); pass += 1) {
+      model.run('settle-all');
+      await settled();
+      if (model.panelA.status.pending.value === 0) {
+        // One more turn, so the result promise has reported the phase.
+        await settled();
+        return;
+      }
+    }
+    throw new Error('the linked operation never settled');
+  }
+
+  const panelOf = (model: DemoModel) =>
+    resourcePanel(model.panelA.status.value, model.panelA.changes());
+
+  it('absorbs a single recovery READ failure into a plain success', async () => {
+    const model = await loaded();
+
+    model.run('edit-busan');
+    model.run('capture');
+    // Straight at the mock rather than through `next-write-sync-error`: that
+    // operation now reserves the whole chain, and what this pins is the state
+    // a shorter run leaves behind.
+    model.server.nextWrite('success-then-read-failure', 1);
+    model.run('save-with-refetch');
+    await drain(model);
+
+    // The READ really did fail on the server...
+    expect(
+      model.server
+        .requests()
+        .some(row => row.kind === 'READ' && row.outcome === 'error')
+    ).toBe(true);
+    // ...and the screen shows a plain success anyway, which is why M2-10
+    // could not be performed against a single queued failure.
+    expect(readUi(model).mutationPhase).toBe('success');
+    const panel = panelOf(model);
+    expect(panel.unconfirmed).toBe(false);
+    expect(panel.invalidated).toBe(false);
+    expect(panel.dirty).toBe(false);
+
+    model.dispose();
+  });
+
+  it('reaches sync-error once the recovery READ exhausts its budget', async () => {
+    const model = await loaded();
+
+    model.run('edit-busan');
+    model.run('capture');
+    model.run('next-write-sync-error');
+    model.run('save-with-refetch');
+    await drain(model);
+
+    // The WRITE landed: the server holds the new city and the operation is
+    // over. Only the baseline recovery failed.
+    expect(model.server.value().city).toBe(CITY.resource);
+    expect(model.server.counts().write).toBe(1);
+    expect(model.panelA.status.pending.value).toBe(0);
+
+    // What separates it from a failed WRITE on screen: the phase names the
+    // recovery, and the baseline is marked unconfirmed and invalidated rather
+    // than rolled back.
+    expect(readUi(model).mutationPhase).toBe('sync-error');
+    const panel = panelOf(model);
+    expect(panel.unconfirmed).toBe(true);
+    expect(panel.invalidated).toBe(true);
+    expect(panel.status).toBe('error');
+    expect(panel.loaded).toBe(true);
+    // The submitted edit is still a local difference - nothing accepted it.
+    expect(panel.dirty).toBe(true);
+    expect(model.panelA.ref.city.value).toBe(CITY.resource);
+
+    model.dispose();
+  });
+
+  it('recovers from sync-error by reading again, not by resending the WRITE', async () => {
+    const model = await loaded();
+
+    model.run('edit-busan');
+    model.run('capture');
+    model.run('next-write-sync-error');
+    model.run('save-with-refetch');
+    await drain(model);
+    expect(readUi(model).mutationPhase).toBe('sync-error');
+
+    model.run('refetch');
+    model.run('settle-all');
+    await settled();
+
+    // One WRITE, before and after. A save that already landed is never
+    // replayed to repair the baseline (R2-12).
+    expect(model.server.counts().write).toBe(1);
+    const panel = panelOf(model);
+    expect(panel.unconfirmed).toBe(false);
+    expect(panel.invalidated).toBe(false);
+    expect(panel.status).toBe('success');
+    // The refetch brings back what the WRITE stored, so the local edit is no
+    // longer a difference.
+    expect(panel.dirty).toBe(false);
+    expect(model.panelA.ref.city.value).toBe(CITY.resource);
+
+    model.dispose();
+  });
+
+  it('settles a transport failure as unknown and leaves the baseline unconfirmed', async () => {
+    const model = await loaded();
+
+    model.run('edit-busan');
+    model.run('capture');
+    model.run('next-write-transport-failure');
+    model.run('save');
+    model.run('settle-all');
+    await settled();
+
+    // A plain transport error cannot say whether the server stored the write,
+    // so sync ends the operation as `unknown` rather than rejecting it - and
+    // does not resend it.
+    expect(readUi(model).mutationPhase).toBe('unknown');
+    expect(model.server.counts().write).toBe(1);
+    // Settled, unlike the WRITE that never answers: `pending` is back to 0.
+    expect(model.panelA.status.pending.value).toBe(0);
+
+    const panel = panelOf(model);
+    expect(panel.unconfirmed).toBe(true);
+    expect(panel.serverBusy).toBe(false);
+    // This mock did not store it - but the client was never told that, and
+    // must not act as if it had been. Nothing is rolled back, the submitted
+    // edit stands, and the baseline carries the mark instead.
+    expect(model.server.value().city).toBe(CITY.server);
+    expect(model.panelA.ref.city.value).toBe(CITY.resource);
+    expect(panel.dirty).toBe(true);
+
+    model.dispose();
+  });
+
+  it('separates a confirmed rejection from an unknown on the panel', async () => {
+    const rejected = await loaded();
+    rejected.run('edit-busan');
+    rejected.run('capture');
+    rejected.run('next-write-rejected');
+    rejected.run('save-reject-remove');
+    rejected.run('settle-all');
+    await settled();
+
+    const unknown = await loaded();
+    unknown.run('edit-busan');
+    unknown.run('capture');
+    unknown.run('next-write-transport-failure');
+    unknown.run('save-reject-remove');
+    unknown.run('settle-all');
+    await settled();
+
+    // Both operations are over and neither is pending, so the phase and the
+    // unconfirmed flag are what a person reads them apart by.
+    expect(readUi(rejected).mutationPhase).toBe('rejected');
+    expect(readUi(unknown).mutationPhase).toBe('unknown');
+    expect(panelOf(rejected).unconfirmed).toBe(false);
+    expect(panelOf(unknown).unconfirmed).toBe(true);
+
+    // The two servers are in the same state - neither stored the write - so
+    // what separates the screens is what the client was *told*, not what the
+    // server did.
+    expect(rejected.server.value().city).toBe(CITY.server);
+    expect(unknown.server.value().city).toBe(CITY.server);
+    // And the recovery follows it: `remove` may undo a submission the server
+    // confirmed it refused, and must not touch one it might have stored.
+    expect(rejected.panelA.ref.city.value).toBe(CITY.server);
+    expect(unknown.panelA.ref.city.value).toBe(CITY.resource);
+
+    rejected.dispose();
+    unknown.dispose();
+  });
+
+  it('names the one save the reservation actually reaches', async () => {
+    const model = await loaded();
+    model.run('next-write-sync-error');
+
+    // Only the refetch acceptance reads the server again, so it is the only
+    // save that consumes the queued failure. The name comes from the
+    // catalogue rather than a copy of it, or a renamed button would leave an
+    // instruction pointing at a control nobody can find.
+    expect(readUi(model).lastResult).toContain(
+      operationLabel('save-with-refetch')
+    );
+
+    // Pressed with any other acceptance kind, the reservation sits unused and
+    // the screen shows an ordinary success - the trap the text warns about.
+    model.run('edit-busan');
+    model.run('capture');
+    model.run('save');
+    await drain(model);
+    expect(readUi(model).mutationPhase).toBe('success');
+    expect(panelOf(model).unconfirmed).toBe(false);
+
+    model.dispose();
+  });
+
+  it('repaints when a retry issues a request with no operation behind it', async () => {
+    const model = await loaded();
+    model.run('next-read-error');
+    model.run('refetch');
+    model.run('settle-read');
+
+    // The press is over and the request it settled is gone. What happens next
+    // - the retry - has no operation behind it.
+    const afterPress = readUi(model).tick;
+    expect(model.server.inFlight()).toHaveLength(0);
+    // Two turns: the retry's own timer is scheduled after this one, so the
+    // request does not exist yet when the first macrotask runs.
+    await settled();
+    await settled();
+
+    // Without this, the panel kept showing `진행 중 0` while a READ was open
+    // and the row was missing from the request table, which stopped a verifier
+    // mid-chain (B8-7-13).
+    expect(model.server.inFlight()).toHaveLength(1);
+    expect(readUi(model).tick).toBeGreaterThan(afterPress);
+
+    model.run('settle-all');
+    await settled();
+    model.dispose();
+  });
+
+  it('says so when the recovery barrier refuses a refetch', async () => {
+    const model = await loaded();
+
+    model.run('edit-busan');
+    model.run('capture');
+    model.run('save');
+    expect(model.panelA.status.pending.value).toBe(1);
+    const reads = model.server.counts().read;
+
+    model.run('refetch');
+    await settled();
+
+    // The demo used to swallow this rejection and still answer '재조회를
+    // 시작했다', so a refusal and a normal start looked the same (B8-7-12).
+    const result = readUi(model).lastResult;
+    expect(result).toContain('연결 장벽에 막혀 거절됐다');
+    expect(result).toContain('A linked operation is pending for this query.');
+    // Refused means refused: no request reached the server.
+    expect(model.server.counts().read).toBe(reads);
+
+    model.run('settle-all');
+    await settled();
     model.dispose();
   });
 });

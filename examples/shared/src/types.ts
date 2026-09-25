@@ -56,6 +56,14 @@ export type WriteOutcome =
   | 'unknown'
   /** The WRITE lands but the baseline recovery READ fails: `sync-error`. */
   | 'success-then-read-failure'
+  /**
+   * The WRITE never reaches an answer the client can trust: a plain transport
+   * failure. sync classifies it as `unknown` because the server may or may not
+   * have stored it, and leaves the baseline `unconfirmed` (DC8-5-44). This is
+   * the only outcome that reaches a *settled* `unknown` - `unknown` above
+   * never answers at all.
+   */
+  | 'transport-failure'
   /** The WRITE lands and the server normalises what it stored (M2-07/M2-08). */
   | 'success-corrected';
 

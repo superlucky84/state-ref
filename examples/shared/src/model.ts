@@ -23,6 +23,7 @@ import {
   toSaveDto,
   withMemo,
 } from './scenario';
+import { operationLabel } from './operations';
 import type { OperationId } from './operations';
 import type { Profile, SaveAddressDto, SaveAddressResponse } from './types';
 
@@ -112,7 +113,10 @@ export type DemoModel = Readonly<{
 }>;
 
 export function createDemoModel(): DemoModel {
-  const server = createMockServer(INITIAL_PROFILE);
+  // Late-bound on purpose: the store the panels subscribe to does not exist
+  // until below, and the server has to be built first.
+  let repaint = () => {};
+  const server = createMockServer(INITIAL_PROFILE, () => repaint());
   const environment = createControlledEnvironment();
   const client = createSyncClient({ environment });
 
@@ -154,6 +158,15 @@ export function createDemoModel(): DemoModel {
   // `watchUi` by way of their connector.
   const ui = watchUi();
 
+  // The request panel reads the mock server directly and the server is not
+  // reactive, so the tick is what repaints it. Operations bump it themselves;
+  // this covers everything that happens *without* one - above all the READ a
+  // retry issues, which otherwise left `진행 중` reading 0 while a request was
+  // open (B8-7-13).
+  repaint = () => {
+    ui.tick.value = ui.tick.value + 1;
+  };
+
   // --- The callback-less computed demo (DC8-5-10) -------------------------
   // A manual-sync store, so "reads see current inputs before sync()" and
   // "subscribers wait for sync()" are two visibly different things.
@@ -193,6 +206,20 @@ export function createDemoModel(): DemoModel {
    */
   const notLoaded = (id: OperationId) =>
     bump(id, '아직 로드되지 않았다. 먼저 조회한다.');
+
+  /**
+   * What the recovery barrier refused, in words.
+   *
+   * A linked WRITE blocks a READ on the same query, and the demo used to
+   * swallow that rejection and still answer '재조회를 시작했다' - on screen a
+   * refusal and a normal start looked the same (B8-7-12). The library's own
+   * message is quoted so the verifier records what sync said, not what the
+   * demo thinks it said.
+   */
+  const barredText = (error: unknown, what: string) =>
+    `${what} 연결 장벽에 막혀 거절됐다: ${String(
+      error
+    )} — 연결된 저장이 진행 중인 동안 이 조회는 시작하지 않는다. 저장을 완료한 뒤 다시 누른다.`;
   const loaded = () => panelA.status.loaded.value;
 
   const readComputed = () => {
@@ -321,18 +348,63 @@ export function createDemoModel(): DemoModel {
         );
       }
 
-      case 'next-write-sync-error':
-        server.nextWrite('success-then-read-failure');
-        return bump(id, '다음 WRITE는 성공하고 복구 READ가 실패한다');
+      case 'next-write-sync-error': {
+        // The recovery READ is an ordinary query load and retries like one, so
+        // a single queued failure is absorbed and the operation reports a
+        // plain `success` - the two results would be indistinguishable on
+        // screen (B8-7-10). Reserve the whole chain instead of lowering the
+        // retry budget: the demo has to keep exercising sync's real default
+        // policy (DC8-5-29, DC8-5-43).
+        //
+        // Only `accept: { kind: 'refetch' }` reads the server again after the
+        // WRITE, so it is the one save this reservation reaches; the others
+        // never issue the READ that was queued to fail. The result says which
+        // button to press, because a reservation nobody consumes looks exactly
+        // like an ordinary success.
+        const total = QUERY_RETRY + 1;
+        server.nextWrite('success-then-read-failure', total);
+        return bump(
+          id,
+          `다음 WRITE는 성공하고 그 뒤 복구 READ가 ${total}회(재시도 예산 ${QUERY_RETRY}회 소진) 실패한다. '${operationLabel(
+            'save-with-refetch'
+          )}'과 함께 눌러야 한다 — 나머지 수용 방식은 복구 READ 자체가 없어 예약한 실패를 아무도 쓰지 않는다. 완료는 WRITE 1회와 READ ${total}회를 끝내야 하고 재시도는 누른 뒤에 발행되므로, 진행 중 요청이 0이 될 때까지 반복해서 누른다. 서버 값은 이미 바뀌어 있다.`
+        );
+      }
+      case 'next-write-transport-failure':
+        // Not a confirmed rejection: sync classifies an untyped failure as
+        // `unknown` and marks the baseline unconfirmed, because the server may
+        // have stored the write anyway (DC8-5-44).
+        server.nextWrite('transport-failure');
+        return bump(
+          id,
+          '다음 WRITE는 전송이 실패한다. 서버가 저장했는지 알 수 없으므로 결과는 unknown이고 기준은 미확정으로 남는다 — 확정 거절과 달리 되돌리지 않는다.'
+        );
 
       case 'load': {
-        void panelA.load().catch(() => undefined);
+        // `pending` counts linked operations on this query, which is exactly
+        // when the recovery barrier refuses a READ (DC8-5-45).
+        const barred = panelA.status.pending.value > 0;
+        void panelA.load().then(
+          () => undefined,
+          error => {
+            if (barred) bump(id, barredText(error, '패널 조회만'));
+          }
+        );
+        // A different key, so the barrier does not apply to it - saying which
+        // half was refused is the point.
         void readonlyQuery.load().catch(() => undefined);
         return bump(id, '조회를 시작했다. 서버 응답은 직접 완료한다.');
       }
-      case 'refetch':
-        void panelA.refetch().catch(() => undefined);
+      case 'refetch': {
+        const barred = panelA.status.pending.value > 0;
+        void panelA.refetch().then(
+          () => undefined,
+          error => {
+            if (barred) bump(id, barredText(error, '재조회가'));
+          }
+        );
         return bump(id, '재조회를 시작했다.');
+      }
       case 'invalidate':
         panelA.invalidate();
         return bump(id, '무효화했다. 진행 중 READ는 취소된다.');

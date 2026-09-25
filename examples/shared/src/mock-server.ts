@@ -40,8 +40,15 @@ export type MockServer = Readonly<{
    * repeat count to cover the whole chain (DC8-5-30).
    */
   nextRead: (outcome: ReadOutcome, repeat?: number) => void;
-  /** Queue the outcome of the next WRITE. Defaults to `success`. */
-  nextWrite: (outcome: WriteOutcome) => void;
+  /**
+   * Queue the outcome of the next WRITE. Defaults to `success`.
+   *
+   * `readFailures` applies to `success-then-read-failure` only: the baseline
+   * recovery READ is an ordinary query load and retries like one, so a single
+   * failure is swallowed and the screen shows a plain success (DC8-5-43).
+   * Pass the whole chain length to reach `sync-error`.
+   */
+  nextWrite: (outcome: WriteOutcome, readFailures?: number) => void;
 
   /** The `queryFn` a demo hands to `client.query`. */
   read: (context: { signal: AbortSignal }) => Promise<Profile>;
@@ -63,7 +70,20 @@ type Pending = {
 /** The server's own postal-code format: five digits, zero padded. */
 const normaliseZip = (zip: string) => zip.padStart(5, '0');
 
-export function createMockServer(initial: Profile): MockServer {
+/**
+ * `notify` is called whenever the request log, the in-flight list or the
+ * server value changes.
+ *
+ * The demos render this server through a plain (non-reactive) read, so they
+ * only repainted when an operation ran. A retry issues its request with no
+ * button press behind it, which left `진행 중` showing 0 while a READ was
+ * actually open and hid the row from the request table (B8-7-13). Anything
+ * that changes what the request panel shows has to say so.
+ */
+export function createMockServer(
+  initial: Profile,
+  notify: () => void = () => {}
+): MockServer {
   let value = initial;
   let revision = 1;
   let readCount = 0;
@@ -71,6 +91,7 @@ export function createMockServer(initial: Profile): MockServer {
   let nextRead: ReadOutcome = 'success';
   let nextReadRepeat = 1;
   let nextWrite: WriteOutcome = 'success';
+  let nextWriteReadFailures = 1;
   const records: RequestRecord[] = [];
   const pending: Pending[] = [];
 
@@ -96,6 +117,7 @@ export function createMockServer(initial: Profile): MockServer {
       settledAt: settled ? Date.now() : null,
     };
     records[index] = next;
+    notify();
     return next;
   };
 
@@ -110,6 +132,7 @@ export function createMockServer(initial: Profile): MockServer {
     setValue(next) {
       value = next;
       revision += 1;
+      notify();
     },
     counts: () => ({ read: readCount, write: writeCount }),
     requests: () => records,
@@ -122,8 +145,12 @@ export function createMockServer(initial: Profile): MockServer {
       nextRead = outcome;
       nextReadRepeat = repeat;
     },
-    nextWrite(outcome) {
+    nextWrite(outcome, readFailures = 1) {
+      if (!Number.isInteger(readFailures) || readFailures < 1) {
+        throw new RangeError('readFailures must be a positive integer.');
+      }
       nextWrite = outcome;
+      nextWriteReadFailures = readFailures;
     },
 
     read({ signal }) {
@@ -154,6 +181,9 @@ export function createMockServer(initial: Profile): MockServer {
         },
       };
       pending.push(item);
+      // A retry issues this with no operation behind it, so the panels have to
+      // be told (B8-7-13).
+      notify();
       // An aborted READ is reported as aborted rather than quietly dropped -
       // Phase 7.1 turns on a `queryFn` that ignores its signal, so the demo
       // has to make the difference visible.
@@ -169,7 +199,9 @@ export function createMockServer(initial: Profile): MockServer {
     write(input) {
       writeCount += 1;
       const outcome = nextWrite;
+      const readFailures = nextWriteReadFailures;
       nextWrite = 'success';
+      nextWriteReadFailures = 1;
       let entry = record('WRITE', `WRITE-${writeCount}`);
       records.push(entry);
       const deferred = createDeferred<SaveAddressResponse>();
@@ -180,6 +212,15 @@ export function createMockServer(initial: Profile): MockServer {
           if (outcome === 'unknown') return;
           drop(item);
           entry = replace(entry, outcome, true);
+          if (outcome === 'transport-failure') {
+            // Deliberately NOT a MutationRejectedError: this is the failure
+            // that cannot say whether the server stored the write, so sync
+            // has to call it `unknown` and mark the baseline unconfirmed
+            // (DC8-5-44). The server value is left untouched on purpose -
+            // "unknown" means the demo does not claim either way.
+            deferred.reject(new Error(`${entry.id} transport failure`));
+            return;
+          }
           if (outcome === 'rejected') {
             // A confirmed rejection has to be *typed* as one. sync classifies
             // any other failure as `unknown`, because a plain transport error
@@ -207,7 +248,13 @@ export function createMockServer(initial: Profile): MockServer {
                 ? normaliseZip(input.postalCode)
                 : input.postalCode,
           };
-          if (outcome === 'success-then-read-failure') nextRead = 'error';
+          if (outcome === 'success-then-read-failure') {
+            nextRead = 'error';
+            // The recovery READ retries like any other load, so one failure
+            // would be absorbed and the operation would report a plain
+            // success (B8-7-10). The caller states the whole chain.
+            nextReadRepeat = readFailures;
+          }
           deferred.resolve({
             revision,
             storedCity: value.city,
@@ -217,6 +264,7 @@ export function createMockServer(initial: Profile): MockServer {
         },
       };
       pending.push(item);
+      notify();
       return deferred.promise;
     },
 

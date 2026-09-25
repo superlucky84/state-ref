@@ -17,7 +17,8 @@ export const OPERATION_GROUPS = [
       ['next-read-error', '다음 READ 실패 예약 (재시도에 흡수됨)'],
       ['next-read-error-exhausted', '다음 READ 연속 실패 (재시도 소진)'],
       ['next-write-rejected', '다음 WRITE 확정 거절 예약'],
-      ['next-write-unknown', '다음 WRITE 결과 불명 예약'],
+      ['next-write-unknown', '다음 WRITE 응답 없음 예약 (계속 진행 중)'],
+      ['next-write-transport-failure', '다음 WRITE 전송 실패 예약 (결과 불명)'],
       ['next-write-sync-error', '다음 WRITE 성공 + 복구 READ 실패 예약'],
       ['next-write-corrected', '다음 WRITE 서버 보정 예약'],
       ['server-edit-memo', '서버가 무관한 필드를 바꿈'],
@@ -102,3 +103,19 @@ export type OperationId =
 export const OPERATION_IDS: readonly OperationId[] = OPERATION_GROUPS.flatMap(
   group => group.operations.map(([id]) => id)
 );
+
+/**
+ * The label a demo shows for an operation.
+ *
+ * A result that has to name a button reads it from here rather than repeating
+ * the text: a renamed button would otherwise leave an instruction on screen
+ * that points at a control nobody can find.
+ */
+export function operationLabel(id: OperationId): string {
+  for (const group of OPERATION_GROUPS) {
+    for (const [operationId, label] of group.operations) {
+      if (operationId === id) return label;
+    }
+  }
+  throw new RangeError(`Unknown operation id: ${String(id)}`);
+}
