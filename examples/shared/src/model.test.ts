@@ -399,3 +399,144 @@ describe('callback-less computed panel', () => {
     model.dispose();
   });
 });
+
+/**
+ * R2-11 on screen.
+ *
+ * Both halves of the requirement need a *confirmed* rejection, and the demo
+ * could not produce one: the mock rejected with a plain Error and sync
+ * classifies anything that is not a `MutationRejectedError` as `unknown`,
+ * because a transport failure cannot say whether the server stored the write
+ * (B8-7-05). These tests fail on the old fixture.
+ */
+describe('failure recovery (M2-09)', () => {
+  const settled = () => new Promise(resolve => setTimeout(resolve, 0));
+
+  async function rejectedSave(saveId: 'save' | 'save-reject-remove') {
+    const model = await loaded();
+    model.run('edit-busan');
+    model.run('edit-memo');
+    model.run('capture');
+    model.run('next-write-rejected');
+    model.run(saveId);
+    model.run('settle-all');
+    await settled();
+    return model;
+  }
+
+  it('reports a queued rejection as rejected, not unknown', async () => {
+    const model = await rejectedSave('save');
+
+    expect(readUi(model).mutationPhase).toBe('rejected');
+    // A confirmed rejection ends the operation: `unknown` is what stays
+    // pending forever, and the two must not look alike (R2-12).
+    expect(model.panelA.status.pending.value).toBe(0);
+
+    model.dispose();
+  });
+
+  it("keeps the submitted input under onReject: 'keep'", async () => {
+    const model = await rejectedSave('save');
+    const paths = model.panelA.changes().map(change => change.path.join('.'));
+
+    expect(model.panelA.ref.city.value).toBe(CITY.resource);
+    expect(paths).toContain('city');
+    expect(paths).toContain('memo');
+    expect(model.panelA.status.dirty.value).toBe(true);
+
+    model.dispose();
+  });
+
+  it("removes only the submitted input under onReject: 'remove'", async () => {
+    const model = await rejectedSave('save-reject-remove');
+    const paths = model.panelA.changes().map(change => change.path.join('.'));
+
+    // The capture carried `city` alone, so `city` goes back to the server
+    // value and the untouched `memo` edit survives the recovery.
+    expect(model.panelA.ref.city.value).toBe(CITY.server);
+    expect(paths).not.toContain('city');
+    expect(paths).toContain('memo');
+
+    model.dispose();
+  });
+
+  it('keeps a later input on the submitted path and an outside server update', async () => {
+    const model = await loaded();
+
+    // An update the client does not know about yet, on a field no DTO
+    // carries. A refetch is what brings it into the baseline.
+    model.run('server-edit-memo');
+    const serverMemo = model.server.value().memo;
+    model.run('refetch');
+    model.run('settle-all');
+    await settled();
+    expect(model.panelA.ref.memo.value).toBe(serverMemo);
+
+    model.run('edit-busan');
+    model.run('capture');
+    model.run('next-write-rejected');
+    model.run('save-reject-remove');
+    // After the operation has started, not before: any local edit bumps the
+    // resource version and `mutation.start` refuses a stale submission.
+    model.run('edit-gwangju');
+    model.run('settle-all');
+    await settled();
+
+    expect(readUi(model).mutationPhase).toBe('rejected');
+    // The later input on the same path is not what was submitted, so the
+    // recovery leaves it alone.
+    expect(model.panelA.ref.city.value).toBe(CITY.overlap);
+    expect(model.panelA.ref.memo.value).toBe(serverMemo);
+    expect(model.server.counts().write).toBe(1);
+
+    model.dispose();
+  });
+
+  it('leaves an earlier accepted operation alone when a later one is rejected', async () => {
+    const model = await loaded();
+
+    // One save that lands: its accepted values become the baseline.
+    model.run('edit-busan');
+    model.run('capture');
+    model.run('save');
+    model.run('settle-all');
+    await settled();
+    expect(readUi(model).mutationPhase).toBe('success');
+    expect(model.panelA.changes()).toHaveLength(0);
+
+    // A second save on top of it, rejected.
+    model.run('edit-gwangju');
+    model.run('capture');
+    model.run('next-write-rejected');
+    model.run('save-reject-remove');
+    model.run('settle-all');
+    await settled();
+
+    expect(readUi(model).mutationPhase).toBe('rejected');
+    // The recovery undoes the rejected submission alone. It does not reach
+    // back past the operation that already succeeded, so the city is what the
+    // first save stored - not the value the server started with.
+    expect(model.panelA.ref.city.value).toBe(CITY.resource);
+    expect(model.panelA.ref.city.value).not.toBe(CITY.server);
+    expect(model.panelA.status.dirty.value).toBe(false);
+    expect(model.server.value().city).toBe(CITY.resource);
+
+    model.dispose();
+  });
+
+  it('answers instead of throwing when the submission went stale', async () => {
+    const model = await loaded();
+
+    model.run('edit-busan');
+    model.run('capture');
+    model.run('edit-after-capture');
+    expect(() => model.run('save')).not.toThrow();
+
+    expect(readUi(model).lastResult).toContain('저장을 시작하지 못했다');
+    // Nothing was sent, so the operation never started.
+    expect(model.server.counts().write).toBe(0);
+    expect(readUi(model).mutationPhase).toBe('idle');
+
+    model.dispose();
+  });
+});

@@ -5,6 +5,7 @@ import type { Draft } from 'state-ref/draft';
 import { createSyncClient } from '@stateref/sync';
 import type {
   MutationHandle,
+  MutationLink,
   QueryHandle,
   ResourceSubmission,
   SyncClient,
@@ -20,6 +21,7 @@ import {
   reorderContacts,
   SAVED_PATHS,
   toSaveDto,
+  withMemo,
 } from './scenario';
 import type { OperationId } from './operations';
 import type { Profile, SaveAddressDto, SaveAddressResponse } from './types';
@@ -204,6 +206,65 @@ export function createDemoModel(): DemoModel {
     return `계산 ${calculations}회, 같은 객체=${stable}, doubled=${current.doubled}`;
   };
 
+  /**
+   * The shared body of the four save operations.
+   *
+   * They differ only in how the baseline is accepted and what a confirmed
+   * rejection does to the submitted edits, so the guards belong in one place:
+   * a missing submission, a second linked operation on the same query
+   * (DC8-5-35), and - the one this fixed - a submission that went stale.
+   *
+   * `mutation.start` refuses a submission whose version no longer matches the
+   * resource, and any local edit bumps that version. Pressing `제출 뒤 추가
+   * 입력` between `고정` and `저장` therefore threw out of `run()` and broke
+   * the screen instead of answering (B8-7-09). Every operation answers in
+   * words (DC8-5-16), so the throw is caught and turned into the instruction
+   * the verifier actually needs: capture again, or make the follow-up input
+   * *after* the save has started.
+   */
+  const startSave = (
+    id: OperationId,
+    link: {
+      accept: NonNullable<MutationLink<SaveAddressResponse>['accept']>;
+      onReject: NonNullable<MutationLink<SaveAddressResponse>['onReject']>;
+      started: string;
+    }
+  ) => {
+    if (!submission) return bump(id, '먼저 제출할 변경을 고정한다.');
+    if (panelA.status.pending.value > 0)
+      return bump(
+        id,
+        '이 조회에 연결된 저장이 이미 진행 중이다. 먼저 완료한다.'
+      );
+    const fixed = submission;
+    let operation: ReturnType<typeof mutation.start>;
+    try {
+      operation = mutation.start(toSaveDto(fixed.value, fixed.version), {
+        links: [
+          {
+            query: panelA,
+            submission: fixed,
+            accept: link.accept,
+            onReject: link.onReject,
+          },
+        ],
+      });
+    } catch (error) {
+      return bump(
+        id,
+        `저장을 시작하지 못했다: ${String(
+          error
+        )} — 고정한 뒤에 입력이 더 들어왔다. 다시 고정하거나, 후속 입력은 저장을 시작한 뒤에 넣는다.`
+      );
+    }
+    ui.mutationPhase.value = 'pending';
+    void operation.result.then(result => {
+      ui.mutationPhase.value = result.kind;
+      bump(`${id} 결과`, `작업 ${result.operationId}: ${result.kind}`);
+    });
+    return bump(id, link.started);
+  };
+
   const run = (id: OperationId) => {
     switch (id) {
       case 'settle-read':
@@ -242,6 +303,23 @@ export function createDemoModel(): DemoModel {
           id,
           '다음 WRITE는 성공하고 서버가 우편번호를 자기 형식(5자리)으로 보정한다'
         );
+
+      case 'server-edit-memo': {
+        // The only way to change the server behind the client's back. R2-11
+        // asks whether a server update on an *unrelated* field survives a
+        // failed submission, and every other operation here changes the
+        // server only by writing to it (B8-7-07). The memo is the field no
+        // draft and no DTO touches.
+        server.setValue(
+          withMemo(server.value(), `서버 메모 ${ui.tick.value + 1}`)
+        );
+        return bump(
+          id,
+          `서버가 메모를 "${
+            server.value().memo
+          }"로 바꿨다 (revision ${server.revision()}). 클라이언트는 아직 모른다 — 재조회해야 기준에 들어온다.`
+        );
+      }
 
       case 'next-write-sync-error':
         server.nextWrite('success-then-read-failure');
@@ -385,106 +463,52 @@ export function createDemoModel(): DemoModel {
           }건 중 DTO가 싣는 경로(${SAVED_PATHS.join('·')})만 골랐다.`
         );
       }
-      case 'save': {
-        if (!submission) return bump(id, '먼저 제출할 변경을 고정한다.');
-        if (panelA.status.pending.value > 0)
-          return bump(
-            id,
-            '이 조회에 연결된 저장이 이미 진행 중이다. 먼저 완료한다.'
-          );
-        const fixed = submission;
-        const operation = mutation.start(
-          toSaveDto(fixed.value, fixed.version),
-          {
-            links: [
-              {
-                query: panelA,
-                submission: fixed,
-                accept: { kind: 'submitted' },
-              },
-            ],
-          }
-        );
-        ui.mutationPhase.value = 'pending';
-        void operation.result.then(result => {
-          ui.mutationPhase.value = result.kind;
-          bump('save 결과', `작업 ${result.operationId}: ${result.kind}`);
+      case 'save':
+        return startSave(id, {
+          accept: { kind: 'submitted' },
+          // Stated rather than defaulted: which half of R2-11 a save
+          // exercises is the thing under test in M2-09.
+          onReject: 'keep',
+          started: '저장을 시작했다. 조회 shape와 다른 DTO를 보냈다.',
         });
-        return bump(id, '저장을 시작했다. 조회 shape와 다른 DTO를 보냈다.');
-      }
-      case 'save-with-response': {
-        if (!submission) return bump(id, '먼저 제출할 변경을 고정한다.');
-        if (panelA.status.pending.value > 0)
-          return bump(
-            id,
-            '이 조회에 연결된 저장이 이미 진행 중이다. 먼저 완료한다.'
-          );
-        const fixed = submission;
-        const operation = mutation.start(
-          toSaveDto(fixed.value, fixed.version),
-          {
-            links: [
-              {
-                query: panelA,
-                submission: fixed,
-                // The server answers with the record it stored, so the app
-                // maps that into the baseline instead of trusting what it
-                // sent. A correction lands here rather than being lost.
-                accept: {
-                  kind: 'response',
-                  select: (response: SaveAddressResponse) => response.stored,
-                },
-              },
-            ],
-          }
-        );
-        ui.mutationPhase.value = 'pending';
-        void operation.result.then(result => {
-          ui.mutationPhase.value = result.kind;
-          bump(
-            'save-with-response 결과',
-            `작업 ${result.operationId}: ${result.kind}`
-          );
-        });
-        return bump(
-          id,
-          '저장을 시작했다. 서버 응답의 저장된 레코드를 기준으로 삼는다.'
-        );
-      }
 
-      case 'save-with-refetch': {
-        if (!submission) return bump(id, '먼저 제출할 변경을 고정한다.');
-        if (panelA.status.pending.value > 0)
-          return bump(
-            id,
-            '이 조회에 연결된 저장이 이미 진행 중이다. 먼저 완료한다.'
-          );
-        const fixed = submission;
-        const operation = mutation.start(
-          toSaveDto(fixed.value, fixed.version),
-          {
-            links: [
-              // Unlike the other two, this one costs a READ: the baseline
-              // comes from reading the server again after the WRITE lands.
-              // That extra request is the whole point of the comparison in
-              // M2-07, so the demo has to settle it too.
-              { query: panelA, submission: fixed, accept: { kind: 'refetch' } },
-            ],
-          }
-        );
-        ui.mutationPhase.value = 'pending';
-        void operation.result.then(result => {
-          ui.mutationPhase.value = result.kind;
-          bump(
-            'save-with-refetch 결과',
-            `작업 ${result.operationId}: ${result.kind}`
-          );
+      case 'save-with-response':
+        return startSave(id, {
+          // The server answers with the record it stored, so the app maps
+          // that into the baseline instead of trusting what it sent. A
+          // correction lands here rather than being lost.
+          accept: {
+            kind: 'response',
+            select: (response: SaveAddressResponse) => response.stored,
+          },
+          onReject: 'keep',
+          started:
+            '저장을 시작했다. 서버 응답의 저장된 레코드를 기준으로 삼는다.',
         });
-        return bump(
-          id,
-          '저장을 시작했다. 성공 뒤 서버를 다시 읽어 기준을 맞춘다 — READ 완료도 눌러야 한다.'
-        );
-      }
+
+      case 'save-with-refetch':
+        return startSave(id, {
+          // Unlike the other three, this one costs a READ: the baseline comes
+          // from reading the server again after the WRITE lands. That extra
+          // request is the whole point of the comparison in M2-07, so the
+          // demo has to settle it too.
+          accept: { kind: 'refetch' },
+          onReject: 'keep',
+          started:
+            '저장을 시작했다. 성공 뒤 서버를 다시 읽어 기준을 맞춘다 — READ 완료도 눌러야 한다.',
+        });
+
+      case 'save-reject-remove':
+        return startSave(id, {
+          accept: { kind: 'submitted' },
+          // The other half of R2-11. Only a *confirmed* rejection may act on
+          // this, and only on the submitted edits that are still unchanged -
+          // a later input on the same path, an edit on another field and an
+          // accepted server value all stay.
+          onReject: 'remove',
+          started:
+            '저장을 시작했다. 확정 거절이면 고정한 제출 입력만 되돌린다 — unknown이면 되돌리지 않는다.',
+        });
 
       case 'edit-after-capture':
         if (!loaded()) return notLoaded(id);

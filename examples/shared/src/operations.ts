@@ -20,6 +20,7 @@ export const OPERATION_GROUPS = [
       ['next-write-unknown', '다음 WRITE 결과 불명 예약'],
       ['next-write-sync-error', '다음 WRITE 성공 + 복구 READ 실패 예약'],
       ['next-write-corrected', '다음 WRITE 서버 보정 예약'],
+      ['server-edit-memo', '서버가 무관한 필드를 바꿈'],
     ],
   },
   {
@@ -67,6 +68,7 @@ export const OPERATION_GROUPS = [
       ['save', '저장 실행 (제출값 수용)'],
       ['save-with-response', '저장 실행 (응답 매핑 수용)'],
       ['save-with-refetch', '저장 실행 (사후 재조회 수용)'],
+      ['save-reject-remove', '저장 실행 (거절 시 제출 입력 되돌림)'],
       ['edit-after-capture', '제출 뒤 추가 입력'],
     ],
   },

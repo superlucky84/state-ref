@@ -1,3 +1,4 @@
+import { MutationRejectedError } from '@stateref/sync';
 import { createDeferred } from './deferred';
 import type { Deferred } from './deferred';
 import type {
@@ -180,7 +181,15 @@ export function createMockServer(initial: Profile): MockServer {
           drop(item);
           entry = replace(entry, outcome, true);
           if (outcome === 'rejected') {
-            deferred.reject(new Error(`${entry.id} rejected`));
+            // A confirmed rejection has to be *typed* as one. sync classifies
+            // any other failure as `unknown`, because a plain transport error
+            // cannot tell the client whether the server stored the write
+            // (`packages/sync/src/mutation.ts`). Rejecting with a plain Error
+            // here made the reject button produce `unknown` and put the whole
+            // rejected/unknown distinction out of reach (B8-7-05).
+            deferred.reject(
+              new MutationRejectedError(`${entry.id} rejected`, 'validation')
+            );
             return;
           }
           // Both remaining outcomes mean the server accepted the WRITE. The
