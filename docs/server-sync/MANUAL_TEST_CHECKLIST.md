@@ -2,7 +2,7 @@
 
 - 개정일: 2026-09-24. 기준 SHA: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
 - 기준: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md).
-- 상태: Phase 8.7 수행 중. 2026-09-25 기준 **M2-05·M2-07·M2-08·M2-09 통과**, M2-04·M2-06 부분 수행, 나머지 14항목 미수행이다. 미수행 항목은 기능 동작의 증거가 아니다. 수행 중 찾은 블로커 B8-7-01~05·09는 모두 해소했고, B8-7-06~08은 계측 부재로 [Phase 8.5 단계 11](./PHASE8_5.md)에서 처리했다.
+- 상태: Phase 8.7 수행 중. 2026-09-26 기준 **M2-05·M2-07·M2-08·M2-09·M2-10 통과**, M2-04·M2-06 부분 수행, 나머지 13항목 미수행이다. 미수행 항목은 기능 동작의 증거가 아니다. 수행 중 찾은 블로커 B8-7-01~05·09~12는 모두 해소했고, B8-7-06~08은 계측 부재로 [Phase 8.5 단계 11](./PHASE8_5.md)에서 처리했다. **[B8-7-13](#b8-7-13)은 미해소**다 — 데모 계측 문제이며 M2-10을 막지 않았다.
 
 ## 1. 환경과 fixture
 
@@ -32,7 +32,7 @@
 | React SSR / hydration | `pnpm --filter stateref-example-react dev:ssr` | http://localhost:5191 |
 | Vue SSR / hydration (`onServerPrefetch`) | `pnpm --filter stateref-example-vue dev:ssr` | http://localhost:5192 |
 
-다섯 커넥터 데모는 `examples/shared`의 같은 모델과 같은 조작 43개를 렌더한다. 번들 허브(5186)에 ESM 네 조합과 UMD 네 페이지의 링크가 있다. **Preact·Svelte·Solid에는 SSR 데모가 없다** — 그 hydration은 미검증이다([DC8-5-04](./PHASE8_5.md)).
+다섯 커넥터 데모는 `examples/shared`의 같은 모델과 같은 조작 44개를 렌더한다. 번들 허브(5186)에 ESM 네 조합과 UMD 네 페이지의 링크가 있다. **Preact·Svelte·Solid에는 SSR 데모가 없다** — 그 hydration은 미검증이다([DC8-5-04](./PHASE8_5.md)).
 
 fixture는 시간을 제어하지 못한다([DC8-5-12](./PHASE8_5.md)). 제어 가능한 것은 주입한 환경 사건(focus·reconnect·online), READ/WRITE의 완료 시점과 결과, 요청 타임라인 기록이다. `staleTime`·`refetchInterval`은 실제 시간으로 흐른다.
 
@@ -247,12 +247,40 @@ fixture는 시간을 제어하지 못한다([DC8-5-12](./PHASE8_5.md)). 제어 �
 
 ### M2-10 — 저장 성공과 기준 복구 실패 (R2-12)
 
-- [ ] WRITE는 성공하고 사후 READ만 실패시키면 두 결과가 구분되어 표시된다.
-- [ ] 복구 시 WRITE를 재전송하지 않는다.
-- [ ] 서버 저장 여부를 모르는 unknown과 확정 거절을 구별한다.
-- [ ] 연결된 대상의 후속 작업이 정의된 복구 장벽을 따른다.
+- [x] WRITE는 성공하고 사후 READ만 실패시키면 두 결과가 구분되어 표시된다.
+- [x] 복구 시 WRITE를 재전송하지 않는다.
+- [x] 서버 저장 여부를 모르는 unknown과 확정 거절을 구별한다.
+- [x] 연결된 대상의 후속 작업이 정의된 복구 장벽을 따른다.
 
-**합격:** 성공 저장을 실패/취소로 오인하거나 중복 실행하지 않음. **결과: 미수행.**
+**합격:** 성공 저장을 실패/취소로 오인하거나 중복 실행하지 않음. **결과: 통과.** 2026-09-26, React 데모(http://localhost:5181), 구현 SHA `f1dda90` + [DC8-5-43~46](./PHASE8_5.md)(미커밋), 검증자 superlucky84, Chrome. 수행 중 찾은 [B8-7-13](#b8-7-13)은 이후 해소했고, 아래 기록은 해소 **전** 화면이다 — 판정에 쓴 값은 그 결함의 영향을 받지 않는다(`진행 중`·요청 표 대신 `mutation phase`로 판정했다).
+
+- **저장은 성공했고 기준 복구만 실패했다.** `도시 → 부산` → `제출할 변경 고정`(version 1, 변경 1건) → `다음 WRITE 성공 + 복구 READ 실패 예약` → `저장 실행 (사후 재조회 수용)` → 완료 반복. 요청 표에 `WRITE-1 success-then-read-failure` 뒤로 `READ-3`~`READ-6`이 **네 줄 모두 `error`**다 — 재시도 예산 3회를 소진한 4회 시도다. 끝 상태는 `mutation phase = sync-error`·`진행 중 WRITE 0`·`서버 도시/revision = 부산 / 2`·`READ/WRITE = 6 / 1`이고, 패널 A는 `status/fetch = error / idle`·`unconfirmed=true`·`invalidated=true`·`dirty=true`에 `1 city "서울"→"부산"`이 남았다. **한 화면이 두 사실을 따로 말한다 — 서버는 저장했고(`부산 / 2`), 클라이언트는 그 기준을 확인하지 못했다(`error`·미확정).** 저장을 실패로 오인할 자리가 없다.
+- **복구가 WRITE를 다시 보내지 않았다.** 이어서 `재조회` → 완료. `READ/WRITE = 7 / 1`로 **WRITE는 1회 그대로**이고 `READ-7 success`가 더해졌다. 패널 A는 `success / idle`·`unconfirmed=false`·`invalidated=false`·`dirty=false`·`변경 없음`·version 2, 도시는 `부산`이다. 기준을 고친 것은 재조회이지 재전송이 아니다.
+- **unknown과 확정 거절이 화면에서 갈린다.** 앞부분(`도시 → 부산` 고정)과 저장 버튼(`저장 실행 (거절 시 제출 입력 되돌림)`)이 같고 예약만 다른 두 수행이다.
+
+| | `다음 WRITE 전송 실패 예약 (결과 불명)` | `다음 WRITE 확정 거절 예약` |
+|---|---|---|
+| `mutation phase` | `unknown` | `rejected` |
+| `unconfirmed (미확정)` | **`true`** | `false` |
+| 패널 A 도시 | **`부산` 유지** | **`서울`로 되돌림** |
+| `dirty` / 변경 표 | `true` / `1 city` 남음 | `false` / `변경 없음` |
+| 요청 표 결과 | `transport-failure` | `rejected` |
+| 서버 도시 / revision | `서울 / 1` | `서울 / 1` |
+
+  **서버 상태는 둘 다 `서울 / 1`로 같다.** 화면을 가르는 것은 서버가 한 일이 아니라 **클라이언트가 들은 말**이다 — 확정 거절은 저장되지 않았음을 알려 주므로 제출 입력을 되돌리고, 불명은 저장됐을 수도 있으므로 되돌리지 않는다. `invalidated`가 거절 뒤에도 `true`로 남는 것은 [M2-09](#m2-09)에 기록한 계약 그대로다.
+- **복구 장벽이 조회를 거절하고, 그 사실을 말한다.** `저장 실행 (제출값 수용)`을 완료하지 않은 채(`WRITE-1 in-flight`·`진행 중 WRITE 1`) `재조회`를 누르자 결과가 `재조회가 연결 장벽에 막혀 거절됐다: Error: A linked operation is pending for this query. …`이고 `READ/WRITE = 2 / 1`로 **READ가 늘지 않았다.** 이어서 `최초 조회`를 누르자 결과가 `패널 조회만 …`으로 바뀌고 `READ = 3`·`READ-3 in-flight`가 되었다 — 다른 key인 readonly 조회는 장벽 밖이라 시작한다. **일부만 거절된다는 사실이 문구와 요청 표 양쪽에서 확인된다.**
+
+<a id="b8-7-10"></a>
+**B8-7-10 — `다음 WRITE 성공 + 복구 READ 실패 예약`이 성공과 구별되지 않았다. 해소됨([DC8-5-43](./PHASE8_5.md)).** 예약이 READ 실패를 **1회만** 큐에 넣어, 패널 조회의 `retry: 3`이 그것을 흡수하고 두 번째 시도가 성공했다 — 화면은 `success`·`dirty=false`·`unconfirmed=false`로 평범한 성공과 같았다. 연결 복구 READ는 일반 조회와 같은 재시도 체인을 타고(`packages/sync/src/index.ts:711`) `sync-error`는 그 체인이 끝내 실패할 때만 나온다(`packages/sync/src/mutation.ts:318`). **라이브러리는 자기 기본 재시도 정책대로 동작했고, 틀린 것은 한 번만 예약한 fixture다.** 예약이 `QUERY_RETRY + 1`회를 넣도록 고쳤다. 해소 뒤 위 기록대로 `READ-3`~`READ-6` 네 줄이 모두 실패하고 `sync-error`에 도달했다.
+
+<a id="b8-7-11"></a>
+**B8-7-11 — settled `unknown`에 도달할 길이 없었다. 해소됨([DC8-5-44](./PHASE8_5.md)).** 기존 `다음 WRITE 결과 불명 예약`은 WRITE가 **영원히 응답하지 않게** 만들어 `phase`가 `pending`에 머물 뿐 `unconfirmed`를 켜지 않는다. 라이브러리의 `unknown`은 **전송이 실패했는데 서버가 저장했는지 알 수 없는** 결과이고, 그 길은 [B8-7-05](#b8-7-05)가 평범한 `Error`를 `MutationRejectedError`로 바꾼 뒤로 데모에 남아 있지 않았다 — **확정 거절을 도달 가능하게 만든 수정이 settled `unknown`을 도달 불가로 만들었다.** [R2-12](./REQUIREMENTS.md)는 둘의 구별을 요구하므로 양쪽이 다 필요하다. WRITE 결과 `transport-failure`와 조작 `다음 WRITE 전송 실패 예약 (결과 불명)`을 더하고(43 → **44개**), 기존 조작은 `다음 WRITE 응답 없음 예약 (계속 진행 중)`으로 라벨만 바꿔 셋을 구별한다.
+
+<a id="b8-7-12"></a>
+**B8-7-12 — 장벽 거절을 조작이 삼켰다. 해소됨([DC8-5-45](./PHASE8_5.md)).** 연결 WRITE가 떠 있는 동안 같은 query의 조회는 거절되는데(`packages/sync/src/index.ts:717`) 조작 `재조회`가 그 거절을 `.catch(() => undefined)`로 버리고 `재조회를 시작했다`라고 답했다 — **장벽에 막힌 것과 정상 시작이 화면에서 같아 보였다.** 위 넷째 항목이 확인하라는 것이 바로 그 장벽이다. `재조회`와 `최초 조회`가 sync의 메시지를 그대로 인용해 답하게 했다([DC8-5-16](./PHASE8_5.md)). 버튼은 늘지 않는다.
+
+<a id="b8-7-13"></a>
+**B8-7-13 — 요청 카드가 재시도로 생긴 요청을 그리지 않았다. 해소됨([DC8-5-47](./PHASE8_5.md)).** `서버 상태와 요청 기록` 카드는 `ui.tick`을 읽어 구독하는데, tick은 **조작이 실행될 때만** 올랐다(`examples/shared/src/model.ts`의 `bump`). 재시도로 발행된 READ는 조작 없이 비동기로 생기므로 카드가 다시 그려지지 않았고, 실제로 READ가 떠 있어도 `진행 중`이 `0`으로 보이며 요청 표에도 그 줄이 없었다. 이번 수행에서 "`진행 중`이 0이 될 때까지 누른다"는 절차가 이 때문에 **작업이 끝나기 전에 멈추게** 만들었다(`READ-3`·`READ-4`만 나온 상태에서 중단). 판정을 `mutation phase`로 하면 되므로 M2-10을 막지는 않았고, 위 결과는 그렇게 수행했다. **라이브러리가 아니라 데모의 계측 문제다** — mock 서버가 요청 목록·진행 목록·서버 값의 변화를 알리고 모델이 그때 tick을 올린다. 해소 뒤에는 `진행 중`과 요청 표가 재시도까지 따라가므로 종료 조건으로 다시 쓸 수 있다.
 
 ### M2-11 — 늦은 조회와 작업 순서 (R2-13)
 

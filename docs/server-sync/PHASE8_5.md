@@ -62,6 +62,12 @@ Phase 8.1~8.4는 자동 테스트로 계약을 고정했다. 8.5는 **사람이 
 - [x] **DC8-5-40 / 서버를 몰래 바꾸는 조작을 하나 둔다:** R2-11의 "외부 갱신 보존"은 실패 복구가 **서버가 따로 바꾼 필드**를 지키는지 묻는데, 기존 조작은 전부 WRITE를 통해서만 서버를 바꿔 그 상황이 만들어지지 않았다(B8-7-07). `서버가 무관한 필드를 바꿈`이 `server.setValue`로 메모만 바꾸고 revision을 올린다. 메모를 고른 이유는 **어떤 draft도 DTO도 건드리지 않는 유일한 필드**이기 때문이다. 클라이언트는 재조회해야 그 값을 받으므로, 조작의 결과 문구가 그 사실을 먼저 말한다. 조작은 41개에서 **43개**가 된다(DC8-5-39와 합쳐).
 - [x] **DC8-5-41 / 저장 4종을 헬퍼 하나로 모으고, 낡은 제출은 말로 답한다:** B8-7-09로 확인했다. `제출할 변경 고정` → `제출 뒤 추가 입력` → `저장 실행` 순서로 누르면 `mutation.start`가 `Submission is stale.`로 던지고 **그 예외가 `run()` 밖으로 나가 클릭 핸들러가 터졌다** — 브라우저에서는 화면이 멈춘 것처럼 보인다. 지역 편집은 무엇이든 resource revision을 올리고(`packages/sync/src/resource.ts:137`) `mutation.start`는 revision이 어긋난 제출을 거절하므로(`packages/sync/src/index.ts:1431`), **이것은 라이브러리의 올바른 거절이고 틀린 것은 그것을 받지 않은 데모다.** 모든 조작은 던지지 않고 답한다는 규칙(DC8-5-16)에 따라 잡아서 "다시 고정하거나, 후속 입력은 저장을 시작한 뒤에 넣는다"로 답한다. 네 저장이 수용 방식과 거절 정책만 다르고 나머지가 같으므로 `startSave` 헬퍼로 모았다 — **방어를 네 번 쓰면 다음에 추가되는 저장이 그것을 빠뜨린다.**
 - [x] **DC8-5-42 / M2-09의 "부모 생성" 항목은 데모 한계로 닫는다:** 체크리스트 셋째 항목("실패한 부모 생성에 의존하는 후속 입력은 잃지 않고 충돌로 남는다")을 화면에서 보려면 서버에 없는 부모를 만들고 그 자식을 편집한 뒤 부모 생성만 제출해 거절시켜야 한다. fixture의 `office`는 서버가 처음부터 갖고 있어 **생성 상황 자체가 없고**, 만들려면 서버측 제거 조작과 생성·자식 편집 조작까지 3개가 더 필요하다. 조작이 이미 43개이고 수행자가 버튼 수를 부담스러워한 전례가 있어(8.7 진행 기록) 여기서 멈춘다. 이 동작은 `packages/sync/src/tests/mutation.test.ts:285`(`keeps a later dependent child edit when its submitted parent is rejected`)가 T2-11로 고정하고 있다 — **라이브러리 공백이 아니라 데모 한계다.** M2-09 결과란에 그렇게 적는다.
+- [x] **DC8-5-43 / 사후 READ 실패는 재시도 예산을 다 써야 화면에 나온다:** B8-7-10으로 확인했다. `다음 WRITE 성공 + 복구 READ 실패 예약`이 READ 실패를 **1회만** 큐에 넣어, 패널 조회의 `retry: 3`이 그것을 흡수하고 두 번째 시도가 성공했다 — 화면은 `phase=success`·`dirty=false`·`invalidated=false`로 **평범한 성공과 구별되지 않았다.** 연결 복구 READ는 `entry.load(true, submission, true)`로 일반 조회와 같은 재시도 체인을 타고(`packages/sync/src/index.ts:711`), `sync-error`는 `link.success`가 던질 때만 나온다(`packages/sync/src/mutation.ts:318`). **라이브러리는 자기 기본 재시도 정책대로 동작한다.** `nextWrite(outcome, readFailures?)`가 실패 횟수를 받고 조작이 `QUERY_RETRY + 1`회를 넘긴다. 버튼은 늘지 않는다. 예산을 0으로 줄이지 않는 이유는 데모가 sync의 **실제 기본 정책**을 계속 시험해야 하기 때문이다(DC8-5-29). 대가는 완료를 여러 번 눌러야 하는 것이고, 조작의 결과 문구가 그 횟수를 먼저 말한다. B8-7-01과 같은 부류이며, 그때 세운 `nextRead`의 반복 개념을 WRITE 쪽에도 붙이는 일이다.
+- [x] **DC8-5-44 / settled `unknown`에 도달하는 길을 만든다:** B8-7-11으로 확인했다. 데모의 `다음 WRITE 결과 불명 예약`은 WRITE가 **영원히 응답하지 않게** 만든다 — 작업이 끝나지 않으므로 `phase`는 `pending`에 머물고 `unconfirmed`는 `false`다. 라이브러리가 말하는 `unknown`은 **전송이 실패했는데 서버가 저장했는지 알 수 없는** 결과이고(`packages/sync/src/mutation.ts:321`의 else 분기 → `link.uncertain()` → `unconfirmed=true`), 그 길은 **DC8-5-38이 평범한 `Error`를 `MutationRejectedError`로 바꾼 뒤로 데모에 남아 있지 않았다.** 확정 거절을 도달 가능하게 만든 수정이 settled `unknown`을 도달 불가로 만든 것이다 — [R2-12](./REQUIREMENTS.md)는 둘의 **구별**을 요구하므로 양쪽이 다 필요하다. WRITE 결과 `transport-failure`와 조작 `다음 WRITE 전송 실패 예약 (결과 불명)`을 더해 조작이 43개에서 **44개**가 된다. 기존 조작은 `다음 WRITE 응답 없음 예약 (계속 진행 중)`으로 **라벨만** 바꿔 둘을 구별한다. 영원히 진행 중인 WRITE는 `진행 중 WRITE`와 `serverBusy`를 화면에 오래 띄워 두는 유일한 수단이고 `fixture.test.ts`가 그 동작을 반례로 고정하고 있어 남긴다.
+- [x] **DC8-5-45 / 복구 장벽의 거절을 화면에 말한다:** B8-7-12로 확인했다. 연결 WRITE가 떠 있는 동안 같은 query의 조회는 거절되는데(`packages/sync/src/index.ts:717`) 조작 `재조회`가 그 거절을 `.catch(() => undefined)`로 삼키고 `재조회를 시작했다`라고 답했다 — **장벽에 막힌 것과 정상 시작이 화면에서 같아 보였다.** M2-10의 넷째 항목이 확인하라는 것이 바로 그 장벽이다. `재조회`와 `최초 조회`가 거절 사유를 말로 답하게 한다(DC8-5-16). 버튼은 늘지 않는다. **B8-7-05와 같은 부류다** — 그때는 버튼 라벨이, 이번에는 결과 문구가 실제 동작과 달랐다. `최초 조회`는 readonly 조회(다른 key)를 함께 시작하므로 **일부만 거절된다**는 사실까지 문구가 말해야 한다.
+- [x] **DC8-5-46 / 예약 조작은 자기를 소비할 저장을 지목하고, 이름은 카탈로그에서 가져온다:** `sync-error`는 `accept: { kind: 'refetch' }`인 저장에서만 도달한다(`packages/sync/src/index.ts:1463`). `submitted`·`response` 수용은 사후 READ 자체가 없어 **예약한 READ 실패를 아무도 소비하지 않고**, 화면은 평범한 성공과 구별되지 않는다 — DC8-5-43이 예약 쪽의 함정을 없앴지만 같은 함정이 누르는 쪽에 남아 있었다. `다음 WRITE 성공 + 복구 READ 실패 예약`의 결과 문구가 `저장 실행 (사후 재조회 수용)`을 지목한다. 그 이름은 `operationLabel(id)`로 `operations.ts`에서 가져오고 문구에 베끼지 않는다 — 버튼 이름을 바꾸면 **없는 버튼을 가리키는 안내**가 화면에 남기 때문이다. 조작 수는 늘지 않는다.
+
+- [x] **DC8-5-47 / 화면은 조작 없이 일어난 일도 그린다:** B8-7-13으로 확인했다. `서버 상태와 요청 기록` 카드는 반응형이 아닌 mock 서버를 읽으므로 `ui.tick`으로 다시 그려지는데, tick은 조작이 실행될 때만 올랐다. **재시도가 발행한 READ에는 누른 버튼이 없다** — 그래서 요청이 떠 있는데도 `진행 중`이 `0`이고 요청 표에 줄이 없었고, M2-10 수행자가 작업이 끝나기 전에 멈췄다. 조작마다 tick을 올리는 방식은 "사람이 누른 것만 화면에 나온다"는 뜻이고, 자동 조회·재시도·지연 완료가 있는 데모에서는 **틀린 화면**이다. mock 서버가 요청 목록·진행 목록·서버 값의 변화를 알리고(`createMockServer(initial, notify)`) 모델이 그때 tick을 올린다. 조작의 `bump`도 tick을 올리므로 눌렀을 때는 두 번 오르지만, 화면이 같은 값을 두 번 그리는 것은 한 번도 안 그리는 것보다 낫다.
 
 ## 워크스페이스 구성
 
@@ -317,6 +323,40 @@ M2-09(실패한 작업만 복구)를 수행하려다 결함 2종과 계측 부�
 | 새 저장의 `onReject`를 `remove` → `keep` | 1개 실패 — `remove` 항목만 |
 
 - `pnpm gate` **19단계 PASS**, `pnpm check:examples` PASS(데모 5종이 모두 43개 렌더). 패키지 수치는 불변이다 — core **338**, sync **183**, React **36**, Preact **27**, Vue **35**, Svelte **26**, Solid **25**, core gzip **3,696/3,800 B**.
+
+### 단계 12 — Phase 8.7의 M2-10이 요구한 fixture 보강
+
+M2-10(저장 성공과 기준 복구 실패)의 클릭 절차를 쓰기 **전에** `examples/shared`에 일회용 프로브 테스트를 돌려 네 항목을 모두 미리 걸어 봤고, 계측 부재 3종을 찾았다. 셋 다 `examples/` 안이고 `packages/` 아래 소스는 이번에도 건드리지 않는다. **프로브는 확인 후 삭제하고, 같은 내용을 영구 테스트로 옮겼다.**
+
+- `examples/shared/src/types.ts`·`mock-server.ts`: `nextWrite(outcome, readFailures?)`가 사후 READ 실패 횟수를 받는다(DC8-5-43). WRITE 결과 `transport-failure`를 더해 평범한 `Error`로 reject한다 — 라이브러리가 settled `unknown`으로 분류하는 유일한 길이다(DC8-5-44).
+- `examples/shared/src/operations.ts`: `다음 WRITE 전송 실패 예약 (결과 불명)`을 더해 조작이 43개에서 **44개**가 된다. 기존 `다음 WRITE 결과 불명 예약`은 `다음 WRITE 응답 없음 예약 (계속 진행 중)`으로 라벨을 바꿨다(DC8-5-44). `operationLabel(id)`를 내보내 **버튼 이름의 단일 출처**를 만든다 — 결과 문구가 다른 버튼을 지목해야 할 때 라벨을 베끼지 않는다(DC8-5-46).
+- `examples/shared/src/model.ts`: `next-write-sync-error`가 `QUERY_RETRY + 1`회의 READ 실패를 예약하고, 결과 문구가 필요한 완료 횟수와 **함께 눌러야 할 저장**을 말한다(DC8-5-43·46). `refetch`·`load`가 연결 장벽의 거절을 말로 답한다(DC8-5-45).
+- `examples/shared/src/model.test.ts`: 테스트 7개를 더해 `examples/shared`는 38개에서 **45개**가 된다 — 실패 1회가 재시도에 흡수되는 것, 예산을 소진하면 `sync-error`·`unconfirmed=true`에 이르는 것, 그 실패가 WRITE를 재전송하지 않고 재조회로 복구되는 것, 전송 실패가 settled `unknown`·`unconfirmed=true`를 만드는 것, 확정 거절과 그것이 화면에서 갈리는 것, 연결 WRITE 중의 재조회가 거절을 말로 답하는 것, 그리고 예약이 지목하는 저장이 카탈로그의 이름으로 문구에 있고 **다른 수용 방식으로 누르면 평범한 성공으로 보인다는 것**. 단언은 `status`를 직접 읽지 않고 `resourcePanel()` 투영을 거친다 — 다섯 화면이 그리는 것과 같은 필드여야 M2-10의 "구분되어 **표시**된다"를 고정한다.
+- **복구 READ의 재시도 한 번은 완료 버튼 두 번이다.** 한 번은 떠 있는 요청을 끝내고, 재시도는 그 다음 macrotask에야 발행된다. 테스트의 drain은 그래서 횟수를 세지 않고 `pending`이 0으로 돌아올 때까지 돌며, 끝내 안 돌아오면 던진다 — 횟수를 고정했다면 예산이 바뀔 때 조용히 통과했을 자리다.
+- **DC8-5-46 / `sync-error`는 `accept: { kind: 'refetch' }`인 저장에서만 도달한다**(`packages/sync/src/index.ts:1463`). `submitted`·`response` 수용은 복구 READ 자체가 없어 예약한 READ 실패를 **아무도 소비하지 않고**, 화면은 평범한 성공과 구별되지 않는다 — B8-7-10과 같은 함정이 예약 쪽이 아니라 누르는 쪽에 남아 있었다. 예약 조작의 결과 문구가 `저장 실행 (사후 재조회 수용)`을 지목하고, 그 이름은 `operationLabel`로 카탈로그에서 가져온다. 라벨을 문구에 베껴 두면 버튼 이름을 바꿨을 때 **없는 버튼을 가리키는 안내**가 화면에 남는다.
+- **검증력 확인 — 결함 4종을 주입해 4종 모두 잡혔다.**
+
+| 주입한 결함 | 실패한 테스트 |
+| --- | --- |
+| `next-write-sync-error`가 READ 실패를 1회만 예약 (B8-7-10 당시 상태) | 2개 실패 — `sync-error` 도달 항목과 재조회 복구 항목 |
+| mock이 `transport-failure`를 `MutationRejectedError`로 reject (DC8-5-38 직후 상태) | 2개 실패 — settled `unknown` 항목과 거절·unknown 구별 항목 |
+| `refetch`가 장벽 거절을 다시 삼킴 (B8-7-12 당시 상태) | 1개 실패 — 장벽 거절 항목 |
+| 예약 문구에서 저장 이름을 뺌 | 1개 실패 — 저장 지목 항목 |
+
+- 주입 뒤 `model.ts`와 `mock-server.ts`를 원본과 `diff`로 대조해 동일하게 복원했다. 첫 항목(실패 1회 흡수)은 주입 어디서도 실패하지 않는다 — 그것은 회귀 감시가 아니라 **예산 전체를 예약해야 하는 이유 자체를 고정한** 테스트이기 때문이다.
+- `pnpm gate` **19단계 PASS**, `pnpm check:examples` PASS(데모 5종이 모두 **44개** 렌더). 패키지 수치는 불변이다 — core **338**, sync **183**, React **36**, Preact **27**, Vue **35**, Svelte **26**, Solid **25**, core gzip **3,696/3,800 B**. `packages/` 아래 변경 0.
+- **이 계측으로 M2-10을 수행했고 네 항목 모두 통과했다**(2026-09-26, React 데모, Chrome — [체크리스트 M2-10](./MANUAL_TEST_CHECKLIST.md)). 수행 중 데모 계측 결함 [B8-7-13](./MANUAL_TEST_CHECKLIST.md#b8-7-13)을 찾았고, 단계 13에서 해소했다.
+
+### 단계 13 — M2-10 수행이 찾은 계측 결함(B8-7-13)
+
+수행자가 재시도 체인 중간에서 멈췄다. 요청 카드가 `진행 중 0`을 보여 줬는데 실제로는 READ가 떠 있었다. `packages/` 아래 소스는 이번에도 건드리지 않는다.
+
+- `examples/shared/src/mock-server.ts`: `createMockServer(initial, notify?)`가 알림 함수를 받는다. 요청이 기록될 때, 결과가 바뀔 때(완료·중단), `setValue`로 서버 값이 바뀔 때 호출한다(DC8-5-47). 인자는 선택이라 기존 호출부(`ssr-model.ts`, `fixture.test.ts`)는 그대로다.
+- `examples/shared/src/model.ts`: 모델이 그 알림으로 `ui.tick`을 올린다. 서버를 먼저 만들어야 해서 `repaint`는 늦게 묶는다 — 패널이 구독하는 store가 그 시점에 아직 없다.
+- `examples/shared/src/model.test.ts`: 테스트 1개를 더해 `examples/shared`는 45개에서 **46개**가 된다 — 조작 없이 재시도가 요청을 발행했을 때 `inFlight`가 1이고 **tick이 올라 있는 것**. 알림을 no-op으로 되돌리는 주입 1종으로 이 테스트가 실패하는 것을 확인하고 복원했다.
+- 다섯 데모 모두 이 모델을 그리므로 화면 코드 변경은 없다.
+- `pnpm gate` **19단계 PASS**, `pnpm check:examples` PASS(5종 모두 44개 렌더). 패키지 수치 불변 — core **338**, sync **183**, React **36**, Preact **27**, Vue **35**, Svelte **26**, Solid **25**.
+
 
 ## 인계
 
