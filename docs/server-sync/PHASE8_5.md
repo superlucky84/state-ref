@@ -57,6 +57,11 @@ Phase 8.1~8.4는 자동 테스트로 계약을 고정했다. 8.5는 **사람이 
 - [x] **DC8-5-35 / 두 번째 연결 저장은 말로 거절한다:** 조작을 하나 더 두자 카탈로그 테스트가 즉시 실패했다 — 같은 query에 연결 작업을 두 개 시작하면 sync가 `A linked operation is already pending for this query.`로 거절하는데(Phase 4의 계약), 데모가 그것을 던져 버렸다. 두 저장 조작 모두 `panelA.status.pending`을 먼저 보고 말로 답한다. 모든 조작은 던지지 않고 답한다는 규칙(DC8-5-16)이 새 조작에도 적용된 것이며, **그 규칙을 검사하는 기존 테스트가 새 조작의 결함을 바로 잡아냈다.**
 - [x] **DC8-5-36 / `refetch` 수용까지 두어 세 방식을 모두 화면에서 구분한다:** [R2-09](./REQUIREMENTS.md)가 요구하는 것은 "재조회·응답 매핑·서버가 수용한 제출값 반영을 **구분**"이다. DC8-5-34로 둘까지는 화면에 올렸으나 `refetch`가 없어 M2-07이 셋 중 둘에서 멈췄다. 조작 `저장 실행 (사후 재조회 수용)`을 더해 41개가 된다. **이 방식만 추가 READ를 한 번 쓴다** — 앞의 둘은 0회이고, 그 차이가 M2-07 첫 항목이 보려는 전부다. 그래서 수행자는 WRITE 완료 뒤 READ 완료도 눌러야 하며, 조작의 결과 문구가 그 사실을 먼저 말한다.
 - [x] **DC8-5-37 / 체크리스트의 "revision 반영"은 R2-09의 요구가 아니다:** M2-07 둘째 항목은 "서버가 보정한 값과 revision을 반영한다"이지만 [R2-09](./REQUIREMENTS.md)의 문장에 revision은 없다. 이 fixture의 `Profile`에는 revision 필드가 없어 클라이언트가 반영할 대상 자체가 없고, 서버 revision은 요청 패널에만 나타난다. 모델에 revision을 넣으면 다섯 데모의 표시와 기존 테스트에 두루 걸리는데 **요구사항이 그것을 요구하지 않는다.** 따라서 fixture 모델의 한계로 기록하고 닫는다 — 라이브러리 공백이 아니다.
+- [x] **DC8-5-38 / 확정 거절은 타입으로 말해야 한다:** B8-7-05로 확인했다. mock의 `rejected` 결과가 평범한 `new Error(...)`로 reject해서 **`다음 WRITE 확정 거절 예약`이 실제로는 `unknown`을 만들었다.** sync는 `MutationRejectedError`인 실패만 `rejected`로 분류하고 나머지는 전부 `unknown`으로 둔다(`packages/sync/src/mutation.ts:321`) — 평범한 전송 오류는 서버가 저장했는지 말해 줄 수 없기 때문이며 **라이브러리는 명세대로 동작한다.** 그 결과 버튼 라벨이 하는 말과 실제가 달랐고, R2-11의 두 정책과 R2-12의 "확정 거절과 unknown 구별"이 **화면에서 도달 불가**였다. mock이 `MutationRejectedError`로 reject하도록 고쳤다. 버튼은 늘지 않는다. 검증: 옛 형태를 주입하면 새 테스트 3개가 실패한다.
+- [x] **DC8-5-39 / 두 거절 정책을 모두 화면에 둔다:** [R2-11](./REQUIREMENTS.md)은 "실패 작업만 제거**하거나** 입력 유지"를 요구하는데 저장 3종이 모두 `onReject`를 지정하지 않아 기본값 `keep` 하나만 쓰고 있었다(B8-7-06). `remove` 쪽은 화면에서 도달할 길이 없었다. 조작 `저장 실행 (거절 시 제출 입력 되돌림)`을 더해 **수용 방식은 `submitted`로 같고 거절 정책만 다른** 짝을 만들었다 — 차이가 하나여야 화면에서 무엇 때문에 달라졌는지 말할 수 있다. 기존 저장 3종도 `onReject: 'keep'`을 명시한다. **정책이 M2-09의 시험 대상인데 기본값에 기대면 소스가 그 사실을 말하지 않는다.**
+- [x] **DC8-5-40 / 서버를 몰래 바꾸는 조작을 하나 둔다:** R2-11의 "외부 갱신 보존"은 실패 복구가 **서버가 따로 바꾼 필드**를 지키는지 묻는데, 기존 조작은 전부 WRITE를 통해서만 서버를 바꿔 그 상황이 만들어지지 않았다(B8-7-07). `서버가 무관한 필드를 바꿈`이 `server.setValue`로 메모만 바꾸고 revision을 올린다. 메모를 고른 이유는 **어떤 draft도 DTO도 건드리지 않는 유일한 필드**이기 때문이다. 클라이언트는 재조회해야 그 값을 받으므로, 조작의 결과 문구가 그 사실을 먼저 말한다. 조작은 41개에서 **43개**가 된다(DC8-5-39와 합쳐).
+- [x] **DC8-5-41 / 저장 4종을 헬퍼 하나로 모으고, 낡은 제출은 말로 답한다:** B8-7-09로 확인했다. `제출할 변경 고정` → `제출 뒤 추가 입력` → `저장 실행` 순서로 누르면 `mutation.start`가 `Submission is stale.`로 던지고 **그 예외가 `run()` 밖으로 나가 클릭 핸들러가 터졌다** — 브라우저에서는 화면이 멈춘 것처럼 보인다. 지역 편집은 무엇이든 resource revision을 올리고(`packages/sync/src/resource.ts:137`) `mutation.start`는 revision이 어긋난 제출을 거절하므로(`packages/sync/src/index.ts:1431`), **이것은 라이브러리의 올바른 거절이고 틀린 것은 그것을 받지 않은 데모다.** 모든 조작은 던지지 않고 답한다는 규칙(DC8-5-16)에 따라 잡아서 "다시 고정하거나, 후속 입력은 저장을 시작한 뒤에 넣는다"로 답한다. 네 저장이 수용 방식과 거절 정책만 다르고 나머지가 같으므로 `startSave` 헬퍼로 모았다 — **방어를 네 번 쓰면 다음에 추가되는 저장이 그것을 빠뜨린다.**
+- [x] **DC8-5-42 / M2-09의 "부모 생성" 항목은 데모 한계로 닫는다:** 체크리스트 셋째 항목("실패한 부모 생성에 의존하는 후속 입력은 잃지 않고 충돌로 남는다")을 화면에서 보려면 서버에 없는 부모를 만들고 그 자식을 편집한 뒤 부모 생성만 제출해 거절시켜야 한다. fixture의 `office`는 서버가 처음부터 갖고 있어 **생성 상황 자체가 없고**, 만들려면 서버측 제거 조작과 생성·자식 편집 조작까지 3개가 더 필요하다. 조작이 이미 43개이고 수행자가 버튼 수를 부담스러워한 전례가 있어(8.7 진행 기록) 여기서 멈춘다. 이 동작은 `packages/sync/src/tests/mutation.test.ts:285`(`keeps a later dependent child edit when its submitted parent is rejected`)가 T2-11로 고정하고 있다 — **라이브러리 공백이 아니라 데모 한계다.** M2-09 결과란에 그렇게 적는다.
 
 ## 워크스페이스 구성
 
@@ -294,6 +299,24 @@ Phase 8.7의 수동 수행이 M2-04에서 막혀(B8-7-01) 8.5가 만든 fixture�
 - `examples/shared/src/scenario.ts`·`model.ts`: `SAVED_PATHS`를 `toSaveDto` 옆에 두고 `capture`가 그 경로의 변경만 고른다(DC8-5-33). 테스트 2개를 더해 `examples/shared`는 **28개**가 된다 — 고정한 제출에 `memo`가 없다는 것과, WRITE 성공 뒤에도 `memo`가 `changes()`에 남고 `dirty=true`라는 것.
 - `examples/shared/src/types.ts`·`mock-server.ts`·`model.ts`·`operations.ts`: 서버 보정 WRITE(`success-corrected`)와 수용 방식이 다른 저장 둘(`save-with-response`·`save-with-refetch`)을 더했다(DC8-5-34·36). 세 저장 조작 모두 연결 작업 중복을 말로 거절한다(DC8-5-35). 테스트 4개를 더해 `examples/shared`는 **32개**, 조작은 **41개**가 된다.
 - 다섯 데모의 패널 제목 3종을 조작 그룹과 겹치지 않게 바꾸고(DC8-5-32), `scripts/check-example-operations.mjs`에 제목 충돌 검사를 더했다. 주입 1종으로 검사가 실패하는 것을 확인했고, 복원 후 통과한다.
+
+### 단계 11 — Phase 8.7의 M2-09가 요구한 fixture 보강
+
+M2-09(실패한 작업만 복구)를 수행하려다 결함 2종과 계측 부재 2종을 찾았다. `packages/` 아래 소스는 이번에도 건드리지 않는다.
+
+- `examples/shared/src/mock-server.ts`: `rejected` 결과가 `MutationRejectedError`로 reject한다(DC8-5-38). **이 한 줄이 없으면 확정 거절이 화면에 존재하지 않는다.**
+- `examples/shared/src/operations.ts`: `서버가 무관한 필드를 바꿈`과 `저장 실행 (거절 시 제출 입력 되돌림)`을 더해 조작이 41개에서 **43개**가 된다(DC8-5-39·40).
+- `examples/shared/src/model.ts`: 저장 4종을 `startSave` 헬퍼로 모으고, 낡은 제출로 `mutation.start`가 던지는 것을 잡아 말로 답한다(DC8-5-41). 저장마다 `onReject`를 명시한다.
+- `examples/shared/src/model.test.ts`: 테스트 6개를 더해 `examples/shared`는 32개에서 **38개**가 된다 — 예약한 거절이 `rejected`로 보고되는 것, `keep`이 제출 입력을 지키는 것, `remove`가 제출한 것만 되돌리고 무관한 편집은 남기는 것, 저장 시작 **뒤에** 들어온 같은 경로 입력과 외부 서버 갱신이 둘 다 살아남는 것, 낡은 제출이 던지지 않고 답하는 것, 먼저 성공한 작업의 기준이 나중 거절에 지워지지 않는 것.
+- **검증력 확인 — 결함 3종을 주입해 3종 모두 잡혔다.**
+
+| 주입한 결함 | 실패한 테스트 |
+| --- | --- |
+| mock이 평범한 `Error`로 reject (원래 상태) | 3개 실패 — `rejected`를 기대한 것 전부 |
+| `startSave`의 try/catch 제거 | 1개 실패 — 낡은 제출 항목 |
+| 새 저장의 `onReject`를 `remove` → `keep` | 1개 실패 — `remove` 항목만 |
+
+- `pnpm gate` **19단계 PASS**, `pnpm check:examples` PASS(데모 5종이 모두 43개 렌더). 패키지 수치는 불변이다 — core **338**, sync **183**, React **36**, Preact **27**, Vue **35**, Svelte **26**, Solid **25**, core gzip **3,696/3,800 B**.
 
 ## 인계
 
