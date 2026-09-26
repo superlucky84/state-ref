@@ -27,6 +27,7 @@ export {
   REQUEST_CELLS,
   REQUEST_ROW_ATTR,
   label,
+  show,
 } from './fields';
 export type { CardId, FieldId, RequestCell } from './fields';
 export {

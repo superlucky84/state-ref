@@ -76,6 +76,20 @@ export type FieldId = keyof typeof FIELD_LABEL;
 export const label = (field: FieldId) => FIELD_LABEL[field];
 
 /**
+ * How a row's value becomes the text on screen.
+ *
+ * Each framework stringifies a non-string differently in its template -
+ * `JSON.stringify` in React/Preact/Solid, indented JSON in Vue, `String()` in
+ * Svelte - so the `사무실` row read three different ways for the same object,
+ * and Svelte's said `[object Object]` (B8-7-15). Nothing caught it: every demo
+ * type-checked, built and rendered its own way perfectly well. The five
+ * screens have to agree on the text before anyone can compare them, so the
+ * formatting belongs here rather than in five templates.
+ */
+export const show = (value: unknown): string =>
+  typeof value === 'string' ? value : JSON.stringify(value);
+
+/**
  * Which fields each card owns, split by when they exist.
  *
  * `always` is what a freshly opened page must show; `onceLoaded` needs a

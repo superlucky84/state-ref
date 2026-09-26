@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { label } from 'stateref-example-shared';
+import { label, show } from 'stateref-example-shared';
 import type { FieldId } from 'stateref-example-shared';
 
 /**
@@ -17,7 +17,7 @@ const props = defineProps<{ field: FieldId; value?: unknown }>();
   <div class="row" :data-field="props.field">
     <span>{{ label(props.field) }}</span>
     <slot
-      ><b>{{ props.value }}</b></slot
+      ><b>{{ show(props.value) }}</b></slot
     >
   </div>
 </template>

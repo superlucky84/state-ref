@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { label } from 'stateref-example-shared';
+  import { label, show } from 'stateref-example-shared';
   import type { FieldId } from 'stateref-example-shared';
 
   /**
@@ -16,5 +16,5 @@
 
 <div class="row" data-field={field}>
   <span>{label(field)}</span>
-  <slot><b>{value}</b></slot>
+  <slot><b>{show(value)}</b></slot>
 </div>

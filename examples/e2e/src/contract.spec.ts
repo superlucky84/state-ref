@@ -4,8 +4,9 @@ import {
   CARDS_ON_LOAD,
   OPERATION_IDS,
 } from 'stateref-example-shared';
+import type { OperationId } from 'stateref-example-shared';
 import { DEMOS, urlOf } from './demos';
-import { readScreen } from './read';
+import { readSettled } from './read';
 import type { ScreenReading } from './read';
 
 /**
@@ -85,17 +86,32 @@ function watch(page: import('@playwright/test').Page) {
  * is nowhere else for it to come from. (Agreement is not correctness: all five
  * can be wrong together, which is what the scenario expectations are for.)
  */
-test('the five demos read identically on load', async ({ browser }) => {
-  const readings: [string, ScreenReading][] = [];
-  for (const demo of DEMOS) {
-    const page = await browser.newPage();
-    await page.goto(urlOf(demo));
-    readings.push([demo.name, await readScreen(page)]);
-    await page.close();
-  }
+const STATES: readonly {
+  readonly name: string;
+  readonly press: readonly OperationId[];
+}[] = [
+  { name: 'on load', press: [] },
+  // The value rows only exist once a baseline does, and they are where the
+  // five screens actually disagreed (B8-7-15).
+  { name: 'after a first load', press: ['load', 'settle-all'] },
+];
 
-  const [firstName, first] = readings[0];
-  for (const [name, reading] of readings.slice(1)) {
-    expect(reading, `${name} differs from ${firstName}`).toEqual(first);
-  }
-});
+for (const state of STATES) {
+  test(`the five demos read identically ${state.name}`, async ({ browser }) => {
+    const readings: [string, ScreenReading][] = [];
+    for (const demo of DEMOS) {
+      const page = await browser.newPage();
+      await page.goto(urlOf(demo));
+      for (const id of state.press) {
+        await page.click(`button[data-operation="${id}"]`);
+      }
+      readings.push([demo.name, await readSettled(page)]);
+      await page.close();
+    }
+
+    const [firstName, first] = readings[0];
+    for (const [name, reading] of readings.slice(1)) {
+      expect(reading, `${name} differs from ${firstName}`).toEqual(first);
+    }
+  });
+}

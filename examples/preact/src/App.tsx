@@ -11,6 +11,7 @@ import {
   label as fieldLabel,
   requestPanel,
   resourcePanel,
+  show,
 } from 'stateref-example-shared';
 import type {
   CardId,
@@ -62,7 +63,7 @@ function Row({ field, value }: { field: FieldId; value: unknown }) {
   return (
     <div class="row" data-field={field}>
       <span>{fieldLabel(field)}</span>
-      <b>{typeof value === 'string' ? value : JSON.stringify(value)}</b>
+      <b>{show(value)}</b>
     </div>
   );
 }

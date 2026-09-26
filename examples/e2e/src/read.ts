@@ -76,3 +76,38 @@ export async function readScreen(page: Page): Promise<ScreenReading> {
 
   return { cards, requests };
 }
+
+/**
+ * Read a screen that has stopped changing.
+ *
+ * The five frameworks batch differently - Vue applies on its own tick, so two
+ * quick clicks and one read caught its screen one operation behind. That is
+ * not a connector defect and must not be reported as one; a comparison across
+ * demos is only meaningful on a settled screen. "Settled" here means two
+ * consecutive readings agree, which needs no per-framework knowledge.
+ *
+ * A screen that never settles is a defect, so this throws rather than waiting
+ * forever. Anything genuinely in flight (a pending request, a retry chain) is
+ * settled by an operation, not by time.
+ */
+export async function readSettled(
+  page: Page,
+  timeoutMs = 3000
+): Promise<ScreenReading> {
+  const deadline = Date.now() + timeoutMs;
+  // The gap matters: two reads inside one frame both see the same stale DOM and
+  // would look settled. Vue applies on its own tick, and without a gap the
+  // comparison reported it as one operation behind - a defect in the reader,
+  // not in the connector.
+  const gap = () => page.waitForTimeout(50);
+  await gap();
+  let previous = JSON.stringify(await readScreen(page));
+  while (Date.now() < deadline) {
+    await gap();
+    const current = await readScreen(page);
+    const serialised = JSON.stringify(current);
+    if (serialised === previous) return current;
+    previous = serialised;
+  }
+  throw new Error(`the screen never settled within ${timeoutMs}ms`);
+}
