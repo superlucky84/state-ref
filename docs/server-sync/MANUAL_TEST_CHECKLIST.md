@@ -331,12 +331,18 @@ fixture는 시간을 제어하지 못한다([DC8-5-12](./PHASE8_5.md)). 제어 �
 
 ### M2-12 — Dirty 원본에서 clean Draft 생성 (R2-14/15)
 
-- [ ] 서버 서울 → resource 부산 상태에서 주소 가지의 draft 두 개를 만든다.
-- [ ] 두 draft는 부산을 보여주며 dirty=false, changes=[]다. resource는 서울 → 부산을 유지한다.
-- [ ] 첫 draft를 대전으로 편집하면 첫 draft만 부산 → 대전으로 바뀐다.
-- [ ] 다른 draft와 resource는 부산이며 READ/WRITE가 추가되지 않는다.
+- [x] 서버 서울 → resource 부산 상태에서 주소 가지의 draft 두 개를 만든다.
+- [x] 두 draft는 부산을 보여주며 dirty=false, changes=[]다. resource는 서울 → 부산을 유지한다.
+- [x] 첫 draft를 대전으로 편집하면 첫 draft만 부산 → 대전으로 바뀐다.
+- [x] 다른 draft와 resource는 부산이며 READ/WRITE가 추가되지 않는다.
 
-**합격:** 현재 원본 값은 사용하고 부모 변경 기록은 상속하지 않음. **결과: 미수행.**
+**합격:** 현재 원본 값은 사용하고 부모 변경 기록은 상속하지 않음. **결과: 통과.**
+
+**e2e 실행으로 채움**(DC8-8-08). 구현 SHA `3ebb0a3`, 2026-09-26, 시나리오 `M2-12`, 명령 `pnpm test:e2e`, Playwright 1.63.0의 Chromium, **데모 다섯 종 전부.** 이 항목은 이식이 아니라 **처음 수행한 것**이다.
+
+- **draft는 현재 값을 쓰고 부모의 변경 기록은 상속하지 않는다.** `도시 → 부산`으로 원본이 dirty(`서울 → 부산` 한 줄)인 상태에서 `현재 원본에서 draft 2개 분기`를 누르자 두 draft가 모두 **부산**을 보여주며 `dirty=false`·`변경 없음`·version `0 / 0`이었다. 원본의 `서울 → 부산`은 그대로 남았고 `READ/WRITE`는 `2 / 0`으로 분기가 요청을 만들지 않았다.
+- **편집은 그 draft에만 닿는다.** `draft A 도시 → 대전` 뒤 draft A만 `대전`·`dirty=true`·version `1 / 0`이 되고, 그 변경은 **`"부산" → "대전"`**이다 — before가 서버의 `서울`이 아니라 **갈라져 나온 시점의 원본 값**이다. draft B는 `부산`·clean, 원본도 `부산`이고 `READ/WRITE`는 `2 / 0` 그대로다.
+- 한 단계에서 세 개의 `changes` 표(원본·draft A·draft B)를 함께 비교한다 — 판독기에 그 표를 넣은 것이 이 항목을 위해서였다.
 
 ### M2-13 — Live 원본 갱신과 충돌 (R2-16)
 
