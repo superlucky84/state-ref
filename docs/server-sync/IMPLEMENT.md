@@ -254,6 +254,17 @@
 
 ## 5. 인계
 
+### 2026-09-26 — Phase 8.8 1~4단계 완료, M2-11 항목 1·2·6 통과
+
+- done: **[Phase 8.8](./PHASE8_8.md) 1~4단계.** 시나리오는 누를 조작과 그 뒤에 참이어야 하는 것만 담은 데이터이고, 같은 기대값을 **모델 판독기**(`screenOf`, vitest)와 **DOM 판독기**(`readSettled`, 실제 Chromium)가 각각 검사한다(DC8-8-02). 비교 의미는 `mismatches()` 한 함수이고, 브라우저 러너는 단계마다 다섯 화면의 판독이 deep-equal인지도 본다.
+- **[M2-11](./MANUAL_TEST_CHECKLIST.md#m2-11) 항목 1·2·6 통과 — 데모 다섯 종 전부에서.** 이 문서에서 React 외의 데모에 증거가 붙은 첫 항목이다. 첫 항목은 `beginLink()`가 진행 중 READ를 **abort**하므로 늦게 답할 기회 자체가 없다는 것으로, 둘째 항목은 signal을 무시한 READ가 접수 시점의 `서울`을 들고 늦게 도착해도 기준이 `부산`·version `2 / 0`에 그대로라는 것으로(`await queryFn` 뒤 epoch 검사, `packages/sync/src/index.ts:772`), 여섯째 항목은 연결 WRITE 중 `최초 조회`가 `profile/readonly` 하나만 발행하고 화면이 거절된 쪽을 이름으로 말한다는 것으로 성립했다. 항목 3·4·5는 `liveView`·key 전환·복수 mutation이 데모에 없어 미수행으로 남긴다.
+- **검증력:** fixture에서 DC8-5-49를 되돌리자 vitest의 `M2-11-2` 8단계가 실패하고 브라우저에서도 **다섯 데모가 모두** 같은 단계에서 실패했다. **다섯이 함께 실패하는 모양은 커넥터가 아니라 fixture·라이브러리가 틀렸다는 신호**이고, 한 종만 실패한 앞선 세 사례(CI-29, Solid의 `data-field` 누락, Vue의 `data-card` 제거)와 구별된다.
+- `POLICY_TEXT`를 공유 계약으로 옮겨 다섯 번째 중복 템플릿 리터럴을 없앴다 — 모델 판독기가 화면과 **구분자까지 같은 글자**를 만들어야 기대값이 양쪽에서 같은 뜻을 갖는다.
+- 수치: `examples/shared` 52 → **55개**, 브라우저 스위트 **15개**. 그 외 불변(core **338**, sync **183**, React **36**, Vue **36**, Preact **27**, Svelte **26**, Solid **25**). 조작 **45개**. `pnpm gate` 19단계 PASS, `pnpm check:examples` PASS.
+- next: 5단계(커넥터 한 종에 결함 주입 — 시나리오 단계 중간에서도 그 종만 실패하는지), 그다음 6단계(React로 이미 통과한 7개를 옮겨 다섯 종으로 넓히고 미수행 12개를 순서대로).
+- blockers: 없다.
+- 시작 기준 commit: `ee24f95`. 코드는 `ac0439e`.
+
 ### 2026-09-26 — Phase 8.8 장치 1~4단계와 connectVue CI-29
 
 - done: [Phase 8.8](./PHASE8_8.md)의 **1~2단계와 3~4단계의 절반.** `examples/e2e` 워크스페이스에서 `pnpm test:e2e`가 예제 5종을 빌드하고 각자의 `dist`를 4181~4185에 띄워 실제 Chromium으로 구동한다. 선택자 계약(`examples/shared/src/fields.ts`)이 카드 제목·라벨·카드별 field를 한 곳에 모으고, 데모는 `data-card`·`data-field`와 요청 줄의 `data-request`·`data-cell`을 붙인다. `read.ts`가 DOM만 읽어 `ScreenReading`을 만들고, 초기 화면과 첫 로드 뒤 화면에서 **다섯 데모의 판독이 문자 단위로 일치**한다. 12/12 통과, 콘솔 오류 0. **Preact·Vue·Svelte·Solid의 첫 브라우저 증거다.**
