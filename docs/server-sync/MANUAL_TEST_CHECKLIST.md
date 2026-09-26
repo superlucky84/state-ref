@@ -265,7 +265,9 @@ fixture는 시간을 제어하지 못한다([DC8-5-12](./PHASE8_5.md)). 제어 �
 - [x] 서버 저장 여부를 모르는 unknown과 확정 거절을 구별한다.
 - [x] 연결된 대상의 후속 작업이 정의된 복구 장벽을 따른다.
 
-**합격:** 성공 저장을 실패/취소로 오인하거나 중복 실행하지 않음. **결과: 통과.** 2026-09-26, React 데모(http://localhost:5181), 구현 SHA `f1dda90` + [DC8-5-43~46](./PHASE8_5.md)(미커밋), 검증자 superlucky84, Chrome. 수행 중 찾은 [B8-7-13](#b8-7-13)은 이후 해소했고, 아래 기록은 해소 **전** 화면이다 — 판정에 쓴 값은 그 결함의 영향을 받지 않는다(`진행 중`·요청 표 대신 `mutation phase`로 판정했다).
+**합격:** 성공 저장을 실패/취소로 오인하거나 중복 실행하지 않음. **결과: 통과.** 2026-09-26, React 데모(http://localhost:5181), 구현 SHA `f1dda90` + [DC8-5-43~46](./PHASE8_5.md)(미커밋), 검증자 superlucky84, Chrome.
+
+**다섯 종으로 넓힘 — e2e 실행으로 채움**(DC8-8-08). 구현 SHA `3f92364`, 시나리오 `M2-10-1`·`M2-10-3a`·`M2-10-3b`, 명령 `pnpm test:e2e`, Playwright 1.63.0의 Chromium. 아래 사람이 손으로 확인한 값들이 **Preact·Vue·Svelte·Solid에서도 같은 단계마다 같은 판독**으로 나온다. 넷째 항목(복구 장벽)은 [M2-11](#m2-11)의 `M2-11-6`이 같은 내용을 고정하므로 따로 옮기지 않았다. 손으로 한 번 통과한 항목이 이로써 회귀 감시가 됐다. 수행 중 찾은 [B8-7-13](#b8-7-13)은 이후 해소했고, 아래 기록은 해소 **전** 화면이다 — 판정에 쓴 값은 그 결함의 영향을 받지 않는다(`진행 중`·요청 표 대신 `mutation phase`로 판정했다).
 
 - **저장은 성공했고 기준 복구만 실패했다.** `도시 → 부산` → `제출할 변경 고정`(version 1, 변경 1건) → `다음 WRITE 성공 + 복구 READ 실패 예약` → `저장 실행 (사후 재조회 수용)` → 완료 반복. 요청 표에 `WRITE-1 success-then-read-failure` 뒤로 `READ-3`~`READ-6`이 **네 줄 모두 `error`**다 — 재시도 예산 3회를 소진한 4회 시도다. 끝 상태는 `mutation phase = sync-error`·`진행 중 WRITE 0`·`서버 도시/revision = 부산 / 2`·`READ/WRITE = 6 / 1`이고, 패널 A는 `status/fetch = error / idle`·`unconfirmed=true`·`invalidated=true`·`dirty=true`에 `1 city "서울"→"부산"`이 남았다. **한 화면이 두 사실을 따로 말한다 — 서버는 저장했고(`부산 / 2`), 클라이언트는 그 기준을 확인하지 못했다(`error`·미확정).** 저장을 실패로 오인할 자리가 없다.
 - **복구가 WRITE를 다시 보내지 않았다.** 이어서 `재조회` → 완료. `READ/WRITE = 7 / 1`로 **WRITE는 1회 그대로**이고 `READ-7 success`가 더해졌다. 패널 A는 `success / idle`·`unconfirmed=false`·`invalidated=false`·`dirty=false`·`변경 없음`·version 2, 도시는 `부산`이다. 기준을 고친 것은 재조회이지 재전송이 아니다.
