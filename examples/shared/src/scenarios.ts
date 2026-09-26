@@ -704,6 +704,211 @@ export const M2_05_08: readonly Scenario[] = [
 ];
 
 /**
+ * M2-09, already passed by hand in the React demo (2026-09-25).
+ *
+ * Five flows. The first two hold the acceptance kind fixed and vary `onReject`
+ * alone, so a difference on screen has one cause. The third bullet - a
+ * dependent input under a failed parent creation - stays closed as a demo limit
+ * (DC8-5-42); `packages/sync/src/tests/mutation.test.ts:285` pins it as T2-11.
+ *
+ * The order of the inputs is part of the contract: a local edit raises the
+ * resource revision and `mutation.start` refuses a submission whose revision
+ * has moved, so a later input has to arrive *after* the save starts. Putting it
+ * between capture and save makes the operation answer instead (B8-7-09).
+ */
+export const M2_09: readonly Scenario[] = [
+  {
+    id: 'M2-09-keep',
+    title: '거절해도 제출한 입력을 지킨다 (onReject: keep)',
+    pins: 'M2-09 첫째 항목 — keep 정책',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      { press: 'edit-memo' },
+      { press: 'capture' },
+      { press: 'next-write-rejected' },
+      { press: 'save' },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      {
+        note:
+          '제출한 city와 제출하지 않은 memo가 모두 남는다. 확정 거절은 ' +
+          'unconfirmed를 켜지 않지만 invalidated는 남는다 — beginLink()가 올린 것을 ' +
+          '성공 경로만 내린다',
+        expect: {
+          cards: {
+            operations: { mutationPhase: 'rejected', mutationPending: '0' },
+            'resource-a': {
+              city: '부산',
+              dirty: 'true',
+              unconfirmed: 'false',
+              invalidated: 'true',
+            },
+            requests: { server: '서울 / 1', counts: '2 / 1' },
+          },
+          changes: { 'resource-a': [{ path: 'city' }, { path: 'memo' }] },
+          absentRequests: ['WRITE-2'],
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-09-remove',
+    title: '거절하면 제출한 입력만 되돌린다 (onReject: remove)',
+    pins: 'M2-09 첫째 항목 — remove 정책',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      { press: 'edit-memo' },
+      { press: 'capture' },
+      { press: 'next-write-rejected' },
+      { press: 'save-reject-remove' },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      {
+        note:
+          '되돌린 것은 제출한 city뿐이고 제출하지 않은 memo는 남는다 — 그래서 ' +
+          'dirty도 여전히 켜져 있다. 복구가 revision을 한 칸 올린다(2 → 3)',
+        expect: {
+          cards: {
+            operations: { mutationPhase: 'rejected' },
+            'resource-a': {
+              city: '서울',
+              dirty: 'true',
+              unconfirmed: 'false',
+              invalidated: 'true',
+              version: '3 / 0',
+            },
+            requests: { server: '서울 / 1', counts: '2 / 1' },
+          },
+          changes: { 'resource-a': [{ path: 'memo' }] },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-09-later-input',
+    title: '저장 시작 뒤의 같은 경로 입력은 새 기준 위에 다시 얹힌다',
+    pins: 'M2-09 둘째 항목 — 같은 경로의 후속 입력',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      { press: 'capture' },
+      { press: 'next-write-rejected' },
+      { press: 'save-reject-remove' },
+      // After the save starts, not before: an edit in between moves the
+      // resource revision and `mutation.start` refuses the stale submission.
+      { press: 'edit-gwangju' },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      {
+        note:
+          '제출했던 서울 → 부산만 사라지고 후속 입력이 남아 서울 → 광주로 다시 ' +
+          '얹혔다. 충돌이 아니다 — 복구는 제출한 것만 되돌린다',
+        expect: {
+          cards: {
+            operations: { mutationPhase: 'rejected' },
+            'resource-a': { city: '광주', dirty: 'true' },
+          },
+          changes: {
+            'resource-a': [
+              {
+                path: 'city',
+                before: '"서울"',
+                after: '"광주"',
+                conflict: '-',
+              },
+            ],
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-09-server-update',
+    title: 'WRITE와 무관한 서버 갱신이 거절 복구를 통과한다',
+    pins: 'M2-09 둘째 항목 — 다른 필드의 서버 갱신',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'server-edit-memo' },
+      {
+        note: '서버만 바뀌었고 클라이언트는 아직 모른다',
+        expect: {
+          cards: {
+            'resource-a': { memo: '최초 메모' },
+            requests: { server: '서울 / 2' },
+          },
+        },
+      },
+      { press: 'refetch' },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      { press: 'capture' },
+      { press: 'next-write-rejected' },
+      { press: 'save-reject-remove' },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      {
+        note:
+          '거절 복구 뒤에도 서버가 따로 바꾼 memo는 기준에 남아 있다 — 복구는 ' +
+          '거절된 제출만 되돌리고 과거 전체 객체로 되감지 않는다',
+        expect: {
+          cards: {
+            operations: { mutationPhase: 'rejected' },
+            'resource-a': {
+              city: '서울',
+              memo: { contains: '서버 메모' },
+              dirty: 'false',
+            },
+            requests: { server: '서울 / 2', counts: '3 / 1' },
+          },
+          changes: { 'resource-a': [] },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-09-earlier-success',
+    title: '먼저 성공한 작업의 기준을 나중 거절이 지우지 않는다',
+    pins: 'M2-09 둘째 항목 — 다른 작업 결과 유지, 그리고 자동 재전송 금지',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      { press: 'capture' },
+      { press: 'save' },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      { press: 'edit-gwangju' },
+      { press: 'capture' },
+      { press: 'next-write-rejected' },
+      { press: 'save-reject-remove' },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      {
+        note:
+          '거절이 되돌린 곳은 광주를 제출하기 전, 즉 이미 수용된 부산이다 — ' +
+          '서울로 거슬러 가지 않는다. WRITE는 2회(성공 1 + 거절 1)로 재전송이 없다',
+        expect: {
+          cards: {
+            operations: { mutationPhase: 'rejected' },
+            'resource-a': { city: '부산', dirty: 'false' },
+            requests: { server: '부산 / 2', counts: '2 / 2' },
+          },
+          changes: { 'resource-a': [] },
+          absentRequests: ['WRITE-3'],
+        },
+      },
+    ],
+  },
+];
+
+/**
  * Every ported checklist item, in checklist order.
  *
  * Declared last on purpose: the lists it spreads have to exist first.
@@ -711,6 +916,7 @@ export const M2_05_08: readonly Scenario[] = [
 export const SCENARIOS: readonly Scenario[] = [
   ...M2_05_08,
   ...M2_07,
+  ...M2_09,
   ...M2_10,
   ...M2_11,
 ];
