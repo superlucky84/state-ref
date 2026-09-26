@@ -30,6 +30,10 @@ export {
   show,
 } from './fields';
 export type { CardId, FieldId, RequestCell } from './fields';
+export { screenOf } from './screen';
+export type { ScreenReading } from './screen';
+export { SCENARIOS, mismatches, pressesOf } from './scenarios';
+export type { Expectation, Match, Scenario, Step } from './scenarios';
 export {
   CITY,
   INITIAL_PROFILE,
@@ -41,6 +45,7 @@ export {
 export {
   AUTO_REFETCH,
   PANEL_KEY,
+  POLICY_TEXT,
   QUERY_RETRY,
   READING_QUERIES,
   READONLY_KEY,

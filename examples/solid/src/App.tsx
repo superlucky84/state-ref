@@ -2,9 +2,9 @@ import { For, Show, createMemo } from 'solid-js';
 import { connectSolid } from '@stateref/connect-solid';
 import type { Draft } from 'state-ref/draft';
 import {
-  AUTO_REFETCH,
   CARD_TITLE,
   OPERATION_GROUPS,
+  POLICY_TEXT,
   createDemoModel,
   draftPanel,
   label as fieldLabel,
@@ -300,10 +300,7 @@ export default function App() {
           <Row field="readonlyStatus" value={readonlyStatus().status} />
           <Flag field="focused" on={focused()} />
           <Flag field="online" on={online()} />
-          <Row
-            field="policy"
-            value={`staleTime ${AUTO_REFETCH.staleTime}ms · focus ${AUTO_REFETCH.refetchOnFocus} · reconnect ${AUTO_REFETCH.refetchOnReconnect} · interval ${AUTO_REFETCH.refetchInterval}`}
-          />
+          <Row field="policy" value={POLICY_TEXT} />
           <p class="note">
             staleTime과 interval은 실제 시간으로 흐른다. fixture가 제어하는 것은
             환경 사건과 요청 완료 시점이다.

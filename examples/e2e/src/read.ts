@@ -4,22 +4,19 @@ import {
   CARD_TITLE,
   REQUEST_CELLS,
 } from 'stateref-example-shared';
-import type { CardId } from 'stateref-example-shared';
+import type { CardId, ScreenReading } from 'stateref-example-shared';
 
 /**
- * What one demo's screen says, read from the rendered DOM.
+ * What one demo's screen says, read from the rendered DOM. The shape comes from
+ * `examples/shared` so that one expectation is checkable against both readers
+ * (DC8-8-02).
  *
  * Only the DOM: no model, no `window` global the demo exposes for testing
  * (DC8-8-01). The connector turning the shared model into these strings is the
  * whole of what Phase 8.7 set out to check, and a reading taken any other way
  * would be `examples/shared`'s vitest suite wearing a browser costume.
  */
-export type ScreenReading = Readonly<{
-  /** Card id -> field id -> what the row shows. Absent cards are absent. */
-  cards: Record<string, Record<string, string>>;
-  /** Request id -> its stable cells. The time columns are wall clock. */
-  requests: Record<string, Record<string, string>>;
-}>;
+export type { ScreenReading };
 
 const text = (value: string | null | undefined) => (value ?? '').trim();
 

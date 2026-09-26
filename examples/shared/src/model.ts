@@ -49,6 +49,17 @@ export const AUTO_REFETCH = {
 };
 
 /**
+ * The policy line every demo prints, built once.
+ *
+ * Five copies of this template literal drifted nowhere yet, but the model
+ * reader has to produce the same text as the screens for a scenario's
+ * expectation to mean anything in both places (DC8-8-02).
+ */
+export const POLICY_TEXT =
+  `staleTime ${AUTO_REFETCH.staleTime}ms · focus ${AUTO_REFETCH.refetchOnFocus}` +
+  ` · reconnect ${AUTO_REFETCH.refetchOnReconnect} · interval ${AUTO_REFETCH.refetchInterval}`;
+
+/**
  * The retry budget the panel queries state for themselves (DC8-5-29).
  *
  * The count matches sync's own default, so the demo keeps exercising the real

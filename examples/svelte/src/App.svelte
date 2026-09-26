@@ -1,9 +1,9 @@
 <script lang="ts">
   import { connectSvelte } from '@stateref/connect-svelte';
   import {
-    AUTO_REFETCH,
     CARD_TITLE,
     OPERATION_GROUPS,
+    POLICY_TEXT,
     requestPanel,
   } from 'stateref-example-shared';
   import type { OperationId } from 'stateref-example-shared';
@@ -42,7 +42,7 @@
 
   // The cast lives here: Svelte markup expressions are not TypeScript.
   const run = (id: string) => model.run(id as OperationId);
-  const policy = `staleTime ${AUTO_REFETCH.staleTime}ms · focus ${AUTO_REFETCH.refetchOnFocus} · reconnect ${AUTO_REFETCH.refetchOnReconnect} · interval ${AUTO_REFETCH.refetchInterval}`;
+
   const time = (at: number | null) =>
     at ? new Date(at).toLocaleTimeString() : '-';
 
@@ -118,7 +118,7 @@
       <Row field="readonlyStatus" value={$readonlyStatus.status} />
       <Flag field="focused" on={$focused} />
       <Flag field="online" on={$online} />
-      <Row field="policy" value={policy} />
+      <Row field="policy" value={POLICY_TEXT} />
       <p class="note">
         staleTime과 interval은 실제 시간으로 흐른다. fixture가 제어하는 것은
         환경 사건과 요청 완료 시점이다.

@@ -4,9 +4,9 @@ import type { StateRefStore } from 'state-ref';
 import type { QueryStatus, ResourceChange } from '@stateref/sync';
 import type { Draft } from 'state-ref/draft';
 import {
-  AUTO_REFETCH,
   CARD_TITLE,
   OPERATION_GROUPS,
+  POLICY_TEXT,
   createDemoModel,
   draftPanel,
   label as fieldLabel,
@@ -303,10 +303,7 @@ function StateCard() {
       <Row field="readonlyStatus" value={readonlyStatus.status.value} />
       <Flag field="focused" on={ui.focused.value} />
       <Flag field="online" on={ui.online.value} />
-      <Row
-        field="policy"
-        value={`staleTime ${AUTO_REFETCH.staleTime}ms · focus ${AUTO_REFETCH.refetchOnFocus} · reconnect ${AUTO_REFETCH.refetchOnReconnect} · interval ${AUTO_REFETCH.refetchInterval}`}
-      />
+      <Row field="policy" value={POLICY_TEXT} />
       <p className="note">
         staleTime과 interval은 실제 시간으로 흐른다. fixture가 제어하는 것은
         환경 사건과 요청 완료 시점이다.
