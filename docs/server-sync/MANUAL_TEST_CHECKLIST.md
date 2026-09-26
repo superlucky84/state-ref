@@ -143,6 +143,8 @@ fixture는 시간을 제어하지 못한다([DC8-5-12](./PHASE8_5.md)). 제어 �
 
 **합격:** resource는 마지막 수용 서버 기준으로 로컬 차이를 추적함. **결과: 통과.** 2026-09-24, React 데모(http://localhost:5181), 구현 SHA `57388d8`, 검증자 superlucky84, Chrome 153.0.8010.53.
 
+**다섯 종으로 넓힘 — e2e 실행으로 채움**(DC8-8-08). 구현 SHA `f64fef2`, 시나리오 `M2-05`, 명령 `pnpm test:e2e`. 셋째 항목(서버 값으로 되돌리면 clean)은 손으로 할 때 입력칸에 타이핑해서 했고 그 경로에는 버튼이 없었다 — 조작 `도시 → 서울 (서버 값으로 되돌림)`을 더해(46개) 두 러너가 같은 버튼을 누르게 했다. 되돌린 뒤 `changes`가 비고 `dirty=false`이며 `READ/WRITE`는 `2 / 0` 그대로인 것이 다섯 종에서 확인된다. 손으로 할 때 관찰된 `version` 증가(한글 조합 단계마다 쓰기)는 버튼 경로에서는 일어나지 않아 `2 / 0`이다.
+
 - 절차: `최초 조회` → `진행 중 READ 완료` → `도시 → 부산` → resource 패널 A의 `도시` 입력칸을 `서울`로 직접 수정.
 - 부산 편집 직후: `changes` 1줄 `city  "서울" → "부산"` 충돌 없음, `dirty=true`, `status/fetch=success/idle`, `version/conflicts=1 / 0`. `서버 도시/revision=서울 / 1`, `READ/WRITE=2 / 0`.
 - 서울로 되돌린 직후: `changes` **변경 없음**, `dirty=false`, `서버 도시/revision=서울 / 1`, `READ/WRITE=2 / 0`으로 동일.
@@ -205,6 +207,8 @@ fixture는 시간을 제어하지 못한다([DC8-5-12](./PHASE8_5.md)). 제어 �
 - [x] 서버 보정 응답을 자기 제출과 연결하여 처리한다.
 
 **합격:** 실제로 제출한 변경만 확정하고 미제출/후속 입력 보존. **결과: 통과.** 2026-09-25, React 데모, 구현 SHA `5a95a7c` + [DC8-5-34](./PHASE8_5.md), 검증자 superlucky84, Chrome 153.0.8010.53.
+
+**다섯 종으로 넓힘 — e2e 실행으로 채움**(DC8-8-08). 구현 SHA `f64fef2`, 시나리오 `M2-08`, 명령 `pnpm test:e2e`. 이 항목은 `changes` 표의 줄 내용으로 판정하므로 판독기에 그 표를 넣은 뒤에야 옮길 수 있었다 — 각 줄에 `data-change`와 셀 속성이 붙고 판독은 **보이는 순서 그대로** 목록을 만든다. **성공이 지운 것은 제출한 `city` 한 줄뿐**이고 `memo`(미제출)와 `zip`(제출 뒤 입력)이 남으며 `dirty`가 켜진 채인 것이 다섯 종에서 확인된다. `메모 N`·`zip 9NN`의 숫자는 `ui.tick`에서 나오므로 기대값에 고정하지 않았다 — 줄의 경로와 before만 고정한다.
 
 - 제출(B)과 후속 입력(C): `도시 → 부산`과 `무관한 필드 변경` 뒤 고정한 제출은 `version 2, 변경 1건`(city만)이다. `저장 실행` 직후 패널은 `serverBusy=true`·`invalidated=true`이고 `changes`는 `1 city 서울→부산`·`2 memo 최초 메모→메모 4` 두 줄이다. **WRITE가 떠 있는 동안** `제출 뒤 추가 입력`으로 zip을 96으로 바꾸자 `3 zip "01"→"96"`이 더해지고 version이 3이 되었다. WRITE는 그대로 1건이다.
 - 성공 후: `changes`가 `2 memo`·`3 zip` 두 줄로 남고 `dirty=true`, version 4, `serverBusy=false`·`invalidated=false`. 제출한 `1 city`만 사라졌다. `mutation phase=success`, `작업 1: success`, `서버 도시/revision = 부산 / 2`, `READ/WRITE = 2 / 1`.
