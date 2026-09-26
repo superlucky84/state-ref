@@ -213,6 +213,8 @@ export function createDemoModel(): DemoModel {
   });
 
   let drafts: DraftPair = { a: null, b: null, generation: 0 };
+  /** The last discarded draft A, kept so a dead ref can be touched on purpose. */
+  let discarded: Draft<Profile> | null = null;
   let submission: ResourceSubmission<Profile> | null = null;
 
   const bump = (operation: string, result: string) => {
@@ -566,9 +568,30 @@ export function createDemoModel(): DemoModel {
         const draft = requireDraft('a');
         if (!draft) return bump(id, '먼저 draft를 분기한다.');
         draft.discard();
+        // Held on purpose so the next operation can touch a dead ref. The demo
+        // otherwise empties the slot and its own guard answers first, which is
+        // not the same thing as the ref refusing (M2-15's fourth bullet).
+        discarded = draft;
         drafts = { ...drafts, a: null, generation: drafts.generation + 1 };
         ui.draftGeneration.value = drafts.generation;
         return bump(id, 'draft A를 폐기했다. 원본과 draft B는 살아 있다.');
+      }
+      case 'draft-a-write-after-discard': {
+        if (!discarded) return bump(id, '먼저 draft A를 폐기한다.');
+        try {
+          discarded.ref.city.value = CITY.draft;
+        } catch (error) {
+          // The draft's own vocabulary. A reader has to be able to tell this
+          // from a cancelled request or an aborted save, which is the half of
+          // M2-15's fourth bullet that this operation exists for.
+          return bump(
+            id,
+            `거절: ${String(
+              error
+            )} — 종료된 draft의 거절이고 네트워크 취소도 저장 취소도 아니다.`
+          );
+        }
+        return bump(id, '쓰기가 통과했다 — 종료된 draft가 거절하지 않았다.');
       }
       case 'draft-a-resolve-source':
       case 'draft-a-resolve-draft': {

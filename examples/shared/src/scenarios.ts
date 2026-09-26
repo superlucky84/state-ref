@@ -1358,12 +1358,12 @@ export const M2_14: readonly Scenario[] = [
 /**
  * M2-15, performed here for the first time - it was 미수행.
  *
- * The fourth bullet has two halves. "A discarded ref fails explicitly" is not
- * reachable: after `draft A 폐기` the demo's slot is empty and every draft
- * operation answers from its own guard, so nothing ever touches the dead ref.
- * The other half - that the refusal is not dressed up as a network or save
- * cancellation - is checked below, because that is exactly what the screen says
- * and does not say.
+ * The fourth bullet needed an operation that touches a *dead* ref on purpose.
+ * After `draft A 폐기` the demo's slot is empty, so every ordinary draft
+ * operation answers from the demo's own guard - which is not the same claim.
+ * `폐기한 draft A에 쓰기 시도` holds the discarded draft and writes through it,
+ * so both halves are checkable: the refusal is explicit and in the draft's own
+ * vocabulary, and it is not dressed up as a network or save cancellation.
  */
 export const M2_15: readonly Scenario[] = [
   {
@@ -1410,7 +1410,7 @@ export const M2_15: readonly Scenario[] = [
   {
     id: 'M2-15-discard',
     title: 'discard는 draft를 끝내고 원본의 변경은 남긴다',
-    pins: 'M2-15 둘째 항목, 그리고 넷째 항목의 후반부',
+    pins: 'M2-15 둘째·넷째 항목',
     steps: [
       { press: 'load' },
       { press: 'settle-all' },
@@ -1436,8 +1436,8 @@ export const M2_15: readonly Scenario[] = [
       { press: 'draft-a-daejeon' },
       {
         note:
-          '폐기한 draft를 향한 조작은 draft의 어휘로 거절된다 — 네트워크 취소도 ' +
-          '저장 취소도 아니다. mutation phase는 idle이고 READ/WRITE도 움직이지 않는다',
+          '폐기한 뒤에는 데모의 슬롯이 비어 있으므로 데모 자신의 가드가 먼저 답한다 ' +
+          '— 이것은 아직 ref의 거절이 아니다',
         expect: {
           cards: {
             operations: {
@@ -1445,6 +1445,26 @@ export const M2_15: readonly Scenario[] = [
               mutationPhase: 'idle',
               mutationPending: '0',
             },
+            requests: { counts: '2 / 0' },
+          },
+          absentCards: ['draft-a'],
+        },
+      },
+      { press: 'draft-a-write-after-discard' },
+      {
+        note:
+          '이 조작은 붙잡아 둔 종료된 ref에 일부러 쓴다. 거절이 명시적이고 ' +
+          '**draft 자신의 어휘**로 나온다 — `This draft has been discarded.` ' +
+          '네트워크 취소도 저장 취소도 아니다: 원본은 부산 그대로이고 ' +
+          'mutation phase는 idle, READ/WRITE도 2 / 0이다',
+        expect: {
+          cards: {
+            operations: {
+              lastResult: { contains: 'This draft has been discarded.' },
+              mutationPhase: 'idle',
+              mutationPending: '0',
+            },
+            'resource-a': { city: '부산', dirty: 'true' },
             requests: { counts: '2 / 0' },
           },
           absentCards: ['draft-a'],

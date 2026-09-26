@@ -59,6 +59,7 @@ export const OPERATION_GROUPS = [
       ['draft-b-apply', 'draft B 로컬 적용'],
       ['draft-a-reset', 'draft A 초기화'],
       ['draft-a-discard', 'draft A 폐기'],
+      ['draft-a-write-after-discard', '폐기한 draft A에 쓰기 시도'],
       ['draft-a-resolve-source', 'draft A 충돌 → 원본 선택'],
       ['draft-a-resolve-draft', 'draft A 충돌 → draft 선택'],
     ],
