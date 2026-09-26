@@ -1508,6 +1508,117 @@ export const M2_15: readonly Scenario[] = [
 ];
 
 /**
+ * M2-16, the two bullets the demo can reach.
+ *
+ * The other two need instruments that do not exist: there is no page-wide
+ * unsaved indicator to aggregate, and the readonly query is opened with
+ * `editable: false` so it has no changes, no version row and no card - nor is
+ * there any operation that hands one draft's change to another draft's
+ * `resolve`. Both are named in the checklist rather than guessed at.
+ */
+export const M2_16: readonly Scenario[] = [
+  {
+    id: 'M2-16-clean-source',
+    title: '원본 clean · draft dirty 조합이 따로 보인다',
+    pins: 'M2-16 첫째 항목 — M2-12가 덮지 않은 조합',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'branch-drafts' },
+      { press: 'draft-a-daejeon' },
+      {
+        note:
+          '원본은 서버 기준과 같아 clean이고 draft만 dirty다 — M2-12가 본 것은 ' +
+          '그 반대(원본 dirty · draft clean)였다. 두 dirty가 서로 다른 것의 변경을 ' +
+          '가리킨다는 것이 이 항목의 요점이다',
+        expect: {
+          cards: {
+            'resource-a': {
+              city: '서울',
+              dirty: 'false',
+              serverBusy: 'false',
+              version: '0 / 0',
+            },
+            'draft-a': { city: '대전', draftDirty: 'true', version: '1 / 0' },
+            'draft-b': { city: '서울', draftDirty: 'false' },
+          },
+          changes: {
+            'resource-a': [],
+            'draft-a': [{ path: 'city', before: '"서울"', after: '"대전"' }],
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-16-dirty-vs-pending',
+    title:
+      'dirty와 pending은 다른 축이고, 앞 작업의 종료가 새 작업을 비우지 않는다',
+    pins: 'M2-16 셋째 항목',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      { press: 'branch-drafts' },
+      { press: 'draft-a-daejeon' },
+      {
+        note:
+          '로컬 차이만 있는 상태 — dirty는 켜지고 pending은 0이다. 편집은 요청을 ' +
+          '만들지 않는다',
+        expect: {
+          cards: {
+            'resource-a': { dirty: 'true', serverBusy: 'false' },
+            operations: { mutationPhase: 'idle', mutationPending: '0' },
+            requests: { counts: '2 / 0' },
+          },
+        },
+      },
+      { press: 'capture' },
+      { press: 'save' },
+      {
+        note: '이제 둘이 함께 켜진다 — dirty는 여전히 로컬 차이, pending은 WRITE다',
+        expect: {
+          cards: {
+            'resource-a': { dirty: 'true', serverBusy: 'true' },
+            operations: { mutationPhase: 'pending', mutationPending: '1' },
+            requests: { counts: '2 / 1' },
+          },
+        },
+      },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      {
+        note: '성공이 dirty와 pending을 함께 내린다. draft의 dirty는 무관하게 남는다',
+        expect: {
+          cards: {
+            'resource-a': { dirty: 'false', serverBusy: 'false' },
+            'draft-a': { draftDirty: 'true' },
+            operations: { mutationPhase: 'success', mutationPending: '0' },
+          },
+        },
+      },
+      { press: 'edit-gwangju' },
+      { press: 'capture' },
+      { press: 'save' },
+      {
+        note:
+          '두 번째 작업이 pending으로 선다 — 앞 작업이 끝났다는 사실이 새 작업의 ' +
+          '상태를 비우지 않는다. WRITE는 2회이고 draft의 dirty는 두 저장을 지나 ' +
+          '그대로다',
+        expect: {
+          cards: {
+            'resource-a': { dirty: 'true', serverBusy: 'true' },
+            'draft-a': { draftDirty: 'true' },
+            operations: { mutationPhase: 'pending', mutationPending: '1' },
+            requests: { counts: '2 / 2' },
+          },
+        },
+      },
+    ],
+  },
+];
+
+/**
  * Every ported checklist item, in checklist order.
  *
  * Declared last on purpose: the lists it spreads have to exist first.
@@ -1522,4 +1633,5 @@ export const SCENARIOS: readonly Scenario[] = [
   ...M2_13,
   ...M2_14,
   ...M2_15,
+  ...M2_16,
 ];
