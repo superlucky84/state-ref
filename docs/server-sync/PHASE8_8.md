@@ -32,7 +32,7 @@
 각 단계는 끝난 자리에서 멈출 수 있어야 한다.
 
 1. **장치 뼈대 (완료).** 루트에 `@playwright/test`(chromium만), `examples/e2e` 워크스페이스에 `playwright.config.ts`와 다섯 `webServer`, 루트 스크립트 `pnpm test:e2e`(= `build:examples` + `playwright test`). **기준 테스트:** 다섯 데모가 모두 열리고 조작 버튼 45개가 보인다 — **통과**, 아래 검증 절.
-2. **선택자 계약 (버튼 완료, 값 남음).** 버튼은 이미 `data-operation`이 있어 e2e 대조만 붙였다(DC8-8-04). 남은 것은 값 쪽 — `examples/shared`가 field 이름 계약을 내보내고 다섯 데모가 `data-field`·요청 줄 속성을 붙인다. **기준 테스트:** 다섯 데모에서 계약의 모든 field가 DOM에 있고, `data-operation`이 `OPERATION_IDS`와 정확히 일대일이다(빠짐도 여분도 없다).
+2. **선택자 계약 (완료).** 버튼은 이미 `data-operation`이 있어 e2e 대조만 붙였다. 값 쪽은 `examples/shared/src/fields.ts`가 카드 제목·field 라벨·카드별 field 목록을 내보내고, 다섯 데모가 `data-card`·`data-field`와 요청 줄의 `data-request`·`data-cell`을 붙인다(DC8-8-04). **기준 테스트:** 다섯 데모에서 계약의 모든 카드와 `always` field가 DOM에 있고, `data-operation`이 `OPERATION_IDS`와 정확히 일대일이다 — **통과**, 아래 검증 절.
 3. **시나리오 자료형과 두 판독기.** `ScreenReading`과 시나리오 배열, 모델 판독기(vitest)와 DOM 판독기(e2e). 첫 시나리오는 **M2-11 항목 1·2·6**(계측이 방금 들어갔다 — [PHASE8_5 단계 14](./PHASE8_5.md)). **기준 테스트:** 같은 시나리오가 vitest의 모델 판독과 e2e의 DOM 판독에서 같은 기대값을 통과한다.
 4. **다섯 화면 대조와 기록.** 시나리오당 다섯 판독 수열을 모아 deep-equal을 단언하고, 불일치는 어느 데모가 어느 단계에서 어떻게 달랐는지로 보고한다. 콘솔·페이지 예외 수집을 붙인다. **기준 테스트:** M2-11 시나리오가 다섯 종에서 일치하고 콘솔 오류가 0이다.
 5. **검증력 확인(주입).** 커넥터 한 종에 결함 2종을 주입해 **그 종만** 실패하는 것을 확인하고, 계약 속성 하나를 지워 2단계 테스트가 실패하는 것을 확인한다. **기준 테스트:** 주입 3종 전부가 잡히고, 주입 뒤 `diff`로 복원이 확인된다.
@@ -58,7 +58,7 @@
 
 ## 검증
 
-### 단계 1~2 — 첫 실제 브라우저 실행 (2026-09-26)
+### 단계 1 — 첫 실제 브라우저 실행 (2026-09-26)
 
 `pnpm test:e2e`가 예제 5종을 빌드하고, 각자의 `dist`를 4181~4185에서 `vite preview`로 띄우고, Chromium(headless shell 153.0.8010.12)에서 다섯 페이지를 열어 조작 버튼 집합을 카탈로그와 대조한다. **5/5 통과, 콘솔 오류 0.** 이것이 **Preact·Vue·Svelte·Solid의 첫 브라우저 증거**다 — 이 문서 전까지 브라우저에서 확인된 데모는 React 한 종뿐이었다.
 
@@ -73,9 +73,26 @@
 
 `pnpm gate` 19단계와 `pnpm check:examples`는 불변으로 통과한다 — `examples/e2e`의 스크립트 이름은 `test`가 아니라 `e2e`이므로 `pnpm -r test`(gate의 test 단계)가 브라우저를 열지 않는다. 새 워크스페이스는 `types:examples`의 타입 검사에는 포함된다.
 
+### 단계 2 — 값 쪽 계약 (2026-09-26)
+
+라벨과 카드 제목이 다섯 데모에 **각자 리터럴로 중복**돼 있었다. 실측해 보니 28개 라벨이 다섯 곳에서 정확히 일치했지만, 그것을 지키는 장치는 없었다. `examples/shared/src/fields.ts`가 `CARD_TITLE`·`FIELD_LABEL`·`CARD_FIELDS`를 갖고, 데모는 `label(field)`를 렌더하며 행에 `data-field`를 붙인다. 리터럴 라벨은 다섯 데모 전부에서 0개가 되었다.
+
+같은 라벨이 resource 패널과 draft에 모두 나오므로(`도시`·`우편번호`·`version / conflicts`) 판독 범위는 페이지가 아니라 **카드**다 — `[data-card="resource-a"] [data-field="status"]`. `draftDirty`만 별도 id인데, 화면이 resource에는 `dirty (로컬 차이)`, draft에는 `dirty`라고 적기 때문이다. 표를 깔끔하게 만들자고 사람이 읽는 글자를 바꾸지는 않는다.
+
+Vue·Svelte는 인라인 `div.row`를 쓰고 있어 `Row`/`Flag` 컴포넌트를 새로 만들었다(React·Preact·Solid에는 이미 있었다). 값이 편집 가능한 `도시` 행은 기본 슬롯을 바꿔 끼운다. 카드별 필수 field는 `always`와 `onceLoaded`로 갈라 둔다 — 로드 전에 값 행을 요구하는 검사는 데모에게 **없는 기준을 보여 달라고** 요구하는 것이고, 그것이 M2-04가 금지하는 바로 그 화면이다.
+
+**이번에도 한 종만 실패했고, 이번 것은 주입이 아니라 실제 누락이었다.** Solid의 `Row`·`Flag`에 `data-field`를 붙이는 것을 빠뜨렸는데, 다른 넷이 통과하는 동안 solid만 실패했다. 타입 검사도 빌드도 소스 검사도 통과한 상태였다 — 속성이 없어도 컴파일에는 아무 문제가 없다. 이어서 Vue의 `data-card="requests"`를 지우는 주입 1종으로 카드 범위도 확인했고, vue만 실패했다. 복원은 `diff`로 대조했다.
+
+| 확인 | 결과 |
+| --- | --- |
+| 다섯 데모 × 계약 2종 | **10/10 통과**, 콘솔 오류 0 |
+| Solid의 `data-field` 누락(실제) | solid만 실패 |
+| Vue의 `data-card` 제거(주입) | vue만 실패 |
+| `pnpm gate` 19단계 / `check:examples` | 불변 통과(다섯 데모 45개 렌더) |
+
 ## 인계
 
-- done: 계획과 **구현 1단계, 2단계의 버튼 절반.** `examples/e2e` 워크스페이스, 다섯 `webServer`, `pnpm test:e2e`. 실제 Chromium에서 다섯 데모가 조작 45개를 렌더하는 것을 확인했고(**Preact·Vue·Svelte·Solid의 첫 브라우저 증거**), 데모 한 종 주입으로 그 종만 실패하는 것까지 확인했다 — 같은 주입을 소스 검사는 놓쳤다.
-- next: **2단계의 값 쪽**(`examples/shared`의 field 이름 계약 + 다섯 데모의 `data-field`·요청 줄 속성), 그다음 3단계(시나리오 자료형과 두 판독기, 첫 시나리오는 M2-11 항목 1·2·6 — 계측은 이미 들어가 있다).
+- done: 계획과 **구현 1~2단계.** `examples/e2e` 워크스페이스, 다섯 `webServer`, `pnpm test:e2e`, 그리고 `fields.ts`의 선택자 계약과 다섯 데모의 `data-card`·`data-field`·요청 줄 속성. 실제 Chromium에서 10/10 통과(**Preact·Vue·Svelte·Solid의 첫 브라우저 증거**). 한 종만 실패하는 것을 세 번 확인했다 — 주입 2종과 **실제 누락 1종**(Solid의 `data-field`).
+- next: **3단계**(시나리오 자료형과 두 판독기, 첫 시나리오는 M2-11 항목 1·2·6 — 계측은 이미 들어가 있다). DOM 판독기는 `[data-card] [data-field] b`를 읽고, 편집 가능한 행은 `input`을 읽는다.
 - blockers: 없음. chromium은 내려받았다(headless shell 153.0.8010.12).
 - 시작 기준 commit: `4b8c760` + M2-11 계측과 이 단계 변경(미커밋).
