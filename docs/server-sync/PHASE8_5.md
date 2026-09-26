@@ -68,6 +68,10 @@ Phase 8.1~8.4는 자동 테스트로 계약을 고정했다. 8.5는 **사람이 
 - [x] **DC8-5-46 / 예약 조작은 자기를 소비할 저장을 지목하고, 이름은 카탈로그에서 가져온다:** `sync-error`는 `accept: { kind: 'refetch' }`인 저장에서만 도달한다(`packages/sync/src/index.ts:1463`). `submitted`·`response` 수용은 사후 READ 자체가 없어 **예약한 READ 실패를 아무도 소비하지 않고**, 화면은 평범한 성공과 구별되지 않는다 — DC8-5-43이 예약 쪽의 함정을 없앴지만 같은 함정이 누르는 쪽에 남아 있었다. `다음 WRITE 성공 + 복구 READ 실패 예약`의 결과 문구가 `저장 실행 (사후 재조회 수용)`을 지목한다. 그 이름은 `operationLabel(id)`로 `operations.ts`에서 가져오고 문구에 베끼지 않는다 — 버튼 이름을 바꾸면 **없는 버튼을 가리키는 안내**가 화면에 남기 때문이다. 조작 수는 늘지 않는다.
 
 - [x] **DC8-5-47 / 화면은 조작 없이 일어난 일도 그린다:** B8-7-13으로 확인했다. `서버 상태와 요청 기록` 카드는 반응형이 아닌 mock 서버를 읽으므로 `ui.tick`으로 다시 그려지는데, tick은 조작이 실행될 때만 올랐다. **재시도가 발행한 READ에는 누른 버튼이 없다** — 그래서 요청이 떠 있는데도 `진행 중`이 `0`이고 요청 표에 줄이 없었고, M2-10 수행자가 작업이 끝나기 전에 멈췄다. 조작마다 tick을 올리는 방식은 "사람이 누른 것만 화면에 나온다"는 뜻이고, 자동 조회·재시도·지연 완료가 있는 데모에서는 **틀린 화면**이다. mock 서버가 요청 목록·진행 목록·서버 값의 변화를 알리고(`createMockServer(initial, notify)`) 모델이 그때 tick을 올린다. 조작의 `bump`도 tick을 올리므로 눌렀을 때는 두 번 오르지만, 화면이 같은 값을 두 번 그리는 것은 한 번도 안 그리는 것보다 낫다.
+- [x] **DC8-5-48 / READ는 접수 시점의 서버 값을 돌려준다:** M2-11 첫 두 항목을 화면에서 보려면 늦게 도착한 결과가 **현재 기준과 다른 값**이어야 한다. mock의 `read()`는 `finish()` 안에서 클로저 `value`를 읽어(`examples/shared/src/mock-server.ts:180`) **완료 버튼을 누른 시점의 현재 값**을 돌려준다 — WRITE가 먼저 성공하면 늦은 READ도 `부산/rev2`를 들고 오므로 **결과가 버려졌는지, 적용됐는데 마침 같았는지를 구별할 수 없다.** 요청 표의 `revision` 열은 **접수 시점**을 기록하는데(`mock-server.ts:98`) payload만 완료 시점이라, 한 줄이 두 시점을 섞어 말하고 있었다. `read()`가 접수 시점의 값을 스냅샷으로 잡아 그것을 resolve한다 — 서버가 요청을 처리한 뒤 응답만 늦게 도착하는 그 경주이고, 그래야 `revision` 열이 payload와 같은 시점을 가리킨다. 버튼은 늘지 않는다. WRITE는 바꾸지 않는다: WRITE가 완료 시점에 서버를 바꾸는 것은 맞다.
+- [x] **DC8-5-49 / signal을 무시하는 transport를 예약으로 둔다:** `beginLink()`는 epoch를 올리면서 **진행 중 READ의 controller를 abort한다**(`packages/sync/src/index.ts:651`). 그래서 예의 바른 transport에서는 `저장 실행`을 누른 순간 READ가 `aborted`로 끝나고 **늦게 완료될 기회 자체가 없다** — M2-11 첫 항목은 그 중단으로 확인되지만, 둘째 항목("transport가 signal을 무시하는 경우도 같은 결과")은 데모에 길이 없었다. 라이브러리의 두 번째 방어선은 `await options.queryFn(...)` **뒤의** `currentEpoch === this.epoch` 검사이고(`packages/sync/src/index.ts:772`), 그 검사는 signal을 무시한 결과만이 시험한다. 조작 `다음 READ는 signal을 무시함 (늦게 완료)`을 더해 44 → **45개**가 된다. 예약된 READ만 abort 청취를 건너뛰므로 같은 화면에서 `aborted` 줄과 `success`인데 기준이 그대로인 줄을 나란히 볼 수 있다. mock-server의 주석이 Phase 7.1의 "signal을 무시하는 queryFn"을 언급하면서도 그 경로가 데모에 없던 자리를 메운다.
+- [x] **DC8-5-50 / 요청 기록은 자기 key를 갖고 화면에 그린다:** B8-7-14로 확인했다. `record()`가 모든 요청에 `key: 'profile'`을 박아(`mock-server.ts:101`) readonly 조회(`['profile','readonly']`)의 READ도 `profile`로 찍혔고, **다섯 데모는 그 열을 아예 그리지 않았다**(요청 ID / revision / 결과 / 시작 / 종료). sync가 `queryFn`에 넘기는 컨텍스트는 `{ signal }`뿐이므로(`packages/sync/src/index.ts:178`) mock이 스스로 key를 알 길은 없다 — 모델이 조회마다 key를 묶어 `read`를 넘긴다. M2-11의 여섯째 항목("연결되지 않은 query까지 자동 보호한다고 표시하지 않는다")은 **어느 key의 요청인지**가 표에 있어야 판정되고, M2-10의 장벽 기록은 그것을 결과 문구만으로 말하고 있었다. 버튼은 늘지 않고 다섯 표에 열 하나가 는다.
+- [x] **DC8-5-51 / 조회의 거절은 장벽이 아닐 때도 말한다:** `refetch`·`load`는 **누른 시점에** `pending > 0`일 때만 거절을 말한다(DC8-5-45). 연결이 시작되며 abort된 READ의 거절은 누른 시점에 장벽이 없었으므로 다시 삼켜진다 — B8-7-12와 같은 부류가 다른 입구에 남아 있었다. 두 조작이 거절 사유를 **항상** 말하고, 장벽일 때만 "일부만 거절됐다"는 설명을 덧붙인다. 버튼은 늘지 않는다.
 
 ## 워크스페이스 구성
 
@@ -356,6 +360,31 @@ M2-10(저장 성공과 기준 복구 실패)의 클릭 절차를 쓰기 **전에
 - `examples/shared/src/model.test.ts`: 테스트 1개를 더해 `examples/shared`는 45개에서 **46개**가 된다 — 조작 없이 재시도가 요청을 발행했을 때 `inFlight`가 1이고 **tick이 올라 있는 것**. 알림을 no-op으로 되돌리는 주입 1종으로 이 테스트가 실패하는 것을 확인하고 복원했다.
 - 다섯 데모 모두 이 모델을 그리므로 화면 코드 변경은 없다.
 - `pnpm gate` **19단계 PASS**, `pnpm check:examples` PASS(5종 모두 44개 렌더). 패키지 수치 불변 — core **338**, sync **183**, React **36**, Preact **27**, Vue **35**, Svelte **26**, Solid **25**.
+
+
+### 단계 14 — Phase 8.7의 M2-11이 요구한 fixture 보강
+
+M2-11(늦은 조회와 작업 순서)의 클릭 절차를 쓰기 **전에** 코드로 먼저 걸어 봤고, 여섯 항목 중 셋만 도달 가능하며 계측 결함 1종이 있다는 것을 찾았다. `packages/` 아래 소스는 이번에도 건드리지 않는다.
+
+- **먼저 확인한 사실이 범위를 정했다.** `beginLink()`는 epoch를 올리면서 **진행 중 READ의 controller를 abort한다**(`packages/sync/src/index.ts:651`). 예의 바른 transport에서는 `저장 실행`을 누른 순간 READ가 `aborted`로 끝나므로 "늦게 완료"될 기회 자체가 없다 — 체크리스트 첫 항목은 그 **중단**으로 확인되고, 둘째 항목(signal 무시)이 라이브러리의 두 번째 방어선인 `await queryFn` **뒤의** epoch 검사(`index.ts:772`)를 시험하는 유일한 길이다. 셋째·넷째·다섯째 항목은 `liveView`·query key 전환·복수 mutation이 없어 미수행으로 남긴다.
+- `examples/shared/src/mock-server.ts`: `readFor(key)`가 조회별 `queryFn`을 만든다(DC8-5-50). READ는 **접수 시점 값을 스냅샷으로 잡아** 그것을 resolve한다(DC8-5-48). `nextReadIgnoresSignal(repeat?)`이 abort 청취를 건너뛰는 READ를 예약한다(DC8-5-49). `read`는 `readFor(DEFAULT_KEY)`로 남겨 기존 호출부 6곳(`fixture.test.ts`)을 건드리지 않는다. WRITE 줄의 key는 `(mutation)`이다 — mutation에는 query key가 없다.
+- `examples/shared/src/model.ts`: 두 조회가 자기 key로 묶인 reader를 쓰고, `PANEL_KEY`·`READONLY_KEY`·`keyText`를 내보내 표의 문자열이 `queryKey`에서만 온다. 조작 `다음 READ는 signal을 무시함 (늦게 완료)`을 더해 44 → **45개**가 된다. `refusedText`가 장벽이 아닌 거절도 말한다(DC8-5-51).
+- 다섯 데모: 요청 표에 `key` 열 하나. 화면 코드 변경은 이것뿐이다.
+- `examples/shared`: 테스트 6개를 더해 46개에서 **52개**가 된다 — (fixture) READ가 접수 시점 값을 답하는 것, 요청이 조회별 key로 기록되는 것. (model) 연결이 시작되면 진행 중 READ가 `aborted`가 되고 **그 사실을 말하는** 것, signal을 무시한 READ는 중단되지 않고 늦게 완료돼도 기준이 `부산`으로 남는 것, 요청 표가 세 종류의 key를 구별하는 것, 장벽에 막힌 패널 조회 옆에서 **연결되지 않은 readonly 조회만 나아가는** 것.
+- **검증력 확인 — 결함 4종을 주입해 4종 모두 잡혔다.**
+
+| 주입한 결함 | 실패한 테스트 |
+| --- | --- |
+| READ가 완료 시점 값을 resolve (DC8-5-48 되돌림) | 1개 — fixture의 스냅샷 항목 |
+| 예약이 abort 청취를 건너뛰지 않음 (DC8-5-49 무력화) | 1개 — signal 무시 항목 |
+| READ 기록의 key를 다시 `'profile'`로 고정 (B8-7-14 당시 상태) | 3개 — key 기록·key 구별·장벽 옆 readonly |
+| `refetch`가 장벽 아닌 거절을 다시 삼킴 (DC8-5-51 되돌림) | 1개 — 중단을 말하는 항목 |
+
+- **첫 주입이 한 테스트만 실패시킨 것은 약한 테스트가 아니다.** 스냅샷을 되돌리면 늦은 READ가 **현재 값**을 들고 오므로, epoch가 그것을 버렸는지 적용했는데 마침 같았는지 모델 쪽에서는 구별되지 않는다 — 그 구별을 가능하게 하는 것이 fixture 테스트이고, 그것이 없으면 **브라우저에서 둘째 항목을 판정할 수 없다**(B8-7-10과 같은 부류의 함정). 두 테스트가 한 사슬의 다른 고리를 잡고 있다.
+- **주입 하나가 헛돌았다.** `refusedText`의 앞부분만 바꿨더니 템플릿 **뒤쪽**에 남아 있던 판정 문구 때문에 테스트가 통과했다 — 약한 테스트처럼 보였지만 실제로는 주입이 테스트가 읽는 값을 바꾸지 못한 것이었다. 문구를 직접 지워 실패를 확인하고, 이어서 DC8-5-51을 되돌리는 진짜 주입으로 다시 확인했다. **주입이 테스트가 읽는 바로 그 값을 바꿨는지 먼저 확인해야 한다.**
+- 주입 뒤 `mock-server.ts`·`model.ts`를 원본과 `diff`로 대조해 동일하게 복원했다.
+- `pnpm gate` **19단계 PASS**, `pnpm check:examples` PASS(다섯 데모 모두 **45개** 렌더). 패키지 수치는 불변이다 — core **338**, sync **183**, React **36**, Preact **27**, Vue **35**, Svelte **26**, Solid **25**. `packages/` 아래 변경 0.
+- **브라우저 수행은 하지 않았다.** M2-11의 결과란은 미수행이고, [Phase 8.8](./PHASE8_8.md)의 수행 장치가 이 계측의 첫 사례가 된다.
 
 
 ## 인계
