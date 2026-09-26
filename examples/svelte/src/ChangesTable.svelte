@@ -13,12 +13,12 @@
     </thead>
     <tbody>
       {#each rows as row (row.id)}
-        <tr>
+        <tr data-change={row.id}>
           <td>{row.id}</td>
-          <td>{row.path}</td>
-          <td>{row.before}</td>
-          <td>{row.after}</td>
-          <td class={row.conflict ? 'bad' : ''}>
+          <td data-cell="path">{row.path}</td>
+          <td data-cell="before">{row.before}</td>
+          <td data-cell="after">{row.after}</td>
+          <td data-cell="conflict" class={row.conflict ? 'bad' : ''}>
             {row.conflict ? 'conflict' : '-'}
           </td>
         </tr>

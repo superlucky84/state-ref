@@ -40,6 +40,7 @@ export const OPERATION_GROUPS = [
     title: '공유 resource 편집',
     operations: [
       ['edit-busan', `도시 → 부산`],
+      ['edit-seoul', `도시 → 서울 (서버 값으로 되돌림)`],
       ['edit-memo', '무관한 필드 변경'],
       ['edit-gwangju', `도시 → 광주 (draft와 겹침)`],
       ['reorder-contacts', '연락처 배열 재정렬'],

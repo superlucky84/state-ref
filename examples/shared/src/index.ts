@@ -23,13 +23,15 @@ export {
   CARD_FIELDS,
   CARD_TITLE,
   CARDS_ON_LOAD,
+  CHANGE_CELLS,
+  CHANGE_ROW_ATTR,
   FIELD_LABEL,
   REQUEST_CELLS,
   REQUEST_ROW_ATTR,
   label,
   show,
 } from './fields';
-export type { CardId, FieldId, RequestCell } from './fields';
+export type { CardId, ChangeCell, FieldId, RequestCell } from './fields';
 export { screenOf } from './screen';
 export type { ScreenReading } from './screen';
 export { SCENARIOS, mismatches, pressesOf } from './scenarios';

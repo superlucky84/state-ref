@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import {
   CARD_FIELDS,
   CARD_TITLE,
+  CHANGE_CELLS,
   REQUEST_CELLS,
 } from 'stateref-example-shared';
 import type { CardId, ScreenReading } from 'stateref-example-shared';
@@ -23,6 +24,7 @@ const text = (value: string | null | undefined) => (value ?? '').trim();
 /** Read every card the page currently renders. */
 export async function readScreen(page: Page): Promise<ScreenReading> {
   const cards: Record<string, Record<string, string>> = {};
+  const changes: Record<string, readonly Record<string, string>[]> = {};
   for (const card of Object.keys(CARD_TITLE) as CardId[]) {
     const scope = page.locator(`[data-card="${card}"]`);
     // A draft card exists only after the drafts are branched, and reading an
@@ -47,6 +49,25 @@ export async function readScreen(page: Page): Promise<ScreenReading> {
       fields[field] = text(value);
     }
     cards[card] = fields;
+
+    // In document order: which change survived and which one went is what the
+    // remaining checklist items read, and the order is part of that.
+    changes[card] = (await scope
+      .locator('[data-change]')
+      .evaluateAll(
+        (nodes, cells) =>
+          nodes.map(node =>
+            Object.fromEntries(
+              cells.map(cell => [
+                cell,
+                node
+                  .querySelector(`[data-cell="${cell}"]`)
+                  ?.textContent?.trim() ?? '',
+              ])
+            )
+          ),
+        [...CHANGE_CELLS]
+      )) as Record<string, string>[];
   }
 
   const requests: Record<string, Record<string, string>> = {};
@@ -71,7 +92,7 @@ export async function readScreen(page: Page): Promise<ScreenReading> {
     );
   }
 
-  return { cards, requests };
+  return { cards, requests, changes };
 }
 
 /**

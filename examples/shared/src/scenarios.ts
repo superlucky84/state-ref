@@ -20,6 +20,16 @@ export type Expectation = Readonly<{
   cards?: Readonly<Record<string, Readonly<Record<string, Match>>>>;
   /** Request id -> the cells that must match. */
   requests?: Readonly<Record<string, Readonly<Record<string, Match>>>>;
+  /**
+   * Card id -> the changes rows it must show, in order.
+   *
+   * Compared as a whole list, unlike the maps above: "two lines are left and
+   * the submitted one is gone" is a statement about the count as much as the
+   * content, and `[]` is how a scenario says `변경 없음`.
+   */
+  changes?: Readonly<
+    Record<string, readonly Readonly<Record<string, Match>>[]>
+  >;
   /** Cards that must NOT be on screen. */
   absentCards?: readonly string[];
   /** Request ids that must not exist yet - pins "no request was issued". */
@@ -92,6 +102,34 @@ export function mismatches(
             got === undefined ? '(no such cell)' : got
           }`
         );
+      }
+    }
+  }
+
+  for (const [card, wantRows] of Object.entries(expected.changes ?? {})) {
+    const actualRows = reading.changes[card];
+    if (!actualRows) {
+      out.push(`changes for ${card} are missing`);
+      continue;
+    }
+    if (actualRows.length !== wantRows.length) {
+      out.push(
+        `${card} changes: expected ${wantRows.length} row(s), got ${
+          actualRows.length
+        } (${actualRows.map(row => row.path).join(', ') || 'none'})`
+      );
+      continue;
+    }
+    for (const [index, want] of wantRows.entries()) {
+      for (const [cell, expectedCell] of Object.entries(want)) {
+        const got = actualRows[index][cell];
+        if (!matches(got, expectedCell)) {
+          out.push(
+            `${card} changes[${index}]/${cell}: expected ${describe(
+              expectedCell
+            )}, got ${got === undefined ? '(no such cell)' : got}`
+          );
+        }
       }
     }
   }
@@ -536,8 +574,143 @@ export const M2_07: readonly Scenario[] = [
 ];
 
 /**
+ * M2-05 and M2-08, already passed by hand in the React demo.
+ *
+ * `무관한 필드 변경` and `제출 뒤 추가 입력` build their values out of `ui.tick`
+ * (`메모 8`, `zip 911`), which counts operations *and* server notifications. The
+ * expectations therefore pin what the bullet is about - the row's path and what
+ * it changed from, and above all whether the row is still there - and leave the
+ * value that depends on the tick alone. Pinning it would make the scenario fail
+ * the day an unrelated operation is added.
+ */
+export const M2_05_08: readonly Scenario[] = [
+  {
+    id: 'M2-05',
+    title: 'resource는 마지막으로 수용한 서버 기준으로 로컬 차이를 추적한다',
+    pins: 'M2-05 네 항목 전부 (R2-05/06)',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      {
+        note:
+          'changes는 서버 → 로컬 한 줄이고 dirty가 켜진다. 서버 값도 WRITE 횟수도 ' +
+          '움직이지 않는다 — 편집은 서버에 아무것도 보내지 않는다',
+        expect: {
+          cards: {
+            'resource-a': {
+              city: '부산',
+              dirty: 'true',
+              version: '1 / 0',
+              status: 'success / idle',
+            },
+            requests: { server: '서울 / 1', counts: '2 / 0' },
+          },
+          changes: {
+            'resource-a': [
+              {
+                path: 'city',
+                before: '"서울"',
+                after: '"부산"',
+                conflict: '-',
+              },
+            ],
+          },
+        },
+      },
+      { press: 'edit-seoul' },
+      {
+        note:
+          '서버 값으로 되돌리자 다른 변경이 없으므로 changes가 비고 dirty가 내려간다. ' +
+          'READ/WRITE는 그대로다 — changes를 보는 것만으로 요청이 생기지 않는다',
+        expect: {
+          cards: {
+            'resource-a': { city: '서울', dirty: 'false', version: '2 / 0' },
+            requests: { server: '서울 / 1', counts: '2 / 0' },
+          },
+          changes: { 'resource-a': [] },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-08',
+    title: '제출한 변경만 확정되고 미제출·후속 입력은 남는다',
+    pins: 'M2-08 네 항목 (R2-10)',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      { press: 'edit-memo' },
+      { press: 'capture' },
+      {
+        note: '고정한 제출은 DTO가 싣는 경로(city)만 담는다 — memo는 제출되지 않는다',
+        expect: {
+          cards: { operations: { captured: { contains: '변경 1건' } } },
+          changes: {
+            'resource-a': [{ path: 'city' }, { path: 'memo' }],
+          },
+        },
+      },
+      { press: 'save' },
+      { press: 'edit-after-capture' },
+      {
+        note:
+          'WRITE가 떠 있는 동안 들어온 입력(zip)이 세 번째 줄로 붙는다. WRITE는 ' +
+          '1회 그대로다 — 후속 입력이 두 번째 요청을 만들지 않는다',
+        expect: {
+          cards: {
+            operations: { mutationPhase: 'pending' },
+            'resource-a': { serverBusy: 'true', invalidated: 'true' },
+            requests: { counts: '2 / 1' },
+          },
+          changes: {
+            'resource-a': [
+              { path: 'city' },
+              { path: 'memo' },
+              { path: 'zip', before: '"01"' },
+            ],
+          },
+          absentRequests: ['WRITE-2'],
+        },
+      },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      {
+        note:
+          '성공이 지운 것은 제출한 city 한 줄뿐이다. 제출하지 않은 memo와 제출 뒤의 ' +
+          'zip은 남고 dirty도 켜진 채다 — 성공이 무관한 편집을 clean으로 바꾸지 않는다',
+        expect: {
+          cards: {
+            operations: { mutationPhase: 'success' },
+            'resource-a': {
+              city: '부산',
+              dirty: 'true',
+              serverBusy: 'false',
+              invalidated: 'false',
+            },
+            requests: { server: '부산 / 2', counts: '2 / 1' },
+          },
+          changes: {
+            'resource-a': [
+              { path: 'memo', before: '"최초 메모"' },
+              { path: 'zip', before: '"01"' },
+            ],
+          },
+        },
+      },
+    ],
+  },
+];
+
+/**
  * Every ported checklist item, in checklist order.
  *
  * Declared last on purpose: the lists it spreads have to exist first.
  */
-export const SCENARIOS: readonly Scenario[] = [...M2_07, ...M2_10, ...M2_11];
+export const SCENARIOS: readonly Scenario[] = [
+  ...M2_05_08,
+  ...M2_07,
+  ...M2_10,
+  ...M2_11,
+];

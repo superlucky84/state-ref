@@ -473,6 +473,17 @@ export function createDemoModel(): DemoModel {
         if (!loaded()) return notLoaded(id);
         panelA.ref.city.value = CITY.resource;
         return bump(id, `공유 resource 도시를 ${CITY.resource}로 바꿨다.`);
+      case 'edit-seoul':
+        // The only way back to the server's own value without typing in the
+        // input. M2-05's third bullet is "revert it and the changes table
+        // empties", and a scenario cannot type (DC8-8-02 keeps both readers
+        // pressing the same catalogue).
+        if (!loaded()) return notLoaded(id);
+        panelA.ref.city.value = CITY.server;
+        return bump(
+          id,
+          `공유 resource 도시를 ${CITY.server}로 되돌렸다. 다른 변경이 없으면 changes가 비고 dirty도 내려간다 — 기준은 마지막으로 수용한 서버 값이다.`
+        );
       case 'edit-memo':
         if (!loaded()) return notLoaded(id);
         panelA.ref.memo.value = `메모 ${ui.tick.value + 1}`;

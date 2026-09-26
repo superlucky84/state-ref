@@ -176,3 +176,15 @@ export const CARDS_ON_LOAD: readonly CardId[] = [
 export const REQUEST_ROW_ATTR = 'data-request';
 export const REQUEST_CELLS = ['key', 'revision', 'outcome'] as const;
 export type RequestCell = (typeof REQUEST_CELLS)[number];
+
+/**
+ * A changes table's rows, marked the same way.
+ *
+ * Most of what is left of the checklist judges by these lines - which change
+ * survived a save, which one a rejection undid, which one is a conflict - so
+ * the reading has to carry them in order. `data-change` holds the change id;
+ * the cells reuse `data-cell` because the row is the scope.
+ */
+export const CHANGE_ROW_ATTR = 'data-change';
+export const CHANGE_CELLS = ['path', 'before', 'after', 'conflict'] as const;
+export type ChangeCell = (typeof CHANGE_CELLS)[number];

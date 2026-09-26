@@ -1,5 +1,6 @@
 import { draftPanel, requestPanel, resourcePanel } from './panels';
 import { show } from './fields';
+import type { ChangeLine } from './panels';
 import { POLICY_TEXT } from './model';
 import type { DemoModel } from './model';
 
@@ -18,10 +19,26 @@ import type { DemoModel } from './model';
 export type ScreenReading = Readonly<{
   cards: Record<string, Record<string, string>>;
   requests: Record<string, Record<string, string>>;
+  /**
+   * Card id -> its changes table, in the order the rows are shown.
+   *
+   * An ordered list, not a map: which change survived a save and which one a
+   * rejection undid is most of what the remaining checklist items judge, and
+   * the order is part of what a person reads.
+   */
+  changes: Record<string, readonly Record<string, string>[]>;
 }>;
 
 /** What a checkbox row shows. Every demo prints the boolean itself. */
 const flag = (on: boolean) => String(on);
+
+/** One changes row, exactly as the five tables print it. */
+const changeRow = (line: ChangeLine) => ({
+  path: line.path,
+  before: line.before,
+  after: line.after,
+  conflict: line.conflict ? 'conflict' : '-',
+});
 
 /**
  * Read the screen from the model.
@@ -34,6 +51,7 @@ const flag = (on: boolean) => String(on);
  */
 export function screenOf(model: DemoModel): ScreenReading {
   const cards: Record<string, Record<string, string>> = {};
+  const changes: Record<string, readonly Record<string, string>[]> = {};
   const ui = model.watchUi().value;
 
   for (const [card, handle] of [
@@ -64,6 +82,7 @@ export function screenOf(model: DemoModel): ScreenReading {
       fields.office = show(value.office ?? '(없음)');
     }
     cards[card] = fields;
+    changes[card] = panel.changes.map(changeRow);
   }
 
   const drafts = model.drafts();
@@ -79,6 +98,7 @@ export function screenOf(model: DemoModel): ScreenReading {
       draftDirty: flag(panel.dirty),
       version: `${panel.version} / ${panel.conflicts}`,
     };
+    changes[card] = panel.changes.map(changeRow);
   }
 
   const requests = requestPanel(model.server);
@@ -118,5 +138,5 @@ export function screenOf(model: DemoModel): ScreenReading {
     };
   }
 
-  return { cards, requests: rows };
+  return { cards, requests: rows, changes };
 }
