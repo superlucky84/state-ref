@@ -45,7 +45,8 @@
     "check:packaging": "node scripts/check-packaging.mjs",
     "types:examples": "pnpm -r --filter './examples/*' run --if-present typecheck",
     "build:examples": "pnpm -r --filter './examples/*' run --if-present build",
-    "check:examples": "pnpm types:examples && pnpm build:examples && node scripts/check-example-operations.mjs && node scripts/check-example-bundles.mjs && node scripts/check-example-ssr.mjs"
+    "check:examples": "pnpm types:examples && pnpm build:examples && node scripts/check-example-operations.mjs && node scripts/check-example-bundles.mjs && node scripts/check-example-ssr.mjs",
+    "test:e2e": "pnpm build:examples && pnpm --filter stateref-example-e2e e2e"
   },
   "author": "superlucky84",
   "repository": {
@@ -58,7 +59,10 @@
     "state-ref"
   ],
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@testing-library/jest-dom": "^6.5.0",
+    "@typescript-eslint/eslint-plugin": "^8.12.2",
+    "@typescript-eslint/parser": "^8.12.2",
     "eslint": "^8.0.0",
     "eslint-config-prettier": "^8.8.0",
     "eslint-plugin-prettier": "^4.2.1",
@@ -70,9 +74,7 @@
     "vite": "^5.4.8",
     "vite-plugin-checker": "^0.6.1",
     "vite-plugin-dts": "^2.3.0",
-    "vitest": "^2.1.2",
-    "@typescript-eslint/eslint-plugin": "^8.12.2",
-    "@typescript-eslint/parser": "^8.12.2"
+    "vitest": "^2.1.2"
   },
   "volta": {
     "node": "20.3.0"

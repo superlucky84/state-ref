@@ -8,3 +8,9 @@ AGENTS.md
 
 # vite writes these next to the config during build and removes them again
 vite.config.*.timestamp-*
+
+# Phase 8.8's browser runs: the checklist cites the SHA, scenario name and the
+# values it quotes, not these artifacts (DC8-8-08)
+examples/e2e/test-results
+examples/e2e/transcripts
+playwright-report
