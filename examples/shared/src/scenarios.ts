@@ -908,6 +908,76 @@ export const M2_09: readonly Scenario[] = [
   },
 ];
 
+/** M2-12, performed here for the first time - it was 미수행. */
+export const M2_12: readonly Scenario[] = [
+  {
+    id: 'M2-12',
+    title: 'dirty한 원본에서 갈라진 draft는 clean에서 시작한다',
+    pins: 'M2-12 네 항목 (R2-14/15)',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      {
+        note: '원본은 서버 서울과 다른 부산을 들고 dirty다. draft는 아직 없다',
+        expect: {
+          cards: { 'resource-a': { city: '부산', dirty: 'true' } },
+          changes: {
+            'resource-a': [{ path: 'city', before: '"서울"', after: '"부산"' }],
+          },
+          absentCards: ['draft-a', 'draft-b'],
+        },
+      },
+      { press: 'branch-drafts' },
+      {
+        note:
+          '두 draft는 현재 원본 값(부산)을 보여주면서 dirty=false·변경 없음이다 — ' +
+          '현재 값은 쓰고 부모의 변경 기록은 상속하지 않는다. 원본의 서울 → 부산은 ' +
+          '그대로 남아 있고, 분기 자체가 요청을 만들지 않는다',
+        expect: {
+          cards: {
+            'draft-a': { city: '부산', draftDirty: 'false', version: '0 / 0' },
+            'draft-b': { city: '부산', draftDirty: 'false', version: '0 / 0' },
+            'resource-a': { city: '부산', dirty: 'true' },
+            requests: { counts: '2 / 0' },
+          },
+          changes: {
+            'draft-a': [],
+            'draft-b': [],
+            'resource-a': [{ path: 'city' }],
+          },
+        },
+      },
+      { press: 'draft-a-daejeon' },
+      {
+        note:
+          '움직인 것은 draft A뿐이다. 그 변경의 before는 부산 — 서울이 아니라 ' +
+          '갈라져 나온 시점의 원본 값이다. draft B와 원본은 부산이고 요청도 그대로다',
+        expect: {
+          cards: {
+            'draft-a': { city: '대전', draftDirty: 'true', version: '1 / 0' },
+            'draft-b': { city: '부산', draftDirty: 'false', version: '0 / 0' },
+            'resource-a': { city: '부산', dirty: 'true', version: '1 / 0' },
+            requests: { counts: '2 / 0' },
+          },
+          changes: {
+            'draft-a': [
+              {
+                path: 'city',
+                before: '"부산"',
+                after: '"대전"',
+                conflict: '-',
+              },
+            ],
+            'draft-b': [],
+            'resource-a': [{ path: 'city', before: '"서울"', after: '"부산"' }],
+          },
+        },
+      },
+    ],
+  },
+];
+
 /**
  * Every ported checklist item, in checklist order.
  *
@@ -919,4 +989,5 @@ export const SCENARIOS: readonly Scenario[] = [
   ...M2_09,
   ...M2_10,
   ...M2_11,
+  ...M2_12,
 ];
