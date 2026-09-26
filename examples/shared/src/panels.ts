@@ -17,6 +17,15 @@ export type ChangeLine = Readonly<{
   before: string;
   after: string;
   conflict: boolean;
+  /**
+   * What the source holds now. Drafts only - a resource change has no such
+   * third party.
+   *
+   * `DraftChange` carries it and this projection used to drop it, so a draft
+   * conflict showed the baseline and the draft's own input but not the value it
+   * was conflicting with. M2-13 asks for all three (B8-7-16).
+   */
+  source?: string;
 }>;
 
 const formatPath = (path: readonly (string | symbol)[]) =>
@@ -46,6 +55,7 @@ export function draftChangeLines(
     before: formatValue(change.before.exists, change.before.value),
     after: formatValue(change.after.exists, change.after.value),
     conflict: change.conflict,
+    source: formatValue(change.source.exists, change.source.value),
   }));
 }
 

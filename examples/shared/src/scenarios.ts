@@ -979,6 +979,220 @@ export const M2_12: readonly Scenario[] = [
 ];
 
 /**
+ * M2-13, performed here for the first time - it was 미수행.
+ *
+ * Two instruments had to be added first: the draft's changes table dropped the
+ * source value, so a conflict showed two of the three values the item asks for
+ * (B8-7-16), and the draft card had no field the draft never edits, so "a
+ * source update reaches the draft" had nothing to look at (B8-7-17).
+ *
+ * The shared prefix leaves the source dirty at 부산, a draft branched off it and
+ * edited to 대전, and the source's memo changed - so every scenario below starts
+ * from one baseline and varies one thing.
+ */
+const M2_13_PREFIX: readonly Step[] = [
+  { press: 'load' },
+  { press: 'settle-all' },
+  { press: 'edit-busan' },
+  { press: 'branch-drafts' },
+  { press: 'draft-a-daejeon' },
+  { press: 'edit-memo' },
+];
+
+export const M2_13: readonly Scenario[] = [
+  {
+    id: 'M2-13-unrelated',
+    title: 'draft가 수정하지 않은 원본 필드의 갱신은 draft에도 보인다',
+    pins: 'M2-13 첫째 항목',
+    steps: [
+      ...M2_13_PREFIX,
+      {
+        note:
+          'draft는 city만 편집했고 memo는 건드리지 않았다. 원본이 memo를 바꾸자 ' +
+          'draft에도 그 값이 보이고, draft의 변경 목록에는 city 한 줄뿐이다 — ' +
+          '보이는 것과 내 변경은 다른 축이다',
+        expect: {
+          cards: {
+            'resource-a': { city: '부산', memo: { contains: '메모 ' } },
+            'draft-a': {
+              city: '대전',
+              memo: { contains: '메모 ' },
+              draftDirty: 'true',
+            },
+          },
+          changes: {
+            'draft-a': [{ path: 'city', before: '"부산"', after: '"대전"' }],
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-13-conflict',
+    title:
+      '겹치면 기준·내 입력·원본 세 값이 함께 보이고 입력이 사라지지 않는다',
+    pins: 'M2-13 둘째·셋째 항목',
+    steps: [
+      ...M2_13_PREFIX,
+      { press: 'edit-gwangju' },
+      {
+        note:
+          '원본이 draft와 같은 경로를 광주로 바꿨다. 한 줄이 세 값을 말한다 — ' +
+          '기준 부산, 내 입력 대전, 원본 광주. draft는 여전히 대전을 들고 있고 ' +
+          '조용히 덮어써지지 않았다. 충돌 수는 1이고 요청은 생기지 않았다',
+        expect: {
+          cards: {
+            'resource-a': { city: '광주' },
+            'draft-a': { city: '대전', draftDirty: 'true', version: '3 / 1' },
+            requests: { counts: '2 / 0' },
+          },
+          changes: {
+            'draft-a': [
+              {
+                path: 'city',
+                before: '"부산"',
+                after: '"대전"',
+                source: '"광주"',
+                conflict: 'conflict',
+              },
+            ],
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-13-resolve-source',
+    title: '충돌을 원본 쪽으로 해소하면 draft가 원본 값을 따르고 clean이 된다',
+    pins: 'M2-13 셋째 항목 — 해소(원본 선택)',
+    steps: [
+      ...M2_13_PREFIX,
+      { press: 'edit-gwangju' },
+      { press: 'draft-a-resolve-source' },
+      {
+        note: 'draft가 광주를 받아들이고 자기 변경을 버린다 — 충돌 0, 변경 없음',
+        expect: {
+          cards: {
+            'draft-a': { city: '광주', draftDirty: 'false', version: '5 / 0' },
+            'resource-a': { city: '광주' },
+          },
+          changes: { 'draft-a': [] },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-13-resolve-draft',
+    title: '충돌을 draft 쪽으로 해소하면 내 입력이 새 원본 값 위에 다시 얹힌다',
+    pins: 'M2-13 셋째 항목 — 해소(draft 선택)',
+    steps: [
+      ...M2_13_PREFIX,
+      { press: 'edit-gwangju' },
+      { press: 'draft-a-resolve-draft' },
+      {
+        note:
+          'draft는 대전을 지키고, 그 변경의 기준이 광주로 옮겨 붙어 충돌이 사라진다 ' +
+          '— 같은 입력이 새 기준 위에서 다시 서술된다. 원본은 광주 그대로다',
+        expect: {
+          cards: {
+            'draft-a': { city: '대전', draftDirty: 'true', version: '5 / 0' },
+            'resource-a': { city: '광주' },
+          },
+          changes: {
+            'draft-a': [
+              {
+                path: 'city',
+                before: '"광주"',
+                after: '"대전"',
+                source: '"광주"',
+                conflict: '-',
+              },
+            ],
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-13-source-rollback',
+    title: '원본의 낙관적 값이 되돌려져도 draft는 자기 입력을 지킨다',
+    pins: 'M2-13 넷째 항목 — 원본의 낙관적 값 복구',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      { press: 'branch-drafts' },
+      { press: 'draft-a-daejeon' },
+      { press: 'edit-gwangju' },
+      { press: 'capture' },
+      { press: 'next-write-rejected' },
+      { press: 'save-reject-remove' },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      {
+        note:
+          '거절이 원본의 제출 입력을 되돌려 원본이 서울로 돌아갔다. draft는 두 번의 ' +
+          '원본 변경과 한 번의 거절을 지나고도 대전을 들고 있고, 충돌을 이제 ' +
+          '**현재** 원본 값(서울)에 대해 보고한다 — 기준은 갈라져 나온 부산 그대로다',
+        expect: {
+          cards: {
+            operations: { mutationPhase: 'rejected' },
+            'resource-a': { city: '서울', dirty: 'false' },
+            'draft-a': { city: '대전', draftDirty: 'true', version: '3 / 1' },
+          },
+          changes: {
+            'draft-a': [
+              {
+                path: 'city',
+                before: '"부산"',
+                after: '"대전"',
+                source: '"서울"',
+                conflict: 'conflict',
+              },
+            ],
+            'resource-a': [],
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-13-converge',
+    title: '원본이 draft 값으로 수렴하면 draft는 clean이 된다',
+    pins: 'M2-13 넷째 항목 — 원본이 대전으로 수렴',
+    steps: [
+      ...M2_13_PREFIX,
+      { press: 'draft-a-apply' },
+      {
+        note:
+          '로컬 적용이 원본을 대전으로 수렴시켰다. draft는 clean이고 원본은 dirty다. ' +
+          '적용이 요청을 만들지 않는다. **적용은 원본의 변경을 (root) 한 줄로 기록한다** ' +
+          '— draft가 객체 전체를 쓰기 때문이고, 그래서 표가 city 한 줄이 아니라 ' +
+          '레코드 전체를 담은 한 줄이 된다',
+        expect: {
+          cards: {
+            'resource-a': { city: '대전', dirty: 'true' },
+            'draft-a': { city: '대전', draftDirty: 'false', version: '4 / 0' },
+            requests: { counts: '2 / 0' },
+          },
+          changes: {
+            'draft-a': [],
+            'resource-a': [
+              {
+                path: '(root)',
+                before: { contains: '"city":"서울"' },
+                after: { contains: '"city":"대전"' },
+                conflict: '-',
+              },
+            ],
+          },
+        },
+      },
+    ],
+  },
+];
+
+/**
  * Every ported checklist item, in checklist order.
  *
  * Declared last on purpose: the lists it spreads have to exist first.
@@ -990,4 +1204,5 @@ export const SCENARIOS: readonly Scenario[] = [
   ...M2_10,
   ...M2_11,
   ...M2_12,
+  ...M2_13,
 ];

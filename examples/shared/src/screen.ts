@@ -38,6 +38,8 @@ const changeRow = (line: ChangeLine) => ({
   before: line.before,
   after: line.after,
   conflict: line.conflict ? 'conflict' : '-',
+  // Empty on a resource row, where there is no third value.
+  source: line.source ?? '',
 });
 
 /**
@@ -95,6 +97,7 @@ export function screenOf(model: DemoModel): ScreenReading {
     cards[card] = {
       city: draft.ref.value.city,
       zip: show(draft.ref.value.zip),
+      memo: show(draft.ref.value.memo),
       draftDirty: flag(panel.dirty),
       version: `${panel.version} / ${panel.conflicts}`,
     };

@@ -2,6 +2,10 @@
   import type { ChangeLine } from 'stateref-example-shared';
 
   export let rows: readonly ChangeLine[];
+
+  // A draft's rows carry what the source holds now; a resource's do not. The
+  // column appears only where there is a third value to show (B8-7-16).
+  $: hasSource = rows.some(row => row.source !== undefined);
 </script>
 
 {#if rows.length === 0}
@@ -9,7 +13,11 @@
 {:else}
   <table>
     <thead>
-      <tr><th>id</th><th>경로</th><th>before</th><th>after</th><th>충돌</th></tr>
+      <tr
+        ><th>id</th><th>경로</th><th>before</th><th>after</th>{#if hasSource}<th
+            >원본</th
+          >{/if}<th>충돌</th></tr
+      >
     </thead>
     <tbody>
       {#each rows as row (row.id)}
@@ -18,6 +26,7 @@
           <td data-cell="path">{row.path}</td>
           <td data-cell="before">{row.before}</td>
           <td data-cell="after">{row.after}</td>
+          {#if hasSource}<td data-cell="source">{row.source}</td>{/if}
           <td data-cell="conflict" class={row.conflict ? 'bad' : ''}>
             {row.conflict ? 'conflict' : '-'}
           </td>

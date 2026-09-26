@@ -13,6 +13,8 @@
   const value = connectSvelte(draft.watch);
   const city = value(store => store.city);
   const zip = value(store => store.zip);
+  /** Never edited here: M2-13 asks that a source update to it shows up. */
+  const memo = value(store => store.memo);
   const status = connectSvelte(draft.watchStatus)(store => store);
 
   $: panel = draftPanel($status, draft.changes());
@@ -22,6 +24,7 @@
   <h2>{CARD_TITLE[card]}</h2>
   <Row field="city"><input bind:value={$city} /></Row>
   <Row field="zip" value={$zip} />
+  <Row field="memo" value={$memo} />
   <Flag field="draftDirty" on={panel.dirty} />
   <Row field="version" value={`${panel.version} / ${panel.conflicts}`} />
   <ChangesTable rows={panel.changes} />

@@ -77,6 +77,9 @@ function Flag({ field, on }: { field: FieldId; on: boolean }) {
 
 function Changes({ rows }: { rows: readonly ChangeLine[] }) {
   if (rows.length === 0) return <p className="note">변경 없음</p>;
+  // A draft's rows carry what the source holds now; a resource's do not. The
+  // column appears only where there is a third value to show (B8-7-16).
+  const hasSource = rows.some(row => row.source !== undefined);
   return (
     <table>
       <thead>
@@ -85,6 +88,7 @@ function Changes({ rows }: { rows: readonly ChangeLine[] }) {
           <th>경로</th>
           <th>before</th>
           <th>after</th>
+          {hasSource && <th>원본</th>}
           <th>충돌</th>
         </tr>
       </thead>
@@ -95,6 +99,7 @@ function Changes({ rows }: { rows: readonly ChangeLine[] }) {
             <td data-cell="path">{row.path}</td>
             <td data-cell="before">{row.before}</td>
             <td data-cell="after">{row.after}</td>
+            {hasSource && <td data-cell="source">{row.source}</td>}
             <td data-cell="conflict" className={row.conflict ? 'bad' : ''}>
               {row.conflict ? 'conflict' : '-'}
             </td>
@@ -202,6 +207,9 @@ function DraftCard({
         />
       </div>
       <Row field="zip" value={value.zip.value} />
+      {/* A field the draft never edits: an update to it on the source has to
+          show up here, which is the first thing M2-13 asks (B8-7-17). */}
+      <Row field="memo" value={value.memo.value} />
       <Flag field="draftDirty" on={panel.dirty} />
       <Row field="version" value={`${panel.version} / ${panel.conflicts}`} />
       <Changes rows={panel.changes} />

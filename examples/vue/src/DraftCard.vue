@@ -15,6 +15,8 @@ const props = defineProps<{
 const value = connectVue(props.draft.watch);
 const city = value(store => store.city);
 const zip = value(store => store.zip);
+/** Never edited here: M2-13 asks that a source update to it shows up. */
+const memo = value(store => store.memo);
 const status = connectVue(props.draft.watchStatus)(store => store);
 const panel = computed(() => draftPanel(status.value, props.draft.changes()));
 </script>
@@ -26,6 +28,7 @@ const panel = computed(() => draftPanel(status.value, props.draft.changes()));
       <input v-model="city.value" />
     </Row>
     <Row field="zip" :value="zip.value" />
+    <Row field="memo" :value="memo.value" />
     <Flag field="draftDirty" :on="panel.dirty" />
     <Row field="version" :value="`${panel.version} / ${panel.conflicts}`" />
     <ChangesTable :rows="panel.changes" />

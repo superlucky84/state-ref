@@ -1,7 +1,7 @@
 import { connectPreact } from '@stateref/connect-preact';
 import type { StateRefStore } from 'state-ref';
 import type { QueryStatus, ResourceChange } from '@stateref/sync';
-import type { Draft } from 'state-ref/draft';
+import type { Draft, DraftStatus } from 'state-ref/draft';
 import {
   CARD_TITLE,
   OPERATION_GROUPS,
@@ -55,6 +55,25 @@ const draftHook = (draft: Draft<Profile>) => {
   draftHooks.set(draft, hook);
   return hook;
 };
+/**
+ * The status needs its own subscription.
+ *
+ * Reading `draft.status.value` without one only repaints when the draft's
+ * *value* changes, and a source change moves the draft's conflicts and version
+ * while leaving its value alone - so the card sat on a stale conflict count and
+ * a stale source value, in this demo only (B8-7-18).
+ */
+const draftStatusHooks = new Map<
+  Draft<Profile>,
+  () => StateRefStore<DraftStatus>
+>();
+const draftStatusHook = (draft: Draft<Profile>) => {
+  const existing = draftStatusHooks.get(draft);
+  if (existing) return existing;
+  const hook = connectPreact(draft.watchStatus);
+  draftStatusHooks.set(draft, hook);
+  return hook;
+};
 
 // The label comes from the shared table and the row carries its field id, so
 // the browser runner addresses it by that id rather than by Korean text
@@ -79,6 +98,9 @@ function Flag({ field, on }: { field: FieldId; on: boolean }) {
 
 function Changes({ rows }: { rows: readonly ChangeLine[] }) {
   if (rows.length === 0) return <p class="note">변경 없음</p>;
+  // A draft's rows carry what the source holds now; a resource's do not. The
+  // column appears only where there is a third value to show (B8-7-16).
+  const hasSource = rows.some(row => row.source !== undefined);
   return (
     <table>
       <thead>
@@ -87,6 +109,7 @@ function Changes({ rows }: { rows: readonly ChangeLine[] }) {
           <th>경로</th>
           <th>before</th>
           <th>after</th>
+          {hasSource && <th>원본</th>}
           <th>충돌</th>
         </tr>
       </thead>
@@ -97,6 +120,7 @@ function Changes({ rows }: { rows: readonly ChangeLine[] }) {
             <td data-cell="path">{row.path}</td>
             <td data-cell="before">{row.before}</td>
             <td data-cell="after">{row.after}</td>
+            {hasSource && <td data-cell="source">{row.source}</td>}
             <td data-cell="conflict" class={row.conflict ? 'bad' : ''}>
               {row.conflict ? 'conflict' : '-'}
             </td>
@@ -180,8 +204,10 @@ function DraftCard({
   draft: Draft<Profile>;
 }) {
   const useValue = draftHook(draft);
+  const useStatus = draftStatusHook(draft);
   const value = useValue();
-  const panel = draftPanel(draft.status.value, draft.changes());
+  const status = useStatus();
+  const panel = draftPanel(status.value, draft.changes());
 
   return (
     <section class="card" data-card={card}>
@@ -196,6 +222,9 @@ function DraftCard({
         />
       </div>
       <Row field="zip" value={value.zip.value} />
+      {/* A field the draft never edits: an update to it on the source has to
+          show up here, which is the first thing M2-13 asks (B8-7-17). */}
+      <Row field="memo" value={value.memo.value} />
       <Flag field="draftDirty" on={panel.dirty} />
       <Row field="version" value={`${panel.version} / ${panel.conflicts}`} />
       <Changes rows={panel.changes} />

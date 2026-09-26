@@ -53,6 +53,9 @@ function Flag(props: { field: FieldId; on: boolean }) {
 }
 
 function Changes(props: { rows: readonly ChangeLine[] }) {
+  // A draft's rows carry what the source holds now; a resource's do not. The
+  // column appears only where there is a third value to show (B8-7-16).
+  const hasSource = () => props.rows.some(row => row.source !== undefined);
   return (
     <Show when={props.rows.length > 0} fallback={<p class="note">변경 없음</p>}>
       <table>
@@ -62,6 +65,9 @@ function Changes(props: { rows: readonly ChangeLine[] }) {
             <th>경로</th>
             <th>before</th>
             <th>after</th>
+            <Show when={hasSource()}>
+              <th>원본</th>
+            </Show>
             <th>충돌</th>
           </tr>
         </thead>
@@ -73,6 +79,9 @@ function Changes(props: { rows: readonly ChangeLine[] }) {
                 <td data-cell="path">{row.path}</td>
                 <td data-cell="before">{row.before}</td>
                 <td data-cell="after">{row.after}</td>
+                <Show when={hasSource()}>
+                  <td data-cell="source">{row.source}</td>
+                </Show>
                 <td data-cell="conflict" class={row.conflict ? 'bad' : ''}>
                   {row.conflict ? 'conflict' : '-'}
                 </td>
@@ -167,6 +176,7 @@ function DraftCard(props: {
   const value = connectSolid(props.draft.watch);
   const [city, setCity] = value(store => store.city);
   const [zip] = value(store => store.zip);
+  const [memo] = value(store => store.memo);
   const [status] = connectSolid(props.draft.watchStatus)(store => store);
   const panel = createMemo(() => draftPanel(status(), props.draft.changes()));
 
@@ -181,6 +191,9 @@ function DraftCard(props: {
         />
       </div>
       <Row field="zip" value={zip()} />
+      {/* A field the draft never edits: an update to it on the source has to
+          show up here, which is the first thing M2-13 asks (B8-7-17). */}
+      <Row field="memo" value={memo()} />
       <Flag field="draftDirty" on={panel().dirty} />
       <Row
         field="version"

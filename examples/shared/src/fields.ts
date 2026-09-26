@@ -124,12 +124,14 @@ export const CARD_FIELDS: Readonly<
   },
   // A draft card does not exist until the drafts are branched, so everything
   // it owns is listed under `always` for the card's own lifetime.
+  // `memo` is here so an update to a field the draft never touched is visible
+  // in the draft - the first thing M2-13 asks for (B8-7-17).
   'draft-a': {
-    always: ['city', 'zip', 'draftDirty', 'version'],
+    always: ['city', 'zip', 'memo', 'draftDirty', 'version'],
     onceLoaded: [],
   },
   'draft-b': {
-    always: ['city', 'zip', 'draftDirty', 'version'],
+    always: ['city', 'zip', 'memo', 'draftDirty', 'version'],
     onceLoaded: [],
   },
   requests: { always: ['server', 'counts', 'inFlight'], onceLoaded: [] },
@@ -186,5 +188,12 @@ export type RequestCell = (typeof REQUEST_CELLS)[number];
  * the cells reuse `data-cell` because the row is the scope.
  */
 export const CHANGE_ROW_ATTR = 'data-change';
-export const CHANGE_CELLS = ['path', 'before', 'after', 'conflict'] as const;
+export const CHANGE_CELLS = [
+  'path',
+  'before',
+  'after',
+  'conflict',
+  /** Drafts only: what the source holds now. Empty on a resource row. */
+  'source',
+] as const;
 export type ChangeCell = (typeof CHANGE_CELLS)[number];
