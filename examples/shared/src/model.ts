@@ -589,17 +589,36 @@ export function createDemoModel(): DemoModel {
       case 'capture': {
         if (!loaded()) return notLoaded(id);
         const all = panelA.changes();
-        const carried = all.filter(change =>
-          SAVED_PATHS.includes(String(change.path[0]))
+        /**
+         * A root-path change carries every saved path inside it.
+         *
+         * `draft.apply()` writes the whole object in one go
+         * (`packages/state-ref/src/draft/index.ts:398`), so the resource
+         * records the applied edit at the root - and this filter, which read
+         * `path[0]`, dropped it. Capture then selected 0 changes, the save
+         * submitted nothing, and the resource stayed dirty forever with a
+         * change nobody could ever send (B8-7-19). The DTO is built from the
+         * resource's current value, so a root change is submittable; what it
+         * is not is a change with a leaf path.
+         */
+        const carried = all.filter(
+          change =>
+            change.path.length === 0 ||
+            SAVED_PATHS.includes(String(change.path[0]))
         );
         submission = panelA.capture(carried.map(change => change.id));
+        const rootCarried = carried.some(change => change.path.length === 0);
         const text = `version ${submission.version}, 변경 ${submission.changes.length}건`;
         ui.captured.value = text;
         return bump(
           id,
           `제출할 변경을 고정했다 — ${text}. 전체 ${
             all.length
-          }건 중 DTO가 싣는 경로(${SAVED_PATHS.join('·')})만 골랐다.`
+          }건 중 DTO가 싣는 경로(${SAVED_PATHS.join('·')})만 골랐다.${
+            rootCarried
+              ? ' 그중 한 건은 로컬 적용이 남긴 (root) 변경이고, 레코드 전체를 담으므로 함께 싣는다.'
+              : ''
+          }`
         );
       }
       case 'save':

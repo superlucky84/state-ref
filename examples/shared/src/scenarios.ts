@@ -1193,6 +1193,169 @@ export const M2_13: readonly Scenario[] = [
 ];
 
 /**
+ * M2-14, performed here for the first time - it was 미수행.
+ *
+ * `draft.apply()` writes the whole object in one go
+ * (`packages/state-ref/src/draft/index.ts:398`), so the resource records the
+ * applied edit at the **root** path rather than as a `city` row. That is the
+ * library's behaviour, not a defect - but the demo's `capture` filtered changes
+ * by `path[0]` and therefore dropped it, so the applied change could never be
+ * submitted and the resource stayed dirty forever (B8-7-19). These scenarios pin
+ * both halves: the root row, and its resolution through an ordinary save.
+ */
+export const M2_14: readonly Scenario[] = [
+  {
+    id: 'M2-14-apply',
+    title: '로컬 적용은 요청 없이 원본을 바꾸고, 그 변경은 저장으로 해소된다',
+    pins: 'M2-14 첫째~넷째 항목',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      { press: 'branch-drafts' },
+      { press: 'draft-a-daejeon' },
+      { press: 'edit-memo' },
+      {
+        note: '서버 서울 → 원본 부산 → draft 대전, 그리고 원본의 무관한 필드도 바뀐 상태',
+        expect: {
+          cards: {
+            'resource-a': { city: '부산', dirty: 'true' },
+            'draft-a': { city: '대전', draftDirty: 'true' },
+          },
+          changes: { 'resource-a': [{ path: 'city' }, { path: 'memo' }] },
+        },
+      },
+      { press: 'draft-a-apply' },
+      {
+        note:
+          'draft는 대전/clean, 원본은 대전/dirty이고 요청은 0회다. 원본의 무관한 ' +
+          '변경(memo)은 적용에 지워지지 않고 그 안에 함께 실린다. **적용은 레코드 ' +
+          '전체를 한 번에 쓰므로 원본의 변경이 (root) 한 줄로 기록된다** — city 한 ' +
+          '줄이 아니다',
+        expect: {
+          cards: {
+            'resource-a': {
+              city: '대전',
+              dirty: 'true',
+              memo: { contains: '메모 ' },
+            },
+            'draft-a': { city: '대전', draftDirty: 'false' },
+            requests: { counts: '2 / 0' },
+          },
+          changes: {
+            'draft-a': [],
+            'resource-a': [
+              {
+                path: '(root)',
+                before: { contains: '"city":"서울"' },
+                after: { contains: '"city":"대전"' },
+                conflict: '-',
+              },
+            ],
+          },
+        },
+      },
+      { press: 'capture' },
+      {
+        note:
+          '(root) 변경도 제출 대상이다 — 레코드 전체를 담으므로 DTO가 싣는 경로가 ' +
+          '그 안에 있다. 이 한 줄을 걸러내던 동안에는 적용한 변경을 영원히 보낼 수 ' +
+          '없었다(B8-7-19)',
+        expect: {
+          cards: { operations: { captured: { contains: '변경 1건' } } },
+        },
+      },
+      { press: 'save' },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      {
+        note: '저장이 성공하고 기준이 수용되자 원본의 변경이 해소됐다 — clean이다',
+        expect: {
+          cards: {
+            operations: { mutationPhase: 'success' },
+            'resource-a': { city: '대전', dirty: 'false' },
+            requests: { server: '대전 / 2', counts: '2 / 1' },
+          },
+          changes: { 'resource-a': [] },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-14-refuse',
+    title: '충돌하면 전체 적용을 무변경으로 거절한다',
+    pins: 'M2-14 다섯째 항목 — 무변경 거절',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      { press: 'branch-drafts' },
+      { press: 'draft-a-daejeon' },
+      { press: 'edit-gwangju' },
+      { press: 'draft-a-apply' },
+      {
+        note:
+          '적용이 거절되고 원본은 전혀 움직이지 않았다 — (root) 줄이 생기지 않고 ' +
+          'city 한 줄과 version 그대로다. 부분 적용도 없다',
+        expect: {
+          cards: {
+            operations: { lastResult: { contains: '적용 거절: conflict' } },
+            'resource-a': { city: '광주', dirty: 'true', version: '2 / 0' },
+            'draft-a': { city: '대전', draftDirty: 'true', version: '2 / 1' },
+          },
+          changes: {
+            'resource-a': [{ path: 'city', before: '"서울"', after: '"광주"' }],
+            'draft-a': [
+              { path: 'city', source: '"광주"', conflict: 'conflict' },
+            ],
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-14-later-edit',
+    title: '적용 뒤의 새 입력을 그 적용의 완료 처리가 지우지 않는다',
+    pins: 'M2-14 다섯째 항목 — 적용 뒤 추가 입력',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      { press: 'branch-drafts' },
+      { press: 'draft-a-daejeon' },
+      { press: 'draft-a-apply' },
+      { press: 'edit-gwangju' },
+      {
+        note: '적용 뒤 draft는 clean이고 원본을 따라 광주로 움직인다',
+        expect: {
+          cards: { 'draft-a': { city: '광주', draftDirty: 'false' } },
+          changes: { 'draft-a': [] },
+        },
+      },
+      { press: 'draft-a-daejeon' },
+      {
+        note:
+          '새 입력은 새 기준(광주) 위의 변경으로 남는다 — 앞선 적용이 정리한 편집 ' +
+          '목록에 휩쓸려 사라지지 않는다',
+        expect: {
+          cards: { 'draft-a': { city: '대전', draftDirty: 'true' } },
+          changes: {
+            'draft-a': [
+              {
+                path: 'city',
+                before: '"광주"',
+                after: '"대전"',
+                conflict: '-',
+              },
+            ],
+          },
+        },
+      },
+    ],
+  },
+];
+
+/**
  * Every ported checklist item, in checklist order.
  *
  * Declared last on purpose: the lists it spreads have to exist first.
@@ -1205,4 +1368,5 @@ export const SCENARIOS: readonly Scenario[] = [
   ...M2_11,
   ...M2_12,
   ...M2_13,
+  ...M2_14,
 ];
