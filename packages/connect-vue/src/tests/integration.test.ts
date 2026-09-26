@@ -13,12 +13,14 @@ import {
   boardRef,
   counterRef,
   getBoard,
+  pairRef,
   renders,
   resetRenders,
 } from '@/tests/store/boardStore';
 import BoardApp from '@/tests/vue/BoardApp.vue';
 import Counter from '@/tests/vue/Counter.vue';
 import MountWrite from '@/tests/vue/MountWrite.vue';
+import PairWrite from '@/tests/vue/PairWrite.vue';
 
 describe('Connect Vue — Phase 8 integration', () => {
   afterEach(() => {
@@ -96,12 +98,23 @@ describe('Connect Vue — Phase 8 integration', () => {
  * store sitting on `0`, `''`, `false` or `null` therefore takes the create
  * branch on every update and replaces the object the template is bound to.
  * The component is then wired to an orphan and never updates again.
+ *
+ * `CI-29` — the same guard, at the other end. It is armed by an *inbound*
+ * update, which is not a write-back and has nothing to echo, and it only
+ * clears on a microtask. A second store write in the same turn is therefore
+ * dropped, and a selection covering both leaves stays one write behind
+ * forever. Phase 8.8 found this in the browser: the Vue demo's 작업과 정책
+ * card showed the *previous* operation, every time, because the demo's
+ * `bump()` writes three leaves in a row. CI-25 fixed this for the connector's
+ * first run; the update path was left as it was.
  */
 describe('Connect Vue — defects found in Phase 8', () => {
   afterEach(() => {
     cleanup();
     boardRef.value = getBoard();
     counterRef.count.value = 0;
+    pairRef.first.value = '1';
+    pairRef.second.value = 'a';
   });
 
   it('applies a store write that lands in the same turn as mount (CI-25)', async () => {
@@ -111,6 +124,22 @@ describe('Connect Vue — defects found in Phase 8', () => {
     await waitFor(() =>
       expect(getByTestId('mount-title').textContent).toBe('written at mount')
     );
+  });
+
+  it('applies every store write in a turn, not just the first (CI-29)', async () => {
+    const { getByTestId } = render(PairWrite);
+    await nextTick();
+
+    await fireEvent.click(getByTestId('pair-write'));
+    await nextTick();
+
+    await waitFor(() =>
+      expect(getByTestId('pair-first').textContent).toBe('changed')
+    );
+    // The write the guard swallowed. The store itself is correct - only what
+    // the component is bound to is stale.
+    expect(pairRef.second.value).toBe('changed too');
+    expect(getByTestId('pair-second').textContent).toBe('changed too');
   });
 
   it('keeps updating a value that passes through zero (CI-26)', async () => {

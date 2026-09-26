@@ -96,13 +96,26 @@ export function connectVue<T>(refWatch: Watch<T>) {
          * mount was dropped without a sound (`CI-25`).
          */
         reactiveValue = reactive({ value: stateRef.value }) as J;
-      } else if (reactiveValue.value !== stateRef.value && !changing) {
+      } else if (reactiveValue.value !== stateRef.value) {
         /**
          * Whether to update or to create is decided by whether the reactive
          * exists - not by whether its current value is truthy. On a store
          * sitting at `0`, `''`, `false` or `null`, the truthiness test took the
          * create branch on every update and replaced the object the template
          * was bound to, leaving the component wired to an orphan (`CI-26`).
+         *
+         * This branch deliberately does NOT ask whether the guard is up. The
+         * guard's job is to stop the write-back below from echoing, and it
+         * clears only on a microtask; asking about it here made the *second*
+         * store write of a turn vanish, so a selection covering several leaves
+         * stayed one write behind forever (`CI-29`, found in the browser by
+         * Phase 8.8 - the Vue demo's operation card showed the previous
+         * operation, always). Re-arming on each inbound update keeps the guard
+         * up at least as long as before, so the write-back is no less
+         * protected. It cannot be dropped instead: `reactive` hands the
+         * template a proxy of the value, so the write-back's own equality test
+         * does not recognise what this assignment just stored and would copy a
+         * clone back over the store.
          */
         change(() => {
           reactiveValue.value = stateRef.value as UnwrapRef<V>;
