@@ -5,6 +5,8 @@ import {
   OPERATION_IDS,
 } from 'stateref-example-shared';
 import { DEMOS, urlOf } from './demos';
+import { readScreen } from './read';
+import type { ScreenReading } from './read';
 
 /**
  * Step 2 of Phase 8.8: the selector contract, checked in a real browser.
@@ -74,3 +76,26 @@ function watch(page: import('@playwright/test').Page) {
   });
   return problems;
 }
+
+/**
+ * The premise of DC8-5-01, asserted rather than assumed.
+ *
+ * One model drives five demos, so on a freshly opened page the five screens
+ * must read identically. A difference here is a connector difference - there
+ * is nowhere else for it to come from. (Agreement is not correctness: all five
+ * can be wrong together, which is what the scenario expectations are for.)
+ */
+test('the five demos read identically on load', async ({ browser }) => {
+  const readings: [string, ScreenReading][] = [];
+  for (const demo of DEMOS) {
+    const page = await browser.newPage();
+    await page.goto(urlOf(demo));
+    readings.push([demo.name, await readScreen(page)]);
+    await page.close();
+  }
+
+  const [firstName, first] = readings[0];
+  for (const [name, reading] of readings.slice(1)) {
+    expect(reading, `${name} differs from ${firstName}`).toEqual(first);
+  }
+});
