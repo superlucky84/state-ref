@@ -409,12 +409,18 @@ fixture는 시간을 제어하지 못한다([DC8-5-12](./PHASE8_5.md)). 제어 �
 
 ### M2-16 — 상태와 변경 검토 (R2-20/26)
 
-- [ ] 원본 clean/draft dirty, 원본 dirty/draft clean 등 조합을 각각 표시한다.
-- [ ] 화면 전체 미저장 표시는 필요한 resource/draft를 합산하지만 parent dirty를 덮어쓰지 않는다.
-- [ ] dirty와 pending을 별도로 확인하고 이전 작업의 종료가 새 작업 상태를 비우지 않는다.
-- [ ] readonly changes와 버전을 확인한다. 오래된 검토/다른 owner의 항목으로 새 입력을 적용·해결할 수 없다.
+- [x] 원본 clean/draft dirty, 원본 dirty/draft clean 등 조합을 각각 표시한다.
+- [ ] 화면 전체 미저장 표시는 필요한 resource/draft를 합산하지만 parent dirty를 덮어쓰지 않는다. — **데모에 그 표시가 없다.** 카드마다 자기 `dirty`를 그리지만 화면 전체를 합산하는 행이 없어 "합산하되 parent dirty를 덮어쓰지 않는다"를 볼 대상이 없다. 합산 행을 하나 두면 닿는다.
+- [x] dirty와 pending을 별도로 확인하고 이전 작업의 종료가 새 작업 상태를 비우지 않는다.
+- [ ] readonly changes와 버전을 확인한다. 오래된 검토/다른 owner의 항목으로 새 입력을 적용·해결할 수 없다. — **둘 다 도달 불가.** readonly 조회는 `editable: false`로 열려 changes도 version도 없고 카드 자체가 없다(화면에 있는 것은 `readonly 조회 status` 한 줄뿐이다). 그리고 한 draft의 변경을 다른 draft의 `resolve`에 넘기는 조작이 없다 — `draft A 충돌 → …`는 draft A 자기 변경만 쓴다.
 
-**합격:** 각 상태가 무엇의 변경인지 알 수 있고 검토와 실제 적용이 일치함. **결과: 미수행.**
+**합격:** 각 상태가 무엇의 변경인지 알 수 있고 검토와 실제 적용이 일치함. **결과: 항목 1·3 통과, 항목 2·4 미수행(계측 없음).**
+
+**e2e 실행으로 채움**(DC8-8-08). 구현 SHA `c116b23`, 2026-09-27, 시나리오 `M2-16-clean-source`·`M2-16-dirty-vs-pending`, 명령 `pnpm test:e2e`, **데모 다섯 종 전부.**
+
+- **두 dirty가 서로 다른 것을 가리킨다.** 원본이 서버 기준과 같아 clean인 상태에서 draft만 `대전`으로 dirty가 된다 — [M2-12](#m2-12)가 본 것은 그 반대(원본 dirty · draft clean)였다. 두 조합을 나란히 두면 각 `dirty`가 무엇의 변경인지 화면에서 갈린다.
+- **dirty와 pending은 다른 축이다.** 로컬 편집만 있을 때 `dirty=true`·`serverBusy=false`·`진행 중 WRITE 0`이고 요청은 `2 / 0`이다. `저장 실행`을 누르면 둘이 함께 켜지고, 성공이 둘을 함께 내린다. 그 동안 draft의 `dirty`는 무관하게 유지된다.
+- **앞 작업의 종료가 새 작업 상태를 비우지 않는다.** 첫 저장이 `success`로 끝난 뒤 두 번째 저장을 시작하면 `mutation phase`가 다시 `pending`·`진행 중 WRITE 1`이 되고 `WRITE = 2`다. draft의 `dirty`는 두 저장을 지나 그대로다.
 
 ### M2-17 — 경로·배열·데이터 경계 (R2-21/25)
 
