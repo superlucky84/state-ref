@@ -11,6 +11,7 @@ import type { OperationId } from 'stateref-example-shared';
 import { model } from './demo-model';
 import DraftCard from './DraftCard.vue';
 import Flag from './Flag.vue';
+import LiveCard from './LiveCard.vue';
 import ResourceCard from './ResourceCard.vue';
 import Row from './Row.vue';
 import 'stateref-example-shared/demo.css';
@@ -142,6 +143,21 @@ const time = (at: number | null) =>
         card="draft-b"
         :draft="drafts.b"
       />
+
+      <section class="card" data-card="live">
+        <h2>{{ CARD_TITLE.live }}</h2>
+        <LiveCard v-if="!ui.value.liveDisposed" />
+        <template v-else>
+          <Row field="liveKey" value="(해제됨)" />
+          <Row field="liveEnabled" value="(해제됨)" />
+          <Row field="livePhase" value="(해제됨)" />
+          <Row field="liveCity" value="(해제됨)" />
+        </template>
+        <p class="note">
+          원본이 key를 가리키지 않으면 비활성이고 조회 핸들이 없다. key를 바꾸면
+          이전 key의 조회는 마지막 소유자였을 때 취소된다.
+        </p>
+      </section>
 
       <section class="card" data-card="computed">
         <h2>{{ CARD_TITLE.computed }}</h2>

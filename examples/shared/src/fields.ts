@@ -22,6 +22,7 @@ export const CARD_TITLE = {
   'draft-b': 'draft B',
   requests: '서버 상태와 요청 기록',
   operations: '작업과 정책',
+  live: '따라가는 표시 (liveView)',
   computed: 'computed 읽기 결과',
 } as const;
 
@@ -64,6 +65,11 @@ export const FIELD_LABEL = {
   focused: 'focused',
   online: 'online',
   policy: '자동 조회 정책',
+  // The live view card. `liveKey` is the key the display currently follows.
+  liveKey: 'key',
+  liveEnabled: 'enabled',
+  livePhase: 'phase / fetch',
+  liveCity: '표시 중인 도시',
   // The callback-less computed card.
   computedValue: '현재 값',
   computedCalculations: '계산 실행 횟수',
@@ -149,6 +155,10 @@ export const CARD_FIELDS: Readonly<
     ],
     onceLoaded: [],
   },
+  live: {
+    always: ['liveKey', 'liveEnabled', 'livePhase', 'liveCity'],
+    onceLoaded: [],
+  },
   computed: {
     always: [
       'computedValue',
@@ -166,6 +176,7 @@ export const CARDS_ON_LOAD: readonly CardId[] = [
   'resource-b',
   'requests',
   'operations',
+  'live',
   'computed',
 ];
 

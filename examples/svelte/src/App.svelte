@@ -10,6 +10,7 @@
   import { model } from './demo-model';
   import DraftCard from './DraftCard.svelte';
   import Flag from './Flag.svelte';
+  import LiveCard from './LiveCard.svelte';
   import ResourceCard from './ResourceCard.svelte';
   import Row from './Row.svelte';
   import 'stateref-example-shared/demo.css';
@@ -34,6 +35,7 @@
   const computedCalculations = ui(store => store.computedCalculations);
   const computedIdentityStable = ui(store => store.computedIdentityStable);
   const computedSubscribed = ui(store => store.computedSubscribed);
+  const liveDisposed = ui(store => store.liveDisposed);
 
   const mutation = connectSvelte(model.mutation.watchStatus)(store => store);
   const readonlyStatus = connectSvelte(model.readonlyQuery.watchStatus)(
@@ -144,6 +146,22 @@
         <DraftCard card="draft-b" draft={drafts.b} />
       {/key}
     {/if}
+
+    <section class="card" data-card="live">
+      <h2>{CARD_TITLE.live}</h2>
+      {#if !$liveDisposed}
+        <LiveCard />
+      {:else}
+        <Row field="liveKey" value="(해제됨)" />
+        <Row field="liveEnabled" value="(해제됨)" />
+        <Row field="livePhase" value="(해제됨)" />
+        <Row field="liveCity" value="(해제됨)" />
+      {/if}
+      <p class="note">
+        원본이 key를 가리키지 않으면 비활성이고 조회 핸들이 없다. key를 바꾸면
+        이전 key의 조회는 마지막 소유자였을 때 취소된다.
+      </p>
+    </section>
 
     <section class="card" data-card="computed">
       <h2>{CARD_TITLE.computed}</h2>

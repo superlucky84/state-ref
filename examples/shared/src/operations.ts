@@ -65,6 +65,16 @@ export const OPERATION_GROUPS = [
     ],
   },
   {
+    id: 'live',
+    title: '따라가는 표시 (liveView)',
+    operations: [
+      ['live-activate-a', 'key live/a로 활성화'],
+      ['live-key-b', 'key를 live/b로 전환'],
+      ['live-deactivate', '표시 비활성화'],
+      ['live-dispose', '표시 해제'],
+    ],
+  },
+  {
     id: 'mutation',
     title: '서버 저장',
     operations: [

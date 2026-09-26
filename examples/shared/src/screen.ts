@@ -1,7 +1,7 @@
 import { draftPanel, requestPanel, resourcePanel } from './panels';
 import { show } from './fields';
 import type { ChangeLine } from './panels';
-import { POLICY_TEXT } from './model';
+import { POLICY_TEXT, keyText } from './model';
 import type { DemoModel } from './model';
 
 /**
@@ -123,6 +123,31 @@ export function screenOf(model: DemoModel): ScreenReading {
     online: flag(ui.online),
     policy: show(POLICY_TEXT),
   };
+
+  /**
+   * The live view card.
+   *
+   * Every read goes through a try: a disposed view refuses every access, and
+   * "no display is left" is exactly what the last bullet of M2-11 asks for - so
+   * the refusal is a reading, not a crash.
+   */
+  try {
+    const live = model.liveView.ref.value;
+    cards.live = {
+      liveKey:
+        live.queryKey === null ? '(없음)' : keyText(live.queryKey as string[]),
+      liveEnabled: flag(live.enabled),
+      livePhase: `${live.phase} / ${live.fetchStatus}`,
+      liveCity: show(live.data?.city ?? '(없음)'),
+    };
+  } catch {
+    cards.live = {
+      liveKey: '(해제됨)',
+      liveEnabled: '(해제됨)',
+      livePhase: '(해제됨)',
+      liveCity: '(해제됨)',
+    };
+  }
 
   cards.computed = {
     computedValue: show(ui.computedValue),

@@ -1,4 +1,4 @@
-import { connectPreact } from '@stateref/connect-preact';
+import { connectPreact, connectPreactView } from '@stateref/connect-preact';
 import type { StateRefStore } from 'state-ref';
 import type { QueryStatus, ResourceChange } from '@stateref/sync';
 import type { Draft, DraftStatus } from 'state-ref/draft';
@@ -7,6 +7,7 @@ import {
   OPERATION_GROUPS,
   POLICY_TEXT,
   createDemoModel,
+  keyText,
   draftPanel,
   label as fieldLabel,
   requestPanel,
@@ -34,6 +35,7 @@ const useUi = connectPreact(model.watchUi);
 const useStatusA = connectPreact(model.panelA.watchStatus);
 const useStatusB = connectPreact(model.panelB.watchStatus);
 const useReadonlyStatus = connectPreact(model.readonlyQuery.watchStatus);
+const useLiveView = connectPreactView(model.liveView.watch);
 const useMutationStatus = connectPreact(model.mutation.watchStatus);
 
 // `query.watch` throws before the first load, so these are built on demand.
@@ -350,6 +352,57 @@ function ComputedCard() {
   );
 }
 
+/**
+ * The live view card.
+ *
+ * A disposed view refuses every access, so the rows that read it mount only
+ * while it is alive - the same shape as the value rows of a resource panel,
+ * which mount only once the query has loaded.
+ */
+function LiveGone() {
+  return (
+    <>
+      <Row field="liveKey" value="(해제됨)" />
+      <Row field="liveEnabled" value="(해제됨)" />
+      <Row field="livePhase" value="(해제됨)" />
+      <Row field="liveCity" value="(해제됨)" />
+    </>
+  );
+}
+
+function LiveRows() {
+  const view = useLiveView();
+  const key = view.queryKey.value;
+  return (
+    <>
+      <Row
+        field="liveKey"
+        value={key === null ? '(없음)' : keyText(key as string[])}
+      />
+      <Row field="liveEnabled" value={String(view.enabled.value)} />
+      <Row
+        field="livePhase"
+        value={`${view.phase.value} / ${view.fetchStatus.value}`}
+      />
+      <Row field="liveCity" value={view.data.value?.city ?? '(없음)'} />
+    </>
+  );
+}
+
+function LiveCard() {
+  const ui = useUi();
+  return (
+    <section class="card" data-card="live">
+      <h2>{CARD_TITLE.live}</h2>
+      {ui.liveDisposed.value ? <LiveGone /> : <LiveRows />}
+      <p class="note">
+        원본이 key를 가리키지 않으면 비활성이고 조회 핸들이 없다. key를 바꾸면
+        이전 key의 조회는 마지막 소유자였을 때 취소된다.
+      </p>
+    </section>
+  );
+}
+
 function Controls() {
   return (
     <>
@@ -395,6 +448,7 @@ export default function App() {
           changes={() => model.panelB.changes()}
         />
         <DraftSection />
+        <LiveCard />
         <ComputedCard />
       </div>
     </main>

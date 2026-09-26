@@ -4,6 +4,7 @@ import { createDraft } from 'state-ref/draft';
 import type { Draft } from 'state-ref/draft';
 import { createSyncClient } from '@stateref/sync';
 import type {
+  LiveQueryViewHandle,
   MutationHandle,
   MutationLink,
   QueryHandle,
@@ -93,6 +94,18 @@ export const READONLY_KEY = ['profile', 'readonly'] as const;
  */
 export const keyText = (key: readonly string[]) => key.join('/');
 
+/**
+ * The keys the live view follows, and the ids that select them.
+ *
+ * Two keys are the point: M2-11 asks that a late result from the *old* key stay
+ * out of the new display, and that is only visible if the two keys answer with
+ * different values (the same reason the mock snapshots at accept time,
+ * DC8-5-48). The reader tags the record with the id it was read for.
+ */
+export const LIVE_IDS = ['a', 'b'] as const;
+export type LiveId = (typeof LIVE_IDS)[number];
+export const liveKey = (id: LiveId) => ['live', id];
+
 export type DemoUi = Readonly<{
   /** Bumped after every operation so panels over non-reactive data repaint. */
   tick: number;
@@ -109,6 +122,14 @@ export type DemoUi = Readonly<{
   computedValue: string;
   /** What the *subscribed* computed last saw; it waits for `sync()`. */
   computedSubscribed: string;
+  /**
+   * Whether the live view has been disposed.
+   *
+   * A disposed view refuses every access, so the card has to stop reading it
+   * rather than catch a throw per row - the same shape as mounting the value
+   * rows only once a query has loaded.
+   */
+  liveDisposed: boolean;
 }>;
 
 export type DraftPair = Readonly<{
@@ -128,6 +149,8 @@ export type DemoModel = Readonly<{
   panelB: QueryHandle<Profile>;
   /** A separate key opened with `editable: false`. */
   readonlyQuery: QueryHandle<Profile>;
+  /** A display that follows `liveSource` across query keys. */
+  liveView: LiveQueryViewHandle<Profile, Profile>;
   mutation: MutationHandle<SaveAddressDto, SaveAddressResponse>;
   drafts: () => DraftPair;
   watchUi: Watch<DemoUi>;
@@ -161,6 +184,35 @@ export function createDemoModel(): DemoModel {
     ...RETRY_POLICY,
   });
 
+  /**
+   * A display that follows a state-ref source across query keys.
+   *
+   * `resolve` returning null is how the view sits *disabled*: `live.query` is
+   * then null and nothing is read. Pointing the source at an id activates it,
+   * and pointing it at the other id switches the key under a live display -
+   * which is what M2-11's fourth and fifth bullets are about.
+   */
+  const liveSource = createStore<{ id: LiveId | null }>({ id: null });
+  const liveSourceRef = liveSource();
+  const liveView = client.liveView<{ id: LiveId | null }, Profile, Profile>(
+    liveSource,
+    input =>
+      input.id === null
+        ? null
+        : {
+            queryKey: liveKey(input.id),
+            // Through the mock, so settlement and the request row still work,
+            // then tagged with the key it was read for.
+            queryFn: async context => {
+              const value = await server.readFor(keyText(liveKey(input.id!)))(
+                context
+              );
+              return { ...value, city: `${value.city}-${input.id}` };
+            },
+            ...RETRY_POLICY,
+          }
+  );
+
   const mutation = client.mutation<SaveAddressDto, SaveAddressResponse>({
     mutationFn: input => server.write(input),
   });
@@ -178,6 +230,7 @@ export function createDemoModel(): DemoModel {
     computedIdentityStable: true,
     computedValue: '(읽지 않음)',
     computedSubscribed: '(알림 없음)',
+    liveDisposed: false,
   });
   // An unbound ref: it reads and writes the store without registering a
   // subscription of its own (Phase 8.4). The panels subscribe through
@@ -215,6 +268,8 @@ export function createDemoModel(): DemoModel {
   let drafts: DraftPair = { a: null, b: null, generation: 0 };
   /** The last discarded draft A, kept so a dead ref can be touched on purpose. */
   let discarded: Draft<Profile> | null = null;
+  /** The live view refuses every access once disposed, so track it. */
+  let liveAlive = true;
   let submission: ResourceSubmission<Profile> | null = null;
 
   const bump = (operation: string, result: string) => {
@@ -699,6 +754,40 @@ export function createDemoModel(): DemoModel {
           '제출 뒤 입력이다. submitted 수용은 이것을 소비하지 않는다.'
         );
 
+      case 'live-activate-a':
+      case 'live-key-b': {
+        if (!liveAlive) return bump(id, '표시를 이미 해제했다.');
+        const next: LiveId = id === 'live-activate-a' ? 'a' : 'b';
+        const before = liveSourceRef.id.value;
+        liveSourceRef.id.value = next;
+        return bump(
+          id,
+          before === null
+            ? `비활성 상태에서 key ${keyText(
+                liveKey(next)
+              )}로 활성화했다. 조회가 시작된다.`
+            : `key를 ${keyText(liveKey(before))}에서 ${keyText(
+                liveKey(next)
+              )}로 바꿨다. 이전 key의 조회는 마지막 소유자였다면 취소되고, 늦게 오는 결과는 새 표시에 들어가지 않는다.`
+        );
+      }
+      case 'live-deactivate':
+        if (!liveAlive) return bump(id, '표시를 이미 해제했다.');
+        liveSourceRef.id.value = null;
+        return bump(
+          id,
+          '원본이 key를 가리키지 않게 해서 표시를 비활성으로 돌렸다. 조회 핸들이 사라진다.'
+        );
+      case 'live-dispose':
+        if (!liveAlive) return bump(id, '이미 해제했다.');
+        liveView.dispose();
+        liveAlive = false;
+        ui.liveDisposed.value = true;
+        return bump(
+          id,
+          '표시를 해제했다. 이후 접근은 명시적으로 거절되고 구독도 남지 않는다.'
+        );
+
       case 'focus':
         environment.setFocused(true);
         ui.focused.value = true;
@@ -739,6 +828,7 @@ export function createDemoModel(): DemoModel {
     panelA,
     panelB,
     readonlyQuery,
+    liveView,
     mutation,
     drafts: () => drafts,
     watchUi,
@@ -750,6 +840,7 @@ export function createDemoModel(): DemoModel {
       panelA.dispose();
       panelB.dispose();
       readonlyQuery.dispose();
+      if (liveAlive) liveView.dispose();
     },
   };
 }

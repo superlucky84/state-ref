@@ -1,11 +1,12 @@
 import { For, Show, createMemo } from 'solid-js';
-import { connectSolid } from '@stateref/connect-solid';
+import { connectSolid, connectSolidView } from '@stateref/connect-solid';
 import type { Draft } from 'state-ref/draft';
 import {
   CARD_TITLE,
   OPERATION_GROUPS,
   POLICY_TEXT,
   createDemoModel,
+  keyText,
   draftPanel,
   label as fieldLabel,
   requestPanel,
@@ -95,6 +96,44 @@ function Changes(props: { rows: readonly ChangeLine[] }) {
 }
 
 /** Created only once the query has loaded: `query.watch` throws before that. */
+
+/**
+ * The live view card.
+ *
+ * A disposed view refuses every access, so the rows that read it mount only
+ * while it is alive - the same shape as a resource panel's value rows.
+ */
+function LiveRows() {
+  const view = connectSolidView(model.liveView.watch);
+  const key = view(ref => ref.queryKey.value);
+  const enabled = view(ref => ref.enabled.value);
+  const phase = view(ref => ref.phase.value);
+  const fetchStatus = view(ref => ref.fetchStatus.value);
+  const city = view(ref => ref.data.value?.city);
+  return (
+    <>
+      <Row
+        field="liveKey"
+        value={key() === null ? '(없음)' : keyText(key() as string[])}
+      />
+      <Row field="liveEnabled" value={String(enabled())} />
+      <Row field="livePhase" value={`${phase()} / ${fetchStatus()}`} />
+      <Row field="liveCity" value={city() ?? '(없음)'} />
+    </>
+  );
+}
+
+function LiveGone() {
+  return (
+    <>
+      <Row field="liveKey" value="(해제됨)" />
+      <Row field="liveEnabled" value="(해제됨)" />
+      <Row field="livePhase" value="(해제됨)" />
+      <Row field="liveCity" value="(해제됨)" />
+    </>
+  );
+}
+
 function ResourceValues(props: { which: 'a' | 'b' }) {
   const source = connectSolid(
     props.which === 'a' ? model.panelA.watch : model.panelB.watch
@@ -217,6 +256,7 @@ export default function App() {
   const [computedCalculations] = ui(store => store.computedCalculations);
   const [computedIdentityStable] = ui(store => store.computedIdentityStable);
   const [computedSubscribed] = ui(store => store.computedSubscribed);
+  const [liveDisposed] = ui(store => store.liveDisposed);
   const [mutation] = connectSolid(model.mutation.watchStatus)(store => store);
   const [readonlyStatus] = connectSolid(model.readonlyQuery.watchStatus)(
     store => store
@@ -335,6 +375,17 @@ export default function App() {
         <Show when={drafts().b} keyed>
           {draft => <DraftCard card="draft-b" draft={draft} />}
         </Show>
+
+        <section class="card" data-card="live">
+          <h2>{CARD_TITLE.live}</h2>
+          <Show when={!liveDisposed()} fallback={<LiveGone />}>
+            <LiveRows />
+          </Show>
+          <p class="note">
+            원본이 key를 가리키지 않으면 비활성이고 조회 핸들이 없다. key를
+            바꾸면 이전 key의 조회는 마지막 소유자였을 때 취소된다.
+          </p>
+        </section>
 
         <section class="card" data-card="computed">
           <h2>{CARD_TITLE.computed}</h2>

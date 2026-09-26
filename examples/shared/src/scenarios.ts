@@ -1619,6 +1619,173 @@ export const M2_16: readonly Scenario[] = [
 ];
 
 /**
+ * M2-11's fourth bullet, reachable now that the demo has a `liveView` card.
+ *
+ * The two keys answer with different values (`서울-a` / `서울-b`) on purpose: "the
+ * old key's late result stayed out of the new display" is only visible if the two
+ * answers differ - the same reason the mock snapshots at accept time
+ * (DC8-5-48).
+ */
+export const M2_11_LIVE: readonly Scenario[] = [
+  {
+    id: 'M2-11-4-activate',
+    title: '비활성에서 활성화하고, 비활성화·해제 뒤에는 표시가 남지 않는다',
+    pins: 'M2-11 넷째 항목 — 활성화, 그리고 다섯째 항목의 표시 쪽',
+    steps: [
+      {
+        note: '원본이 key를 가리키지 않으므로 비활성이고 조회 핸들도 없다',
+        expect: {
+          cards: {
+            live: {
+              liveKey: '(없음)',
+              liveEnabled: 'false',
+              liveCity: '(없음)',
+            },
+          },
+          absentRequests: ['READ-1'],
+        },
+      },
+      { press: 'live-activate-a' },
+      { press: 'settle-all' },
+      {
+        note: '활성화하자 그 key의 조회가 시작되고 표시가 그 key의 값을 든다',
+        expect: {
+          cards: {
+            live: {
+              liveKey: 'live/a',
+              liveEnabled: 'true',
+              livePhase: 'success / idle',
+              liveCity: '서울-a',
+            },
+          },
+          requests: { 'READ-1': { key: 'live/a', outcome: 'success' } },
+        },
+      },
+      { press: 'live-deactivate' },
+      {
+        note: '비활성으로 돌리면 조회 핸들이 사라지고 표시가 비어 있다 — 요청은 늘지 않는다',
+        expect: {
+          cards: {
+            live: {
+              liveKey: '(없음)',
+              liveEnabled: 'false',
+              liveCity: '(없음)',
+            },
+          },
+          absentRequests: ['READ-2'],
+        },
+      },
+      { press: 'live-dispose' },
+      {
+        note:
+          '해제 뒤에는 모든 행이 (해제됨)이다 — 표시가 남지 않는다. 구독이 남지 ' +
+          '않는지는 화면에 계측이 없어 여기서 판정하지 않는다',
+        expect: {
+          cards: {
+            live: {
+              liveKey: '(해제됨)',
+              liveEnabled: '(해제됨)',
+              livePhase: '(해제됨)',
+              liveCity: '(해제됨)',
+            },
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-11-4-cancel',
+    title: '진행 READ 중 key를 바꾸면 마지막 소유자였던 조회가 취소된다',
+    pins: 'M2-11 넷째 항목 — signal 취소',
+    steps: [
+      { press: 'live-activate-a' },
+      {
+        note: 'live/a의 조회가 떠 있다',
+        expect: {
+          cards: {
+            live: { liveKey: 'live/a', livePhase: 'pending / fetching' },
+          },
+          requests: { 'READ-1': { key: 'live/a', outcome: 'in-flight' } },
+        },
+      },
+      { press: 'live-key-b' },
+      {
+        note:
+          '표시가 이 view뿐이었으므로 이전 key의 조회는 **취소된다** — READ-1이 ' +
+          'aborted가 되고 새 key의 조회가 시작된다',
+        expect: {
+          cards: {
+            live: { liveKey: 'live/b', livePhase: 'pending / fetching' },
+          },
+          requests: {
+            'READ-1': { key: 'live/a', outcome: 'aborted' },
+            'READ-2': { key: 'live/b', outcome: 'in-flight' },
+          },
+        },
+      },
+      { press: 'settle-all' },
+      {
+        note: '새 key의 값만 표시된다',
+        expect: {
+          cards: { live: { liveKey: 'live/b', liveCity: '서울-b' } },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-11-4-late',
+    title: 'signal을 무시한 이전 key의 늦은 결과가 새 표시에 들어가지 않는다',
+    pins: 'M2-11 넷째 항목 — 늦은 결과 차단',
+    steps: [
+      { press: 'next-read-ignore-signal' },
+      { press: 'live-activate-a' },
+      { press: 'live-key-b' },
+      {
+        note:
+          '이 조회는 abort를 듣지 않으므로 READ-1이 취소되지 않고 떠 있다 — ' +
+          'M2-11-4-cancel과 갈리는 한 칸이다',
+        expect: {
+          requests: {
+            'READ-1': { key: 'live/a', outcome: 'in-flight' },
+            'READ-2': { key: 'live/b', outcome: 'in-flight' },
+          },
+          cards: { live: { liveKey: 'live/b' } },
+        },
+      },
+      { press: 'settle-read' },
+      {
+        note:
+          '이전 key의 결과가 늦게 도착했다(READ-1 success). 표시는 여전히 새 key를 ' +
+          '기다리는 중이고 서울-a는 어디에도 나타나지 않는다 — 늦은 결과가 버려졌다',
+        expect: {
+          requests: { 'READ-1': { key: 'live/a', outcome: 'success' } },
+          cards: {
+            live: {
+              liveKey: 'live/b',
+              livePhase: 'pending / fetching',
+              liveCity: '(없음)',
+            },
+          },
+        },
+      },
+      { press: 'settle-read' },
+      {
+        note: '새 key의 결과만 표시에 들어간다',
+        expect: {
+          cards: {
+            live: {
+              liveKey: 'live/b',
+              livePhase: 'success / idle',
+              liveCity: '서울-b',
+            },
+          },
+        },
+      },
+    ],
+  },
+];
+
+/**
  * Every ported checklist item, in checklist order.
  *
  * Declared last on purpose: the lists it spreads have to exist first.
@@ -1634,4 +1801,5 @@ export const SCENARIOS: readonly Scenario[] = [
   ...M2_14,
   ...M2_15,
   ...M2_16,
+  ...M2_11_LIVE,
 ];
