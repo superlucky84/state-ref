@@ -3,13 +3,16 @@ import { computed } from 'vue';
 import { connectVue } from '@stateref/connect-vue';
 import {
   AUTO_REFETCH,
+  CARD_TITLE,
   OPERATION_GROUPS,
   requestPanel,
 } from 'stateref-example-shared';
 import type { OperationId } from 'stateref-example-shared';
 import { model } from './demo-model';
 import DraftCard from './DraftCard.vue';
+import Flag from './Flag.vue';
 import ResourceCard from './ResourceCard.vue';
+import Row from './Row.vue';
 import 'stateref-example-shared/demo.css';
 
 /**
@@ -60,19 +63,17 @@ const time = (at: number | null) =>
         </button>
       </section>
 
-      <section class="card">
-        <h2>서버 상태와 요청 기록</h2>
-        <div class="row">
-          <span>서버 도시 / revision</span>
-          <b>{{ requests.serverCity }} / {{ requests.serverRevision }}</b>
-        </div>
-        <div class="row">
-          <span>READ / WRITE 횟수</span>
-          <b>{{ requests.readCount }} / {{ requests.writeCount }}</b>
-        </div>
-        <div class="row">
-          <span>진행 중</span><b>{{ requests.inFlight }}</b>
-        </div>
+      <section class="card" data-card="requests">
+        <h2>{{ CARD_TITLE.requests }}</h2>
+        <Row
+          field="server"
+          :value="`${requests.serverCity} / ${requests.serverRevision}`"
+        />
+        <Row
+          field="counts"
+          :value="`${requests.readCount} / ${requests.writeCount}`"
+        />
+        <Row field="inFlight" :value="requests.inFlight" />
         <table>
           <thead>
             <tr>
@@ -85,11 +86,18 @@ const time = (at: number | null) =>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="row in requests.rows" :key="row.id">
+            <tr
+              v-for="row in requests.rows"
+              :key="row.id"
+              :data-request="row.id"
+            >
               <td>{{ row.id }}</td>
-              <td>{{ row.key }}</td>
-              <td>{{ row.revision }}</td>
-              <td :class="row.outcome === 'in-flight' ? 'flag-on' : ''">
+              <td data-cell="key">{{ row.key }}</td>
+              <td data-cell="revision">{{ row.revision }}</td>
+              <td
+                data-cell="outcome"
+                :class="row.outcome === 'in-flight' ? 'flag-on' : ''"
+              >
                 {{ row.outcome }}
               </td>
               <td>{{ time(row.startedAt) }}</td>
@@ -99,50 +107,25 @@ const time = (at: number | null) =>
         </table>
       </section>
 
-      <section class="card">
-        <h2>작업과 정책</h2>
-        <div class="row">
-          <span>마지막 조작</span><b>{{ ui.value.lastOperation }}</b>
-        </div>
-        <div class="row">
-          <span>결과</span><b>{{ ui.value.lastResult }}</b>
-        </div>
-        <div class="row">
-          <span>고정한 제출</span><b>{{ ui.value.captured ?? '(없음)' }}</b>
-        </div>
-        <div class="row">
-          <span>mutation phase</span><b>{{ mutation.value.phase }}</b>
-        </div>
-        <div class="row">
-          <span>진행 중 WRITE</span><b>{{ mutation.value.pending }}</b>
-        </div>
-        <div class="row">
-          <span>readonly 조회 status</span>
-          <b>{{ readonlyStatus.value.status }}</b>
-        </div>
-        <div class="row">
-          <span>focused</span>
-          <b :class="ui.value.focused ? 'flag-on' : 'flag-off'">
-            {{ ui.value.focused }}
-          </b>
-        </div>
-        <div class="row">
-          <span>online</span>
-          <b :class="ui.value.online ? 'flag-on' : 'flag-off'">
-            {{ ui.value.online }}
-          </b>
-        </div>
-        <div class="row">
-          <span>자동 조회 정책</span><b>{{ policy }}</b>
-        </div>
+      <section class="card" data-card="operations">
+        <h2>{{ CARD_TITLE.operations }}</h2>
+        <Row field="lastOperation" :value="ui.value.lastOperation" />
+        <Row field="lastResult" :value="ui.value.lastResult" />
+        <Row field="captured" :value="ui.value.captured ?? '(없음)'" />
+        <Row field="mutationPhase" :value="mutation.value.phase" />
+        <Row field="mutationPending" :value="mutation.value.pending" />
+        <Row field="readonlyStatus" :value="readonlyStatus.value.status" />
+        <Flag field="focused" :on="ui.value.focused" />
+        <Flag field="online" :on="ui.value.online" />
+        <Row field="policy" :value="policy" />
         <p class="note">
           staleTime과 interval은 실제 시간으로 흐른다. fixture가 제어하는 것은
           환경 사건과 요청 완료 시점이다.
         </p>
       </section>
 
-      <ResourceCard title="resource 패널 A (key: profile)" which="a" />
-      <ResourceCard title="resource 패널 B (같은 key)" which="b" />
+      <ResourceCard card="resource-a" which="a" />
+      <ResourceCard card="resource-b" which="b" />
 
       <section v-if="!drafts.a && !drafts.b" class="card">
         <h2>draft 값과 변경</h2>
@@ -151,33 +134,25 @@ const time = (at: number | null) =>
       <DraftCard
         v-if="drafts.a"
         :key="`a-${drafts.generation}`"
-        title="draft A"
+        card="draft-a"
         :draft="drafts.a"
       />
       <DraftCard
         v-if="drafts.b"
         :key="`b-${drafts.generation}`"
-        title="draft B"
+        card="draft-b"
         :draft="drafts.b"
       />
 
-      <section class="card">
-        <h2>computed 읽기 결과</h2>
-        <div class="row">
-          <span>현재 값</span><b>{{ ui.value.computedValue }}</b>
-        </div>
-        <div class="row">
-          <span>계산 실행 횟수</span><b>{{ ui.value.computedCalculations }}</b>
-        </div>
-        <div class="row">
-          <span>직전 읽기와 같은 객체</span>
-          <b :class="ui.value.computedIdentityStable ? 'flag-on' : 'flag-off'">
-            {{ ui.value.computedIdentityStable }}
-          </b>
-        </div>
-        <div class="row">
-          <span>구독 콜백이 본 값</span><b>{{ ui.value.computedSubscribed }}</b>
-        </div>
+      <section class="card" data-card="computed">
+        <h2>{{ CARD_TITLE.computed }}</h2>
+        <Row field="computedValue" :value="ui.value.computedValue" />
+        <Row
+          field="computedCalculations"
+          :value="ui.value.computedCalculations"
+        />
+        <Flag field="computedIdentity" :on="ui.value.computedIdentityStable" />
+        <Row field="computedSubscribed" :value="ui.value.computedSubscribed" />
         <p class="note">
           구독 없는 읽기는 sync() 전에도 최신 값을 본다. 구독 콜백은 sync()에서
           알림을 받는다.

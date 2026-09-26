@@ -3,13 +3,21 @@ import { connectSolid } from '@stateref/connect-solid';
 import type { Draft } from 'state-ref/draft';
 import {
   AUTO_REFETCH,
+  CARD_TITLE,
   OPERATION_GROUPS,
   createDemoModel,
   draftPanel,
+  label as fieldLabel,
   requestPanel,
   resourcePanel,
 } from 'stateref-example-shared';
-import type { ChangeLine, OperationId, Profile } from 'stateref-example-shared';
+import type {
+  CardId,
+  ChangeLine,
+  FieldId,
+  OperationId,
+  Profile,
+} from 'stateref-example-shared';
 import 'stateref-example-shared/demo.css';
 
 /**
@@ -20,10 +28,13 @@ import 'stateref-example-shared/demo.css';
  */
 const model = createDemoModel();
 
-function Row(props: { label: string; value: unknown }) {
+// The label comes from the shared table and the row carries its field id, so
+// the browser runner addresses it by that id rather than by Korean text
+// (DC8-8-04).
+function Row(props: { field: FieldId; value: unknown }) {
   return (
-    <div class="row">
-      <span>{props.label}</span>
+    <div class="row" data-field={props.field}>
+      <span>{fieldLabel(props.field)}</span>
       <b>
         {typeof props.value === 'string'
           ? props.value
@@ -33,10 +44,10 @@ function Row(props: { label: string; value: unknown }) {
   );
 }
 
-function Flag(props: { label: string; on: boolean }) {
+function Flag(props: { field: FieldId; on: boolean }) {
   return (
-    <div class="row">
-      <span>{props.label}</span>
+    <div class="row" data-field={props.field}>
+      <span>{fieldLabel(props.field)}</span>
       <b class={props.on ? 'flag-on' : 'flag-off'}>
         {props.on ? 'true' : 'false'}
       </b>
@@ -90,27 +101,30 @@ function ResourceValues(props: { which: 'a' | 'b' }) {
 
   return (
     <>
-      <div class="row">
-        <span>도시</span>
+      <div class="row" data-field="city">
+        <span>{fieldLabel('city')}</span>
         <input
           value={city()}
           onInput={event => setCity(event.currentTarget.value)}
         />
       </div>
-      <Row label="우편번호" value={zip()} />
-      <Row label="메모" value={memo()} />
+      <Row field="zip" value={zip()} />
+      <Row field="memo" value={memo()} />
       <Row
-        label="연락처"
+        field="contacts"
         value={contacts()
           .map(c => c.name)
           .join(',')}
       />
-      <Row label="사무실" value={office() ?? '(없음)'} />
+      <Row field="office" value={office() ?? '(없음)'} />
     </>
   );
 }
 
-function ResourceCard(props: { title: string; which: 'a' | 'b' }) {
+function ResourceCard(props: {
+  card: Extract<CardId, 'resource-a' | 'resource-b'>;
+  which: 'a' | 'b';
+}) {
   const handle = props.which === 'a' ? model.panelA : model.panelB;
   const [status] = connectSolid(handle.watchStatus)(store => store);
   const panel = createMemo(() =>
@@ -118,8 +132,8 @@ function ResourceCard(props: { title: string; which: 'a' | 'b' }) {
   );
 
   return (
-    <section class="card">
-      <h2>{props.title}</h2>
+    <section class="card" data-card={props.card}>
+      <h2>{CARD_TITLE[props.card]}</h2>
       <Show
         when={panel().loaded}
         fallback={
@@ -133,15 +147,15 @@ function ResourceCard(props: { title: string; which: 'a' | 'b' }) {
         <ResourceValues which={props.which} />
       </Show>
       <Row
-        label="status / fetch"
+        field="status"
         value={`${panel().status} / ${panel().fetchStatus}`}
       />
-      <Flag label="dirty (로컬 차이)" on={panel().dirty} />
-      <Flag label="serverBusy (진행 중 WRITE)" on={panel().serverBusy} />
-      <Flag label="unconfirmed (미확정)" on={panel().unconfirmed} />
-      <Flag label="invalidated" on={panel().invalidated} />
+      <Flag field="dirty" on={panel().dirty} />
+      <Flag field="serverBusy" on={panel().serverBusy} />
+      <Flag field="unconfirmed" on={panel().unconfirmed} />
+      <Flag field="invalidated" on={panel().invalidated} />
       <Row
-        label="version / conflicts"
+        field="version"
         value={`${panel().version} / ${panel().conflicts}`}
       />
       <Changes rows={panel().changes} />
@@ -149,7 +163,10 @@ function ResourceCard(props: { title: string; which: 'a' | 'b' }) {
   );
 }
 
-function DraftCard(props: { title: string; draft: Draft<Profile> }) {
+function DraftCard(props: {
+  card: Extract<CardId, 'draft-a' | 'draft-b'>;
+  draft: Draft<Profile>;
+}) {
   const value = connectSolid(props.draft.watch);
   const [city, setCity] = value(store => store.city);
   const [zip] = value(store => store.zip);
@@ -157,19 +174,19 @@ function DraftCard(props: { title: string; draft: Draft<Profile> }) {
   const panel = createMemo(() => draftPanel(status(), props.draft.changes()));
 
   return (
-    <section class="card">
-      <h2>{props.title}</h2>
-      <div class="row">
-        <span>도시</span>
+    <section class="card" data-card={props.card}>
+      <h2>{CARD_TITLE[props.card]}</h2>
+      <div class="row" data-field="city">
+        <span>{fieldLabel('city')}</span>
         <input
           value={city()}
           onInput={event => setCity(event.currentTarget.value)}
         />
       </div>
-      <Row label="우편번호" value={zip()} />
-      <Flag label="dirty" on={panel().dirty} />
+      <Row field="zip" value={zip()} />
+      <Flag field="draftDirty" on={panel().dirty} />
       <Row
-        label="version / conflicts"
+        field="version"
         value={`${panel().version} / ${panel().conflicts}`}
       />
       <Changes rows={panel().changes} />
@@ -232,17 +249,17 @@ export default function App() {
           )}
         </For>
 
-        <section class="card">
-          <h2>서버 상태와 요청 기록</h2>
+        <section class="card" data-card="requests">
+          <h2>{CARD_TITLE.requests}</h2>
           <Row
-            label="서버 도시 / revision"
+            field="server"
             value={`${requests().serverCity} / ${requests().serverRevision}`}
           />
           <Row
-            label="READ / WRITE 횟수"
+            field="counts"
             value={`${requests().readCount} / ${requests().writeCount}`}
           />
-          <Row label="진행 중" value={requests().inFlight} />
+          <Row field="inFlight" value={requests().inFlight} />
           <table>
             <thead>
               <tr>
@@ -257,11 +274,14 @@ export default function App() {
             <tbody>
               <For each={requests().rows}>
                 {row => (
-                  <tr>
+                  <tr data-request={row.id}>
                     <td>{row.id}</td>
-                    <td>{row.key}</td>
-                    <td>{row.revision}</td>
-                    <td class={row.outcome === 'in-flight' ? 'flag-on' : ''}>
+                    <td data-cell="key">{row.key}</td>
+                    <td data-cell="revision">{row.revision}</td>
+                    <td
+                      data-cell="outcome"
+                      class={row.outcome === 'in-flight' ? 'flag-on' : ''}
+                    >
                       {row.outcome}
                     </td>
                     <td>{time(row.startedAt)}</td>
@@ -273,18 +293,18 @@ export default function App() {
           </table>
         </section>
 
-        <section class="card">
-          <h2>작업과 정책</h2>
-          <Row label="마지막 조작" value={lastOperation()} />
-          <Row label="결과" value={lastResult()} />
-          <Row label="고정한 제출" value={captured() ?? '(없음)'} />
-          <Row label="mutation phase" value={mutation().phase} />
-          <Row label="진행 중 WRITE" value={mutation().pending} />
-          <Row label="readonly 조회 status" value={readonlyStatus().status} />
-          <Flag label="focused" on={focused()} />
-          <Flag label="online" on={online()} />
+        <section class="card" data-card="operations">
+          <h2>{CARD_TITLE.operations}</h2>
+          <Row field="lastOperation" value={lastOperation()} />
+          <Row field="lastResult" value={lastResult()} />
+          <Row field="captured" value={captured() ?? '(없음)'} />
+          <Row field="mutationPhase" value={mutation().phase} />
+          <Row field="mutationPending" value={mutation().pending} />
+          <Row field="readonlyStatus" value={readonlyStatus().status} />
+          <Flag field="focused" on={focused()} />
+          <Flag field="online" on={online()} />
           <Row
-            label="자동 조회 정책"
+            field="policy"
             value={`staleTime ${AUTO_REFETCH.staleTime}ms · focus ${AUTO_REFETCH.refetchOnFocus} · reconnect ${AUTO_REFETCH.refetchOnReconnect} · interval ${AUTO_REFETCH.refetchInterval}`}
           />
           <p class="note">
@@ -293,8 +313,8 @@ export default function App() {
           </p>
         </section>
 
-        <ResourceCard title="resource 패널 A (key: profile)" which="a" />
-        <ResourceCard title="resource 패널 B (같은 key)" which="b" />
+        <ResourceCard card="resource-a" which="a" />
+        <ResourceCard card="resource-b" which="b" />
 
         <Show when={!drafts().a && !drafts().b}>
           <section class="card">
@@ -303,18 +323,18 @@ export default function App() {
           </section>
         </Show>
         <Show when={drafts().a} keyed>
-          {draft => <DraftCard title="draft A" draft={draft} />}
+          {draft => <DraftCard card="draft-a" draft={draft} />}
         </Show>
         <Show when={drafts().b} keyed>
-          {draft => <DraftCard title="draft B" draft={draft} />}
+          {draft => <DraftCard card="draft-b" draft={draft} />}
         </Show>
 
-        <section class="card">
-          <h2>computed 읽기 결과</h2>
-          <Row label="현재 값" value={computedValue()} />
-          <Row label="계산 실행 횟수" value={computedCalculations()} />
-          <Flag label="직전 읽기와 같은 객체" on={computedIdentityStable()} />
-          <Row label="구독 콜백이 본 값" value={computedSubscribed()} />
+        <section class="card" data-card="computed">
+          <h2>{CARD_TITLE.computed}</h2>
+          <Row field="computedValue" value={computedValue()} />
+          <Row field="computedCalculations" value={computedCalculations()} />
+          <Flag field="computedIdentity" on={computedIdentityStable()} />
+          <Row field="computedSubscribed" value={computedSubscribed()} />
           <p class="note">
             구독 없는 읽기는 sync() 전에도 최신 값을 본다. 구독 콜백은
             sync()에서 알림을 받는다.

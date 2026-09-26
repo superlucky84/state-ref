@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { OPERATION_IDS } from 'stateref-example-shared';
+import {
+  CARD_FIELDS,
+  CARDS_ON_LOAD,
+  OPERATION_IDS,
+} from 'stateref-example-shared';
 import { DEMOS, urlOf } from './demos';
 
 /**
@@ -13,13 +17,7 @@ import { DEMOS, urlOf } from './demos';
 for (const demo of DEMOS) {
   test.describe(demo.name, () => {
     test('renders every operation button exactly once', async ({ page }) => {
-      const problems: string[] = [];
-      page.on('pageerror', error => problems.push(`pageerror: ${error}`));
-      page.on('console', message => {
-        if (message.type() === 'error')
-          problems.push(`console: ${message.text()}`);
-      });
-
+      const problems = watch(page);
       await page.goto(urlOf(demo));
 
       // Not `toHaveCount` on a single selector: a demo with one button missing
@@ -38,5 +36,41 @@ for (const demo of DEMOS) {
       // saying something a person would have to explain (DC8-8-05).
       expect(problems, problems.join('\n')).toEqual([]);
     });
+
+    test('exposes every card and field a reader addresses', async ({
+      page,
+    }) => {
+      const problems = watch(page);
+      await page.goto(urlOf(demo));
+
+      const missing: string[] = [];
+      for (const card of CARDS_ON_LOAD) {
+        const scope = page.locator(`[data-card="${card}"]`);
+        if ((await scope.count()) !== 1) {
+          missing.push(`card ${card}: found ${await scope.count()}`);
+          continue;
+        }
+        // Only `always`: the value rows need a loaded baseline, and a screen
+        // that showed them before one would be the defect M2-04 forbids.
+        for (const field of CARD_FIELDS[card].always) {
+          const row = scope.locator(`[data-field="${field}"]`);
+          if ((await row.count()) !== 1) {
+            missing.push(`${card}/${field}: found ${await row.count()}`);
+          }
+        }
+      }
+      expect(missing, missing.join('\n')).toEqual([]);
+      expect(problems, problems.join('\n')).toEqual([]);
+    });
   });
+}
+
+/** Console errors and page exceptions are failures, not noise (DC8-8-05). */
+function watch(page: import('@playwright/test').Page) {
+  const problems: string[] = [];
+  page.on('pageerror', error => problems.push(`pageerror: ${error}`));
+  page.on('console', message => {
+    if (message.type() === 'error') problems.push(`console: ${message.text()}`);
+  });
+  return problems;
 }

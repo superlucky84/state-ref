@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { connectVue } from '@stateref/connect-vue';
-import { resourcePanel } from 'stateref-example-shared';
+import { CARD_TITLE, resourcePanel } from 'stateref-example-shared';
+import type { CardId } from 'stateref-example-shared';
 import { model } from './demo-model';
 import ChangesTable from './ChangesTable.vue';
+import Flag from './Flag.vue';
 import ResourceValues from './ResourceValues.vue';
+import Row from './Row.vue';
 
-const props = defineProps<{ title: string; which: 'a' | 'b' }>();
+const props = defineProps<{
+  card: Extract<CardId, 'resource-a' | 'resource-b'>;
+  which: 'a' | 'b';
+}>();
 const handle = props.which === 'a' ? model.panelA : model.panelB;
 const status = connectVue(handle.watchStatus)(store => store);
 const panel = computed(() =>
@@ -15,8 +21,8 @@ const panel = computed(() =>
 </script>
 
 <template>
-  <section class="card">
-    <h2>{{ props.title }}</h2>
+  <section class="card" :data-card="props.card">
+    <h2>{{ CARD_TITLE[props.card] }}</h2>
     <p v-if="!panel.loaded" class="note">
       {{
         panel.status === 'error'
@@ -25,36 +31,12 @@ const panel = computed(() =>
       }}
     </p>
     <ResourceValues v-else :which="props.which" />
-    <div class="row">
-      <span>status / fetch</span>
-      <b>{{ panel.status }} / {{ panel.fetchStatus }}</b>
-    </div>
-    <div class="row">
-      <span>dirty (로컬 차이)</span>
-      <b :class="panel.dirty ? 'flag-on' : 'flag-off'">{{ panel.dirty }}</b>
-    </div>
-    <div class="row">
-      <span>serverBusy (진행 중 WRITE)</span>
-      <b :class="panel.serverBusy ? 'flag-on' : 'flag-off'">
-        {{ panel.serverBusy }}
-      </b>
-    </div>
-    <div class="row">
-      <span>unconfirmed (미확정)</span>
-      <b :class="panel.unconfirmed ? 'flag-on' : 'flag-off'">
-        {{ panel.unconfirmed }}
-      </b>
-    </div>
-    <div class="row">
-      <span>invalidated</span>
-      <b :class="panel.invalidated ? 'flag-on' : 'flag-off'">
-        {{ panel.invalidated }}
-      </b>
-    </div>
-    <div class="row">
-      <span>version / conflicts</span>
-      <b>{{ panel.version }} / {{ panel.conflicts }}</b>
-    </div>
+    <Row field="status" :value="`${panel.status} / ${panel.fetchStatus}`" />
+    <Flag field="dirty" :on="panel.dirty" />
+    <Flag field="serverBusy" :on="panel.serverBusy" />
+    <Flag field="unconfirmed" :on="panel.unconfirmed" />
+    <Flag field="invalidated" :on="panel.invalidated" />
+    <Row field="version" :value="`${panel.version} / ${panel.conflicts}`" />
     <ChangesTable :rows="panel.changes" />
   </section>
 </template>

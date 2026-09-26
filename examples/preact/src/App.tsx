@@ -4,13 +4,21 @@ import type { QueryStatus, ResourceChange } from '@stateref/sync';
 import type { Draft } from 'state-ref/draft';
 import {
   AUTO_REFETCH,
+  CARD_TITLE,
   OPERATION_GROUPS,
   createDemoModel,
   draftPanel,
+  label as fieldLabel,
   requestPanel,
   resourcePanel,
 } from 'stateref-example-shared';
-import type { ChangeLine, OperationId, Profile } from 'stateref-example-shared';
+import type {
+  CardId,
+  ChangeLine,
+  FieldId,
+  OperationId,
+  Profile,
+} from 'stateref-example-shared';
 import 'stateref-example-shared/demo.css';
 
 /**
@@ -47,19 +55,22 @@ const draftHook = (draft: Draft<Profile>) => {
   return hook;
 };
 
-function Row({ label, value }: { label: string; value: unknown }) {
+// The label comes from the shared table and the row carries its field id, so
+// the browser runner addresses it by that id rather than by Korean text
+// (DC8-8-04).
+function Row({ field, value }: { field: FieldId; value: unknown }) {
   return (
-    <div class="row">
-      <span>{label}</span>
+    <div class="row" data-field={field}>
+      <span>{fieldLabel(field)}</span>
       <b>{typeof value === 'string' ? value : JSON.stringify(value)}</b>
     </div>
   );
 }
 
-function Flag({ label, on }: { label: string; on: boolean }) {
+function Flag({ field, on }: { field: FieldId; on: boolean }) {
   return (
-    <div class="row">
-      <span>{label}</span>
+    <div class="row" data-field={field}>
+      <span>{fieldLabel(field)}</span>
       <b class={on ? 'flag-on' : 'flag-off'}>{on ? 'true' : 'false'}</b>
     </div>
   );
@@ -100,8 +111,8 @@ function ResourceValues({ slot }: { slot: 'a' | 'b' }) {
   const source = useSource();
   return (
     <>
-      <div class="row">
-        <span>도시</span>
+      <div class="row" data-field="city">
+        <span>{fieldLabel('city')}</span>
         <input
           value={source.city.value}
           onInput={event => {
@@ -109,24 +120,24 @@ function ResourceValues({ slot }: { slot: 'a' | 'b' }) {
           }}
         />
       </div>
-      <Row label="우편번호" value={source.zip.value} />
-      <Row label="메모" value={source.memo.value} />
+      <Row field="zip" value={source.zip.value} />
+      <Row field="memo" value={source.memo.value} />
       <Row
-        label="연락처"
+        field="contacts"
         value={source.contacts.value.map(contact => contact.name).join(',')}
       />
-      <Row label="사무실" value={source.office.value ?? '(없음)'} />
+      <Row field="office" value={source.office.value ?? '(없음)'} />
     </>
   );
 }
 
 function ResourceCard({
-  title,
+  card,
   slot,
   useStatus,
   changes,
 }: {
-  title: string;
+  card: Extract<CardId, 'resource-a' | 'resource-b'>;
   slot: 'a' | 'b';
   useStatus: () => StateRefStore<QueryStatus>;
   changes: () => readonly ResourceChange[];
@@ -138,8 +149,8 @@ function ResourceCard({
   );
 
   return (
-    <section class="card">
-      <h2>{title}</h2>
+    <section class="card" data-card={card}>
+      <h2>{CARD_TITLE[card]}</h2>
       {!panel.loaded ? (
         <p class="note">
           {panel.status === 'error'
@@ -149,33 +160,33 @@ function ResourceCard({
       ) : (
         <ResourceValues slot={slot} />
       )}
-      <Row
-        label="status / fetch"
-        value={`${panel.status} / ${panel.fetchStatus}`}
-      />
-      <Flag label="dirty (로컬 차이)" on={panel.dirty} />
-      <Flag label="serverBusy (진행 중 WRITE)" on={panel.serverBusy} />
-      <Flag label="unconfirmed (미확정)" on={panel.unconfirmed} />
-      <Flag label="invalidated" on={panel.invalidated} />
-      <Row
-        label="version / conflicts"
-        value={`${panel.version} / ${panel.conflicts}`}
-      />
+      <Row field="status" value={`${panel.status} / ${panel.fetchStatus}`} />
+      <Flag field="dirty" on={panel.dirty} />
+      <Flag field="serverBusy" on={panel.serverBusy} />
+      <Flag field="unconfirmed" on={panel.unconfirmed} />
+      <Flag field="invalidated" on={panel.invalidated} />
+      <Row field="version" value={`${panel.version} / ${panel.conflicts}`} />
       <Changes rows={panel.changes} />
     </section>
   );
 }
 
-function DraftCard({ title, draft }: { title: string; draft: Draft<Profile> }) {
+function DraftCard({
+  card,
+  draft,
+}: {
+  card: Extract<CardId, 'draft-a' | 'draft-b'>;
+  draft: Draft<Profile>;
+}) {
   const useValue = draftHook(draft);
   const value = useValue();
   const panel = draftPanel(draft.status.value, draft.changes());
 
   return (
-    <section class="card">
-      <h2>{title}</h2>
-      <div class="row">
-        <span>도시</span>
+    <section class="card" data-card={card}>
+      <h2>{CARD_TITLE[card]}</h2>
+      <div class="row" data-field="city">
+        <span>{fieldLabel('city')}</span>
         <input
           value={value.city.value}
           onInput={event => {
@@ -183,12 +194,9 @@ function DraftCard({ title, draft }: { title: string; draft: Draft<Profile> }) {
           }}
         />
       </div>
-      <Row label="우편번호" value={value.zip.value} />
-      <Flag label="dirty" on={panel.dirty} />
-      <Row
-        label="version / conflicts"
-        value={`${panel.version} / ${panel.conflicts}`}
-      />
+      <Row field="zip" value={value.zip.value} />
+      <Flag field="draftDirty" on={panel.dirty} />
+      <Row field="version" value={`${panel.version} / ${panel.conflicts}`} />
       <Changes rows={panel.changes} />
     </section>
   );
@@ -210,10 +218,10 @@ function DraftSection() {
   return (
     <>
       {drafts.a && (
-        <DraftCard key={`a-${generation}`} title="draft A" draft={drafts.a} />
+        <DraftCard key={`a-${generation}`} card="draft-a" draft={drafts.a} />
       )}
       {drafts.b && (
-        <DraftCard key={`b-${generation}`} title="draft B" draft={drafts.b} />
+        <DraftCard key={`b-${generation}`} card="draft-b" draft={drafts.b} />
       )}
     </>
   );
@@ -225,17 +233,14 @@ function ServerCard() {
   const panel = requestPanel(model.server);
 
   return (
-    <section class="card">
-      <h2>서버 상태와 요청 기록</h2>
+    <section class="card" data-card="requests">
+      <h2>{CARD_TITLE.requests}</h2>
       <Row
-        label="서버 도시 / revision"
+        field="server"
         value={`${panel.serverCity} / ${panel.serverRevision}`}
       />
-      <Row
-        label="READ / WRITE 횟수"
-        value={`${panel.readCount} / ${panel.writeCount}`}
-      />
-      <Row label="진행 중" value={panel.inFlight} />
+      <Row field="counts" value={`${panel.readCount} / ${panel.writeCount}`} />
+      <Row field="inFlight" value={panel.inFlight} />
       <table>
         <thead>
           <tr>
@@ -249,11 +254,14 @@ function ServerCard() {
         </thead>
         <tbody>
           {panel.rows.map(row => (
-            <tr key={row.id}>
+            <tr key={row.id} data-request={row.id}>
               <td>{row.id}</td>
-              <td>{row.key}</td>
-              <td>{row.revision}</td>
-              <td class={row.outcome === 'in-flight' ? 'flag-on' : ''}>
+              <td data-cell="key">{row.key}</td>
+              <td data-cell="revision">{row.revision}</td>
+              <td
+                data-cell="outcome"
+                class={row.outcome === 'in-flight' ? 'flag-on' : ''}
+              >
                 {row.outcome}
               </td>
               <td>{new Date(row.startedAt).toLocaleTimeString()}</td>
@@ -276,18 +284,18 @@ function StateCard() {
   const readonlyStatus = useReadonlyStatus();
 
   return (
-    <section class="card">
-      <h2>작업과 정책</h2>
-      <Row label="마지막 조작" value={ui.lastOperation.value} />
-      <Row label="결과" value={ui.lastResult.value} />
-      <Row label="고정한 제출" value={ui.captured.value ?? '(없음)'} />
-      <Row label="mutation phase" value={mutation.phase.value} />
-      <Row label="진행 중 WRITE" value={mutation.pending.value} />
-      <Row label="readonly 조회 status" value={readonlyStatus.status.value} />
-      <Flag label="focused" on={ui.focused.value} />
-      <Flag label="online" on={ui.online.value} />
+    <section class="card" data-card="operations">
+      <h2>{CARD_TITLE.operations}</h2>
+      <Row field="lastOperation" value={ui.lastOperation.value} />
+      <Row field="lastResult" value={ui.lastResult.value} />
+      <Row field="captured" value={ui.captured.value ?? '(없음)'} />
+      <Row field="mutationPhase" value={mutation.phase.value} />
+      <Row field="mutationPending" value={mutation.pending.value} />
+      <Row field="readonlyStatus" value={readonlyStatus.status.value} />
+      <Flag field="focused" on={ui.focused.value} />
+      <Flag field="online" on={ui.online.value} />
       <Row
-        label="자동 조회 정책"
+        field="policy"
         value={`staleTime ${AUTO_REFETCH.staleTime}ms · focus ${AUTO_REFETCH.refetchOnFocus} · reconnect ${AUTO_REFETCH.refetchOnReconnect} · interval ${AUTO_REFETCH.refetchInterval}`}
       />
       <p class="note">
@@ -301,15 +309,12 @@ function StateCard() {
 function ComputedCard() {
   const ui = useUi();
   return (
-    <section class="card">
-      <h2>computed 읽기 결과</h2>
-      <Row label="현재 값" value={ui.computedValue.value} />
-      <Row label="계산 실행 횟수" value={ui.computedCalculations.value} />
-      <Flag
-        label="직전 읽기와 같은 객체"
-        on={ui.computedIdentityStable.value}
-      />
-      <Row label="구독 콜백이 본 값" value={ui.computedSubscribed.value} />
+    <section class="card" data-card="computed">
+      <h2>{CARD_TITLE.computed}</h2>
+      <Row field="computedValue" value={ui.computedValue.value} />
+      <Row field="computedCalculations" value={ui.computedCalculations.value} />
+      <Flag field="computedIdentity" on={ui.computedIdentityStable.value} />
+      <Row field="computedSubscribed" value={ui.computedSubscribed.value} />
       <p class="note">
         구독 없는 읽기는 sync() 전에도 최신 값을 본다. 구독 콜백은 sync()에서
         알림을 받는다.
@@ -351,13 +356,13 @@ export default function App() {
         <ServerCard />
         <StateCard />
         <ResourceCard
-          title="resource 패널 A (key: profile)"
+          card="resource-a"
           slot="a"
           useStatus={useStatusA}
           changes={() => model.panelA.changes()}
         />
         <ResourceCard
-          title="resource 패널 B (같은 key)"
+          card="resource-b"
           slot="b"
           useStatus={useStatusB}
           changes={() => model.panelB.changes()}

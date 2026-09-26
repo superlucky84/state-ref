@@ -20,6 +20,16 @@ export type { ControlledEnvironment } from './environment';
 export { createMockServer } from './mock-server';
 export type { MockServer } from './mock-server';
 export {
+  CARD_FIELDS,
+  CARD_TITLE,
+  CARDS_ON_LOAD,
+  FIELD_LABEL,
+  REQUEST_CELLS,
+  REQUEST_ROW_ATTR,
+  label,
+} from './fields';
+export type { CardId, FieldId, RequestCell } from './fields';
+export {
   CITY,
   INITIAL_PROFILE,
   removeOffice,

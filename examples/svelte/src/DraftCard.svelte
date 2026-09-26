@@ -1,11 +1,13 @@
 <script lang="ts">
   import { connectSvelte } from '@stateref/connect-svelte';
-  import { draftPanel } from 'stateref-example-shared';
-  import type { Profile } from 'stateref-example-shared';
+  import { CARD_TITLE, draftPanel } from 'stateref-example-shared';
+  import type { CardId, Profile } from 'stateref-example-shared';
   import type { Draft } from 'state-ref/draft';
   import ChangesTable from './ChangesTable.svelte';
+  import Flag from './Flag.svelte';
+  import Row from './Row.svelte';
 
-  export let title: string;
+  export let card: Extract<CardId, 'draft-a' | 'draft-b'>;
   export let draft: Draft<Profile>;
 
   const value = connectSvelte(draft.watch);
@@ -16,16 +18,11 @@
   $: panel = draftPanel($status, draft.changes());
 </script>
 
-<section class="card">
-  <h2>{title}</h2>
-  <div class="row"><span>도시</span><input bind:value={$city} /></div>
-  <div class="row"><span>우편번호</span><b>{$zip}</b></div>
-  <div class="row">
-    <span>dirty</span>
-    <b class={panel.dirty ? 'flag-on' : 'flag-off'}>{panel.dirty}</b>
-  </div>
-  <div class="row">
-    <span>version / conflicts</span><b>{panel.version} / {panel.conflicts}</b>
-  </div>
+<section class="card" data-card={card}>
+  <h2>{CARD_TITLE[card]}</h2>
+  <Row field="city"><input bind:value={$city} /></Row>
+  <Row field="zip" value={$zip} />
+  <Flag field="draftDirty" on={panel.dirty} />
+  <Row field="version" value={`${panel.version} / ${panel.conflicts}`} />
   <ChangesTable rows={panel.changes} />
 </section>

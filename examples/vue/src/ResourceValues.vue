@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { connectVue } from '@stateref/connect-vue';
 import { model } from './demo-model';
+import Row from './Row.vue';
 
 /**
  * Mounted only after `status.loaded`, because `query.watch` throws before the
@@ -19,22 +20,14 @@ const office = source(store => store.office);
 </script>
 
 <template>
-  <div class="row">
-    <span>도시</span>
+  <Row field="city">
     <input v-model="city.value" />
-  </div>
-  <div class="row">
-    <span>우편번호</span><b>{{ zip.value }}</b>
-  </div>
-  <div class="row">
-    <span>메모</span><b>{{ memo.value }}</b>
-  </div>
-  <div class="row">
-    <span>연락처</span>
-    <b>{{ contacts.value.map(contact => contact.name).join(',') }}</b>
-  </div>
-  <div class="row">
-    <span>사무실</span>
-    <b>{{ office.value ?? '(없음)' }}</b>
-  </div>
+  </Row>
+  <Row field="zip" :value="zip.value" />
+  <Row field="memo" :value="memo.value" />
+  <Row
+    field="contacts"
+    :value="contacts.value.map(contact => contact.name).join(',')"
+  />
+  <Row field="office" :value="office.value ?? '(없음)'" />
 </template>
