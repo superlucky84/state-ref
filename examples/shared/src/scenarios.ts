@@ -414,5 +414,130 @@ export const M2_10: readonly Scenario[] = [
   },
 ];
 
-/** Every ported checklist item, in checklist order. */
-export const SCENARIOS: readonly Scenario[] = [...M2_10, ...M2_11];
+/**
+ * M2-07, already passed by hand in the React demo (2026-09-25).
+ *
+ * The three acceptance kinds compared from the same submission. Each scenario
+ * starts a fresh model, so the counts here are per run - the manual record's
+ * `2 / 2` for `submitted` was cumulative within one session, not a different
+ * result.
+ */
+export const M2_07: readonly Scenario[] = [
+  {
+    id: 'M2-07-response',
+    title: '응답 매핑 수용 — 추가 READ 0회, 기준은 서버가 돌려준 레코드',
+    pins: 'M2-07 첫째 항목 — response 수용',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      { press: 'capture' },
+      { press: 'next-write-corrected' },
+      { press: 'save-with-response' },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      {
+        note:
+          '기준이 서버가 저장한 레코드에서 왔으므로 보정된 우편번호(01 → 00001)가 ' +
+          '화면에 들어온다. 추가 READ는 없다 — READ는 2회 그대로다',
+        expect: {
+          cards: {
+            operations: { mutationPhase: 'success' },
+            'resource-a': {
+              city: '부산',
+              zip: '00001',
+              dirty: 'false',
+              version: '2 / 0',
+            },
+            requests: { server: '부산 / 2', counts: '2 / 1' },
+          },
+          requests: { 'WRITE-1': { outcome: 'success-corrected' } },
+          absentRequests: ['READ-3'],
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-07-submitted',
+    title: '제출값 수용 — 추가 READ 0회, 기준은 보낸 값 그대로',
+    pins: 'M2-07 첫째 항목 — submitted 수용',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      { press: 'capture' },
+      { press: 'save' },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      {
+        note:
+          '보낸 값이 그대로 기준이 된다. 서버가 보정할 것을 예약하지 않았으므로 ' +
+          '우편번호는 01이고, 추가 READ도 없다',
+        expect: {
+          cards: {
+            operations: { mutationPhase: 'success' },
+            'resource-a': {
+              city: '부산',
+              zip: '01',
+              dirty: 'false',
+              version: '2 / 0',
+            },
+            requests: { server: '부산 / 2', counts: '2 / 1' },
+          },
+          absentRequests: ['READ-3'],
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-07-refetch',
+    title:
+      '사후 재조회 수용 — READ 1회를 더 쓰고, WRITE가 끝나도 작업은 끝나지 않는다',
+    pins: 'M2-07 첫째 항목 — refetch 수용, 그 READ 비용',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      { press: 'capture' },
+      { press: 'save-with-refetch' },
+      { press: 'settle-all' },
+      {
+        note:
+          'WRITE는 이미 끝나 서버가 부산 / 2인데 작업은 아직 pending이다 — ' +
+          '기준이 복구 READ에서 오기 때문이다. 세 수용 방식 중 이것만 READ를 더 쓴다',
+        expect: {
+          cards: {
+            operations: { mutationPhase: 'pending' },
+            'resource-a': { serverBusy: 'true', dirty: 'true' },
+            requests: { server: '부산 / 2', counts: '3 / 1' },
+          },
+          requests: { 'READ-3': { key: 'profile', revision: '2' } },
+        },
+      },
+      { press: 'settle-all' },
+      {
+        note: '그 READ를 완료해야 비로소 작업이 끝나고 기준이 선다',
+        expect: {
+          cards: {
+            operations: { mutationPhase: 'success' },
+            'resource-a': {
+              city: '부산',
+              dirty: 'false',
+              serverBusy: 'false',
+              version: '2 / 0',
+            },
+            requests: { counts: '3 / 1' },
+          },
+          requests: { 'READ-3': { outcome: 'success' } },
+        },
+      },
+    ],
+  },
+];
+
+/**
+ * Every ported checklist item, in checklist order.
+ *
+ * Declared last on purpose: the lists it spreads have to exist first.
+ */
+export const SCENARIOS: readonly Scenario[] = [...M2_07, ...M2_10, ...M2_11];
