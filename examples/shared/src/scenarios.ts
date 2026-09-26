@@ -1356,6 +1356,138 @@ export const M2_14: readonly Scenario[] = [
 ];
 
 /**
+ * M2-15, performed here for the first time - it was 미수행.
+ *
+ * The fourth bullet has two halves. "A discarded ref fails explicitly" is not
+ * reachable: after `draft A 폐기` the demo's slot is empty and every draft
+ * operation answers from its own guard, so nothing ever touches the dead ref.
+ * The other half - that the refusal is not dressed up as a network or save
+ * cancellation - is checked below, because that is exactly what the screen says
+ * and does not say.
+ */
+export const M2_15: readonly Scenario[] = [
+  {
+    id: 'M2-15-reset',
+    title: 'reset은 draft의 입력만 지우고 세션을 끝내지 않는다',
+    pins: 'M2-15 첫째 항목',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      { press: 'branch-drafts' },
+      { press: 'draft-a-daejeon' },
+      { press: 'draft-a-reset' },
+      {
+        note:
+          'draft A가 현재 원본 값(부산)을 따르고 clean이 됐다. 원본의 서울 → 부산은 ' +
+          '그대로이고 draft B도 그대로다',
+        expect: {
+          cards: {
+            'draft-a': { city: '부산', draftDirty: 'false' },
+            'draft-b': { city: '부산', draftDirty: 'false' },
+            'resource-a': { city: '부산', dirty: 'true' },
+          },
+          changes: {
+            'draft-a': [],
+            'resource-a': [{ path: 'city', before: '"서울"', after: '"부산"' }],
+          },
+        },
+      },
+      { press: 'draft-a-daejeon' },
+      {
+        note:
+          '세션이 살아 있으므로 같은 draft에 다시 입력할 수 있다 — reset은 종료가 ' +
+          '아니다',
+        expect: {
+          cards: { 'draft-a': { city: '대전', draftDirty: 'true' } },
+          changes: {
+            'draft-a': [{ path: 'city', before: '"부산"', after: '"대전"' }],
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-15-discard',
+    title: 'discard는 draft를 끝내고 원본의 변경은 남긴다',
+    pins: 'M2-15 둘째 항목, 그리고 넷째 항목의 후반부',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      { press: 'branch-drafts' },
+      { press: 'draft-a-daejeon' },
+      { press: 'draft-a-discard' },
+      {
+        note:
+          'draft A 카드가 화면에서 사라졌다. 원본의 서울 → 부산은 남고 draft B는 ' +
+          '살아 있다 — 폐기는 그 draft만 끝낸다',
+        expect: {
+          absentCards: ['draft-a'],
+          cards: {
+            'draft-b': { city: '부산', draftDirty: 'false' },
+            'resource-a': { city: '부산', dirty: 'true' },
+          },
+          changes: {
+            'resource-a': [{ path: 'city', before: '"서울"', after: '"부산"' }],
+          },
+        },
+      },
+      { press: 'draft-a-daejeon' },
+      {
+        note:
+          '폐기한 draft를 향한 조작은 draft의 어휘로 거절된다 — 네트워크 취소도 ' +
+          '저장 취소도 아니다. mutation phase는 idle이고 READ/WRITE도 움직이지 않는다',
+        expect: {
+          cards: {
+            operations: {
+              lastResult: '먼저 draft를 분기한다.',
+              mutationPhase: 'idle',
+              mutationPending: '0',
+            },
+            requests: { counts: '2 / 0' },
+          },
+          absentCards: ['draft-a'],
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-15-discard-after-apply',
+    title: '이미 적용한 내용을 draft 폐기로 되돌리지 않는다',
+    pins: 'M2-15 셋째 항목',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      { press: 'branch-drafts' },
+      { press: 'draft-a-daejeon' },
+      { press: 'draft-a-apply' },
+      { press: 'draft-a-discard' },
+      {
+        note:
+          '적용이 원본에 남긴 대전은 폐기에도 그대로다 — 폐기는 draft의 세션을 ' +
+          '끝내는 것이고 이미 원본에 들어간 것을 되감지 않는다. draft B는 원본을 ' +
+          '따라 대전이다',
+        expect: {
+          absentCards: ['draft-a'],
+          cards: {
+            'resource-a': { city: '대전', dirty: 'true' },
+            'draft-b': { city: '대전', draftDirty: 'false' },
+            requests: { counts: '2 / 0' },
+          },
+          changes: {
+            'resource-a': [
+              { path: '(root)', after: { contains: '"city":"대전"' } },
+            ],
+          },
+        },
+      },
+    ],
+  },
+];
+
+/**
  * Every ported checklist item, in checklist order.
  *
  * Declared last on purpose: the lists it spreads have to exist first.
@@ -1369,4 +1501,5 @@ export const SCENARIOS: readonly Scenario[] = [
   ...M2_12,
   ...M2_13,
   ...M2_14,
+  ...M2_15,
 ];
