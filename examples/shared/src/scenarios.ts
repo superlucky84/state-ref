@@ -111,7 +111,7 @@ export const pressesOf = (scenario: Scenario): readonly OperationId[] =>
   scenario.steps.flatMap(step => ('press' in step ? [step.press] : []));
 
 /** The three M2-11 bullets the demo can reach (PHASE8_5 단계 14). */
-export const SCENARIOS: readonly Scenario[] = [
+export const M2_11: readonly Scenario[] = [
   {
     id: 'M2-11-1',
     title: '연결이 시작되면 진행 중이던 READ는 중단된다',
@@ -260,3 +260,159 @@ export const SCENARIOS: readonly Scenario[] = [
     ],
   },
 ];
+
+/**
+ * M2-10, already passed by hand in the React demo (2026-09-26).
+ *
+ * Ported so the other four connectors get the same cover. The fourth bullet -
+ * the recovery barrier - is already pinned by `M2-11-6`.
+ *
+ * The drain presses `가능한 요청 모두 완료` more times than the retry chain
+ * needs: one press settles the open request and the retry is issued on the next
+ * turn, so a chain of `QUERY_RETRY + 1` attempts costs twice that. Pressing a
+ * few extra times is a no-op once nothing is pending, which keeps the scenario
+ * from encoding the retry budget as a number.
+ */
+export const M2_10: readonly Scenario[] = [
+  {
+    id: 'M2-10-1',
+    title: '저장은 성공했고 기준 복구만 실패했다, 그리고 재조회로 복구된다',
+    pins: 'M2-10 첫째·둘째 항목 — sync-error와 재전송 없는 복구',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      { press: 'capture' },
+      { press: 'next-write-sync-error' },
+      { press: 'save-with-refetch' },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      {
+        note:
+          '서버는 저장했고(부산 / 2) 클라이언트는 그 기준을 확인하지 못했다 — ' +
+          '한 화면이 두 사실을 따로 말한다. 재시도 예산 3회를 소진한 네 번의 READ가 ' +
+          '모두 error다',
+        expect: {
+          cards: {
+            operations: { mutationPhase: 'sync-error' },
+            'resource-a': {
+              status: 'error / idle',
+              city: '부산',
+              dirty: 'true',
+              unconfirmed: 'true',
+              invalidated: 'true',
+              version: '1 / 0',
+            },
+            requests: { server: '부산 / 2', counts: '6 / 1', inFlight: '0' },
+          },
+          requests: {
+            'WRITE-1': { outcome: 'success-then-read-failure' },
+            'READ-3': { outcome: 'error' },
+            'READ-4': { outcome: 'error' },
+            'READ-5': { outcome: 'error' },
+            'READ-6': { outcome: 'error' },
+          },
+        },
+      },
+      { press: 'refetch' },
+      { press: 'settle-all' },
+      { press: 'settle-all' },
+      {
+        note:
+          '기준을 고친 것은 재조회이지 재전송이 아니다 — WRITE는 1회 그대로이고 ' +
+          'READ-7만 늘었다',
+        expect: {
+          cards: {
+            'resource-a': {
+              status: 'success / idle',
+              city: '부산',
+              dirty: 'false',
+              unconfirmed: 'false',
+              invalidated: 'false',
+              version: '2 / 0',
+            },
+            requests: { server: '부산 / 2', counts: '7 / 1' },
+          },
+          requests: { 'READ-7': { outcome: 'success' } },
+          absentRequests: ['WRITE-2'],
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-10-3a',
+    title: '확정 거절은 제출한 입력을 되돌린다',
+    pins: 'M2-10 셋째 항목 — 확정 거절 쪽',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      { press: 'capture' },
+      { press: 'next-write-rejected' },
+      { press: 'save-reject-remove' },
+      { press: 'settle-all' },
+      {
+        note:
+          '저장되지 않았음을 들었으므로 제출 입력을 되돌린다. 기준은 미확정이 ' +
+          '아니고, invalidated만 남는다 — beginLink()가 올린 것을 성공 경로만 내린다',
+        expect: {
+          cards: {
+            operations: { mutationPhase: 'rejected' },
+            'resource-a': {
+              city: '서울',
+              dirty: 'false',
+              unconfirmed: 'false',
+              invalidated: 'true',
+            },
+            requests: { server: '서울 / 1', counts: '2 / 1' },
+          },
+          requests: { 'WRITE-1': { outcome: 'rejected' } },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-10-3b',
+    title: '전송 실패는 되돌리지 않고 미확정으로 남는다',
+    pins: 'M2-10 셋째 항목 — settled unknown 쪽',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      { press: 'capture' },
+      { press: 'next-write-transport-failure' },
+      { press: 'save-reject-remove' },
+      { press: 'settle-all' },
+      {
+        note:
+          '서버가 저장했는지 알 수 없으므로 되돌리지 않는다. 같은 저장 버튼에 ' +
+          '같은 서버 상태(서울 / 1)인데 화면이 갈리는 것은 클라이언트가 들은 말 ' +
+          '때문이다 — M2-10-3a와 나란히 읽어야 하는 짝이다',
+        expect: {
+          cards: {
+            operations: { mutationPhase: 'unknown' },
+            'resource-a': {
+              city: '부산',
+              dirty: 'true',
+              unconfirmed: 'true',
+              invalidated: 'true',
+            },
+            requests: { server: '서울 / 1', counts: '2 / 1' },
+          },
+          requests: { 'WRITE-1': { outcome: 'transport-failure' } },
+        },
+      },
+    ],
+  },
+];
+
+/** Every ported checklist item, in checklist order. */
+export const SCENARIOS: readonly Scenario[] = [...M2_10, ...M2_11];
