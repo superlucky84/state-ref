@@ -16,6 +16,7 @@ export const OPERATION_GROUPS = [
       ['settle-all', '가능한 요청 모두 완료'],
       ['next-read-error', '다음 READ 실패 예약 (재시도에 흡수됨)'],
       ['next-read-error-exhausted', '다음 READ 연속 실패 (재시도 소진)'],
+      ['next-read-ignore-signal', '다음 READ는 signal을 무시함 (늦게 완료)'],
       ['next-write-rejected', '다음 WRITE 확정 거절 예약'],
       ['next-write-unknown', '다음 WRITE 응답 없음 예약 (계속 진행 중)'],
       ['next-write-transport-failure', '다음 WRITE 전송 실패 예약 (결과 불명)'],

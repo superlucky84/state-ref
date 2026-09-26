@@ -82,13 +82,14 @@
       <table>
         <thead>
           <tr>
-            <th>요청 ID</th><th>revision</th><th>결과</th><th>시작</th><th>종료</th>
+            <th>요청 ID</th><th>key</th><th>revision</th><th>결과</th><th>시작</th><th>종료</th>
           </tr>
         </thead>
         <tbody>
           {#each requests.rows as row (row.id)}
             <tr>
               <td>{row.id}</td>
+              <td>{row.key}</td>
               <td>{row.revision}</td>
               <td class={row.outcome === 'in-flight' ? 'flag-on' : ''}>
                 {row.outcome}

@@ -67,6 +67,43 @@ describe('mock server request records', () => {
     expect(aborted?.outcome).toBe('aborted');
     expect(server.inFlight()).toHaveLength(0);
   });
+
+  it('answers a READ with the value it held when the request was accepted', async () => {
+    const server = createMockServer(INITIAL_PROFILE);
+
+    const reading = server.readFor('profile')({
+      signal: new AbortController().signal,
+    });
+    // The server moves on while the request is open, exactly as it does when a
+    // WRITE lands before an earlier READ has answered.
+    server.setValue({ ...server.value(), city: CITY.resource });
+    server.settle('READ');
+
+    // Resolving with the *current* value would make a late answer carry the
+    // newer state, and "the late result did not overwrite the baseline" would
+    // have nothing to show - the two values would be identical (DC8-5-48).
+    await expect(reading).resolves.toMatchObject({ city: CITY.server });
+    const row = server.requests()[0];
+    expect(row.revision).toBe(1);
+    expect(server.revision()).toBe(2);
+  });
+
+  it('records the query key each READ was issued for', async () => {
+    const server = createMockServer(INITIAL_PROFILE);
+    const signal = new AbortController().signal;
+
+    void server.readFor('profile')({ signal });
+    void server.readFor('profile/readonly')({ signal });
+    server.settleAll();
+    await Promise.resolve();
+
+    // Every row said `profile` before, the readonly query's READs included, so
+    // the table could not tell a linked query from an unlinked one (B8-7-14).
+    expect(server.requests().map(row => row.key)).toEqual([
+      'profile',
+      'profile/readonly',
+    ]);
+  });
 });
 
 describe('controlled environment', () => {

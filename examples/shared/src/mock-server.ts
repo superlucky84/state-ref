@@ -49,8 +49,29 @@ export type MockServer = Readonly<{
    * Pass the whole chain length to reach `sync-error`.
    */
   nextWrite: (outcome: WriteOutcome, readFailures?: number) => void;
+  /**
+   * Make the next READ - or the next `repeat` READs - ignore its `signal`.
+   *
+   * Starting a linked mutation aborts the query's in-flight READ as well as
+   * bumping its epoch (`packages/sync/src/index.ts:651`), so a well behaved
+   * transport never gets to answer late. sync's second line of defence is the
+   * epoch check *after* `await queryFn`, and only a result that ignored the
+   * abort can reach it (DC8-5-49). A READ reserved here stays in flight
+   * through the abort and answers whenever the demo settles it.
+   */
+  nextReadIgnoresSignal: (repeat?: number) => void;
 
-  /** The `queryFn` a demo hands to `client.query`. */
+  /**
+   * Build the `queryFn` for one query key.
+   *
+   * sync hands `queryFn` only `{ signal }` (`packages/sync/src/index.ts:178`),
+   * so the key has to be bound here or the request log cannot say which query
+   * a READ belongs to (B8-7-14 / DC8-5-50).
+   */
+  readFor: (
+    key: string
+  ) => (context: { signal: AbortSignal }) => Promise<Profile>;
+  /** `readFor(DEFAULT_KEY)`, for a caller that only ever opens one query. */
   read: (context: { signal: AbortSignal }) => Promise<Profile>;
   /** The `mutationFn` a demo hands to `client.mutation`. */
   write: (input: SaveAddressDto) => Promise<SaveAddressResponse>;
@@ -69,6 +90,17 @@ type Pending = {
 
 /** The server's own postal-code format: five digits, zero padded. */
 const normaliseZip = (zip: string) => zip.padStart(5, '0');
+
+/** The key `read` binds, for a caller that opens a single query. */
+export const DEFAULT_KEY = 'profile';
+
+/**
+ * What the `key` column shows for a WRITE.
+ *
+ * A mutation has no query key of its own. Naming the linked query here would
+ * claim the mock knows about links, which it does not (DC8-5-50).
+ */
+export const MUTATION_KEY = '(mutation)';
 
 /**
  * `notify` is called whenever the request log, the in-flight list or the
@@ -92,13 +124,18 @@ export function createMockServer(
   let nextReadRepeat = 1;
   let nextWrite: WriteOutcome = 'success';
   let nextWriteReadFailures = 1;
+  let signalIgnoringReads = 0;
   const records: RequestRecord[] = [];
   const pending: Pending[] = [];
 
-  const record = (kind: RequestKind, id: string): RequestRecord => ({
+  const record = (
+    kind: RequestKind,
+    id: string,
+    key: string
+  ): RequestRecord => ({
     id,
     kind,
-    key: 'profile',
+    key,
     revision,
     startedAt: Date.now(),
     settledAt: null,
@@ -126,6 +163,63 @@ export function createMockServer(
     if (index >= 0) pending.splice(index, 1);
   };
 
+  const readFor =
+    (key: string) =>
+    ({ signal }: { signal: AbortSignal }): Promise<Profile> => {
+      readCount += 1;
+      const outcome = nextRead;
+      // The queue is consumed here, at call time, so a retry issued later
+      // gets the next queued outcome rather than the one this call used.
+      if (nextReadRepeat > 1) nextReadRepeat -= 1;
+      else {
+        nextRead = 'success';
+        nextReadRepeat = 1;
+      }
+      const ignoresSignal = signalIgnoringReads > 0;
+      if (ignoresSignal) signalIgnoringReads -= 1;
+      // The value this request answers with is fixed here, when the server
+      // accepts it - not when the demo settles it (DC8-5-48). A late answer
+      // therefore carries what the server held at `entry.revision`, which is
+      // what makes "the late result did not overwrite the newer baseline"
+      // something a person can see rather than infer.
+      const snapshot = value;
+      let entry = record('READ', `READ-${readCount}`, key);
+      records.push(entry);
+      const deferred = createDeferred<Profile>();
+      const item: Pending = {
+        record: entry,
+        deferred,
+        finish() {
+          if (outcome === 'unknown') return;
+          drop(item);
+          entry = replace(entry, outcome, true);
+          if (outcome === 'error') {
+            deferred.reject(new Error(`${entry.id} failed`));
+            return;
+          }
+          deferred.resolve(snapshot);
+        },
+      };
+      pending.push(item);
+      // A retry issues this with no operation behind it, so the panels have to
+      // be told (B8-7-13).
+      notify();
+      // An aborted READ is reported as aborted rather than quietly dropped.
+      // A READ reserved by `nextReadIgnoresSignal` skips this listener and so
+      // stays in flight through the abort - that row sitting at `in-flight`
+      // after a linked save started is the only on-screen sign that this
+      // transport does not hear its signal (DC8-5-49).
+      if (!ignoresSignal) {
+        signal.addEventListener('abort', () => {
+          if (deferred.settled) return;
+          drop(item);
+          entry = replace(entry, 'aborted', true);
+          deferred.reject(signal.reason);
+        });
+      }
+      return deferred.promise;
+    };
+
   return {
     value: () => value,
     revision: () => revision,
@@ -152,49 +246,15 @@ export function createMockServer(
       nextWrite = outcome;
       nextWriteReadFailures = readFailures;
     },
-
-    read({ signal }) {
-      readCount += 1;
-      const outcome = nextRead;
-      // The queue is consumed here, at call time, so a retry issued later
-      // gets the next queued outcome rather than the one this call used.
-      if (nextReadRepeat > 1) nextReadRepeat -= 1;
-      else {
-        nextRead = 'success';
-        nextReadRepeat = 1;
+    nextReadIgnoresSignal(repeat = 1) {
+      if (!Number.isInteger(repeat) || repeat < 1) {
+        throw new RangeError('repeat must be a positive integer.');
       }
-      let entry = record('READ', `READ-${readCount}`);
-      records.push(entry);
-      const deferred = createDeferred<Profile>();
-      const item: Pending = {
-        record: entry,
-        deferred,
-        finish() {
-          if (outcome === 'unknown') return;
-          drop(item);
-          entry = replace(entry, outcome, true);
-          if (outcome === 'error') {
-            deferred.reject(new Error(`${entry.id} failed`));
-            return;
-          }
-          deferred.resolve(value);
-        },
-      };
-      pending.push(item);
-      // A retry issues this with no operation behind it, so the panels have to
-      // be told (B8-7-13).
-      notify();
-      // An aborted READ is reported as aborted rather than quietly dropped -
-      // Phase 7.1 turns on a `queryFn` that ignores its signal, so the demo
-      // has to make the difference visible.
-      signal.addEventListener('abort', () => {
-        if (deferred.settled) return;
-        drop(item);
-        entry = replace(entry, 'aborted', true);
-        deferred.reject(signal.reason);
-      });
-      return deferred.promise;
+      signalIgnoringReads = repeat;
     },
+
+    readFor,
+    read: readFor(DEFAULT_KEY),
 
     write(input) {
       writeCount += 1;
@@ -202,7 +262,7 @@ export function createMockServer(
       const readFailures = nextWriteReadFailures;
       nextWrite = 'success';
       nextWriteReadFailures = 1;
-      let entry = record('WRITE', `WRITE-${writeCount}`);
+      let entry = record('WRITE', `WRITE-${writeCount}`, MUTATION_KEY);
       records.push(entry);
       const deferred = createDeferred<SaveAddressResponse>();
       const item: Pending = {

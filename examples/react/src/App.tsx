@@ -248,6 +248,7 @@ function ServerCard() {
         <thead>
           <tr>
             <th>요청 ID</th>
+            <th>key</th>
             <th>revision</th>
             <th>결과</th>
             <th>시작</th>
@@ -258,6 +259,7 @@ function ServerCard() {
           {panel.rows.map(row => (
             <tr key={row.id}>
               <td>{row.id}</td>
+              <td>{row.key}</td>
               <td>{row.revision}</td>
               <td className={row.outcome === 'in-flight' ? 'flag-on' : ''}>
                 {row.outcome}

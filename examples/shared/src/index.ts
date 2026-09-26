@@ -29,9 +29,12 @@ export {
 } from './scenario';
 export {
   AUTO_REFETCH,
+  PANEL_KEY,
   QUERY_RETRY,
   READING_QUERIES,
+  READONLY_KEY,
   createDemoModel,
+  keyText,
 } from './model';
 export type { ComputedSource, DemoModel, DemoUi, DraftPair } from './model';
 export { OPERATION_GROUPS, OPERATION_IDS, operationLabel } from './operations';

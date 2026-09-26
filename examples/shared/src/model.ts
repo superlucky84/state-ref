@@ -70,6 +70,18 @@ const RETRY_POLICY = {
   retryDelay: () => 0,
 };
 
+/** The two keys the demo opens. The panels and the readonly view are apart. */
+export const PANEL_KEY = ['profile'] as const;
+export const READONLY_KEY = ['profile', 'readonly'] as const;
+
+/**
+ * How a key is printed in the request table.
+ *
+ * Derived from the key the query is actually opened with, so the column cannot
+ * drift from `queryKey` (DC8-5-50).
+ */
+export const keyText = (key: readonly string[]) => key.join('/');
+
 export type DemoUi = Readonly<{
   /** Bumped after every operation so panels over non-reactive data repaint. */
   tick: number;
@@ -121,16 +133,19 @@ export function createDemoModel(): DemoModel {
   const client = createSyncClient({ environment });
 
   const queryOptions = {
-    queryKey: ['profile'],
-    queryFn: server.read,
+    queryKey: PANEL_KEY,
+    // Bound to this key so the request table can say which query issued a
+    // READ. Every row said `profile` before, the readonly query's included
+    // (B8-7-14 / DC8-5-50), and M2-11 judges "not linked" by that column.
+    queryFn: server.readFor(keyText(PANEL_KEY)),
     ...AUTO_REFETCH,
     ...RETRY_POLICY,
   };
   const panelA = client.query<Profile>(queryOptions);
   const panelB = client.query<Profile>(queryOptions);
   const readonlyQuery = client.query<Profile>({
-    queryKey: ['profile', 'readonly'],
-    queryFn: server.read,
+    queryKey: READONLY_KEY,
+    queryFn: server.readFor(keyText(READONLY_KEY)),
     editable: false,
     ...RETRY_POLICY,
   });
@@ -220,6 +235,23 @@ export function createDemoModel(): DemoModel {
     `${what} 연결 장벽에 막혀 거절됐다: ${String(
       error
     )} — 연결된 저장이 진행 중인 동안 이 조회는 시작하지 않는다. 저장을 완료한 뒤 다시 누른다.`;
+
+  /**
+   * Why a query's promise ended in a rejection.
+   *
+   * The barrier (DC8-5-45) is only one of the reasons. A READ already in
+   * flight when a linked save starts is *aborted* by `beginLink()`
+   * (`packages/sync/src/index.ts:651`), and that rejection used to be dropped
+   * because there was no barrier at the moment the button was pressed - the
+   * same swallowed-rejection defect as B8-7-12, at a different entrance
+   * (DC8-5-51).
+   */
+  const refusedText = (error: unknown, what: string, barred: boolean) =>
+    barred
+      ? barredText(error, what)
+      : `${what} 끝나지 못했다: ${String(
+          error
+        )} — 연결된 저장이 시작되면 진행 중이던 READ는 중단된다. 그 결과는 기준에 들어가지 않는다.`;
   const loaded = () => panelA.status.loaded.value;
 
   const readComputed = () => {
@@ -317,6 +349,23 @@ export function createDemoModel(): DemoModel {
           `다음 READ ${total}회를 실패로 예약했다. 조회 ${READING_QUERIES}개(패널·readonly)가 각각 재시도 예산 ${QUERY_RETRY}회를 소진해 오류 상태에 이른다. 요청은 완료 버튼으로 직접 끝낸다.`
         );
       }
+      case 'next-read-ignore-signal':
+        // The only path to sync's second line of defence: the epoch check
+        // *after* `await queryFn` (DC8-5-49). A transport that honours the
+        // signal is aborted by `beginLink()` and never answers at all.
+        server.nextReadIgnoresSignal();
+        return bump(
+          id,
+          `다음 READ는 abort를 듣지 않는다. '${operationLabel(
+            'refetch'
+          )}'로 시작하고 '${operationLabel(
+            'save'
+          )}'를 누르면, 연결이 시작돼도 그 READ는 중단되지 않고 진행 중으로 남는다 — 나중에 '${operationLabel(
+            'settle-read'
+          )}'로 완료시켜도 접수 시점 값이라 최신 기준을 덮지 않는다. 다음 READ 하나에만 적용되므로 '${operationLabel(
+            'load'
+          )}'(조회 2개를 시작함) 대신 재조회로 쓴다.`
+        );
 
       case 'next-write-rejected':
         server.nextWrite('rejected');
@@ -386,9 +435,7 @@ export function createDemoModel(): DemoModel {
         const barred = panelA.status.pending.value > 0;
         void panelA.load().then(
           () => undefined,
-          error => {
-            if (barred) bump(id, barredText(error, '패널 조회만'));
-          }
+          error => bump(id, refusedText(error, '패널 조회만', barred))
         );
         // A different key, so the barrier does not apply to it - saying which
         // half was refused is the point.
@@ -399,9 +446,7 @@ export function createDemoModel(): DemoModel {
         const barred = panelA.status.pending.value > 0;
         void panelA.refetch().then(
           () => undefined,
-          error => {
-            if (barred) bump(id, barredText(error, '재조회가'));
-          }
+          error => bump(id, refusedText(error, '재조회가', barred))
         );
         return bump(id, '재조회를 시작했다.');
       }

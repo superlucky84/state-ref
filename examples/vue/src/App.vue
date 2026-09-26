@@ -77,6 +77,7 @@ const time = (at: number | null) =>
           <thead>
             <tr>
               <th>요청 ID</th>
+              <th>key</th>
               <th>revision</th>
               <th>결과</th>
               <th>시작</th>
@@ -86,6 +87,7 @@ const time = (at: number | null) =>
           <tbody>
             <tr v-for="row in requests.rows" :key="row.id">
               <td>{{ row.id }}</td>
+              <td>{{ row.key }}</td>
               <td>{{ row.revision }}</td>
               <td :class="row.outcome === 'in-flight' ? 'flag-on' : ''">
                 {{ row.outcome }}

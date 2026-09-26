@@ -3,9 +3,12 @@ import {
   CITY,
   INITIAL_PROFILE,
   OPERATION_IDS,
+  PANEL_KEY,
   QUERY_RETRY,
   READING_QUERIES,
+  READONLY_KEY,
   createDemoModel,
+  keyText,
   operationLabel,
   resourcePanel,
 } from './index';
@@ -807,6 +810,145 @@ describe('baseline recovery (M2-10)', () => {
     expect(result).toContain('A linked operation is pending for this query.');
     // Refused means refused: no request reached the server.
     expect(model.server.counts().read).toBe(reads);
+
+    model.run('settle-all');
+    await settled();
+    model.dispose();
+  });
+});
+
+/**
+ * R2-13 on screen, first two bullets and the sixth.
+ *
+ * `beginLink()` bumps the query's epoch *and* aborts its in-flight READ
+ * (`packages/sync/src/index.ts:651`), so a transport that honours its signal
+ * never answers late at all. sync's second line of defence - the epoch check
+ * after `await queryFn` - is only reachable from a transport that ignores the
+ * signal, and the demo had no such path (DC8-5-49). Nor could a late answer
+ * differ from the new baseline, because the mock resolved with its current
+ * value rather than the one it held when the request was accepted (DC8-5-48).
+ * The third, fourth and fifth bullets need `liveView`, key switching and a
+ * second mutation; they stay 미수행.
+ */
+describe('late reads and operation order (M2-11)', () => {
+  const settled = () => new Promise(resolve => setTimeout(resolve, 0));
+  const panelOf = (model: DemoModel) =>
+    resourcePanel(model.panelA.status.value, model.panelA.changes());
+  /**
+   * The newest READ row.
+   *
+   * `loaded()` already spent READ-1 and READ-2 on the two queries `load`
+   * starts, so the refetch under test is READ-3 - an id written by hand would
+   * quietly follow whatever the setup happens to do.
+   */
+  const lastRead = (model: DemoModel) =>
+    [...model.server.requests()].reverse().find(row => row.kind === 'READ');
+
+  it('aborts a READ that is in flight when a linked save starts, and says so', async () => {
+    const model = await loaded();
+
+    model.run('edit-busan');
+    model.run('capture');
+    model.run('refetch');
+    expect(lastRead(model)?.outcome).toBe('in-flight');
+
+    model.run('save');
+    await settled();
+
+    // An honest transport hears the abort, so the result never arrives - this
+    // is how the first bullet is satisfied, not by discarding a late value.
+    expect(lastRead(model)?.outcome).toBe('aborted');
+    expect(model.server.inFlight().every(row => row.kind === 'WRITE')).toBe(
+      true
+    );
+    // The rejection used to be dropped, because there was no barrier at the
+    // moment the button was pressed - B8-7-12's defect at another entrance
+    // (DC8-5-51).
+    expect(readUi(model).lastResult).toContain('진행 중이던 READ는 중단된다');
+
+    model.run('settle-all');
+    await settled();
+    model.dispose();
+  });
+
+  it('discards a signal-ignoring READ that answers after the baseline moved', async () => {
+    const model = await loaded();
+
+    model.run('next-read-ignore-signal');
+    model.run('edit-busan');
+    model.run('capture');
+    model.run('refetch');
+    model.run('save');
+    await settled();
+
+    // Not aborted: this transport does not hear the signal. That row sitting
+    // at `in-flight` after the save started is the visible difference from the
+    // test above.
+    expect(lastRead(model)?.outcome).toBe('in-flight');
+
+    model.run('settle-write');
+    await settled();
+    expect(readUi(model).mutationPhase).toBe('success');
+    const afterWrite = panelOf(model);
+    expect(model.panelA.ref.city.value).toBe(CITY.resource);
+    expect(afterWrite.dirty).toBe(false);
+
+    // The late answer carries 서울 - what the server held when the request was
+    // accepted - so applying it would visibly undo the save.
+    model.run('settle-read');
+    await settled();
+    expect(lastRead(model)).toMatchObject({
+      outcome: 'success',
+      revision: 1,
+    });
+    expect(model.panelA.ref.city.value).toBe(CITY.resource);
+    const afterLateRead = panelOf(model);
+    expect(afterLateRead.version).toBe(afterWrite.version);
+    expect(afterLateRead.dirty).toBe(false);
+    expect(afterLateRead.status).toBe('success');
+
+    model.dispose();
+  });
+
+  it('labels each request with the query it belongs to', async () => {
+    const model = await loaded();
+    model.run('edit-busan');
+    model.run('capture');
+    model.run('save');
+    model.run('settle-all');
+    await settled();
+
+    const keys = new Set(model.server.requests().map(row => row.key));
+    // The readonly query is a different key, and a WRITE has none at all -
+    // both read `profile` before (B8-7-14).
+    expect(keys).toContain(keyText(PANEL_KEY));
+    expect(keys).toContain(keyText(READONLY_KEY));
+    expect(
+      model.server
+        .requests()
+        .filter(row => row.kind === 'WRITE')
+        .map(row => row.key)
+    ).toEqual(['(mutation)']);
+
+    model.dispose();
+  });
+
+  it('shows the unlinked query going ahead while the linked one is barred', async () => {
+    const model = await loaded();
+
+    model.run('edit-busan');
+    model.run('capture');
+    model.run('save');
+    const before = model.server.requests().length;
+
+    // `load` starts both queries. Only the linked key is refused, and the
+    // sixth bullet asks that the demo not claim more protection than that.
+    model.run('load');
+    await settled();
+
+    const added = model.server.requests().slice(before);
+    expect(added.map(row => row.key)).toEqual([keyText(READONLY_KEY)]);
+    expect(readUi(model).lastResult).toContain('패널 조회만');
 
     model.run('settle-all');
     await settled();

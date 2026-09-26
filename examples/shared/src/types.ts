@@ -74,6 +74,13 @@ export type RequestRecord = Readonly<{
   /** `READ-1`, `WRITE-3`, ... - the request ID shown on screen. */
   id: string;
   kind: RequestKind;
+  /**
+   * The query key this request belongs to, as the request table prints it.
+   *
+   * Bound per query by `readFor` - sync hands `queryFn` only `{ signal }`, so
+   * every row read `profile` before, including the readonly query's own READs
+   * (B8-7-14). A WRITE shows `MUTATION_KEY`: a mutation has no query key.
+   */
   key: string;
   /** Server revision at the moment the request was accepted. */
   revision: number;
