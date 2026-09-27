@@ -24,6 +24,16 @@ import { Computed } from '@/pages/Computed';
 import { ComputedKo } from '@/pages/Computed_ko';
 import { CombineWatch } from '@/pages/CombineWatch';
 import { CombineWatchKo } from '@/pages/CombineWatch_ko';
+import { Batch } from '@/pages/Batch';
+import { BatchKo } from '@/pages/Batch_ko';
+import { Draft } from '@/pages/Draft';
+import { DraftKo } from '@/pages/Draft_ko';
+import { DraftApply } from '@/pages/DraftApply';
+import { DraftApplyKo } from '@/pages/DraftApply_ko';
+import { DraftConflicts } from '@/pages/DraftConflicts';
+import { DraftConflictsKo } from '@/pages/DraftConflicts_ko';
+import { DraftLifetime } from '@/pages/DraftLifetime';
+import { DraftLifetimeKo } from '@/pages/DraftLifetime_ko';
 import { ManualSync } from '@/pages/ManualSync';
 import { ManualSyncKo } from '@/pages/ManualSync_ko';
 import { Lens } from '@/pages/Lens';
@@ -90,6 +100,16 @@ const routes: Record<string, PageComponent> = {
   '/ko/guide/combine-watch': CombineWatchKo,
   '/guide/manual-sync': ManualSync,
   '/ko/guide/manual-sync': ManualSyncKo,
+  '/guide/batch': Batch,
+  '/ko/guide/batch': BatchKo,
+  '/guide/draft': Draft,
+  '/ko/guide/draft': DraftKo,
+  '/guide/draft-apply': DraftApply,
+  '/ko/guide/draft-apply': DraftApplyKo,
+  '/guide/draft-conflicts': DraftConflicts,
+  '/ko/guide/draft-conflicts': DraftConflictsKo,
+  '/guide/draft-lifetime': DraftLifetime,
+  '/ko/guide/draft-lifetime': DraftLifetimeKo,
   '/guide/lens': Lens,
   '/ko/guide/lens': LensKo,
   '/guide/copyable': Copyable,
