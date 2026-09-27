@@ -296,6 +296,16 @@ export default function App() {
     void tick();
     return model.probe();
   });
+  // The screen-wide unsaved sum, and the readonly query's own review surface.
+  // Both are non-reactive calls, so they follow the tick like the tables do.
+  const unsaved = createMemo(() => {
+    void tick();
+    return model.unsaved();
+  });
+  const readonlyPanel = createMemo(() => {
+    void tick();
+    return resourcePanel(readonlyStatus(), model.readonlyQuery.changes());
+  });
   // The boundary card. One draft slot over a child ref or the readonly query;
   // read through the tick for the same reason the probe card is (DC8-8-19).
   const boundary = createMemo(() => {
@@ -382,6 +392,8 @@ export default function App() {
           <Row field="mutationPhase" value={mutation().phase} />
           <Row field="mutationPending" value={mutation().pending} />
           <Row field="readonlyStatus" value={readonlyStatus().status} />
+          {/* Beside the parents' own `dirty`, never instead of it (M2-16 항목 2). */}
+          <Flag field="unsaved" on={unsaved()} />
           <Flag field="focused" on={focused()} />
           <Flag field="online" on={online()} />
           <Row field="policy" value={POLICY_TEXT} />
@@ -546,6 +558,25 @@ export default function App() {
             </section>
           )}
         </Show>
+
+        <section class="card" data-card="readonly">
+          <h2>{CARD_TITLE.readonly}</h2>
+          <Row
+            field="status"
+            value={`${readonlyPanel().status} / ${readonlyPanel().fetchStatus}`}
+          />
+          <Flag field="dirty" on={readonlyPanel().dirty} />
+          <Row
+            field="version"
+            value={`${readonlyPanel().version} / ${readonlyPanel().conflicts}`}
+          />
+          <Changes rows={readonlyPanel().changes} />
+          <p class="note">
+            검토 목록과 version은 있고 영원히 비어 있다. 쓰기도 제출 고정도
+            거절하므로 여기에 쌓일 것이 없다 — 다른 조회의 항목을 여기로 가져올
+            수도 없다.
+          </p>
+        </section>
 
         <Show when={boundary()} keyed>
           {view => (

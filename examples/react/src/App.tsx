@@ -312,6 +312,8 @@ function StateCard() {
       <Row field="mutationPhase" value={mutation.phase.value} />
       <Row field="mutationPending" value={mutation.pending.value} />
       <Row field="readonlyStatus" value={readonlyStatus.status.value} />
+      {/* Beside the parents' own `dirty`, never instead of it (M2-16 항목 2). */}
+      <Flag field="unsaved" on={model.unsaved()} />
       <Flag field="focused" on={ui.focused.value} />
       <Flag field="online" on={ui.online.value} />
       <Row field="policy" value={POLICY_TEXT} />
@@ -566,6 +568,34 @@ function BoundaryCard() {
   );
 }
 
+/**
+ * The readonly query's own card.
+ *
+ * A readonly query does have `changes()` and a `version` - they are just
+ * permanently empty and zero, and the empty table is how that is told apart
+ * from having no review surface at all. What it cannot do is `capture()`,
+ * which is a button rather than a row.
+ */
+function ReadonlyCard() {
+  const status = useReadonlyStatus();
+  const panel = resourcePanel(status.value, model.readonlyQuery.changes());
+
+  return (
+    <section className="card" data-card="readonly">
+      <h2>{CARD_TITLE.readonly}</h2>
+      <Row field="status" value={`${panel.status} / ${panel.fetchStatus}`} />
+      <Flag field="dirty" on={panel.dirty} />
+      <Row field="version" value={`${panel.version} / ${panel.conflicts}`} />
+      <Changes rows={panel.changes} />
+      <p className="note">
+        검토 목록과 version은 있고 영원히 비어 있다. 쓰기도 제출 고정도
+        거절하므로 여기에 쌓일 것이 없다 — 다른 조회의 항목을 여기로 가져올 수도
+        없다.
+      </p>
+    </section>
+  );
+}
+
 function Controls() {
   return (
     <>
@@ -615,6 +645,7 @@ export default function App() {
         <ComputedCard />
         <InspectCard />
         <ProbeCard />
+        <ReadonlyCard />
         <BoundaryCard />
       </div>
     </main>

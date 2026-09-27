@@ -27,6 +27,7 @@ export const CARD_TITLE = {
   inspect: '관측 (inspectCache / inspectMutations)',
   probe: '둘째 client (같은 key, 별도 캐시)',
   boundary: '경계 draft (child ref / readonly 원본)',
+  readonly: 'readonly 조회 (editable: false)',
 } as const;
 
 export type CardId = keyof typeof CARD_TITLE;
@@ -65,6 +66,16 @@ export const FIELD_LABEL = {
   mutationPhase: 'mutation phase',
   mutationPending: '진행 중 WRITE',
   readonlyStatus: 'readonly 조회 status',
+  /**
+   * The screen-wide unsaved summary.
+   *
+   * One row that sums the resource and every open draft. It has to sit beside
+   * the parent's own `dirty` rather than replace it: a clean resource under a
+   * dirty draft must read `미저장 true` here and `dirty false` there, and a
+   * row that overwrote the parent would lose which of the two the input is in
+   * (M2-16 둘째 항목).
+   */
+  unsaved: '화면 전체 미저장',
   focused: 'focused',
   online: 'online',
   policy: '자동 조회 정책',
@@ -208,6 +219,7 @@ export const CARD_FIELDS: Readonly<
       'mutationPhase',
       'mutationPending',
       'readonlyStatus',
+      'unsaved',
       'focused',
       'online',
       'policy',
@@ -260,6 +272,17 @@ export const CARD_FIELDS: Readonly<
     always: ['boundarySource', 'boundaryValue', 'draftDirty', 'version'],
     onceLoaded: [],
   },
+  /**
+   * The readonly query's own review surface.
+   *
+   * `changes` and `version` exist on a readonly query - measured, against the
+   * checklist's own earlier guess that they do not. They are permanently
+   * empty and zero, and an empty table is a reading (DC8-8-20): it is how
+   * "there is nothing to review here" is told apart from "there is no card".
+   * No value rows: M2-16's fourth item asks for changes and version, and the
+   * data binding it would add is what the two resource panels already cover.
+   */
+  readonly: { always: ['status', 'dirty', 'version'], onceLoaded: [] },
 };
 
 /** The cards a freshly opened demo renders. Drafts appear only on request. */
@@ -271,6 +294,7 @@ export const CARDS_ON_LOAD: readonly CardId[] = [
   'live',
   'computed',
   'inspect',
+  'readonly',
 ];
 
 /**

@@ -2915,6 +2915,229 @@ const M2_17: readonly Scenario[] = [
   },
 ];
 
+/**
+ * M2-16 items 2 and 4 - the screen-wide unsaved sum, and the review surface.
+ *
+ * The sum has to be read where it disagrees with the parent, or a row that
+ * merely mirrored `resource.dirty` would pass. The review items have to be
+ * refused for two different reasons - too old, and someone else's - and the
+ * same held item has to *work* while it is current, or "refused" would only
+ * mean "this button never works".
+ */
+const M2_16_REST: readonly Scenario[] = [
+  {
+    id: 'M2-16-2-unsaved',
+    title:
+      '화면 전체 미저장은 원본과 draft를 합산하되 원본의 dirty를 덮어쓰지 않는다',
+    pins: 'M2-16 둘째 항목 (합산 표시)',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'branch-drafts' },
+      {
+        note: '아무도 입력을 쥐지 않았다. 합산 행과 원본의 dirty가 둘 다 false로 같다 — 여기서는 두 행을 구별할 수 없다',
+        expect: {
+          cards: {
+            operations: { unsaved: 'false' },
+            'resource-a': { dirty: 'false' },
+            'draft-a': { draftDirty: 'false' },
+          },
+        },
+      },
+      { press: 'draft-a-daejeon' },
+      {
+        note: '**여기서 갈린다.** draft만 입력을 쥐었는데 합산 행은 `true`이고 **원본의 dirty는 false 그대로**다. 합산이 부모를 덮어썼다면 원본 카드가 자기 것이 아닌 입력을 자기 것이라고 말했을 것이다',
+        expect: {
+          cards: {
+            operations: { unsaved: 'true' },
+            'resource-a': { dirty: 'false' },
+            'draft-a': { draftDirty: 'true' },
+          },
+        },
+      },
+      { press: 'edit-busan' },
+      {
+        note: '원본도 입력을 쥐면 둘 다 true다. 합산 행은 켜진 채로 있고 — 두 출처가 켜졌다고 두 번 켜지지는 않는다',
+        expect: {
+          cards: {
+            operations: { unsaved: 'true' },
+            'resource-a': { dirty: 'true' },
+          },
+        },
+      },
+      { press: 'edit-seoul' },
+      {
+        note: '원본을 서버 값으로 되돌려 원본만 clean이 됐다. **합산은 여전히 true다** — draft가 아직 쥐고 있기 때문이고, 한쪽이 비었다고 화면 전체가 저장된 것은 아니다',
+        expect: {
+          cards: {
+            operations: { unsaved: 'true' },
+            'resource-a': { dirty: 'false' },
+            'draft-a': { draftDirty: 'true' },
+          },
+          changes: { 'resource-a': [] },
+        },
+      },
+      { press: 'draft-a-reset' },
+      {
+        note: '마지막 입력까지 지우면 합산이 내려간다. 올라간 것과 같은 이유로 내려간다',
+        expect: {
+          cards: {
+            operations: { unsaved: 'false' },
+            'resource-a': { dirty: 'false' },
+            'draft-a': { draftDirty: 'false' },
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-16-4-readonly',
+    title:
+      'readonly 조회도 검토 목록과 version을 가진다 — 영원히 비어 있고, 제출은 거절한다',
+    pins: 'M2-16 넷째 항목 (readonly changes와 version)',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      {
+        note: '**검토 목록이 없는 것이 아니라 비어 있는 것이다.** 조회는 성공했고 version은 `0 / 0`이며 표는 빈 목록이다 — 빈 표가 곧 판독이다',
+        expect: {
+          cards: {
+            readonly: {
+              status: 'success / idle',
+              dirty: 'false',
+              version: '0 / 0',
+            },
+          },
+          changes: { readonly: [] },
+        },
+      },
+      { press: 'readonly-write' },
+      {
+        note: '쓰기가 거절되므로 여기에 쌓일 것이 없다. 표와 version은 그대로다',
+        expect: {
+          cards: {
+            operations: {
+              lastResult: { contains: 'This query is readonly.' },
+            },
+            readonly: { version: '0 / 0', dirty: 'false' },
+          },
+          changes: { readonly: [] },
+        },
+      },
+      { press: 'readonly-capture' },
+      {
+        note: '제출 고정도 같은 문장으로 거절한다. 검토할 수는 있게 두되 제출할 것은 가지지 않는다',
+        expect: {
+          cards: {
+            operations: {
+              lastResult: { contains: 'This query is readonly.' },
+            },
+            readonly: { version: '0 / 0' },
+          },
+          changes: { readonly: [] },
+        },
+      },
+      { press: 'edit-busan' },
+      {
+        note: '**편집 가능한 원본을 고쳐도 readonly 카드는 움직이지 않는다.** 다른 key의 다른 조회이고, 한쪽의 검토가 다른 쪽으로 새지 않는다',
+        expect: {
+          cards: {
+            'resource-a': { dirty: 'true' },
+            readonly: { dirty: 'false', version: '0 / 0' },
+          },
+          changes: { readonly: [] },
+        },
+      },
+      { press: 'capture-unknown-id' },
+      {
+        note: '이 resource의 항목이 아닌 ID로는 제출을 고정할 수 없다 — 원본에도 같은 규칙이 있다',
+        expect: {
+          cards: {
+            operations: {
+              lastResult: {
+                contains: 'Unknown or repeated resource change ID.',
+              },
+            },
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-16-4-review',
+    title:
+      '오래된 검토나 다른 draft의 항목으로는 해소할 수 없고, 같은 항목도 현재이면 받는다',
+    pins: 'M2-16 넷째 항목 (오래된 검토·다른 owner의 항목)',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'branch-drafts' },
+      { press: 'draft-a-daejeon' },
+      { press: 'draft-b-daejeon' },
+      { press: 'edit-gwangju' },
+      {
+        note: '두 draft가 같은 경로에 같은 입력을 쥐었고 원본이 겹치게 바뀌어 둘 다 충돌이다. **항목 번호도 둘 다 1이다** — 번호가 같다는 것이 다음 단계의 함정이다',
+        expect: {
+          cards: {
+            'draft-a': { version: '2 / 1' },
+            'draft-b': { version: '2 / 1' },
+          },
+          changes: {
+            'draft-a': [{ path: 'city', conflict: 'conflict' }],
+            'draft-b': [{ path: 'city', conflict: 'conflict' }],
+          },
+        },
+      },
+      { press: 'draft-a-resolve-other-owner' },
+      {
+        note: 'draft B의 항목으로 draft A를 해소하려 하면 `stale`로 거절한다. 번호도 경로도 version도 같은데 거절하는 이유는 **주인이 다르기** 때문이고, draft A는 그대로 충돌로 남는다',
+        expect: {
+          cards: {
+            operations: { lastResult: { contains: '해소 거절: stale' } },
+            'draft-a': { city: '대전', version: '2 / 1' },
+          },
+          changes: {
+            'draft-a': [{ path: 'city', conflict: 'conflict' }],
+          },
+        },
+      },
+      { press: 'draft-a-hold-change' },
+      { press: 'draft-a-rename-contact' },
+      {
+        note: '항목을 손에 든 뒤 draft가 움직였다. 손에 든 것은 version 2의 사진이고 draft는 이제 3이다',
+        expect: {
+          cards: { 'draft-a': { version: '3 / 1' } },
+        },
+      },
+      { press: 'draft-a-resolve-held' },
+      {
+        note: '**오래된 검토로는 해소할 수 없다.** 화면이 두 version을 나란히 말하고, 충돌은 그대로 남는다 — 사용자가 보고 결정한 화면이 이미 지나갔기 때문이다',
+        expect: {
+          cards: {
+            operations: {
+              lastResult: { contains: '손에 든 항목의 version은 2이고' },
+            },
+            'draft-a': { city: '대전', version: '3 / 1' },
+          },
+        },
+      },
+      { press: 'draft-a-hold-change' },
+      { press: 'draft-a-resolve-held' },
+      {
+        note: '**같은 버튼이 현재 항목으로는 받는다.** 거절이 "이 길이 막혔다"가 아니라 "이 항목이 낡았다"였음을 보이는 자리다. 해소 뒤 draft는 원본 쪽 값을 받아 clean이 된다',
+        expect: {
+          cards: {
+            operations: {
+              lastResult: { contains: '손에 든 항목으로 해소했다' },
+            },
+            'draft-a': { city: '광주' },
+          },
+        },
+      },
+    ],
+  },
+];
+
 export const SCENARIOS: readonly Scenario[] = [
   ...M2_05_08,
   ...M2_07,
@@ -2931,4 +3154,5 @@ export const SCENARIOS: readonly Scenario[] = [
   ...M2_CLIENTS,
   ...M2_ORDER,
   ...M2_17,
+  ...M2_16_REST,
 ];

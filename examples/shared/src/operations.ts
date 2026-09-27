@@ -47,6 +47,7 @@ export const OPERATION_GROUPS = [
       ['remove-office', '사무실(부모) 제거'],
       ['swap-room-type', '방 번호를 배열로 교체 (타입 교체)'],
       ['readonly-write', 'readonly 조회에 쓰기 시도'],
+      ['readonly-capture', 'readonly 조회에서 제출 고정 시도'],
     ],
   },
   {
@@ -64,6 +65,9 @@ export const OPERATION_GROUPS = [
       ['draft-a-resolve-source', 'draft A 충돌 → 원본 선택'],
       ['draft-a-resolve-draft', 'draft A 충돌 → draft 선택'],
       ['draft-a-rename-contact', 'draft A 연락처 1 이름 변경'],
+      ['draft-a-hold-change', 'draft A의 검토 항목 하나를 손에 든다'],
+      ['draft-a-resolve-held', '손에 든 항목으로 draft A 해소 시도'],
+      ['draft-a-resolve-other-owner', 'draft B의 항목으로 draft A 해소 시도'],
     ],
   },
   {
@@ -81,6 +85,7 @@ export const OPERATION_GROUPS = [
     title: '서버 저장',
     operations: [
       ['capture', '제출할 변경 고정'],
+      ['capture-unknown-id', '없는 변경 ID로 제출 고정 시도'],
       ['save', '저장 실행 (제출값 수용)'],
       ['save-with-response', '저장 실행 (응답 매핑 수용)'],
       ['save-with-refetch', '저장 실행 (사후 재조회 수용)'],

@@ -1,7 +1,7 @@
 import { createComputed, createStore, createStoreManualSync } from 'state-ref';
 import type { StateRefStore, Watch } from 'state-ref';
 import { createDraft } from 'state-ref/draft';
-import type { Draft } from 'state-ref/draft';
+import type { Draft, DraftChange } from 'state-ref/draft';
 import { createSyncClient } from '@stateref/sync';
 import type {
   LiveQueryViewHandle,
@@ -248,6 +248,16 @@ export type DemoModel = Readonly<{
   probe: () => ProbePanel | null;
   /** The boundary card, or null before a boundary draft has been branched. */
   boundary: () => BoundaryPanel | null;
+  /**
+   * Whether anything on the screen holds unsaved input.
+   *
+   * The library has no such call - an app composes it from `isDirty()` on the
+   * resource and on each open draft (`packages/sync/src/tests/draft-resource.test.ts`
+   * spells out the same sum). `panelB` is deliberately not added: it is the
+   * same resource as `panelA`, and summing it twice would make a shared
+   * baseline look like two places holding input.
+   */
+  unsaved: () => boolean;
   watchUi: Watch<DemoUi>;
   run: (id: OperationId) => void;
   dispose: () => void;
@@ -532,6 +542,8 @@ export function createDemoModel(): DemoModel {
    * make it an argument rather than a comparison.
    */
   const RESERVED_KEY_PAYLOAD = { floor: 9, room: '901', toJSON: 'x' };
+  /** No resource change ever carries this id; `capture` has to refuse it. */
+  const UNKNOWN_CHANGE_ID = 9999;
   /** What the server holds at `office.room`, so a type swap keeps the text. */
   const SERVER_ROOM = INITIAL_PROFILE.office!.room;
   const unsupportedValue = () => new Map([['floor', 9]]);
@@ -591,6 +603,21 @@ export function createDemoModel(): DemoModel {
   };
 
   const requireDraft = (slot: 'a' | 'b'): Draft<Profile> | null => drafts[slot];
+
+  /** A review item kept past the edit that makes it stale (M2-16 항목 4). */
+  let heldChange: DraftChange | null = null;
+
+  const unsavedNow = () => {
+    // `isDirty()` reaches the resource, which does not exist before the first
+    // load - the same guard every value-reading operation takes (M2-04).
+    const resource = panelA.status.loaded.value && panelA.isDirty();
+    return Boolean(
+      resource ||
+        drafts.a?.isDirty() ||
+        drafts.b?.isDirty() ||
+        boundary?.draft.isDirty()
+    );
+  };
 
   /**
    * `query.ref` and `query.watch` both throw before the first load - not just
@@ -1003,6 +1030,78 @@ export function createDemoModel(): DemoModel {
         );
       }
 
+      case 'readonly-capture': {
+        if (!readonlyQuery.status.loaded.value) return notLoaded(id);
+        try {
+          readonlyQuery.capture();
+        } catch (error) {
+          return bump(
+            id,
+            `거절: ${String(
+              error
+            )} — readonly 조회는 검토 목록과 version을 가지지만 제출할 것은 가질 수 없다.`
+          );
+        }
+        return bump(id, '고정이 통과했다 — readonly 조회가 거절하지 않았다.');
+      }
+      case 'capture-unknown-id': {
+        if (!loaded()) return notLoaded(id);
+        try {
+          panelA.capture([UNKNOWN_CHANGE_ID]);
+        } catch (error) {
+          return bump(
+            id,
+            `거절: ${String(
+              error
+            )} — 이 resource의 항목이 아닌 ID로는 제출을 고정할 수 없다.`
+          );
+        }
+        return bump(id, '고정이 통과했다 — 없는 ID가 거절되지 않았다.');
+      }
+      case 'draft-a-hold-change': {
+        const draft = requireDraft('a');
+        if (!draft) return bump(id, '먼저 draft를 분기한다.');
+        const [change] = draft.changes();
+        if (!change) return bump(id, 'draft A에 검토할 항목이 없다.');
+        heldChange = change;
+        return bump(
+          id,
+          `draft A의 항목 ${change.id}(경로 ${
+            change.path.map(String).join('.') || '(root)'
+          }, version ${
+            change.version
+          })을 손에 들었다. 이 뒤에 draft가 바뀌면 이 항목은 오래된 검토가 된다.`
+        );
+      }
+      case 'draft-a-resolve-held': {
+        const draft = requireDraft('a');
+        if (!draft) return bump(id, '먼저 draft를 분기한다.');
+        if (!heldChange) return bump(id, '먼저 항목을 손에 든다.');
+        const result = draft.resolve(heldChange, 'source');
+        return bump(
+          id,
+          result.ok
+            ? `손에 든 항목으로 해소했다 — draft가 그 뒤로 바뀌지 않았다.`
+            : `해소 거절: ${result.reason} — 손에 든 항목의 version은 ${
+                heldChange.version
+              }이고 draft는 ${draft.version()}이다. 오래된 검토로는 새 입력을 해소할 수 없다.`
+        );
+      }
+      case 'draft-a-resolve-other-owner': {
+        const draft = requireDraft('a');
+        const other = requireDraft('b');
+        if (!draft || !other) return bump(id, '먼저 draft를 분기한다.');
+        const [change] = other.changes();
+        if (!change) return bump(id, 'draft B에 넘길 항목이 없다.');
+        const result = draft.resolve(change, 'source');
+        return bump(
+          id,
+          result.ok
+            ? 'draft B의 항목으로 draft A를 해소했다 — 거절되지 않았다.'
+            : `해소 거절: ${result.reason} — 항목은 그것을 만든 draft의 것이고, 번호가 같아도 다른 draft의 항목으로는 해소할 수 없다.`
+        );
+      }
+
       case 'boundary-branch-room': {
         if (!loaded()) return notLoaded(id);
         if (panelA.ref.office.value === null) {
@@ -1403,6 +1502,7 @@ export function createDemoModel(): DemoModel {
     drafts: () => drafts,
     probe: probeOf,
     boundary: boundaryOf,
+    unsaved: unsavedNow,
     watchUi,
     run,
     dispose() {

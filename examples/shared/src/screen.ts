@@ -144,6 +144,7 @@ export function screenOf(model: DemoModel): ScreenReading {
     mutationPhase: show(mutation.phase),
     mutationPending: show(mutation.pending),
     readonlyStatus: show(model.readonlyQuery.status.value.status),
+    unsaved: flag(model.unsaved()),
     focused: flag(ui.focused),
     online: flag(ui.online),
     policy: show(POLICY_TEXT),
@@ -239,6 +240,26 @@ export function screenOf(model: DemoModel): ScreenReading {
     cards.probe = fields;
     cache.probe = probe.cache.map(cacheRow);
   }
+
+  /**
+   * The readonly query's own card.
+   *
+   * `changes()` and `version` exist here - the card exists to show that they
+   * do, and that they stay empty and zero. Read from the same status the
+   * demos bind, so a stale table would show up as a disagreement rather than
+   * as a value nobody watches.
+   */
+  const readonlyStatus = model.readonlyQuery.status.value;
+  const readonlyPanel = resourcePanel(
+    readonlyStatus,
+    model.readonlyQuery.changes()
+  );
+  cards.readonly = {
+    status: `${readonlyPanel.status} / ${readonlyPanel.fetchStatus}`,
+    dirty: flag(readonlyPanel.dirty),
+    version: `${readonlyPanel.version} / ${readonlyPanel.conflicts}`,
+  };
+  changes.readonly = readonlyPanel.changes.map(changeRow);
 
   /**
    * The boundary card.

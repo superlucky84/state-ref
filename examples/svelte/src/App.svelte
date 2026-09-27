@@ -6,7 +6,9 @@
     POLICY_TEXT,
     inspectPanel,
     requestPanel,
+    resourcePanel,
   } from 'stateref-example-shared';
+  import type { QueryStatus } from '@stateref/sync';
   import type { OperationId } from 'stateref-example-shared';
   import { model } from './demo-model';
   import ChangesTable from './ChangesTable.svelte';
@@ -76,6 +78,13 @@
   // read through the tick for the same reason the probe card is (DC8-8-19).
   const readBoundary = (_tick: number) => model.boundary();
   $: boundary = readBoundary($tick);
+  // The screen-wide unsaved sum, and the readonly query's own review surface.
+  // Both are non-reactive calls, so they follow the tick like the tables do.
+  const readUnsaved = (_tick: number) => model.unsaved();
+  $: unsaved = readUnsaved($tick);
+  const readReadonlyPanel = (_tick: number, status: QueryStatus) =>
+    resourcePanel(status, model.readonlyQuery.changes());
+  $: readonlyPanel = readReadonlyPanel($tick, $readonlyStatus);
 </script>
 
 <main>
@@ -140,6 +149,8 @@
       <Row field="mutationPhase" value={$mutation.phase} />
       <Row field="mutationPending" value={$mutation.pending} />
       <Row field="readonlyStatus" value={$readonlyStatus.status} />
+      <!-- Beside the parents' own `dirty`, never instead of it (M2-16 항목 2). -->
+      <Flag field="unsaved" on={unsaved} />
       <Flag field="focused" on={$focused} />
       <Flag field="online" on={$online} />
       <Row field="policy" value={POLICY_TEXT} />
@@ -303,6 +314,24 @@
         </p>
       </section>
     {/if}
+
+    <section class="card" data-card="readonly">
+      <h2>{CARD_TITLE.readonly}</h2>
+      <Row
+        field="status"
+        value={`${readonlyPanel.status} / ${readonlyPanel.fetchStatus}`}
+      />
+      <Flag field="dirty" on={readonlyPanel.dirty} />
+      <Row
+        field="version"
+        value={`${readonlyPanel.version} / ${readonlyPanel.conflicts}`}
+      />
+      <ChangesTable rows={readonlyPanel.changes} />
+      <p class="note">
+        검토 목록과 version은 있고 영원히 비어 있다. 쓰기도 제출 고정도 거절하므로
+        여기에 쌓일 것이 없다 — 다른 조회의 항목을 여기로 가져올 수도 없다.
+      </p>
+    </section>
 
     {#if boundary}
       <section class="card" data-card="boundary">

@@ -7,6 +7,7 @@ import {
   POLICY_TEXT,
   inspectPanel,
   requestPanel,
+  resourcePanel,
 } from 'stateref-example-shared';
 import type { OperationId } from 'stateref-example-shared';
 import { model } from './demo-model';
@@ -59,6 +60,17 @@ const probe = computed(() => {
   void ui.value.tick;
   return model.probe();
 });
+// The screen-wide unsaved sum, and the readonly query's own review surface.
+// Both are non-reactive calls, so they follow the tick like the tables do.
+const unsaved = computed(() => {
+  void ui.value.tick;
+  return model.unsaved();
+});
+const readonlyPanel = computed(() => {
+  void ui.value.tick;
+  return resourcePanel(readonlyStatus.value, model.readonlyQuery.changes());
+});
+
 // The boundary card. One draft slot over a child ref or the readonly query;
 // read through the tick for the same reason the probe card is (DC8-8-19).
 const boundary = computed(() => {
@@ -142,6 +154,8 @@ const time = (at: number | null) =>
         <Row field="mutationPhase" :value="mutation.value.phase" />
         <Row field="mutationPending" :value="mutation.value.pending" />
         <Row field="readonlyStatus" :value="readonlyStatus.value.status" />
+        <!-- Beside the parents' own `dirty`, never instead of it (M2-16 항목 2). -->
+        <Flag field="unsaved" :on="unsaved" />
         <Flag field="focused" :on="ui.value.focused" />
         <Flag field="online" :on="ui.value.online" />
         <Row field="policy" :value="POLICY_TEXT" />
@@ -305,6 +319,25 @@ const time = (at: number | null) =>
         <p class="note">
           같은 key를 보지만 캐시가 다르다. 이 client의 편집·기준·요청은 패널 두
           장과 공유되지 않고, 해제하면 이 client의 환경 listener만 사라진다.
+        </p>
+      </section>
+
+      <section class="card" data-card="readonly">
+        <h2>{{ CARD_TITLE.readonly }}</h2>
+        <Row
+          field="status"
+          :value="`${readonlyPanel.status} / ${readonlyPanel.fetchStatus}`"
+        />
+        <Flag field="dirty" :on="readonlyPanel.dirty" />
+        <Row
+          field="version"
+          :value="`${readonlyPanel.version} / ${readonlyPanel.conflicts}`"
+        />
+        <ChangesTable :rows="readonlyPanel.changes" />
+        <p class="note">
+          검토 목록과 version은 있고 영원히 비어 있다. 쓰기도 제출 고정도
+          거절하므로 여기에 쌓일 것이 없다 — 다른 조회의 항목을 여기로 가져올
+          수도 없다.
         </p>
       </section>
 
