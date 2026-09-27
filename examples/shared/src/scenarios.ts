@@ -3138,6 +3138,220 @@ const M2_16_REST: readonly Scenario[] = [
   },
 ];
 
+/**
+ * M2-18 - lifetime and cleanup.
+ *
+ * The accumulation test only means something if the same instrument can also
+ * count something: 0 after twenty rounds is a reading because 2 after keeping
+ * two is one too (DC8-8-27's rule, applied to a counter rather than a
+ * refusal).
+ */
+const M2_18: readonly Scenario[] = [
+  {
+    id: 'M2-18-1-cycles',
+    title:
+      'draft를 20회 만들고 끝내도 남는 것이 없고, 일부러 남긴 것은 정확히 그만큼 깨어난다',
+    pins: 'M2-18 첫째 항목 (생성·종료 반복 뒤 누적 없음)',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      {
+        note: '기준선. 조회 핸들 셋이 캐시 항목 둘을 잡고 있고 환경 listener는 1이다',
+        expect: {
+          cards: {
+            lifetime: { draftCycles: '0회', draftLive: '0', draftNotices: '0' },
+            inspect: { cacheSize: '2', cacheOwners: '3', envListeners: '1' },
+          },
+        },
+      },
+      { press: 'draft-cycle-20' },
+      {
+        note: '20회를 돌렸다. **client가 보는 숫자는 하나도 움직이지 않았다** — 캐시 항목 수도 소유자 합계도 환경 listener도 그대로다',
+        expect: {
+          cards: {
+            lifetime: { draftCycles: '20회', draftLive: '0' },
+            inspect: { cacheSize: '2', cacheOwners: '3', envListeners: '1' },
+          },
+        },
+      },
+      { press: 'edit-busan' },
+      {
+        note: '**그런데 움직이지 않는 숫자만으로는 부족하다.** 원본을 고쳐 깨어나는 draft를 세면 `0`이다 — 20회분의 구독이 살아 있었다면 여기서 20이 나왔을 것이다',
+        expect: {
+          cards: {
+            lifetime: { draftLive: '0', draftNotices: '0' },
+            'resource-a': { city: '부산' },
+          },
+        },
+      },
+      { press: 'draft-keep-two' },
+      { press: 'edit-memo' },
+      {
+        note: '**같은 계측이 2도 센다.** 일부러 살려 둔 draft 2개가 원본 변경 한 번에 깨어난다. 앞의 `0`이 "이 행은 원래 0만 나온다"가 아니었다는 뜻이다',
+        expect: {
+          cards: {
+            lifetime: {
+              draftCycles: '22회',
+              draftLive: '2',
+              draftNotices: '2',
+            },
+            inspect: { cacheSize: '2', cacheOwners: '3', envListeners: '1' },
+          },
+        },
+      },
+      { press: 'draft-release-kept' },
+      { press: 'edit-memo' },
+      {
+        note: '종료하면 다시 0이다. 올라간 것과 같은 이유로 내려간다',
+        expect: {
+          cards: {
+            lifetime: { draftLive: '0', draftNotices: '0' },
+            inspect: { cacheSize: '2', cacheOwners: '3', envListeners: '1' },
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-18-2-retained',
+    title:
+      '캐시 항목의 유지 사유 넷이 화면에 하나씩 쌓이고, 제거는 그때마다 거절된다',
+    pins: 'M2-18 둘째 항목 (dirty·pending·복구 대기·열린 구독의 유지 사유)',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'cache-remove-profile' },
+      {
+        note: '아무 입력도 없는데 제거가 거절된다. **유지 사유는 열린 구독 하나뿐이다** — 패널 두 장이 이 key를 보고 있다',
+        expect: {
+          cards: {
+            lifetime: { retainedBy: '소유자 2' },
+            operations: { lastResult: { contains: '유지 사유: 소유자 2' } },
+            inspect: { cacheSize: '2' },
+          },
+        },
+      },
+      { press: 'edit-busan' },
+      { press: 'cache-remove-profile' },
+      {
+        note: '로컬 입력이 생기자 사유가 둘이 된다. 하나가 해소돼도 나머지가 남는 한 항목은 유지된다',
+        expect: {
+          cards: {
+            lifetime: { retainedBy: '소유자 2 · dirty' },
+            'resource-a': { dirty: 'true' },
+          },
+        },
+      },
+      { press: 'capture' },
+      { press: 'save' },
+      { press: 'cache-remove-profile' },
+      {
+        note: '저장이 떠 있는 동안 셋이 된다. `진행 중 WRITE`는 dirty와 다른 축이고(M2-16 셋째 항목), 유지 사유로서도 따로 선다',
+        expect: {
+          cards: {
+            lifetime: {
+              retainedBy: { contains: '진행 중 WRITE 1' },
+            },
+            'resource-a': { serverBusy: 'true' },
+          },
+        },
+      },
+      { press: 'settle-all' },
+      { press: 'next-write-transport-failure' },
+      { press: 'edit-busan' },
+      { press: 'capture' },
+      { press: 'save' },
+      { press: 'settle-all' },
+      { press: 'cache-remove-profile' },
+      {
+        note: '전송이 실패해 결과를 모르는 WRITE가 끝났다. **dirty도 진행 중도 내려갔는데 복구 대기(미확정)만으로 항목이 유지된다** — 앞선 저장이 기준을 옮겨 로컬 차이는 없지만, 서버가 이번 것을 받았는지 모르는 채로 기준을 버릴 수는 없다',
+        expect: {
+          cards: {
+            lifetime: { retainedBy: '소유자 2 · 미확정' },
+            'resource-a': {
+              unconfirmed: 'true',
+              serverBusy: 'false',
+              dirty: 'false',
+            },
+            operations: { lastResult: { contains: '미확정' } },
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-18-3-5-held',
+    title:
+      '응답 교체는 손에 든 ref를 살려 두고 실제 만료는 거절한다. 한 화면이 끝나도 서버 없는 draft는 계속 쓰인다',
+    pins: 'M2-18 셋째·다섯째 항목 (화면 독립·서버 없는 draft, 응답 교체와 만료의 차이)',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'probe-open' },
+      { press: 'probe-load' },
+      { press: 'settle-all' },
+      { press: 'hold-probe-ref' },
+      {
+        note: '둘째 client의 도시 ref를 손에 들었다. 환경 listener는 2다 — 두 client가 각자 하나씩 구독한다',
+        expect: {
+          cards: {
+            lifetime: { heldRef: '서울' },
+            inspect: { envListeners: '2' },
+          },
+        },
+      },
+      { press: 'probe-edit' },
+      { press: 'read-held-ref' },
+      {
+        note: '**응답이 교체돼도 같은 ref가 새 값을 준다.** 손에 든 것은 값의 사진이 아니라 경로이므로, 값이 바뀌면 바뀐 값을 읽는다',
+        expect: {
+          cards: {
+            lifetime: { heldRef: '제주' },
+            operations: { lastResult: { contains: '같은 ref가 새 값을 준다' } },
+          },
+        },
+      },
+      { press: 'serverless-edit' },
+      {
+        note: '서버 없는 draft를 편집했다. query도 client도 없는 원본이다',
+        expect: {
+          cards: {
+            lifetime: { serverless: '로컬 메모 (편집됨) / 원본 로컬 메모' },
+          },
+        },
+      },
+      { press: 'probe-dispose' },
+      { press: 'read-held-ref' },
+      {
+        note: '**그 화면이 끝나자 같은 ref가 거절한다.** 응답 교체와 실제 만료는 다른 경계다 — 하나는 값을 바꾸고 하나는 ref를 쓸 수 없게 만든다. 환경 listener도 1로 돌아왔다',
+        expect: {
+          cards: {
+            lifetime: {
+              heldRef: { contains: 'This query handle has been disposed.' },
+            },
+            inspect: { envListeners: '1' },
+          },
+        },
+      },
+      { press: 'serverless-apply' },
+      {
+        note: '**한 화면이 끝났다고 다른 것이 멈추지 않는다.** 서버 없는 draft는 그대로 적용되고 원본에 들어간다. 메인 화면의 패널도 그대로다',
+        expect: {
+          cards: {
+            lifetime: {
+              serverless: '로컬 메모 (편집됨) / 원본 로컬 메모 (편집됨)',
+            },
+            operations: {
+              lastResult: { contains: 'client도 관여하지 않는다' },
+            },
+            'resource-a': { status: 'success / idle', city: '서울' },
+          },
+        },
+      },
+    ],
+  },
+];
+
 export const SCENARIOS: readonly Scenario[] = [
   ...M2_05_08,
   ...M2_07,
@@ -3155,4 +3369,5 @@ export const SCENARIOS: readonly Scenario[] = [
   ...M2_ORDER,
   ...M2_17,
   ...M2_16_REST,
+  ...M2_18,
 ];

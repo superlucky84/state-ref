@@ -28,6 +28,7 @@ export const CARD_TITLE = {
   probe: '둘째 client (같은 key, 별도 캐시)',
   boundary: '경계 draft (child ref / readonly 원본)',
   readonly: 'readonly 조회 (editable: false)',
+  lifetime: '수명과 정리',
 } as const;
 
 export type CardId = keyof typeof CARD_TITLE;
@@ -135,6 +136,32 @@ export const FIELD_LABEL = {
    * compared across the scenarios this card is for.
    */
   boundaryValue: '현재 값',
+  // The lifetime card.
+  /** How many branch/discard rounds the repeat button has run in total. */
+  draftCycles: 'draft 생성·종료 반복',
+  draftLive: '살아 있는 draft',
+  /**
+   * How many live drafts the operation just pressed woke.
+   *
+   * Reset at the start of every operation, so the row is about that press and
+   * never a running total (DC8-8-13). It is the only number that can tell a
+   * discarded draft from a leaked one: a source write wakes every draft that
+   * is still open, so after 20 rounds of branch-and-discard this must be 0
+   * and not 20.
+   */
+  draftNotices: '이번 조작이 깨운 draft',
+  /**
+   * Why the `profile` entry cannot be dropped, in the client's own terms.
+   *
+   * `client.remove()` answers a bare boolean, so the reasons are composed by
+   * the app from `inspectCache()` and the resource status - all public. The
+   * row lists whichever of the four hold (M2-18 둘째 항목).
+   */
+  retainedBy: 'profile 유지 사유',
+  /** A ref kept past the response that produced it (M2-18 다섯째 항목). */
+  heldRef: '손에 든 ref로 읽기',
+  /** A draft over a plain store that no query and no client owns. */
+  serverless: '서버 없는 draft',
 } as const;
 
 export type FieldId = keyof typeof FIELD_LABEL;
@@ -283,6 +310,25 @@ export const CARD_FIELDS: Readonly<
    * data binding it would add is what the two resource panels already cover.
    */
   readonly: { always: ['status', 'dirty', 'version'], onceLoaded: [] },
+  /**
+   * What is still held, and what has been let go.
+   *
+   * The counts here answer M2-18 without looking inside the library: rounds
+   * run, drafts still open, drafts woken by this press, the reasons an entry
+   * is retained, a ref held past its response, and a draft that never had a
+   * server at all.
+   */
+  lifetime: {
+    always: [
+      'draftCycles',
+      'draftLive',
+      'draftNotices',
+      'retainedBy',
+      'heldRef',
+      'serverless',
+    ],
+    onceLoaded: [],
+  },
 };
 
 /** The cards a freshly opened demo renders. Drafts appear only on request. */
@@ -295,6 +341,7 @@ export const CARDS_ON_LOAD: readonly CardId[] = [
   'computed',
   'inspect',
   'readonly',
+  'lifetime',
 ];
 
 /**

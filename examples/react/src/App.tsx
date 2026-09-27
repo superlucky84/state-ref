@@ -596,6 +596,36 @@ function ReadonlyCard() {
   );
 }
 
+/**
+ * What is still held, and what has been let go.
+ *
+ * Read through the tick like the probe card (DC8-8-19): every number comes
+ * from the demo's own bookkeeping or from the client's public surface, and
+ * none of it is a connector binding the resource panels do not already cover.
+ */
+function LifetimeCard() {
+  const ui = useUi();
+  ui.tick.value; // Subscribe: these are snapshots, not reactive values.
+  const lifetime = model.lifetime();
+
+  return (
+    <section className="card" data-card="lifetime">
+      <h2>{CARD_TITLE.lifetime}</h2>
+      <Row field="draftCycles" value={lifetime.cycles} />
+      <Row field="draftLive" value={lifetime.live} />
+      <Row field="draftNotices" value={lifetime.notices} />
+      <Row field="retainedBy" value={lifetime.retainedBy} />
+      <Row field="heldRef" value={lifetime.heldRef} />
+      <Row field="serverless" value={lifetime.serverless} />
+      <p className="note">
+        반복이 남긴 것이 없으면 원본을 고쳐도 깨어나는 draft가 0이다. 살려 둔
+        draft가 있으면 그 수만큼 깨어난다 — 0과 2를 가르는 것이 이 행의
+        내용이다.
+      </p>
+    </section>
+  );
+}
+
 function Controls() {
   return (
     <>
@@ -646,6 +676,7 @@ export default function App() {
         <InspectCard />
         <ProbeCard />
         <ReadonlyCard />
+        <LifetimeCard />
         <BoundaryCard />
       </div>
     </main>

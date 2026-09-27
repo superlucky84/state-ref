@@ -302,6 +302,10 @@ export default function App() {
     void tick();
     return model.unsaved();
   });
+  const lifetime = createMemo(() => {
+    void tick();
+    return model.lifetime();
+  });
   const readonlyPanel = createMemo(() => {
     void tick();
     return resourcePanel(readonlyStatus(), model.readonlyQuery.changes());
@@ -558,6 +562,21 @@ export default function App() {
             </section>
           )}
         </Show>
+
+        <section class="card" data-card="lifetime">
+          <h2>{CARD_TITLE.lifetime}</h2>
+          <Row field="draftCycles" value={lifetime().cycles} />
+          <Row field="draftLive" value={lifetime().live} />
+          <Row field="draftNotices" value={lifetime().notices} />
+          <Row field="retainedBy" value={lifetime().retainedBy} />
+          <Row field="heldRef" value={lifetime().heldRef} />
+          <Row field="serverless" value={lifetime().serverless} />
+          <p class="note">
+            반복이 남긴 것이 없으면 원본을 고쳐도 깨어나는 draft가 0이다. 살려
+            둔 draft가 있으면 그 수만큼 깨어난다 — 0과 2를 가르는 것이 이 행의
+            내용이다.
+          </p>
+        </section>
 
         <section class="card" data-card="readonly">
           <h2>{CARD_TITLE.readonly}</h2>

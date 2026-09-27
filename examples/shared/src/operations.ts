@@ -135,6 +135,20 @@ export const OPERATION_GROUPS = [
     ],
   },
   {
+    id: 'lifetime',
+    title: '수명과 정리',
+    operations: [
+      ['draft-cycle-20', 'draft 생성·종료 20회 반복'],
+      ['draft-keep-two', 'draft 2개를 살려 둔다'],
+      ['draft-release-kept', '살려 둔 draft를 모두 종료'],
+      ['cache-remove-profile', 'profile 캐시 항목 제거 시도'],
+      ['hold-probe-ref', '둘째 client의 ref를 손에 든다'],
+      ['read-held-ref', '손에 든 ref로 읽기'],
+      ['serverless-edit', '서버 없는 draft 편집'],
+      ['serverless-apply', '서버 없는 draft 적용'],
+    ],
+  },
+  {
     id: 'computed',
     title: '콜백 없는 computed',
     operations: [

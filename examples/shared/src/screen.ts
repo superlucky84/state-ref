@@ -280,6 +280,20 @@ export function screenOf(model: DemoModel): ScreenReading {
     changes.boundary = boundary.changes.map(changeRow);
   }
 
+  /**
+   * The lifetime card. Always present - its zeros are a reading too, which is
+   * the same rule the declared tables follow (DC8-8-20).
+   */
+  const lifetime = model.lifetime();
+  cards.lifetime = {
+    draftCycles: lifetime.cycles,
+    draftLive: lifetime.live,
+    draftNotices: lifetime.notices,
+    retainedBy: lifetime.retainedBy,
+    heldRef: lifetime.heldRef,
+    serverless: lifetime.serverless,
+  };
+
   const rows: Record<string, Record<string, string>> = {};
   for (const row of requests.rows) {
     // The time columns are wall clock (DC8-5-12) and are read nowhere.

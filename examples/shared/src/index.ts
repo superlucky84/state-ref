@@ -72,6 +72,7 @@ export {
 export type {
   BoundaryPanel,
   ComputedSource,
+  LifetimePanel,
   DemoModel,
   DemoUi,
   DraftPair,

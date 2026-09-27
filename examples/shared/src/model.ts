@@ -196,6 +196,24 @@ export type ComputedSource = Readonly<{ dep: number; unrelated: number }>;
  * value here is a leaf string for one source and a record for the other, so
  * there is no one typed component that fits both.
  */
+/**
+ * What the lifetime card shows, as strings.
+ *
+ * Every number here is countable without looking inside the library: rounds
+ * the demo itself ran, drafts the demo itself still holds, the wake-ups the
+ * demo's own subscriptions received, the retention reasons composed from
+ * `inspectCache()` and the resource status, and two refs the demo kept on
+ * purpose.
+ */
+export type LifetimePanel = Readonly<{
+  cycles: string;
+  live: string;
+  notices: string;
+  retainedBy: string;
+  heldRef: string;
+  serverless: string;
+}>;
+
 export type BoundaryPanel = Readonly<{
   /** `원본 office.room` or `readonly 조회`. */
   source: string;
@@ -248,6 +266,8 @@ export type DemoModel = Readonly<{
   probe: () => ProbePanel | null;
   /** The boundary card, or null before a boundary draft has been branched. */
   boundary: () => BoundaryPanel | null;
+  /** The lifetime card. Always present: its zeros are a reading too. */
+  lifetime: () => LifetimePanel;
   /**
    * Whether anything on the screen holds unsaved input.
    *
@@ -451,6 +471,22 @@ export function createDemoModel(): DemoModel {
     probeEverOpened = true;
   };
 
+  /**
+   * The second client's city ref, or null before it has been opened.
+   *
+   * Reached through the probe because it is the only query on screen whose
+   * lifetime a button ends - the panel queries live as long as the page does,
+   * so nothing else can show what a ref does after its owner is gone.
+   */
+  const probeCityRef = (): StateRefStore<string> | null => {
+    if (!probe) return null;
+    try {
+      return probe.query.ref.city as unknown as StateRefStore<string>;
+    } catch {
+      return null;
+    }
+  };
+
   const disposeProbe = () => {
     if (!probe) return;
     probe.off();
@@ -542,6 +578,13 @@ export function createDemoModel(): DemoModel {
    * make it an argument rather than a comparison.
    */
   const RESERVED_KEY_PAYLOAD = { floor: 9, room: '901', toJSON: 'x' };
+  /** How many rounds `draft 생성·종료 20회 반복` runs. */
+  const DRAFT_CYCLES = 20;
+  /** The server-less draft's starting text, so the row has a stable value. */
+  const SERVERLESS_NOTE = '로컬 메모';
+  const SERVERLESS_EDIT = '로컬 메모 (편집됨)';
+  /** What `read-held-ref` prints before anything has been held. */
+  let heldRefText = '(없음)';
   /** No resource change ever carries this id; `capture` has to refuse it. */
   const UNKNOWN_CHANGE_ID = 9999;
   /** What the server holds at `office.room`, so a type swap keeps the text. */
@@ -606,6 +649,73 @@ export function createDemoModel(): DemoModel {
 
   /** A review item kept past the edit that makes it stale (M2-16 항목 4). */
   let heldChange: DraftChange | null = null;
+
+  /**
+   * The lifetime instruments (M2-18).
+   *
+   * `draftNotices` is reset at the top of every `run`, so the row it feeds is
+   * about the press just made. Each kept draft's subscription **reads** the
+   * status it is handed - a callback that reads nothing registers no
+   * dependency and is never woken, which is the same trap `CI-30`'s
+   * regression test carries.
+   */
+  let draftCycles = 0;
+  let draftNotices = 0;
+  let keptDrafts: Draft<Profile>[] = [];
+  const keptAbort = new AbortController();
+  /** A ref kept past the response that produced it, from the second client. */
+  let heldRef: StateRefStore<string> | null = null;
+
+  /** A draft with no query, no client and no server behind it. */
+  const serverlessSource = createStore({ note: SERVERLESS_NOTE })();
+  const serverlessDraft = createDraft(serverlessSource);
+
+  const watchKept = (draft: Draft<Profile>) => {
+    draft.watchStatus(status => {
+      // Read, or nothing is registered and the count stays at zero for the
+      // wrong reason.
+      void status.dirty.value;
+      void status.conflicts.value;
+      void status.version.value;
+      draftNotices += 1;
+      repaint();
+      return keptAbort.signal;
+    });
+  };
+
+  /**
+   * Why the `profile` entry cannot be dropped.
+   *
+   * `client.remove()` answers a bare boolean (`packages/sync/src/index.ts:1591`),
+   * so the four reasons are composed here from what the client and the
+   * resource already publish.
+   */
+  const retainedBy = () => {
+    const entry = client
+      .inspectCache()
+      .find(
+        item =>
+          keyText(item.queryKey as readonly string[]) === keyText(PANEL_KEY)
+      );
+    if (!entry) return '(캐시에 없음)';
+    const status = panelA.status.value;
+    const reasons = [
+      entry.owners > 0 ? `소유자 ${entry.owners}` : null,
+      status.dirty ? 'dirty' : null,
+      status.unconfirmed ? '미확정' : null,
+      status.pending > 0 ? `진행 중 WRITE ${status.pending}` : null,
+    ].filter(Boolean);
+    return reasons.length === 0 ? '없음' : reasons.join(' · ');
+  };
+
+  const lifetimeOf = (): LifetimePanel => ({
+    cycles: `${draftCycles}회`,
+    live: String(keptDrafts.length),
+    notices: String(draftNotices),
+    retainedBy: retainedBy(),
+    heldRef: heldRefText,
+    serverless: `${serverlessDraft.ref.note.value} / 원본 ${serverlessSource.note.value}`,
+  });
 
   const unsavedNow = () => {
     // `isDirty()` reaches the resource, which does not exist before the first
@@ -732,6 +842,8 @@ export function createDemoModel(): DemoModel {
   };
 
   const run = (id: OperationId) => {
+    // The wake-up row is about this press, never a running total (DC8-8-13).
+    draftNotices = 0;
     switch (id) {
       case 'settle-read':
         return bump(
@@ -1099,6 +1211,102 @@ export function createDemoModel(): DemoModel {
           result.ok
             ? 'draft B의 항목으로 draft A를 해소했다 — 거절되지 않았다.'
             : `해소 거절: ${result.reason} — 항목은 그것을 만든 draft의 것이고, 번호가 같아도 다른 draft의 항목으로는 해소할 수 없다.`
+        );
+      }
+
+      case 'draft-cycle-20': {
+        if (!loaded()) return notLoaded(id);
+        // Branch and end, twenty times, keeping nothing. Every round also
+        // subscribes, so a subscription that outlived its draft would show up
+        // as a wake-up on the next source write.
+        for (let round = 0; round < DRAFT_CYCLES; round += 1) {
+          const draft = createDraft(panelA.ref);
+          watchKept(draft);
+          draft.ref.city.value = `${CITY.draft}-${round}`;
+          draft.discard();
+          draftCycles += 1;
+        }
+        return bump(
+          id,
+          `draft를 ${DRAFT_CYCLES}회 만들고 그때마다 편집한 뒤 종료했다. 다음에 원본을 고칠 때 깨어나는 draft 수가 0이면 아무것도 남지 않은 것이다.`
+        );
+      }
+      case 'draft-keep-two': {
+        if (!loaded()) return notLoaded(id);
+        for (let index = 0; index < 2; index += 1) {
+          const draft = createDraft(panelA.ref);
+          watchKept(draft);
+          keptDrafts.push(draft);
+          draftCycles += 1;
+        }
+        return bump(
+          id,
+          'draft 2개를 종료하지 않고 들고 있다. 이제 원본을 고치면 그 2개가 깨어난다 — 0과 2를 가르는 것이 반복이 남긴 것과 일부러 남긴 것의 차이다.'
+        );
+      }
+      case 'draft-release-kept': {
+        if (keptDrafts.length === 0) return bump(id, '살려 둔 draft가 없다.');
+        const count = keptDrafts.length;
+        keptDrafts.forEach(draft => draft.discard());
+        keptDrafts = [];
+        return bump(
+          id,
+          `살려 둔 draft ${count}개를 종료했다. 원본을 고쳐도 깨어나는 것이 없어야 한다.`
+        );
+      }
+      case 'cache-remove-profile': {
+        const removed = client.remove(PANEL_KEY);
+        return bump(
+          id,
+          removed
+            ? 'profile 캐시 항목을 제거했다.'
+            : `제거를 거절했다 — 유지 사유: ${retainedBy()}. 화면이 열려 있는 한 소유자는 사라지지 않는다.`
+        );
+      }
+      case 'hold-probe-ref': {
+        const ref = probeCityRef();
+        if (!ref) return bump(id, '먼저 둘째 client를 열고 조회한다.');
+        heldRef = ref;
+        heldRefText = String(ref.value);
+        return bump(
+          id,
+          `둘째 client의 도시 ref를 손에 들었다 (지금 ${heldRefText}). 응답이 바뀌어도 이 ref는 그대로 쓰이고, 그 client가 끝나면 거절한다.`
+        );
+      }
+      case 'read-held-ref': {
+        if (!heldRef) return bump(id, '먼저 ref를 손에 든다.');
+        try {
+          heldRefText = String(heldRef.value);
+        } catch (error) {
+          heldRefText = `(거절됨: ${String(error)})`;
+          return bump(
+            id,
+            `손에 든 ref가 거절했다: ${String(
+              error
+            )} — 일반 응답 교체와 달리 실제 만료는 ref를 쓸 수 없게 만든다.`
+          );
+        }
+        return bump(
+          id,
+          `손에 든 ref로 ${heldRefText}를 읽었다. 응답이 교체돼도 같은 ref가 새 값을 준다.`
+        );
+      }
+      case 'serverless-edit':
+        // A fixed text, not a tick-derived one: this row is pinned by a
+        // scenario and `메모 N` would change whenever an unrelated operation
+        // was added (DC8-8-13).
+        serverlessDraft.ref.note.value = SERVERLESS_EDIT;
+        return bump(
+          id,
+          '서버 없는 draft를 편집했다. query도 client도 없는 원본이라 어떤 화면이 끝나든 영향받지 않는다.'
+        );
+      case 'serverless-apply': {
+        const result = serverlessDraft.apply();
+        return bump(
+          id,
+          result.ok
+            ? `서버 없는 draft를 적용했다 (${result.applied}건). 네트워크는 물론 client도 관여하지 않는다.`
+            : `적용 거절: ${result.reason}`
         );
       }
 
@@ -1502,11 +1710,16 @@ export function createDemoModel(): DemoModel {
     drafts: () => drafts,
     probe: probeOf,
     boundary: boundaryOf,
+    lifetime: lifetimeOf,
     unsaved: unsavedNow,
     watchUi,
     run,
     dispose() {
       releaseBoundary();
+      keptAbort.abort();
+      keptDrafts.forEach(draft => draft.discard());
+      keptDrafts = [];
+      serverlessDraft.discard();
       drafts.a?.discard();
       drafts.b?.discard();
       mutation.dispose();
