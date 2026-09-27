@@ -7,6 +7,7 @@ import type {
 } from '@/types';
 import type { PathNode } from '@/path';
 import { forEachAffected, pathToString } from '@/path';
+import { endRun } from './collector';
 
 /**
  * Reports the errors user code threw during a single propagation pass.
@@ -40,6 +41,14 @@ export function removeRun(storeRenderList: StoreRenderList<any>, run: Run) {
   }
 
   storeRenderList.delete(run);
+  /**
+   * The caller still holds the ref this subscription was bound to, and reading
+   * through it lands in the `collector`. Marking the run ended is what stops one
+   * such read from re-creating the record the line above just dropped, which
+   * left the subscription firing again on the next write with no way to end it a
+   * second time (`CI-30`).
+   */
+  endRun(run);
 }
 
 /**

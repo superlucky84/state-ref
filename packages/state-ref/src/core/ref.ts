@@ -59,7 +59,10 @@ export function makeReference<V>({
    *
    * Note where the wipe lives - inside `run`, so only a store change triggers
    * it. A reader that runs outside `run` (a framework re-rendering for its own
-   * reasons) still reaches `collector` and therefore only ever adds.
+   * reasons) still reaches `collector` and therefore only ever adds - with one
+   * exception, which is the whole of `CI-30`: once this subscription has ended,
+   * `collector` refuses it, so a repaint after teardown cannot bring it back.
+   * For a live subscription "only ever adds" holds exactly as before.
    */
   // A callbackless ref remains live, but reading it must not register a run.
   const run: Run = renew
