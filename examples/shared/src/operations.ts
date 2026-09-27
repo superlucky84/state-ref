@@ -115,6 +115,7 @@ export const OPERATION_GROUPS = [
       ['probe-open', '둘째 client 열기 (같은 key)'],
       ['probe-load', '둘째 client 조회'],
       ['probe-edit', '둘째 client에서 도시 → 제주'],
+      ['probe-edit-seoul', '둘째 client에서 도시 → 서울'],
       ['probe-dispose', '둘째 client 해제'],
     ],
   },
@@ -124,6 +125,7 @@ export const OPERATION_GROUPS = [
     operations: [
       ['boundary-branch-room', '원본 office.room에서 draft 분기 (child ref)'],
       ['boundary-branch-readonly', 'readonly 조회에서 draft 분기'],
+      ['boundary-branch-probe', '둘째 client 조회에서 draft 분기'],
       ['boundary-edit', '경계 draft 값 변경'],
       ['boundary-apply', '경계 draft 로컬 적용'],
       ['draft-a-reserved-key', 'draft A에 예약 키 쓰기'],

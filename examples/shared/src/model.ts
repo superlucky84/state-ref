@@ -566,7 +566,8 @@ export function createDemoModel(): DemoModel {
    */
   type BoundaryDraft =
     | Readonly<{ origin: 'room'; draft: Draft<string> }>
-    | Readonly<{ origin: 'readonly'; draft: Draft<Profile> }>;
+    | Readonly<{ origin: 'readonly'; draft: Draft<Profile> }>
+    | Readonly<{ origin: 'probe'; draft: Draft<Profile> }>;
   let boundary: BoundaryDraft | null = null;
   let boundaryAbort: AbortController | null = null;
   /**
@@ -593,6 +594,7 @@ export function createDemoModel(): DemoModel {
   const BOUNDARY_SOURCE = {
     room: '원본 office.room',
     readonly: 'readonly 조회',
+    probe: '둘째 client 조회',
   } as const;
   /** The child ref the boundary draft branches from, under a nullable parent. */
   const roomRef = () =>
@@ -974,7 +976,18 @@ export function createDemoModel(): DemoModel {
         return bump(id, '무효화했다. 진행 중 READ는 취소된다.');
       case 'accept-server':
         if (!loaded()) return notLoaded(id);
-        panelA.acceptServer(server.value());
+        try {
+          panelA.acceptServer(server.value());
+        } catch (error) {
+          // A linked WRITE holds the baseline: sync refuses to move it while
+          // an operation it is attached to has not answered (M2-19 셋째 항목).
+          return bump(
+            id,
+            `거절: ${String(
+              error
+            )} — 진행 중인 작업이 있는 동안에는 기준을 바꾸지 않는다.`
+          );
+        }
         return bump(id, 'WRITE 없이 현재 서버 값을 기준으로 받아들였다.');
 
       case 'edit-busan':
@@ -1332,6 +1345,21 @@ export function createDemoModel(): DemoModel {
           'readonly 조회에서 draft를 분기했다. 분기도 편집도 되고, 거절은 적용에서 난다.'
         );
       }
+      case 'boundary-branch-probe': {
+        if (!probe) return bump(id, '먼저 둘째 client를 열고 조회한다.');
+        try {
+          openBoundary({
+            origin: 'probe',
+            draft: createDraft(probe.query.ref),
+          });
+        } catch (error) {
+          return bump(id, `분기 실패: ${String(error)}`);
+        }
+        return bump(
+          id,
+          '둘째 client의 조회에서 draft를 분기했다. 이 화면은 해제할 수 있으므로, 원본 화면이 닫힌 뒤 draft가 어떻게 되는지 볼 수 있다.'
+        );
+      }
       case 'boundary-edit': {
         if (!boundary) return bump(id, '먼저 경계 draft를 분기한다.');
         if (boundary.origin === 'room') {
@@ -1339,6 +1367,12 @@ export function createDemoModel(): DemoModel {
           return bump(id, `경계 draft의 방 번호를 ${ROOM_EDIT}로 바꿨다.`);
         }
         boundary.draft.ref.city.value = CITY.draft;
+        if (boundary.origin === 'probe') {
+          return bump(
+            id,
+            `경계 draft의 도시를 ${CITY.draft}으로 바꿨다. 원본 화면에는 적용 전까지 보이지 않는다.`
+          );
+        }
         return bump(id, `경계 draft의 도시를 ${CITY.draft}으로 바꿨다.`);
       }
       case 'boundary-apply': {
@@ -1630,6 +1664,18 @@ export function createDemoModel(): DemoModel {
         return bump(
           id,
           `둘째 client에서만 도시를 ${CITY.probe}로 바꿨다. 같은 key지만 패널 두 장에는 보이지 않고 WRITE도 없다.`
+        );
+      }
+      case 'probe-edit-seoul': {
+        if (!probe) return bump(id, '둘째 client가 없다. 먼저 연다.');
+        if (!probe.query.status.loaded.value)
+          return bump(id, '둘째 client가 아직 로드되지 않았다. 먼저 조회한다.');
+        // A second value for that screen, so a draft branched from it can be
+        // left holding input while its source moves underneath (M2-19 8항).
+        probe.query.ref.city.value = CITY.server;
+        return bump(
+          id,
+          `둘째 client에서만 도시를 ${CITY.server}로 바꿨다. 이 화면에서 분기한 draft가 열려 있으면 겹친 경로가 충돌이 된다.`
         );
       }
       case 'probe-dispose':

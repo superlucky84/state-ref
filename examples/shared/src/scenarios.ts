@@ -3352,6 +3352,264 @@ const M2_18: readonly Scenario[] = [
   },
 ];
 
+/**
+ * M2-19 items 3 and 8 - the two the demo could already almost answer.
+ *
+ * The other ten need screens this demo does not have (infinite queries,
+ * persistence, offline resume, checkpoints, linked submissions), and the
+ * decision not to port them wholesale is recorded in the phase notes. These
+ * two are assembled from controls that already exist plus one draft source
+ * that did not.
+ */
+const M2_19_REST: readonly Scenario[] = [
+  {
+    id: 'M2-19-3-axes',
+    title:
+      '복원된 서버 기준·미저장 입력·진행 작업이 화면에서 서로 섞이지 않는다',
+    pins: 'M2-19 셋째 항목',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'server-edit-memo' },
+      {
+        note: '서버가 혼자 움직였다. `서버 도시 / revision`은 2가 됐는데 화면의 값도 dirty도 그대로다 — **서버가 바뀐 것과 내가 바꾼 것은 다른 사실이다**',
+        expect: {
+          cards: {
+            requests: { server: '서울 / 2' },
+            'resource-a': { city: '서울', dirty: 'false', serverBusy: 'false' },
+          },
+          changes: { 'resource-a': [] },
+        },
+      },
+      { press: 'edit-busan' },
+      {
+        note: '미저장 입력이 생겼다. 서버 기준은 여전히 `서울 / 2`이고, 변경 줄이 그 둘의 차이를 말한다',
+        expect: {
+          cards: {
+            requests: { server: '서울 / 2' },
+            'resource-a': {
+              city: '부산',
+              dirty: 'true',
+              serverBusy: 'false',
+              unconfirmed: 'false',
+            },
+          },
+          changes: {
+            'resource-a': [{ path: 'city', before: '"서울"', after: '"부산"' }],
+          },
+        },
+      },
+      { press: 'capture' },
+      { press: 'save' },
+      {
+        note: '진행 작업이 셋째 축으로 켜진다. **앞의 둘은 그대로다** — 값도 변경 줄도 그대로고 `dirty`도 내려가지 않는다. 저장을 시작한 것이 저장한 것은 아니다',
+        expect: {
+          cards: {
+            'resource-a': {
+              city: '부산',
+              dirty: 'true',
+              serverBusy: 'true',
+              unconfirmed: 'false',
+            },
+            operations: { mutationPhase: 'pending', mutationPending: '1' },
+          },
+          changes: {
+            'resource-a': [{ path: 'city', before: '"서울"', after: '"부산"' }],
+          },
+        },
+      },
+      { press: 'accept-server' },
+      {
+        note: '**진행 작업이 있는 동안에는 기준을 바꾸지 않는다.** 기준 수용이 거절되고 세 축 모두 움직이지 않는다 — 떠 있는 WRITE 아래에서 기준을 갈아치우면 그 WRITE의 결과를 무엇과 비교할지 알 수 없게 된다',
+        expect: {
+          cards: {
+            operations: {
+              lastResult: {
+                contains: 'A linked operation is pending for this query.',
+              },
+            },
+            'resource-a': { city: '부산', dirty: 'true', serverBusy: 'true' },
+          },
+        },
+      },
+      { press: 'settle-all' },
+      {
+        note: '저장이 끝나 셋째 축이 내려가고, 서버 기준이 `부산 / 3`으로 옮겨져 미저장 입력도 해소됐다. 세 축이 각자의 이유로 움직였다',
+        expect: {
+          cards: {
+            requests: { server: '부산 / 3' },
+            'resource-a': {
+              city: '부산',
+              dirty: 'false',
+              serverBusy: 'false',
+              unconfirmed: 'false',
+            },
+          },
+          changes: { 'resource-a': [] },
+        },
+      },
+      { press: 'server-edit-memo' },
+      { press: 'edit-gwangju' },
+      { press: 'accept-server' },
+      {
+        note: '**기준 복원이 미저장 입력을 먹지 않는다.** 서버가 혼자 바꾼 무관한 필드는 기준으로 들어왔는데, 내가 쥔 `광주`는 그 새 기준에 대한 변경으로 그대로 남는다 — 복원된 기준과 미저장 입력이 한 화면에서 각자 선다',
+        expect: {
+          cards: {
+            'resource-a': { city: '광주', dirty: 'true', serverBusy: 'false' },
+          },
+          changes: {
+            'resource-a': [{ path: 'city', before: '"부산"', after: '"광주"' }],
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-19-8-apply',
+    title:
+      '이미 편집한 조회에서 분기한 draft는 깨끗하고, 적용은 네트워크 없이 root 변경 1건만 남긴다',
+    pins: 'M2-19 여덟째 항목 (앞 다섯 문장)',
+    steps: [
+      { press: 'probe-open' },
+      { press: 'probe-load' },
+      { press: 'settle-all' },
+      { press: 'probe-edit' },
+      { press: 'boundary-branch-probe' },
+      {
+        note: '원본이 이미 `제주`로 편집된 상태인데 **draft는 clean에서 시작한다.** 값은 편집된 값을 물려받고 변경 기록은 물려받지 않는다',
+        expect: {
+          cards: {
+            probe: { city: '제주', dirty: 'true' },
+            boundary: {
+              boundarySource: '둘째 client 조회',
+              draftDirty: 'false',
+              version: '0 / 0',
+            },
+          },
+          changes: { boundary: [] },
+        },
+      },
+      { press: 'boundary-edit' },
+      {
+        note: 'draft의 입력은 적용 전까지 원본 화면에 보이지 않는다. 원본은 `제주` 그대로다',
+        expect: {
+          cards: {
+            probe: { city: '제주' },
+            boundary: { draftDirty: 'true' },
+            // Pinned here too, so the next step's identical count is a
+            // statement about the apply rather than about this scenario.
+            requests: { counts: '1 / 0' },
+          },
+          changes: {
+            boundary: [
+              {
+                path: 'city',
+                before: '"제주"',
+                after: '"대전"',
+                conflict: '-',
+              },
+            ],
+          },
+        },
+      },
+      { press: 'boundary-apply' },
+      {
+        note: '적용 뒤 **draft는 깨끗하고 원본이 편집 상태다.** 그리고 요청 수가 `1 / 0` 그대로다 — 로컬 적용에는 네트워크 호출이 없다',
+        expect: {
+          cards: {
+            operations: { lastResult: { contains: '로컬 적용 1건' } },
+            probe: { city: '대전' },
+            boundary: { draftDirty: 'false' },
+            requests: { counts: '1 / 0', inFlight: '0' },
+          },
+          changes: { boundary: [] },
+        },
+      },
+      { press: 'probe-edit' },
+      { press: 'boundary-edit' },
+      { press: 'probe-edit-seoul' },
+      {
+        note: '**draft가 열린 동안 원본이 바뀌면 겹친 경로가 충돌로 보이고 입력은 지워지지 않는다.** `원본` 칸이 `"서울"`을 말하는데 draft의 `대전`은 그대로 있다',
+        expect: {
+          cards: { boundary: { draftDirty: 'true', version: '6 / 1' } },
+          changes: {
+            boundary: [
+              {
+                path: 'city',
+                before: '"제주"',
+                after: '"대전"',
+                source: '"서울"',
+                conflict: 'conflict',
+              },
+            ],
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-19-8-closed',
+    title:
+      '원본 화면을 닫아도 draft 값은 남고, 적용만 missing-source로 거절된다',
+    pins: 'M2-19 여덟째 항목 (마지막 문장)',
+    steps: [
+      { press: 'probe-open' },
+      { press: 'probe-load' },
+      { press: 'settle-all' },
+      { press: 'boundary-branch-probe' },
+      { press: 'boundary-edit' },
+      {
+        note: '입력을 쥔 draft. 충돌은 없다 — 충돌이 있으면 적용이 그쪽을 먼저 답하므로 이 문장이 시험되지 않는다',
+        expect: {
+          cards: { boundary: { draftDirty: 'true', version: '1 / 0' } },
+          changes: {
+            boundary: [
+              {
+                path: 'city',
+                after: '"대전"',
+                source: '"서울"',
+                conflict: '-',
+              },
+            ],
+          },
+        },
+      },
+      { press: 'probe-dispose' },
+      {
+        note: '원본 화면이 닫혔다. 그 카드는 모든 행이 `(해제됨)`인데 **draft의 값과 dirty는 그대로다** — 입력은 화면의 수명에 매여 있지 않다',
+        expect: {
+          cards: {
+            probe: { probeState: '해제됨', status: '(해제됨)' },
+            boundary: { draftDirty: 'true', version: '1 / 0' },
+          },
+        },
+      },
+      { press: 'boundary-apply' },
+      {
+        note: '**거절되는 것은 적용뿐이다.** `missing-source`로 답하고 draft의 입력은 남는다. 변경 줄의 `원본` 칸만 `(없음)`이 된다 — 쓸 곳이 사라졌다는 뜻이고, 쥐고 있던 것이 사라졌다는 뜻이 아니다',
+        expect: {
+          cards: {
+            operations: {
+              lastResult: { contains: '적용 거절: missing-source' },
+            },
+            boundary: { draftDirty: 'true' },
+          },
+          changes: {
+            boundary: [
+              {
+                path: 'city',
+                after: '"대전"',
+                source: '(없음)',
+                conflict: '-',
+              },
+            ],
+          },
+        },
+      },
+    ],
+  },
+];
+
 export const SCENARIOS: readonly Scenario[] = [
   ...M2_05_08,
   ...M2_07,
@@ -3370,4 +3628,5 @@ export const SCENARIOS: readonly Scenario[] = [
   ...M2_17,
   ...M2_16_REST,
   ...M2_18,
+  ...M2_19_REST,
 ];
