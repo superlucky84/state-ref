@@ -254,6 +254,17 @@
 
 ## 5. 인계
 
+### 2026-09-27 — Phase 8.8 9단계, 여러 명령의 순서와 M2-19 완주 준비
+
+- done: **[Phase 8.8](./PHASE8_8.md) 9단계 — 여러 명령의 순서.** 연결하지 않은 독립 명령(R2-08의 `resource 없는 명령`)을 scope와 함께/없이 실행하는 조작 둘을 더했다. **[M2-11](./MANUAL_TEST_CHECKLIST.md#m2-11) 항목 3 통과**(명시적 순서·충돌 정책), **[M2-19](./MANUAL_TEST_CHECKLIST.md#m2-19) 13항 통과**(`queued`가 마지막 문장이었다). M2-11은 이제 항목 5의 둘째 view만 남는다.
+- **연결하지 않은 명령을 쓴 것이 설계의 핵심이다.** 연결 저장은 같은 조회에 다른 연결 저장이 떠 있으면 거절되므로 **연결 저장 둘로는 순서를 시험할 수 없다.** 겹칠 수 있는 명령만이 순서를 시험 가능하게 만들고, 그 거절 자체가 같은 항목의 **충돌 정책** 쪽 답이다 — 세 시나리오가 한 항목의 두 문장을 나눠 맡는다.
+- **`queued`는 이름표가 아니다.** 이 단계에서 가장 값 있는 판독은 `phase` 열이 아니라 **요청 수**다: 둘째 명령이 `queued`인 동안 서버에 나간 WRITE는 **1건**이다. `phase`만 봤다면 "라벨이 그렇게 붙었다"까지였고, 요청 표가 같은 화면에 있어 **요청이 아직 떠나지도 않았다**가 말해진다. 두 계측이 한 화면에 있어야 생기는 판정이다.
+- **판정력 확인(DC8-8-07), 주입 2종.** `scope` 인자를 떨어뜨리자 **다섯 전부**가 `mutations[1]/phase: expected queued, got pending`과 **`requests/counts: expected 2 / 1, got 2 / 2`**로 함께 실패했다 — 순서가 사라지자 요청이 둘 다 나갔다. Preact의 WRITE 표만 `phase`를 `pending`으로 고정하자 **preact만** `queued` 줄 하나에서 어긋났다(무심히 보면 맞아 보이는 화면이다). 복원 뒤 `diff` 동일 확인.
+- 수치: 조작 58 → **60개**, 시나리오 43 → **46개**, `examples/shared` 95 → **98개**, 브라우저 스위트 55 → **58개**. `pnpm test:e2e` **58/58**·콘솔 오류 0, `pnpm gate` **19단계 PASS**, `pnpm check:examples` PASS(다섯 데모 모두 60개 렌더). `packages/` 무변경.
+- next: **번들 페이지 러너(M2-01, 7칸).** 거의 배관이다 — `examples/bundles`의 페이지 9개가 이미 `#panel`에 `판정` 행을 인쇄하고 `scripts/check-example-bundles.mjs`가 그것을 읽지만, 그 실행은 **jsdom이라 M2-01의 결과가 아니다**(그 파일 자신이 `It is jsdom, not a browser`라고 적고 있다). 같은 행을 실제 Chromium에서 읽으면 7칸이 채워진다. 필요한 것은 빌드된 페이지를 띄우는 `webServer` 하나, spec 하나, `<dt>`/`<dd>` 한글 텍스트 대신 `data-` 속성 계약(DC8-8-04). 그다음 M2-17, M2-16 항목 2·4, M2-18, SSR hydration(`check-example-ssr.mjs`가 서버 HTML은 이미 보고 있고 hydration만 남았다), M2-19는 항목별로 고른다.
+- blockers: 없다.
+- 시작 기준 commit: `b93340f`. 이 단계의 코드는 `5049629`이다.
+
 ### 2026-09-27 — Phase 8.8 8단계, 둘째 client와 M2-03
 
 - done: **[Phase 8.8](./PHASE8_8.md) 8단계 — 둘째 client.** 같은 환경·**같은 key `profile`**에 둘째 `SyncClient`를 열고 조작으로 해제한다([DC8-8-18](./PHASE8_8.md) — 다른 key라면 섞이지 않는 것이 당연하고 아무것도 주장하지 못한다).
