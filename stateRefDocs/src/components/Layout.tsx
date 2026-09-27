@@ -34,6 +34,20 @@ import { DraftConflicts } from '@/pages/DraftConflicts';
 import { DraftConflictsKo } from '@/pages/DraftConflicts_ko';
 import { DraftLifetime } from '@/pages/DraftLifetime';
 import { DraftLifetimeKo } from '@/pages/DraftLifetime_ko';
+import { Sync } from '@/pages/Sync';
+import { SyncKo } from '@/pages/Sync_ko';
+import { SyncQuery } from '@/pages/SyncQuery';
+import { SyncQueryKo } from '@/pages/SyncQuery_ko';
+import { SyncMutation } from '@/pages/SyncMutation';
+import { SyncMutationKo } from '@/pages/SyncMutation_ko';
+import { SyncView } from '@/pages/SyncView';
+import { SyncViewKo } from '@/pages/SyncView_ko';
+import { SyncRefetch } from '@/pages/SyncRefetch';
+import { SyncRefetchKo } from '@/pages/SyncRefetch_ko';
+import { SyncPersistence } from '@/pages/SyncPersistence';
+import { SyncPersistenceKo } from '@/pages/SyncPersistence_ko';
+import { SyncObservation } from '@/pages/SyncObservation';
+import { SyncObservationKo } from '@/pages/SyncObservation_ko';
 import { ManualSync } from '@/pages/ManualSync';
 import { ManualSyncKo } from '@/pages/ManualSync_ko';
 import { Lens } from '@/pages/Lens';
@@ -110,6 +124,20 @@ const routes: Record<string, PageComponent> = {
   '/ko/guide/draft-conflicts': DraftConflictsKo,
   '/guide/draft-lifetime': DraftLifetime,
   '/ko/guide/draft-lifetime': DraftLifetimeKo,
+  '/guide/sync': Sync,
+  '/ko/guide/sync': SyncKo,
+  '/guide/sync-query': SyncQuery,
+  '/ko/guide/sync-query': SyncQueryKo,
+  '/guide/sync-mutation': SyncMutation,
+  '/ko/guide/sync-mutation': SyncMutationKo,
+  '/guide/sync-view': SyncView,
+  '/ko/guide/sync-view': SyncViewKo,
+  '/guide/sync-refetch': SyncRefetch,
+  '/ko/guide/sync-refetch': SyncRefetchKo,
+  '/guide/sync-persistence': SyncPersistence,
+  '/ko/guide/sync-persistence': SyncPersistenceKo,
+  '/guide/sync-observation': SyncObservation,
+  '/ko/guide/sync-observation': SyncObservationKo,
   '/guide/lens': Lens,
   '/ko/guide/lens': LensKo,
   '/guide/copyable': Copyable,

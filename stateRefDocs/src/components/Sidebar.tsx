@@ -99,6 +99,39 @@ const menuData: MenuSection[] = [
     ],
   },
   {
+    text: { en: 'Server Sync', ko: '서버 동기화' },
+    items: [
+      {
+        text: { en: 'createSyncClient', ko: 'createSyncClient' },
+        link: '/guide/sync',
+      },
+      {
+        text: { en: 'query and resource', ko: 'query와 resource' },
+        link: '/guide/sync-query',
+      },
+      {
+        text: { en: 'mutation and link', ko: 'mutation과 link' },
+        link: '/guide/sync-mutation',
+      },
+      {
+        text: { en: 'view and liveView', ko: 'view와 liveView' },
+        link: '/guide/sync-view',
+      },
+      {
+        text: { en: 'Automatic Refetch', ko: '자동 재조회' },
+        link: '/guide/sync-refetch',
+      },
+      {
+        text: { en: 'Persistence and SSR', ko: '영속화와 SSR' },
+        link: '/guide/sync-persistence',
+      },
+      {
+        text: { en: 'Observation', ko: '관측' },
+        link: '/guide/sync-observation',
+      },
+    ],
+  },
+  {
     text: { en: 'Helper Functions', ko: '헬퍼 함수' },
     items: [
       { text: { en: 'Lens Pattern', ko: 'Lens 패턴' }, link: '/guide/lens' },
