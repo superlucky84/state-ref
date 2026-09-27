@@ -7,8 +7,9 @@ export const ApiTypesKo = mount(() => {
       <h1>TypeScript 타입</h1>
 
       <p>
-        이 페이지는 <code>state-ref</code>에서 내보내는 TypeScript 타입들을 문서화합니다.
-        이 타입들은 스토어 작업 시 완전한 타입 안전성을 제공합니다.
+        이 페이지는 <code>state-ref</code>에서 내보내는 TypeScript 타입들을
+        문서화합니다. 이 타입들은 스토어 작업 시 완전한 타입 안전성을
+        제공합니다.
       </p>
 
       <h2>타입 가져오기</h2>
@@ -30,7 +31,8 @@ export const ApiTypesKo = mount(() => {
 
       <p>
         watch 함수를 호출할 때 반환되는 프록시 타입입니다.
-        <code>.value</code> 프로퍼티를 통해 상태에 대한 반응형 접근을 제공합니다.
+        <code>.value</code> 프로퍼티를 통해 상태에 대한 반응형 접근을
+        제공합니다.
       </p>
 
       <CodeBlock
@@ -48,11 +50,13 @@ export const ApiTypesKo = mount(() => {
 
       <ul>
         <li>
-          <strong>객체 타입</strong>: 각 프로퍼티가 중첩된 <code>StateRefStore</code>가 되고,
-          전체 객체를 위한 <code>.value</code> 프로퍼티가 추가됨
+          <strong>객체 타입</strong>: 각 프로퍼티가 중첩된{' '}
+          <code>StateRefStore</code>가 되고, 전체 객체를 위한{' '}
+          <code>.value</code> 프로퍼티가 추가됨
         </li>
         <li>
-          <strong>원시 타입</strong>: <code>.value</code> 프로퍼티만 있는 간단한 래퍼
+          <strong>원시 타입</strong>: <code>.value</code> 프로퍼티만 있는 간단한
+          래퍼
         </li>
       </ul>
 
@@ -90,8 +94,8 @@ const countRef: StateRefStore<number> = countWatch();
       <h3>Watch&lt;V&gt;</h3>
 
       <p>
-        <code>createStore</code>가 반환하는 함수 타입입니다.
-        스토어에 접근하거나 변경을 구독하는 데 사용됩니다.
+        <code>createStore</code>가 반환하는 함수 타입입니다. 스토어에 접근하거나
+        변경을 구독하는 데 사용됩니다.
       </p>
 
       <CodeBlock
@@ -114,18 +118,30 @@ const countRef: StateRefStore<number> = countWatch();
         </thead>
         <tbody>
           <tr>
-            <td><code>renew</code></td>
-            <td><code>Renew&lt;StateRefStore&lt;V&gt;&gt;</code></td>
+            <td>
+              <code>renew</code>
+            </td>
+            <td>
+              <code>Renew&lt;StateRefStore&lt;V&gt;&gt;</code>
+            </td>
             <td>구독을 위한 선택적 콜백</td>
           </tr>
           <tr>
-            <td><code>userOption.cache</code></td>
-            <td><code>boolean</code></td>
+            <td>
+              <code>userOption.cache</code>
+            </td>
+            <td>
+              <code>boolean</code>
+            </td>
             <td>동일한 renew에 대해 프록시 캐시 (기본값: true)</td>
           </tr>
           <tr>
-            <td><code>userOption.editable</code></td>
-            <td><code>boolean</code></td>
+            <td>
+              <code>userOption.editable</code>
+            </td>
+            <td>
+              <code>boolean</code>
+            </td>
             <td>수정 허용 (기본값: true)</td>
           </tr>
         </tbody>
@@ -160,9 +176,7 @@ typedWatch((store, isFirst) => {
 
       <h3>Renew&lt;G&gt;</h3>
 
-      <p>
-        스토어 구독을 위한 콜백 함수 타입입니다.
-      </p>
+      <p>스토어 구독을 위한 콜백 함수 타입입니다.</p>
 
       <CodeBlock
         language="typescript"
@@ -184,13 +198,21 @@ typedWatch((store, isFirst) => {
         </thead>
         <tbody>
           <tr>
-            <td><code>store</code></td>
-            <td><code>G</code></td>
+            <td>
+              <code>store</code>
+            </td>
+            <td>
+              <code>G</code>
+            </td>
             <td>StateRefStore 프록시</td>
           </tr>
           <tr>
-            <td><code>isFirst</code></td>
-            <td><code>boolean</code></td>
+            <td>
+              <code>isFirst</code>
+            </td>
+            <td>
+              <code>boolean</code>
+            </td>
             <td>첫 번째 호출 시 true</td>
           </tr>
         </tbody>
@@ -207,15 +229,21 @@ typedWatch((store, isFirst) => {
         </thead>
         <tbody>
           <tr>
-            <td><code>void</code></td>
+            <td>
+              <code>void</code>
+            </td>
             <td>구독 계속</td>
           </tr>
           <tr>
-            <td><code>false</code></td>
+            <td>
+              <code>false</code>
+            </td>
             <td>즉시 구독 취소</td>
           </tr>
           <tr>
-            <td><code>AbortSignal</code></td>
+            <td>
+              <code>AbortSignal</code>
+            </td>
             <td>시그널 abort 시 구독 취소</td>
           </tr>
         </tbody>
@@ -277,18 +305,30 @@ watch(callback);`}
         </thead>
         <tbody>
           <tr>
-            <td><code>watch</code></td>
-            <td><code>Watch&lt;V&gt;</code></td>
+            <td>
+              <code>watch</code>
+            </td>
+            <td>
+              <code>Watch&lt;V&gt;</code>
+            </td>
             <td>구독을 위한 watch 함수</td>
           </tr>
           <tr>
-            <td><code>updateRef</code></td>
-            <td><code>StateRefStore&lt;V&gt;</code></td>
+            <td>
+              <code>updateRef</code>
+            </td>
+            <td>
+              <code>StateRefStore&lt;V&gt;</code>
+            </td>
             <td>값 업데이트를 위한 참조</td>
           </tr>
           <tr>
-            <td><code>sync</code></td>
-            <td><code>() =&gt; void</code></td>
+            <td>
+              <code>sync</code>
+            </td>
+            <td>
+              <code>() =&gt; void</code>
+            </td>
             <td>동기화를 트리거하는 함수</td>
           </tr>
         </tbody>
@@ -366,8 +406,10 @@ const newState: State = wrapped.user.name.writeCopy('Jane');`}
       <h3>StateRefsTuple&lt;W&gt;</h3>
 
       <p>
-        Watch 타입 배열을 StateRefStore 타입 배열로 변환하는 유틸리티 타입입니다.
-        <code>createComputed</code>와 <code>combineWatch</code>에서 내부적으로 사용됩니다.
+        Watch 타입 배열을 StateRefStore 타입 배열로 변환하는 유틸리티
+        타입입니다.
+        <code>createComputed</code>와 <code>combineWatch</code>에서 내부적으로
+        사용됩니다.
       </p>
 
       <CodeBlock
@@ -491,37 +533,51 @@ type StoreRenderList<A> = Map<Run, RenderListSub<A>>;`}
         </thead>
         <tbody>
           <tr>
-            <td><code>StateRefStore&lt;S&gt;</code></td>
+            <td>
+              <code>StateRefStore&lt;S&gt;</code>
+            </td>
             <td>프록시 스토어 타입</td>
             <td>예</td>
           </tr>
           <tr>
-            <td><code>Watch&lt;V&gt;</code></td>
+            <td>
+              <code>Watch&lt;V&gt;</code>
+            </td>
             <td>Watch 함수 타입</td>
             <td>예</td>
           </tr>
           <tr>
-            <td><code>Renew&lt;G&gt;</code></td>
+            <td>
+              <code>Renew&lt;G&gt;</code>
+            </td>
             <td>구독 콜백 타입</td>
             <td>예</td>
           </tr>
           <tr>
-            <td><code>ManualSyncStore&lt;V&gt;</code></td>
+            <td>
+              <code>ManualSyncStore&lt;V&gt;</code>
+            </td>
             <td>수동 동기화 스토어 타입</td>
             <td>예</td>
           </tr>
           <tr>
-            <td><code>Copyable&lt;T&gt;</code></td>
+            <td>
+              <code>Copyable&lt;T&gt;</code>
+            </td>
             <td>Copyable 래퍼 타입</td>
             <td>가끔</td>
           </tr>
           <tr>
-            <td><code>StateRefsTuple&lt;W&gt;</code></td>
+            <td>
+              <code>StateRefsTuple&lt;W&gt;</code>
+            </td>
             <td>computed용 유틸리티</td>
             <td>드물게</td>
           </tr>
           <tr>
-            <td><code>CombinedValue&lt;W&gt;</code></td>
+            <td>
+              <code>CombinedValue&lt;W&gt;</code>
+            </td>
             <td>combine용 유틸리티</td>
             <td>드물게</td>
           </tr>
@@ -532,13 +588,15 @@ type StoreRenderList<A> = Map<Run, RenderListSub<A>>;`}
 
       <ul>
         <li>
-          <a href="#/ko/api/core">코어 API</a> - createStore, createComputed, combineWatch
+          <a href="#/ko/api/core">코어 API</a> - createStore, createComputed,
+          combineWatch
         </li>
         <li>
           <a href="#/ko/api/helpers">헬퍼 API</a> - lens, copyable, cloneDeep
         </li>
         <li>
-          <a href="#/ko/guide/subscription">구독 가이드</a> - Renew 콜백 이해하기
+          <a href="#/ko/guide/subscription">구독 가이드</a> - Renew 콜백
+          이해하기
         </li>
       </ul>
     </div>

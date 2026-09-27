@@ -7,8 +7,9 @@ export const ApiTypes = mount(() => {
       <h1>TypeScript Types</h1>
 
       <p>
-        This page documents the TypeScript types exported from <code>state-ref</code>.
-        These types provide full type safety when working with stores.
+        This page documents the TypeScript types exported from{' '}
+        <code>state-ref</code>. These types provide full type safety when
+        working with stores.
       </p>
 
       <h2>Importing Types</h2>
@@ -29,8 +30,8 @@ export const ApiTypes = mount(() => {
       <h3>StateRefStore&lt;S&gt;</h3>
 
       <p>
-        The proxy type returned when calling a watch function. Provides reactive access
-        to state via the <code>.value</code> property.
+        The proxy type returned when calling a watch function. Provides reactive
+        access to state via the <code>.value</code> property.
       </p>
 
       <CodeBlock
@@ -48,11 +49,13 @@ export const ApiTypes = mount(() => {
 
       <ul>
         <li>
-          <strong>Object types</strong>: Each property becomes a nested <code>StateRefStore</code>,
-          plus a <code>.value</code> property for the whole object
+          <strong>Object types</strong>: Each property becomes a nested{' '}
+          <code>StateRefStore</code>, plus a <code>.value</code> property for
+          the whole object
         </li>
         <li>
-          <strong>Primitive types</strong>: Simple wrapper with only <code>.value</code> property
+          <strong>Primitive types</strong>: Simple wrapper with only{' '}
+          <code>.value</code> property
         </li>
       </ul>
 
@@ -90,8 +93,8 @@ const countRef: StateRefStore<number> = countWatch();
       <h3>Watch&lt;V&gt;</h3>
 
       <p>
-        The function type returned by <code>createStore</code>. Used to access the store
-        or subscribe to changes.
+        The function type returned by <code>createStore</code>. Used to access
+        the store or subscribe to changes.
       </p>
 
       <CodeBlock
@@ -114,18 +117,30 @@ const countRef: StateRefStore<number> = countWatch();
         </thead>
         <tbody>
           <tr>
-            <td><code>renew</code></td>
-            <td><code>Renew&lt;StateRefStore&lt;V&gt;&gt;</code></td>
+            <td>
+              <code>renew</code>
+            </td>
+            <td>
+              <code>Renew&lt;StateRefStore&lt;V&gt;&gt;</code>
+            </td>
             <td>Optional callback for subscriptions</td>
           </tr>
           <tr>
-            <td><code>userOption.cache</code></td>
-            <td><code>boolean</code></td>
+            <td>
+              <code>userOption.cache</code>
+            </td>
+            <td>
+              <code>boolean</code>
+            </td>
             <td>Cache proxy for same renew (default: true)</td>
           </tr>
           <tr>
-            <td><code>userOption.editable</code></td>
-            <td><code>boolean</code></td>
+            <td>
+              <code>userOption.editable</code>
+            </td>
+            <td>
+              <code>boolean</code>
+            </td>
             <td>Allow modifications (default: true)</td>
           </tr>
         </tbody>
@@ -160,9 +175,7 @@ typedWatch((store, isFirst) => {
 
       <h3>Renew&lt;G&gt;</h3>
 
-      <p>
-        The callback function type for store subscriptions.
-      </p>
+      <p>The callback function type for store subscriptions.</p>
 
       <CodeBlock
         language="typescript"
@@ -184,13 +197,21 @@ typedWatch((store, isFirst) => {
         </thead>
         <tbody>
           <tr>
-            <td><code>store</code></td>
-            <td><code>G</code></td>
+            <td>
+              <code>store</code>
+            </td>
+            <td>
+              <code>G</code>
+            </td>
             <td>The StateRefStore proxy</td>
           </tr>
           <tr>
-            <td><code>isFirst</code></td>
-            <td><code>boolean</code></td>
+            <td>
+              <code>isFirst</code>
+            </td>
+            <td>
+              <code>boolean</code>
+            </td>
             <td>True on first invocation</td>
           </tr>
         </tbody>
@@ -207,15 +228,21 @@ typedWatch((store, isFirst) => {
         </thead>
         <tbody>
           <tr>
-            <td><code>void</code></td>
+            <td>
+              <code>void</code>
+            </td>
             <td>Continue subscription</td>
           </tr>
           <tr>
-            <td><code>false</code></td>
+            <td>
+              <code>false</code>
+            </td>
             <td>Unsubscribe immediately</td>
           </tr>
           <tr>
-            <td><code>AbortSignal</code></td>
+            <td>
+              <code>AbortSignal</code>
+            </td>
             <td>Unsubscribe when signal aborts</td>
           </tr>
         </tbody>
@@ -277,18 +304,30 @@ watch(callback);`}
         </thead>
         <tbody>
           <tr>
-            <td><code>watch</code></td>
-            <td><code>Watch&lt;V&gt;</code></td>
+            <td>
+              <code>watch</code>
+            </td>
+            <td>
+              <code>Watch&lt;V&gt;</code>
+            </td>
             <td>Watch function for subscriptions</td>
           </tr>
           <tr>
-            <td><code>updateRef</code></td>
-            <td><code>StateRefStore&lt;V&gt;</code></td>
+            <td>
+              <code>updateRef</code>
+            </td>
+            <td>
+              <code>StateRefStore&lt;V&gt;</code>
+            </td>
             <td>Reference for updating values</td>
           </tr>
           <tr>
-            <td><code>sync</code></td>
-            <td><code>() =&gt; void</code></td>
+            <td>
+              <code>sync</code>
+            </td>
+            <td>
+              <code>() =&gt; void</code>
+            </td>
             <td>Function to trigger synchronization</td>
           </tr>
         </tbody>
@@ -366,8 +405,9 @@ const newState: State = wrapped.user.name.writeCopy('Jane');`}
       <h3>StateRefsTuple&lt;W&gt;</h3>
 
       <p>
-        Utility type that converts an array of Watch types to an array of StateRefStore types.
-        Used internally by <code>createComputed</code> and <code>combineWatch</code>.
+        Utility type that converts an array of Watch types to an array of
+        StateRefStore types. Used internally by <code>createComputed</code> and{' '}
+        <code>combineWatch</code>.
       </p>
 
       <CodeBlock
@@ -434,7 +474,8 @@ const store = combined();`}
       <h2>Internal Types</h2>
 
       <p>
-        These types are used internally and generally not needed for typical usage.
+        These types are used internally and generally not needed for typical
+        usage.
       </p>
 
       <h3>StoreType&lt;V&gt;</h3>
@@ -491,37 +532,51 @@ type StoreRenderList<A> = Map<Run, RenderListSub<A>>;`}
         </thead>
         <tbody>
           <tr>
-            <td><code>StateRefStore&lt;S&gt;</code></td>
+            <td>
+              <code>StateRefStore&lt;S&gt;</code>
+            </td>
             <td>Proxy store type</td>
             <td>Yes</td>
           </tr>
           <tr>
-            <td><code>Watch&lt;V&gt;</code></td>
+            <td>
+              <code>Watch&lt;V&gt;</code>
+            </td>
             <td>Watch function type</td>
             <td>Yes</td>
           </tr>
           <tr>
-            <td><code>Renew&lt;G&gt;</code></td>
+            <td>
+              <code>Renew&lt;G&gt;</code>
+            </td>
             <td>Subscription callback type</td>
             <td>Yes</td>
           </tr>
           <tr>
-            <td><code>ManualSyncStore&lt;V&gt;</code></td>
+            <td>
+              <code>ManualSyncStore&lt;V&gt;</code>
+            </td>
             <td>Manual sync store type</td>
             <td>Yes</td>
           </tr>
           <tr>
-            <td><code>Copyable&lt;T&gt;</code></td>
+            <td>
+              <code>Copyable&lt;T&gt;</code>
+            </td>
             <td>Copyable wrapper type</td>
             <td>Sometimes</td>
           </tr>
           <tr>
-            <td><code>StateRefsTuple&lt;W&gt;</code></td>
+            <td>
+              <code>StateRefsTuple&lt;W&gt;</code>
+            </td>
             <td>Utility for computed</td>
             <td>Rarely</td>
           </tr>
           <tr>
-            <td><code>CombinedValue&lt;W&gt;</code></td>
+            <td>
+              <code>CombinedValue&lt;W&gt;</code>
+            </td>
             <td>Utility for combine</td>
             <td>Rarely</td>
           </tr>
@@ -532,13 +587,15 @@ type StoreRenderList<A> = Map<Run, RenderListSub<A>>;`}
 
       <ul>
         <li>
-          <a href="#/api/core">Core API</a> - createStore, createComputed, combineWatch
+          <a href="#/api/core">Core API</a> - createStore, createComputed,
+          combineWatch
         </li>
         <li>
           <a href="#/api/helpers">Helper API</a> - lens, copyable, cloneDeep
         </li>
         <li>
-          <a href="#/guide/subscription">Subscription Guide</a> - Understanding Renew callbacks
+          <a href="#/guide/subscription">Subscription Guide</a> - Understanding
+          Renew callbacks
         </li>
       </ul>
     </div>

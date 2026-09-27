@@ -7,15 +7,13 @@ export const ApiCoreKo = mount(() => {
       <h1>Core API</h1>
 
       <p>
-        이 페이지는 <code>state-ref</code>에서 내보내는 핵심 함수들을 문서화합니다.
-        이들은 상태 관리의 기본 구성 요소입니다.
+        이 페이지는 <code>state-ref</code>에서 내보내는 핵심 함수들을
+        문서화합니다. 이들은 상태 관리의 기본 구성 요소입니다.
       </p>
 
       <h2>createStore</h2>
 
-      <p>
-        주어진 초기값으로 반응형 스토어를 생성하고 watch 함수를 반환합니다.
-      </p>
+      <p>주어진 초기값으로 반응형 스토어를 생성하고 watch 함수를 반환합니다.</p>
 
       <h3>시그니처</h3>
 
@@ -32,22 +30,24 @@ export const ApiCoreKo = mount(() => {
       <ul>
         <li>
           <code>createOption.trackDeps</code> (선택, 기본값 <code>false</code>;
-          3.0.0에서 신설) - 실행할 때마다 각 구독자가 읽은 경로를 다시 수집합니다.
-          콜백이 더 이상 읽지 않는 경로는 그 구독자를 깨우지 않습니다. 기본값이 꺼짐인
-          이유는 거래 폭이 좁기 때문입니다 — 알림 1건당 약 1.4배를 내고 알림을 통째로
-          없애므로, 알림의 40%가량이 사라져야 이득입니다. 조건부 읽기가 없는 구독자는
-          없앨 알림이 없습니다. 분기 조건이 스토어 안에 있는 구독자에서 켜십시오.
+          3.0.0에서 신설) - 실행할 때마다 각 구독자가 읽은 경로를 다시
+          수집합니다. 콜백이 더 이상 읽지 않는 경로는 그 구독자를 깨우지
+          않습니다. 기본값이 꺼짐인 이유는 거래 폭이 좁기 때문입니다 — 알림
+          1건당 약 1.4배를 내고 알림을 통째로 없애므로, 알림의 40%가량이
+          사라져야 이득입니다. 조건부 읽기가 없는 구독자는 없앨 알림이 없습니다.
+          분기 조건이 스토어 안에 있는 구독자에서 켜십시오.
         </li>
         <li>
-          <code>initialValue: V</code> - 스토어의 초기값. 원시 타입(number, string, boolean)
-          또는 객체/배열이 될 수 있습니다.
+          <code>initialValue: V</code> - 스토어의 초기값. 원시 타입(number,
+          string, boolean) 또는 객체/배열이 될 수 있습니다.
         </li>
       </ul>
 
       <h3>반환값</h3>
 
       <p>
-        스토어에 접근하거나 변경을 구독할 수 있는 <code>Watch&lt;V&gt;</code> 함수를 반환합니다.
+        스토어에 접근하거나 변경을 구독할 수 있는 <code>Watch&lt;V&gt;</code>{' '}
+        함수를 반환합니다.
       </p>
 
       <h3>예제</h3>
@@ -80,8 +80,8 @@ countWatch((ref, isFirst) => {
       <h2>createStoreManualSync</h2>
 
       <p>
-        수동 동기화 제어가 있는 스토어를 생성합니다. <code>sync()</code>가 호출될 때까지
-        업데이트가 구독자에게 자동으로 전파되지 않습니다.
+        수동 동기화 제어가 있는 스토어를 생성합니다. <code>sync()</code>가
+        호출될 때까지 업데이트가 구독자에게 자동으로 전파되지 않습니다.
       </p>
 
       <h3>시그니처</h3>
@@ -108,7 +108,8 @@ type ManualSyncStore<V> = {
       <h3>반환값</h3>
 
       <p>
-        세 가지 프로퍼티를 가진 <code>ManualSyncStore&lt;V&gt;</code> 객체를 반환합니다:
+        세 가지 프로퍼티를 가진 <code>ManualSyncStore&lt;V&gt;</code> 객체를
+        반환합니다:
       </p>
 
       <ul>
@@ -116,10 +117,12 @@ type ManualSyncStore<V> = {
           <code>watch</code> - 읽기 전용 구독을 위한 watch 함수
         </li>
         <li>
-          <code>updateRef</code> - 값 업데이트를 위한 참조 (쓰기가 구독자를 트리거하지 않음)
+          <code>updateRef</code> - 값 업데이트를 위한 참조 (쓰기가 구독자를
+          트리거하지 않음)
         </li>
         <li>
-          <code>sync()</code> - 모든 대기 중인 업데이트를 구독자에게 수동으로 트리거하는 함수
+          <code>sync()</code> - 모든 대기 중인 업데이트를 구독자에게 수동으로
+          트리거하는 함수
         </li>
       </ul>
 
@@ -151,8 +154,8 @@ sync();
       <h2>createComputed</h2>
 
       <p>
-        하나 이상의 watch에서 계산된(파생) 값을 생성합니다. 계산된 값은 읽기 전용이며
-        소스 스토어가 변경되면 자동으로 업데이트됩니다.
+        하나 이상의 watch에서 계산된(파생) 값을 생성합니다. 계산된 값은 읽기
+        전용이며 소스 스토어가 변경되면 자동으로 업데이트됩니다.
       </p>
 
       <h3>시그니처</h3>
@@ -172,15 +175,17 @@ sync();
           <code>watches: W</code> - 결합할 watch 함수 배열
         </li>
         <li>
-          <code>callback: (refs) =&gt; R</code> - 스토어 참조를 받아 계산된 값을 반환하는 함수
+          <code>callback: (refs) =&gt; R</code> - 스토어 참조를 받아 계산된 값을
+          반환하는 함수
         </li>
       </ul>
 
       <h3>반환값</h3>
 
       <p>
-        <code>.value</code>를 통해 계산된 값에 접근할 수 있는 watch 유사 함수를 반환합니다.
-        반환된 값은 읽기 전용이며, 설정하려고 하면 경고가 표시됩니다.
+        <code>.value</code>를 통해 계산된 값에 접근할 수 있는 watch 유사 함수를
+        반환합니다. 반환된 값은 읽기 전용이며, 설정하려고 하면 경고가
+        표시됩니다.
       </p>
 
       <h3>예제</h3>
@@ -242,8 +247,9 @@ price.value = 150;
       <h3>반환값</h3>
 
       <p>
-        새로운 <code>Watch</code> 함수를 반환합니다. 반환된 스토어는 인덱스로 개별 스토어에
-        접근할 수 있습니다 (예: <code>combined[0]</code>, <code>combined[1]</code>).
+        새로운 <code>Watch</code> 함수를 반환합니다. 반환된 스토어는 인덱스로
+        개별 스토어에 접근할 수 있습니다 (예: <code>combined[0]</code>,{' '}
+        <code>combined[1]</code>).
       </p>
 
       <h3>예제</h3>
@@ -275,7 +281,8 @@ combinedWatch(([user, settings], isFirst) => {
       <h2>Watch 함수</h2>
 
       <p>
-        <code>Watch</code> 타입은 <code>createStore</code>가 반환하는 함수를 나타냅니다.
+        <code>Watch</code> 타입은 <code>createStore</code>가 반환하는 함수를
+        나타냅니다.
       </p>
 
       <h3>타입 정의</h3>
@@ -295,12 +302,12 @@ combinedWatch(([user, settings], isFirst) => {
           <code>renew</code> (선택) - 상태 변경 시 호출되는 콜백 함수
         </li>
         <li>
-          <code>userOption.cache</code> (선택, 기본값: <code>true</code>) - 동일한 renew 함수에
-          대해 프록시를 캐시할지 여부
+          <code>userOption.cache</code> (선택, 기본값: <code>true</code>) -
+          동일한 renew 함수에 대해 프록시를 캐시할지 여부
         </li>
         <li>
-          <code>userOption.editable</code> (선택, 기본값: <code>true</code>) - 반환된 참조가
-          스토어를 수정할 수 있는지 여부
+          <code>userOption.editable</code> (선택, 기본값: <code>true</code>) -
+          반환된 참조가 스토어를 수정할 수 있는지 여부
         </li>
       </ul>
 
@@ -329,8 +336,9 @@ controller.abort();`}
       <h2>StateRefStore</h2>
 
       <p>
-        <code>StateRefStore</code> 타입은 watch 함수를 호출할 때 반환되는 프록시 객체를
-        나타냅니다. <code>.value</code> 프로퍼티를 통해 상태에 대한 반응형 접근을 제공합니다.
+        <code>StateRefStore</code> 타입은 watch 함수를 호출할 때 반환되는 프록시
+        객체를 나타냅니다. <code>.value</code> 프로퍼티를 통해 상태에 대한
+        반응형 접근을 제공합니다.
       </p>
 
       <h3>타입 정의</h3>
@@ -350,16 +358,23 @@ controller.abort();`}
 
       <ul>
         <li>
-          <strong>객체 타입</strong>: 중첩된 프로퍼티를 탐색할 수 있으며, 각각 자체 <code>.value</code>를 가짐
+          <strong>객체 타입</strong>: 중첩된 프로퍼티를 탐색할 수 있으며, 각각
+          자체 <code>.value</code>를 가짐
         </li>
         <li>
           <strong>원시 타입</strong>: <code>.value</code>로 접근 및 수정
         </li>
         <li>
-          <strong><code>.value</code> 읽기</strong>: 해당 프로퍼티에 대한 구독 등록
+          <strong>
+            <code>.value</code> 읽기
+          </strong>
+          : 해당 프로퍼티에 대한 구독 등록
         </li>
         <li>
-          <strong><code>.value</code> 쓰기</strong>: 스토어를 업데이트하고 구독자에게 알림
+          <strong>
+            <code>.value</code> 쓰기
+          </strong>
+          : 스토어를 업데이트하고 구독자에게 알림
         </li>
       </ul>
 
@@ -408,22 +423,30 @@ ref.user.value = { name: 'Bob', age: 25 };  // 전체 user 객체 교체`}
         </thead>
         <tbody>
           <tr>
-            <td><code>createStore</code></td>
+            <td>
+              <code>createStore</code>
+            </td>
             <td>반응형 스토어 생성</td>
             <td>예</td>
           </tr>
           <tr>
-            <td><code>createStoreManualSync</code></td>
+            <td>
+              <code>createStoreManualSync</code>
+            </td>
             <td>수동 동기화 제어가 있는 스토어 생성</td>
             <td>아니오</td>
           </tr>
           <tr>
-            <td><code>createComputed</code></td>
+            <td>
+              <code>createComputed</code>
+            </td>
             <td>스토어에서 새 값 파생</td>
             <td>예</td>
           </tr>
           <tr>
-            <td><code>combineWatch</code></td>
+            <td>
+              <code>combineWatch</code>
+            </td>
             <td>스토어를 튜플로 그룹화</td>
             <td>예</td>
           </tr>
@@ -434,13 +457,15 @@ ref.user.value = { name: 'Bob', age: 25 };  // 전체 user 객체 교체`}
 
       <ul>
         <li>
-          <a href="#/ko/guide/create-store">createStore 가이드</a> - 상세 사용 가이드
+          <a href="#/ko/guide/create-store">createStore 가이드</a> - 상세 사용
+          가이드
         </li>
         <li>
           <a href="#/ko/guide/watch">Watch 함수 가이드</a> - watch 함수 이해하기
         </li>
         <li>
-          <a href="#/ko/guide/manual-sync">수동 동기화 가이드</a> - 수동 동기화를 통한 Flux 패턴
+          <a href="#/ko/guide/manual-sync">수동 동기화 가이드</a> - 수동
+          동기화를 통한 Flux 패턴
         </li>
         <li>
           <a href="#/ko/api/helpers">헬퍼 API</a> - lens, copyable, cloneDeep

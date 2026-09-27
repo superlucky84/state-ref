@@ -163,6 +163,9 @@ const menuData: MenuSection[] = [
         text: { en: 'TypeScript Types', ko: 'TypeScript 타입' },
         link: '/api/types',
       },
+      { text: { en: 'Draft API', ko: 'Draft API' }, link: '/api/draft' },
+      { text: { en: 'Sync API', ko: 'Sync API' }, link: '/api/sync' },
+      { text: { en: 'Plugin API', ko: 'Plugin API' }, link: '/api/plugin' },
     ],
   },
 ];

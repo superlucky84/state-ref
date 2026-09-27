@@ -74,6 +74,12 @@ import { ApiCore } from '@/pages/ApiCore';
 import { ApiCoreKo } from '@/pages/ApiCore_ko';
 import { ApiHelpers } from '@/pages/ApiHelpers';
 import { ApiHelpersKo } from '@/pages/ApiHelpers_ko';
+import { ApiDraft } from '@/pages/ApiDraft';
+import { ApiDraftKo } from '@/pages/ApiDraft_ko';
+import { ApiSync } from '@/pages/ApiSync';
+import { ApiSyncKo } from '@/pages/ApiSync_ko';
+import { ApiPlugin } from '@/pages/ApiPlugin';
+import { ApiPluginKo } from '@/pages/ApiPlugin_ko';
 import { ApiTypes } from '@/pages/ApiTypes';
 import { ApiTypesKo } from '@/pages/ApiTypes_ko';
 import { AIAgentSkills } from '@/pages/AIAgentSkills';
@@ -164,6 +170,12 @@ const routes: Record<string, PageComponent> = {
   '/ko/api/helpers': ApiHelpersKo,
   '/api/types': ApiTypes,
   '/ko/api/types': ApiTypesKo,
+  '/api/draft': ApiDraft,
+  '/ko/api/draft': ApiDraftKo,
+  '/api/sync': ApiSync,
+  '/ko/api/sync': ApiSyncKo,
+  '/api/plugin': ApiPlugin,
+  '/ko/api/plugin': ApiPluginKo,
   '/ai-agent-skills': AIAgentSkills,
   '/ko/ai-agent-skills': AIAgentSkillsKo,
   '/ai-agent-addon': AIAgentAddon,
