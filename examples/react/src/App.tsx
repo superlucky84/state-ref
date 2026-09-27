@@ -394,6 +394,60 @@ function LiveCard() {
 }
 
 /**
+ * The second display of the same key.
+ *
+ * Unlike the probe card this one *is* about the connector (DC8-8-33): the rows
+ * hold a second, independent subscription on a shared view, and closing the
+ * screen unmounts them without releasing that view. The hook is built here
+ * rather than at module scope because the view does not exist until the card
+ * is opened - and the component mounts only while it does.
+ */
+function ShareRows({
+  watch,
+}: {
+  watch: NonNullable<ReturnType<typeof model.shareWatch>>;
+}) {
+  const view = connectReactView(watch)();
+  return (
+    <>
+      <Row
+        field="livePhase"
+        value={`${view.phase.value} / ${view.fetchStatus.value}`}
+      />
+      <Row field="liveCity" value={view.data.value?.city ?? '(없음)'} />
+    </>
+  );
+}
+
+function ShareCard() {
+  const ui = useUi();
+  const mounted = ui.shareMounted.value;
+  ui.tick.value; // Subscribe: the closed and released rows are snapshots.
+  const share = model.share();
+  if (!share) return null;
+  const watch = model.shareWatch();
+
+  return (
+    <section className="card" data-card="share">
+      <h2>{CARD_TITLE.share}</h2>
+      <Row field="shareState" value={share.state} />
+      {mounted && watch ? (
+        <ShareRows watch={watch} />
+      ) : (
+        <>
+          <Row field="livePhase" value={share.phase} />
+          <Row field="liveCity" value={share.city} />
+        </>
+      )}
+      <p className="note">
+        화면을 닫으면 이 컴포넌트의 구독만 끝나고 공유 view는 남는다. 소유자가
+        줄어드는 것은 view를 해제했을 때뿐이다.
+      </p>
+    </section>
+  );
+}
+
+/**
  * The observation card.
  *
  * `inspectCache()` and `inspectMutations()` are snapshots, so the tick is what
@@ -675,6 +729,7 @@ export default function App() {
         <ComputedCard />
         <InspectCard />
         <ProbeCard />
+        <ShareCard />
         <ReadonlyCard />
         <LifetimeCard />
         <BoundaryCard />

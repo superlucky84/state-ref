@@ -124,6 +124,29 @@ function LiveRows() {
   );
 }
 
+/**
+ * The second display of the same key.
+ *
+ * Unlike the probe card this one *is* about the connector (DC8-8-33): it holds
+ * a second, independent subscription on a shared view, and closing the screen
+ * unmounts it without releasing that view. Bound here rather than at module
+ * scope because the view does not exist until the card is opened.
+ */
+function ShareRows(props: {
+  watch: NonNullable<ReturnType<typeof model.shareWatch>>;
+}) {
+  const view = connectSolidView(props.watch);
+  const phase = view(ref => ref.phase.value);
+  const fetchStatus = view(ref => ref.fetchStatus.value);
+  const city = view(ref => ref.data.value?.city);
+  return (
+    <>
+      <Row field="livePhase" value={`${phase()} / ${fetchStatus()}`} />
+      <Row field="liveCity" value={city() ?? '(없음)'} />
+    </>
+  );
+}
+
 function LiveGone() {
   return (
     <>
@@ -258,6 +281,7 @@ export default function App() {
   const [computedIdentityStable] = ui(store => store.computedIdentityStable);
   const [computedSubscribed] = ui(store => store.computedSubscribed);
   const [liveDisposed] = ui(store => store.liveDisposed);
+  const [shareMounted] = ui(store => store.shareMounted);
   const [inspectSubscribed] = ui(store => store.inspectSubscribed);
   const [cacheEventsSeen] = ui(store => store.cacheEventsSeen);
   const [mutationEventsSeen] = ui(store => store.mutationEventsSeen);
@@ -295,6 +319,18 @@ export default function App() {
   const probe = createMemo(() => {
     void tick();
     return model.probe();
+  });
+  // The second display's card. Its `state` row and its closed/released value
+  // rows are snapshots; the open rows come from the connector (DC8-8-33).
+  const share = createMemo(() => {
+    void tick();
+    void shareMounted();
+    return model.share();
+  });
+  const shareWatch = createMemo(() => {
+    void tick();
+    void shareMounted();
+    return model.shareWatch();
   });
   // The screen-wide unsaved sum, and the readonly query's own review surface.
   // Both are non-reactive calls, so they follow the tick like the tables do.
@@ -561,6 +597,38 @@ export default function App() {
               </p>
             </section>
           )}
+        </Show>
+
+        {/*
+          Not `keyed`: `model.share()` answers a fresh object every tick, so a
+          keyed `Show` would tear down and rebuild its children on every
+          operation - including the component whose *subscription* is the thing
+          under test. The probe card can afford that shape because its children
+          are plain strings; here it would quietly make the card prove nothing.
+          The rows stay mounted and read reactively instead, the way the
+          lifetime card does.
+        */}
+        <Show when={share()}>
+          <section class="card" data-card="share">
+            <h2>{CARD_TITLE.share}</h2>
+            <Row field="shareState" value={share()!.state} />
+            <Show
+              when={shareMounted() ? shareWatch() : null}
+              keyed
+              fallback={
+                <>
+                  <Row field="livePhase" value={share()!.phase} />
+                  <Row field="liveCity" value={share()!.city} />
+                </>
+              }
+            >
+              {watch => <ShareRows watch={watch} />}
+            </Show>
+            <p class="note">
+              화면을 닫으면 이 컴포넌트의 구독만 끝나고 공유 view는 남는다.
+              소유자가 줄어드는 것은 view를 해제했을 때뿐이다.
+            </p>
+          </section>
         </Show>
 
         <section class="card" data-card="lifetime">

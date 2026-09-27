@@ -77,6 +77,7 @@ export type {
   DemoUi,
   DraftPair,
   ProbePanel,
+  SharePanel,
 } from './model';
 export { OPERATION_GROUPS, OPERATION_IDS, operationLabel } from './operations';
 export {

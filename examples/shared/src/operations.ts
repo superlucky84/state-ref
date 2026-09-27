@@ -78,6 +78,10 @@ export const OPERATION_GROUPS = [
       ['live-key-b', 'key를 live/b로 전환'],
       ['live-deactivate', '표시 비활성화'],
       ['live-dispose', '표시 해제'],
+      ['live-edit-local', '표시 중인 조회를 로컬 편집'],
+      ['live-share-open', '같은 key를 보는 둘째 표시 열기'],
+      ['live-share-close', '둘째 표시를 화면에서만 닫기'],
+      ['live-share-release', '둘째 표시의 view 해제'],
     ],
   },
   {

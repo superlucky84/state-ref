@@ -15,6 +15,7 @@
   import DraftCard from './DraftCard.svelte';
   import Flag from './Flag.svelte';
   import LiveCard from './LiveCard.svelte';
+  import ShareCard from './ShareCard.svelte';
   import ResourceCard from './ResourceCard.svelte';
   import Row from './Row.svelte';
   import 'stateref-example-shared/demo.css';
@@ -40,6 +41,7 @@
   const computedIdentityStable = ui(store => store.computedIdentityStable);
   const computedSubscribed = ui(store => store.computedSubscribed);
   const liveDisposed = ui(store => store.liveDisposed);
+  const shareMounted = ui(store => store.shareMounted);
   const inspectSubscribed = ui(store => store.inspectSubscribed);
   const cacheEventsSeen = ui(store => store.cacheEventsSeen);
   const mutationEventsSeen = ui(store => store.mutationEventsSeen);
@@ -74,6 +76,13 @@
   // through the tick rather than a connector (DC8-8-19).
   const readProbe = (_tick: number) => model.probe();
   $: probe = readProbe($tick);
+  // The second display's card. Its `state` row and its closed/released value
+  // rows are snapshots; the open rows come from the connector (DC8-8-33).
+  const readShare = (_tick: number, _mounted: boolean) => model.share();
+  const readShareWatch = (_tick: number, _mounted: boolean) =>
+    model.shareWatch();
+  $: share = readShare($tick, $shareMounted);
+  $: shareWatch = readShareWatch($tick, $shareMounted);
   // The boundary card. One draft slot over a child ref or the readonly query;
   // read through the tick for the same reason the probe card is (DC8-8-19).
   const readBoundary = (_tick: number) => model.boundary();
@@ -313,6 +322,23 @@
         <p class="note">
           같은 key를 보지만 캐시가 다르다. 이 client의 편집·기준·요청은 패널 두
           장과 공유되지 않고, 해제하면 이 client의 환경 listener만 사라진다.
+        </p>
+      </section>
+    {/if}
+
+    {#if share}
+      <section class="card" data-card="share">
+        <h2>{CARD_TITLE.share}</h2>
+        <Row field="shareState" value={share.state} />
+        {#if $shareMounted && shareWatch}
+          <ShareCard watch={shareWatch} />
+        {:else}
+          <Row field="livePhase" value={share.phase} />
+          <Row field="liveCity" value={share.city} />
+        {/if}
+        <p class="note">
+          화면을 닫으면 이 컴포넌트의 구독만 끝나고 공유 view는 남는다. 소유자가
+          줄어드는 것은 view를 해제했을 때뿐이다.
         </p>
       </section>
     {/if}

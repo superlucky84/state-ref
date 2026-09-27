@@ -8,6 +8,9 @@ import type {
   MutationHandle,
   MutationLink,
   QueryHandle,
+  QueryViewHandle,
+  QueryViewState,
+  QueryViewWatch,
   ResourceSubmission,
   SyncClient,
 } from '@stateref/sync';
@@ -150,6 +153,15 @@ export type DemoUi = Readonly<{
    * rows only once a query has loaded.
    */
   liveDisposed: boolean;
+  /**
+   * Whether the second display's rows are mounted.
+   *
+   * Only the mount: the view handle behind them is held by the model and
+   * survives an unmount, which is the whole of what this card shows
+   * (DC8-8-33). A flag rather than a derived read, because the demos decide
+   * from it whether to render the component at all.
+   */
+  shareMounted: boolean;
   /** Whether the demo currently holds the cache/WRITE observation handles. */
   inspectSubscribed: boolean;
   /**
@@ -224,6 +236,21 @@ export type BoundaryPanel = Readonly<{
 }>;
 
 /**
+ * What the second display's card shows, as strings.
+ *
+ * Only `state` is always the model's to tell. `phase`/`city` are the model's
+ * reading of the same view the mounted component binds through its connector,
+ * so the two readers see one source (DC8-8-02) - and while the component is
+ * unmounted they are the only reading there is.
+ */
+export type SharePanel = Readonly<{
+  /** `열림`, `화면 닫힘 (view 유지)`, or `해제됨`. */
+  state: string;
+  phase: string;
+  city: string;
+}>;
+
+/**
  * What the second client's card shows, as strings.
  *
  * Strings all the way down because a disposed handle refuses every access and
@@ -264,6 +291,18 @@ export type DemoModel = Readonly<{
   drafts: () => DraftPair;
   /** The second client's card, or null before it has ever been opened. */
   probe: () => ProbePanel | null;
+  /** The second display's card, or null before it has ever been opened. */
+  share: () => SharePanel | null;
+  /**
+   * The second display's own watch, or null while no view is held.
+   *
+   * Handed out rather than projected: this card is the one place a *second*
+   * connector subscription on a shared view exists, and unmounting it without
+   * releasing the view is what M2-20's last sentence asks to see
+   * (DC5-05-03 / DC8-8-33). The probe card's arrangement would hide exactly
+   * the thing under test.
+   */
+  shareWatch: () => QueryViewWatch<QueryViewState<Profile>> | null;
   /** The boundary card, or null before a boundary draft has been branched. */
   boundary: () => BoundaryPanel | null;
   /** The lifetime card. Always present: its zeros are a reading too. */
@@ -319,23 +358,26 @@ export function createDemoModel(): DemoModel {
    */
   const liveSource = createStore<{ id: LiveId | null }>({ id: null });
   const liveSourceRef = liveSource();
+  /**
+   * One key's options, built in one place.
+   *
+   * The second display opens the *same* key with the *same* options: a view
+   * that read differently would share a cache entry while answering something
+   * else, and then nothing the share card shows would be about sharing.
+   */
+  const liveOptions = (id: LiveId) => ({
+    queryKey: liveKey(id),
+    // Through the mock, so settlement and the request row still work,
+    // then tagged with the key it was read for.
+    queryFn: async (context: { signal: AbortSignal }) => {
+      const value = await server.readFor(keyText(liveKey(id)))(context);
+      return { ...value, city: `${value.city}-${id}` };
+    },
+    ...RETRY_POLICY,
+  });
   const liveView = client.liveView<{ id: LiveId | null }, Profile, Profile>(
     liveSource,
-    input =>
-      input.id === null
-        ? null
-        : {
-            queryKey: liveKey(input.id),
-            // Through the mock, so settlement and the request row still work,
-            // then tagged with the key it was read for.
-            queryFn: async context => {
-              const value = await server.readFor(keyText(liveKey(input.id!)))(
-                context
-              );
-              return { ...value, city: `${value.city}-${input.id}` };
-            },
-            ...RETRY_POLICY,
-          }
+    input => (input.id === null ? null : liveOptions(input.id))
   );
 
   const mutation = client.mutation<SaveAddressDto, SaveAddressResponse>({
@@ -357,6 +399,7 @@ export function createDemoModel(): DemoModel {
     computedValue: '(읽지 않음)',
     computedSubscribed: '(알림 없음)',
     liveDisposed: false,
+    shareMounted: false,
     inspectSubscribed: false,
     cacheEventsSeen: 0,
     mutationEventsSeen: 0,
@@ -581,6 +624,14 @@ export function createDemoModel(): DemoModel {
   const RESERVED_KEY_PAYLOAD = { floor: 9, room: '901', toJSON: 'x' };
   /** How many rounds `draft 생성·종료 20회 반복` runs. */
   const DRAFT_CYCLES = 20;
+  /**
+   * What a local edit writes into the live query's resource.
+   *
+   * No READ can answer this: the two live keys answer `서울-a` and `서울-b`
+   * (`liveOptions` tags them), so a display holding this string is holding an
+   * edit and not a late result (DC8-8-34).
+   */
+  const LIVE_LOCAL_CITY = '제주-local';
   /** The server-less draft's starting text, so the row has a stable value. */
   const SERVERLESS_NOTE = '로컬 메모';
   const SERVERLESS_EDIT = '로컬 메모 (편집됨)';
@@ -639,6 +690,36 @@ export function createDemoModel(): DemoModel {
   };
   /** The live view refuses every access once disposed, so track it. */
   let liveAlive = true;
+
+  /**
+   * The second display of `live/a`: a view of its own on a shared key.
+   *
+   * Held here rather than by the card, because the point of the card is that
+   * the *screen* can go away while this handle stays - an unmount ends that
+   * component's connector subscription and nothing else (DC5-05-03). Only
+   * `둘째 표시의 view 해제` lets go, and only then does the key lose an owner.
+   */
+  let shareView: QueryViewHandle<Profile, Profile> | null = null;
+  /** Kept after a release so the card can say `해제됨` instead of vanishing. */
+  let shareEverOpened = false;
+
+  const shareOf = (): SharePanel | null => {
+    if (!shareEverOpened) return null;
+    if (!shareView)
+      return { state: '해제됨', phase: '(해제됨)', city: '(해제됨)' };
+    if (!ui.shareMounted.value)
+      return {
+        state: '화면 닫힘 (view 유지)',
+        phase: '(화면 닫힘)',
+        city: '(화면 닫힘)',
+      };
+    const view = shareView.ref.value;
+    return {
+      state: '열림',
+      phase: `${view.phase} / ${view.fetchStatus}`,
+      city: show(view.data?.city ?? '(없음)'),
+    };
+  };
   let submission: ResourceSubmission<Profile> | null = null;
 
   const bump = (operation: string, result: string) => {
@@ -1587,6 +1668,71 @@ export function createDemoModel(): DemoModel {
         );
 
       /**
+       * A local edit of the resource the display is showing.
+       *
+       * Through `query.ref`, not through the view: a view is readonly. The
+       * city is one no READ can answer (DC8-8-34), so its appearance in the
+       * display is about the edit and cannot be a late result.
+       */
+      case 'live-edit-local': {
+        if (!liveAlive) return bump(id, '표시를 이미 해제했다.');
+        const query = liveView.query;
+        if (!query)
+          return bump(id, '활성 조회가 없다. 먼저 key를 활성화해야 한다.');
+        try {
+          query.ref.city.value = LIVE_LOCAL_CITY;
+        } catch (error) {
+          return bump(id, `거절: ${String(error)}`);
+        }
+        return bump(
+          id,
+          `표시 중인 조회의 resource를 ${LIVE_LOCAL_CITY}로 편집했다. 표시는 기준의 사본이 아니라 그 resource를 본다.`
+        );
+      }
+      /**
+       * The second display, and the two ways it can go away.
+       *
+       * Opening takes a view of its own on the same key, so the entry has two
+       * owners. Closing unmounts the rows and lets go of nothing. Releasing
+       * lets go of the view. The pair is what makes the first reading say
+       * anything (DC8-8-27): owners staying put after an unmount only means
+       * something beside an operation that moves it.
+       */
+      case 'live-share-open': {
+        if (!shareView)
+          shareView = client.view<Profile, Profile>(liveOptions('a'));
+        shareEverOpened = true;
+        ui.shareMounted.value = true;
+        return bump(
+          id,
+          `같은 key ${keyText(
+            liveKey('a')
+          )}를 보는 둘째 표시를 열었다. 같은 캐시 항목을 소유자 하나로 더 든다.`
+        );
+      }
+      case 'live-share-close': {
+        if (!shareEverOpened) return bump(id, '둘째 표시를 연 적이 없다.');
+        // Read into a local first: the guard would otherwise narrow the row's
+        // type to `true` and the assignment below could not widen it back.
+        const mounted: boolean = ui.shareMounted.value;
+        if (!mounted) return bump(id, '둘째 표시는 이미 화면에서 닫혀 있다.');
+        ui.shareMounted.value = false;
+        return bump(
+          id,
+          '둘째 표시의 화면만 닫았다. 그 화면의 커넥터 구독만 끝나고 공유 view는 놓지 않는다.'
+        );
+      }
+      case 'live-share-release':
+        if (!shareView) return bump(id, '해제할 둘째 view가 없다.');
+        shareView.dispose();
+        shareView = null;
+        ui.shareMounted.value = false;
+        return bump(
+          id,
+          '둘째 표시의 view를 놓았다. 이번에는 소유자가 줄어든다.'
+        );
+
+      /**
        * `client.remove()` on the live key.
        *
        * It refuses while anything still holds the entry - owners, dirty,
@@ -1755,6 +1901,8 @@ export function createDemoModel(): DemoModel {
     mutation,
     drafts: () => drafts,
     probe: probeOf,
+    share: shareOf,
+    shareWatch: () => shareView?.watch ?? null,
     boundary: boundaryOf,
     lifetime: lifetimeOf,
     unsaved: unsavedNow,
@@ -1773,6 +1921,7 @@ export function createDemoModel(): DemoModel {
       panelB.dispose();
       readonlyQuery.dispose();
       if (liveAlive) liveView.dispose();
+      shareView?.dispose();
       releaseInspection();
       offRepaintCache();
       offRepaintMutations();

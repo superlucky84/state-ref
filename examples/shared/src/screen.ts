@@ -242,6 +242,24 @@ export function screenOf(model: DemoModel): ScreenReading {
   }
 
   /**
+   * The second display's card.
+   *
+   * Built by the model like the probe card's, but for the opposite reason: the
+   * component that renders these rows while the card is open holds a real
+   * connector subscription (DC8-8-33), so this projection has to read the same
+   * view it binds - otherwise the two readers would answer differently the
+   * moment the display moved.
+   */
+  const share = model.share();
+  if (share) {
+    cards.share = {
+      shareState: share.state,
+      livePhase: share.phase,
+      liveCity: share.city,
+    };
+  }
+
+  /**
    * The readonly query's own card.
    *
    * `changes()` and `version` exist here - the card exists to show that they

@@ -15,6 +15,7 @@ import ChangesTable from './ChangesTable.vue';
 import DraftCard from './DraftCard.vue';
 import Flag from './Flag.vue';
 import LiveCard from './LiveCard.vue';
+import ShareCard from './ShareCard.vue';
 import ResourceCard from './ResourceCard.vue';
 import Row from './Row.vue';
 import 'stateref-example-shared/demo.css';
@@ -59,6 +60,18 @@ const envListeners = computed(() => {
 const probe = computed(() => {
   void ui.value.tick;
   return model.probe();
+});
+// The second display's card. Its `state` row and its closed/released value
+// rows are snapshots; the open rows come from the connector (DC8-8-33).
+const share = computed(() => {
+  void ui.value.tick;
+  void ui.value.shareMounted;
+  return model.share();
+});
+const shareWatch = computed(() => {
+  void ui.value.tick;
+  void ui.value.shareMounted;
+  return model.shareWatch();
 });
 // The screen-wide unsaved sum, and the readonly query's own review surface.
 // Both are non-reactive calls, so they follow the tick like the tables do.
@@ -323,6 +336,23 @@ const time = (at: number | null) =>
         <p class="note">
           같은 key를 보지만 캐시가 다르다. 이 client의 편집·기준·요청은 패널 두
           장과 공유되지 않고, 해제하면 이 client의 환경 listener만 사라진다.
+        </p>
+      </section>
+
+      <section v-if="share" class="card" data-card="share">
+        <h2>{{ CARD_TITLE.share }}</h2>
+        <Row field="shareState" :value="share.state" />
+        <ShareCard
+          v-if="ui.value.shareMounted && shareWatch"
+          :watch="shareWatch"
+        />
+        <template v-else>
+          <Row field="livePhase" :value="share.phase" />
+          <Row field="liveCity" :value="share.city" />
+        </template>
+        <p class="note">
+          화면을 닫으면 이 컴포넌트의 구독만 끝나고 공유 view는 남는다. 소유자가
+          줄어드는 것은 view를 해제했을 때뿐이다.
         </p>
       </section>
 

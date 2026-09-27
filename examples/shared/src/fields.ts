@@ -26,6 +26,7 @@ export const CARD_TITLE = {
   computed: 'computed 읽기 결과',
   inspect: '관측 (inspectCache / inspectMutations)',
   probe: '둘째 client (같은 key, 별도 캐시)',
+  share: '둘째 표시 (같은 client, key live/a)',
   boundary: '경계 draft (child ref / readonly 원본)',
   readonly: 'readonly 조회 (editable: false)',
   lifetime: '수명과 정리',
@@ -120,6 +121,17 @@ export const FIELD_LABEL = {
    * numbers is how `client별` reads.
    */
   probeState: 'client 상태',
+  /**
+   * Whether the second display's component is mounted, and whether its
+   * view handle is still held.
+   *
+   * Two facts in one row because the card is about the difference between
+   * them (DC8-8-33): closing the screen unmounts the component and keeps
+   * the handle, and only releasing the view drops the owner. The value
+   * rows reuse `livePhase`/`liveCity` - the same labels, the other card,
+   * which is how two displays of one key read (DC8-8-04).
+   */
+  shareState: '표시 상태',
   /**
    * Which ref the boundary draft was branched from.
    *
@@ -293,6 +305,15 @@ export const CARD_FIELDS: Readonly<
     ],
     onceLoaded: ['city'],
   },
+  /**
+   * The second display of `live/a`, opened on request like the probe card.
+   *
+   * No key row: a plain `client.view` has no `queryKey` in its state and
+   * the key never changes here, so the row could only ever print one
+   * string. A row that cannot move is not a reading - the card title
+   * carries the key instead.
+   */
+  share: { always: ['shareState', 'livePhase', 'liveCity'], onceLoaded: [] },
   // Branched on request like a draft card, and it keeps `dirty`/`version`
   // under the ids the draft cards use - the card is the scope (DC8-8-04).
   boundary: {

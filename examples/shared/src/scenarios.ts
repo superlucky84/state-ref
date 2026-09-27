@@ -3610,6 +3610,222 @@ const M2_19_REST: readonly Scenario[] = [
   },
 ];
 
+/**
+ * M2-20's own two: a second display of one key, and a local edit under it.
+ *
+ * Everything else M2-20 asks for is already running in all five demos - the
+ * table in `docs/server-sync/PHASE8_8.md` names which scenario stands for each
+ * column (DC8-8-32). These two are the sentences nothing covered.
+ *
+ * The second display is a real component with its own connector subscription,
+ * and closing its screen is an unmount rather than a `dispose()`. That is the
+ * contract DC5-05-03 declared and this is where it is checked in five
+ * connectors: an unmount ends that component's subscription and lets go of
+ * nothing else (DC8-8-33).
+ */
+export const M2_20: readonly Scenario[] = [
+  {
+    id: 'M2-20-live-local',
+    title:
+      '표시 중인 조회의 로컬 편집이 두 표시에 서고, 화면을 닫아도 view는 남는다',
+    pins: 'M2-20 첫째 항목 — 로컬 resource 편집 반영, 그리고 화면 해제와 구독 종료의 구별',
+    steps: [
+      { press: 'live-activate-a' },
+      { press: 'settle-all' },
+      { press: 'live-share-open' },
+      {
+        note:
+          '같은 key를 보는 둘째 표시가 열렸다. 소유자가 2가 되고 두 표시가 같은 ' +
+          '값을 든다 — 그런데 READ는 늘지 않는다: 둘째 표시는 새 조회가 아니라 ' +
+          '같은 캐시 항목의 둘째 소유자다',
+        expect: {
+          cards: {
+            live: { liveKey: 'live/a', liveCity: '서울-a' },
+            share: {
+              shareState: '열림',
+              livePhase: 'success / idle',
+              liveCity: '서울-a',
+            },
+            requests: { counts: '1 / 0' },
+          },
+          cache: {
+            inspect: [
+              { key: 'profile', owners: '2' },
+              { key: 'profile/readonly', owners: '1' },
+              { key: 'live/a', owners: '2', status: 'success / idle' },
+            ],
+          },
+        },
+      },
+      { press: 'live-edit-local' },
+      {
+        note:
+          '조회의 ref로 로컬 편집을 하면 두 표시가 함께 제주-local을 든다. 어떤 ' +
+          'READ도 낼 수 없는 값이므로(DC8-8-34) 이것은 늦은 결과가 아니라 편집이고, ' +
+          '표시가 기준의 사본이 아니라 그 resource를 본다는 뜻이다',
+        expect: {
+          cards: {
+            live: { liveCity: '제주-local' },
+            share: { shareState: '열림', liveCity: '제주-local' },
+            requests: { counts: '1 / 0' },
+          },
+        },
+      },
+      { press: 'live-share-close' },
+      {
+        note:
+          '둘째 표시의 화면만 닫았다. 값 행은 (화면 닫힘)이 되지만 **소유자 수는 ' +
+          '그대로 2다** — 언마운트는 그 컴포넌트의 커넥터 구독만 끝내고 공유 view는 ' +
+          '놓지 않는다 (DC5-05-03)',
+        expect: {
+          cards: {
+            share: {
+              shareState: '화면 닫힘 (view 유지)',
+              livePhase: '(화면 닫힘)',
+              liveCity: '(화면 닫힘)',
+            },
+            inspect: { cacheSize: '3', cacheOwners: '5' },
+          },
+          cache: {
+            inspect: [
+              { key: 'profile', owners: '2' },
+              { key: 'profile/readonly', owners: '1' },
+              { key: 'live/a', owners: '2' },
+            ],
+          },
+        },
+      },
+      { press: 'live-share-open' },
+      {
+        note:
+          '다시 열면 닫기 전의 값이 그대로 있고 READ도 늘지 않는다 — 화면이 없는 ' +
+          '동안에도 view가 그 자리를 지키고 있었다',
+        expect: {
+          cards: {
+            share: { shareState: '열림', liveCity: '제주-local' },
+            requests: { counts: '1 / 0' },
+          },
+        },
+      },
+      { press: 'live-share-release' },
+      {
+        note:
+          '이번에는 view를 놓았다. 소유자가 1로 줄고 모든 행이 (해제됨)이다 — 앞 ' +
+          '단계의 "2 그대로"가 무엇에 대한 주장이었는지는 이 대비로만 읽힌다 ' +
+          '(DC8-8-27)',
+        expect: {
+          cards: {
+            share: {
+              shareState: '해제됨',
+              livePhase: '(해제됨)',
+              liveCity: '(해제됨)',
+            },
+            inspect: { cacheSize: '3', cacheOwners: '4' },
+            live: { liveKey: 'live/a', liveCity: '제주-local' },
+          },
+          cache: {
+            inspect: [
+              { key: 'profile', owners: '2' },
+              { key: 'profile/readonly', owners: '1' },
+              { key: 'live/a', owners: '1' },
+            ],
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-20-live-shared',
+    title:
+      '둘째 view가 보고 있는 key는 표시가 떠나도 조회가 유지되고 그 view에만 결과가 온다',
+    pins: 'M2-20 첫째 항목의 마지막 문장 · M2-11 5항의 남은 문장 (공유 READ 유지)',
+    steps: [
+      { press: 'live-activate-a' },
+      { press: 'live-share-open' },
+      {
+        note: 'live/a의 READ가 떠 있고 두 표시가 그것을 함께 기다린다',
+        expect: {
+          cards: {
+            live: { liveKey: 'live/a', livePhase: 'pending / fetching' },
+            share: { shareState: '열림', livePhase: 'pending / fetching' },
+          },
+          requests: { 'READ-1': { key: 'live/a', outcome: 'in-flight' } },
+          cache: {
+            inspect: [
+              { key: 'profile', owners: '2' },
+              { key: 'profile/readonly', owners: '1' },
+              { key: 'live/a', owners: '2' },
+            ],
+          },
+        },
+      },
+      { press: 'live-key-b' },
+      {
+        note:
+          '표시가 key를 떠났는데도 READ-1은 **in-flight로 남는다** — 마지막 ' +
+          '소유자가 아니었기 때문이다. 같은 조작이 `M2-11-4-cancel`에서는 aborted를 ' +
+          '냈고, 갈라진 것은 소유자 수 하나뿐이다. live/a는 owners 1로 둘째 view가 든다',
+        expect: {
+          cards: {
+            live: { liveKey: 'live/b', livePhase: 'pending / fetching' },
+            share: { shareState: '열림', livePhase: 'pending / fetching' },
+          },
+          requests: {
+            'READ-1': { key: 'live/a', outcome: 'in-flight' },
+            'READ-2': { key: 'live/b', outcome: 'in-flight' },
+          },
+          cache: {
+            inspect: [
+              { key: 'profile', owners: '2' },
+              { key: 'profile/readonly', owners: '1' },
+              { key: 'live/a', owners: '1' },
+              { key: 'live/b', owners: '1' },
+            ],
+          },
+        },
+      },
+      { press: 'settle-all' },
+      {
+        note:
+          '두 결과가 각자의 표시로 간다: 떠난 쪽은 서울-b, 남은 쪽은 서울-a다. ' +
+          '이전 key의 결과가 새 표시에 들어가지 않으면서도 **그것을 보고 있던 ' +
+          'view에서는 확인된다**',
+        expect: {
+          cards: {
+            live: { liveKey: 'live/b', liveCity: '서울-b' },
+            share: { shareState: '열림', liveCity: '서울-a' },
+          },
+          requests: {
+            'READ-1': { key: 'live/a', outcome: 'success' },
+            'READ-2': { key: 'live/b', outcome: 'success' },
+          },
+        },
+      },
+      { press: 'live-dispose' },
+      {
+        note:
+          '따라가는 표시를 해제해도 둘째 표시의 조회와 표시는 그대로다 — 공유 view를 ' +
+          '한 화면에서만 놓은 것이고, live/a는 여전히 owners 1이다. 소유자를 잃은 것은 ' +
+          '떠난 쪽 key(live/b)뿐이다',
+        expect: {
+          cards: {
+            live: { liveKey: '(해제됨)', liveCity: '(해제됨)' },
+            share: { shareState: '열림', liveCity: '서울-a' },
+          },
+          cache: {
+            inspect: [
+              { key: 'profile', owners: '2' },
+              { key: 'profile/readonly', owners: '1' },
+              { key: 'live/a', owners: '1' },
+              { key: 'live/b', owners: '0' },
+            ],
+          },
+        },
+      },
+    ],
+  },
+];
+
 export const SCENARIOS: readonly Scenario[] = [
   ...M2_05_08,
   ...M2_07,
@@ -3629,4 +3845,5 @@ export const SCENARIOS: readonly Scenario[] = [
   ...M2_16_REST,
   ...M2_18,
   ...M2_19_REST,
+  ...M2_20,
 ];
