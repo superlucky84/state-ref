@@ -30,6 +30,21 @@ export type Expectation = Readonly<{
   changes?: Readonly<
     Record<string, readonly Readonly<Record<string, Match>>[]>
   >;
+  /**
+   * The cache table, compared as a whole list in the order it is shown.
+   *
+   * One statement, not per-key assertions: a released key stays in the cache
+   * with `owners 0` (DC8-8-15), so "which keys exist and how many owners each
+   * has" only means something as a list. `[]` would say the cache is empty.
+   */
+  cache?: readonly Readonly<Record<string, Match>>[];
+  /**
+   * Open WRITEs, as a whole list in start order.
+   *
+   * `[]` is how a scenario says 미종료 WRITE 없음 - which is what M2-19's
+   * thirteenth item asks for after a WRITE settles.
+   */
+  mutations?: readonly Readonly<Record<string, Match>>[];
   /** Cards that must NOT be on screen. */
   absentCards?: readonly string[];
   /** Request ids that must not exist yet - pins "no request was issued". */
@@ -57,6 +72,50 @@ const matches = (actual: string | undefined, expected: Match) =>
 
 const describe = (expected: Match) =>
   typeof expected === 'string' ? expected : `…${expected.contains}…`;
+
+/**
+ * One ordered table, compared as a whole.
+ *
+ * Three tables are read this way - a card's changes, the cache, and the open
+ * WRITEs - and the count is part of every one of the claims they carry ("two
+ * lines are left", "the key is gone", "nothing is in flight"). One comparison
+ * for all three, for the same reason there is one `mismatches` for both
+ * runners.
+ */
+const compareRows = (
+  what: string,
+  actualRows: readonly Record<string, string>[] | undefined,
+  wantRows: readonly Readonly<Record<string, Match>>[],
+  out: string[]
+) => {
+  if (!actualRows) {
+    out.push(`${what}: table is missing`);
+    return;
+  }
+  if (actualRows.length !== wantRows.length) {
+    out.push(
+      `${what}: expected ${wantRows.length} row(s), got ${actualRows.length} (${
+        actualRows
+          .map(row => row.path ?? row.key ?? row.id)
+          .filter(name => name !== undefined)
+          .join(', ') || 'none'
+      })`
+    );
+    return;
+  }
+  for (const [index, want] of wantRows.entries()) {
+    for (const [cell, expectedCell] of Object.entries(want)) {
+      const got = actualRows[index][cell];
+      if (!matches(got, expectedCell)) {
+        out.push(
+          `${what}[${index}]/${cell}: expected ${describe(expectedCell)}, got ${
+            got === undefined ? '(no such cell)' : got
+          }`
+        );
+      }
+    }
+  }
+};
 
 /**
  * Every way a reading fails an expectation, as lines a person can act on.
@@ -107,32 +166,12 @@ export function mismatches(
   }
 
   for (const [card, wantRows] of Object.entries(expected.changes ?? {})) {
-    const actualRows = reading.changes[card];
-    if (!actualRows) {
-      out.push(`changes for ${card} are missing`);
-      continue;
-    }
-    if (actualRows.length !== wantRows.length) {
-      out.push(
-        `${card} changes: expected ${wantRows.length} row(s), got ${
-          actualRows.length
-        } (${actualRows.map(row => row.path).join(', ') || 'none'})`
-      );
-      continue;
-    }
-    for (const [index, want] of wantRows.entries()) {
-      for (const [cell, expectedCell] of Object.entries(want)) {
-        const got = actualRows[index][cell];
-        if (!matches(got, expectedCell)) {
-          out.push(
-            `${card} changes[${index}]/${cell}: expected ${describe(
-              expectedCell
-            )}, got ${got === undefined ? '(no such cell)' : got}`
-          );
-        }
-      }
-    }
+    compareRows(`${card} changes`, reading.changes[card], wantRows, out);
   }
+
+  if (expected.cache) compareRows('cache', reading.cache, expected.cache, out);
+  if (expected.mutations)
+    compareRows('mutations', reading.mutations, expected.mutations, out);
 
   for (const card of expected.absentCards ?? []) {
     if (reading.cards[card]) out.push(`card ${card} should not be on screen`);
@@ -1790,6 +1829,324 @@ export const M2_11_LIVE: readonly Scenario[] = [
  *
  * Declared last on purpose: the lists it spreads have to exist first.
  */
+/**
+ * The observation card (Phase 8.8 단계 7).
+ *
+ * These read `inspectCache()` and `inspectMutations()` off the screen, which is
+ * what M2-19's seventh and thirteenth items ask for, plus the two lifecycle
+ * numbers nothing could see before: how many handles hold a key, and how many
+ * listeners the client put on the environment.
+ *
+ * Every string below was measured through the model first and copied from the
+ * reading - never written from what a value ought to be.
+ */
+export const M2_INSPECT: readonly Scenario[] = [
+  {
+    id: 'M2-19-7-cache',
+    title: '캐시 관측이 조회 상태·소유자 수·생성을 그대로 보여 준다',
+    pins: 'M2-19 7항 (inspectCache) · M2-18 4항 첫 문장 (시작 전 listener 없음)',
+    steps: [
+      {
+        note: '조작 전. 두 패널이 한 key를 공유하므로 owners가 2다 — 지금까지 화면에 그 숫자가 없어 두 카드가 같은 값을 보이는 것으로 추론했다. 아직 아무 조회도 시작하지 않았으므로 환경 listener는 0이다',
+        expect: {
+          cards: {
+            inspect: {
+              cacheSize: '2',
+              cacheOwners: '3',
+              openMutations: '0',
+              inspectSubscribed: 'true',
+              observedEvents: '0 / 0',
+              cacheEventFields: '(이벤트 없음)',
+              mutationEventFields: '(이벤트 없음)',
+              envListeners: '0',
+            },
+          },
+          cache: [
+            {
+              key: 'profile',
+              kind: 'query',
+              owners: '2',
+              status: 'pending / idle',
+            },
+            {
+              key: 'profile/readonly',
+              kind: 'query',
+              owners: '1',
+              status: 'pending / idle',
+            },
+          ],
+          mutations: [],
+        },
+      },
+      { press: 'load' },
+      {
+        note: '조회가 시작되자 환경 listener가 1이 된다. 관찰자는 load()/refetch()에서만 start()하므로(index.ts:1070) 그 전에는 만들어지지 않는다 — M2-18 4항의 첫 문장이다. 이벤트 필드에는 payload가 없다',
+        expect: {
+          cards: {
+            inspect: {
+              envListeners: '1',
+              cacheEventFields: 'kind,owners,queryKey,status',
+              mutationEventFields: '(이벤트 없음)',
+            },
+          },
+          cache: [
+            { key: 'profile', owners: '2', status: 'pending / fetching' },
+            {
+              key: 'profile/readonly',
+              owners: '1',
+              status: 'pending / fetching',
+            },
+          ],
+        },
+      },
+      { press: 'settle-all' },
+      {
+        note: '완료 뒤 두 항목 모두 success/idle이고 소유자 수는 그대로다',
+        expect: {
+          cards: { inspect: { cacheSize: '2', cacheOwners: '3' } },
+          cache: [
+            { key: 'profile', owners: '2', status: 'success / idle' },
+            { key: 'profile/readonly', owners: '1', status: 'success / idle' },
+          ],
+        },
+      },
+      { press: 'live-activate-a' },
+      {
+        note: '새 key가 생기는 것이 표에 한 줄로 나타난다 (M2-19 7항의 "생성")',
+        expect: {
+          cards: { inspect: { cacheSize: '3', cacheOwners: '4' } },
+          cache: [
+            { key: 'profile', owners: '2' },
+            { key: 'profile/readonly', owners: '1' },
+            { key: 'live/a', owners: '1', status: 'pending / fetching' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-11-5-release',
+    title: '비활성화와 해제 뒤 그 key의 구독이 남지 않는다',
+    pins: 'M2-11 5항 (비활성화·해제 뒤 구독이 남지 않는다) · M2-19 7항 (소유자 수)',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'live-activate-a' },
+      { press: 'settle-all' },
+      { press: 'live-key-b' },
+      {
+        note: 'key를 바꾸면 이전 key의 구독이 곧바로 사라진다: live/a가 owners 0이 되고 live/b가 1을 든다. 캐시 항목은 남으므로 cacheSize는 4로 늘고 소유자 합계는 4에 머문다 — 구독이 남지 않는 것과 캐시에서 사라지는 것은 다른 사실이다 (DC8-8-15)',
+        expect: {
+          cards: { inspect: { cacheSize: '4', cacheOwners: '4' } },
+          cache: [
+            { key: 'profile', owners: '2' },
+            { key: 'profile/readonly', owners: '1' },
+            { key: 'live/a', owners: '0' },
+            { key: 'live/b', owners: '1', status: 'pending / fetching' },
+          ],
+        },
+      },
+      { press: 'settle-all' },
+      { press: 'live-deactivate' },
+      {
+        note: '비활성화하면 두 live key 모두 owners 0이다. 표시도 비고(liveKey (없음)), 구독도 남지 않는다',
+        expect: {
+          cards: {
+            inspect: { cacheSize: '4', cacheOwners: '3' },
+            live: { liveKey: '(없음)', liveEnabled: 'false' },
+          },
+          cache: [
+            { key: 'profile', owners: '2' },
+            { key: 'profile/readonly', owners: '1' },
+            { key: 'live/a', owners: '0' },
+            { key: 'live/b', owners: '0' },
+          ],
+        },
+      },
+      { press: 'live-dispose' },
+      {
+        note: '해제는 소유자 수를 더 내리지 않는다 — 비활성화가 이미 다 놓았기 때문이다. 표시만 (해제됨)으로 바뀐다. `표시 해제`의 결과 문구는 "구독도 남지 않는다"고 주장해 왔고, 그 주장을 처음 화면에서 확인한다',
+        expect: {
+          cards: {
+            inspect: { cacheSize: '4', cacheOwners: '3' },
+            live: { liveKey: '(해제됨)', liveCity: '(해제됨)' },
+          },
+          cache: [
+            { key: 'profile', owners: '2' },
+            { key: 'profile/readonly', owners: '1' },
+            { key: 'live/a', owners: '0' },
+            { key: 'live/b', owners: '0' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-19-7-remove',
+    title: '붙잡고 있으면 제거를 거절하고, 놓은 뒤에는 캐시에서 사라진다',
+    pins: 'M2-19 7항 (생성/제거)',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'live-activate-a' },
+      { press: 'settle-all' },
+      {
+        note: '표시가 live/a를 보고 있으므로 소유자가 1이다',
+        expect: {
+          cards: { inspect: { cacheSize: '3', cacheOwners: '4' } },
+          cache: [
+            { key: 'profile', owners: '2' },
+            { key: 'profile/readonly', owners: '1' },
+            { key: 'live/a', owners: '1', status: 'success / idle' },
+          ],
+        },
+      },
+      { press: 'cache-remove-live-a' },
+      {
+        note: '소유자가 있는 항목의 제거는 거절된다. 표가 그대로이고 화면이 이유를 말한다 — 같은 버튼이 두 번 다르게 답하는 것이 이 항목의 내용이다',
+        expect: {
+          cards: {
+            inspect: { cacheSize: '3', cacheOwners: '4' },
+            operations: { lastResult: { contains: '제거하지 않았다' } },
+          },
+          cache: [
+            { key: 'profile', owners: '2' },
+            { key: 'profile/readonly', owners: '1' },
+            { key: 'live/a', owners: '1' },
+          ],
+        },
+      },
+      { press: 'live-deactivate' },
+      {
+        note: '비활성화로 소유자가 0이 됐지만 항목은 아직 남아 있다 (DC8-8-15)',
+        expect: {
+          cards: { inspect: { cacheSize: '3', cacheOwners: '3' } },
+          cache: [
+            { key: 'profile', owners: '2' },
+            { key: 'profile/readonly', owners: '1' },
+            { key: 'live/a', owners: '0' },
+          ],
+        },
+      },
+      { press: 'cache-remove-live-a' },
+      {
+        note: '이제 제거된다. 표에서 줄이 사라지고 cacheSize가 2로 줄어든다 — M2-19 7항이 요구하는 "제거"다',
+        expect: {
+          cards: {
+            inspect: { cacheSize: '2', cacheOwners: '3' },
+            operations: { lastResult: { contains: '제거했다' } },
+          },
+          cache: [
+            { key: 'profile', owners: '2', status: 'success / idle' },
+            { key: 'profile/readonly', owners: '1', status: 'success / idle' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-19-13-mutations',
+    title: '미종료 WRITE만 보이고, 종료하면 목록에서 빠진다',
+    pins: 'M2-19 13항 (inspectMutations)',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      { press: 'capture' },
+      {
+        note: '로컬 편집과 제출 고정만으로는 WRITE가 시작되지 않으므로 목록은 비어 있다',
+        expect: {
+          cards: { inspect: { openMutations: '0' } },
+          mutations: [],
+        },
+      },
+      { press: 'save' },
+      {
+        note: '실행 중인 WRITE는 phase pending이고, 연결된 key가 profile 하나로 보인다. 이벤트 필드에는 입력 DTO·응답·오류가 없고 idempotent는 불리언일 뿐 키 값이 아니다',
+        expect: {
+          cards: {
+            inspect: {
+              openMutations: '1',
+              mutationEventFields:
+                'attempt,idempotent,linkedKeys,operationId,phase,scope,settledAt,startedAt',
+            },
+          },
+          mutations: [
+            {
+              id: '1',
+              phase: 'pending',
+              scope: '(없음)',
+              attempt: '0',
+              idempotent: 'false',
+              linked: 'profile',
+            },
+          ],
+        },
+      },
+      { press: 'settle-all' },
+      {
+        note: '종료한 작업은 client가 보관하지 않으므로 목록이 빈다. 미종료만 보인다는 것이 이 항목의 내용이다',
+        expect: {
+          cards: { inspect: { openMutations: '0' } },
+          mutations: [],
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-19-7-unsubscribe',
+    title:
+      '구독을 해제하면 이후 이벤트가 오지 않고, 재개하면 그 시점부터만 온다',
+    pins: 'M2-19 7항·13항의 마지막 문장 (구독 해제 뒤 이벤트 없음)',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'inspect-unsubscribe' },
+      {
+        note: '해제했으므로 구독 이후 이벤트는 0이다. 이미 관측한 필드 목록은 남는다 — 그것은 표면에 대한 사실이고 구독 상태와 무관하다',
+        expect: {
+          cards: {
+            inspect: {
+              inspectSubscribed: 'false',
+              observedEvents: '0 / 0',
+              cacheEventFields: 'kind,owners,queryKey,status',
+            },
+          },
+        },
+      },
+      { press: 'refetch' },
+      { press: 'settle-all' },
+      {
+        note: '재조회가 캐시를 실제로 움직였고 표가 그것을 따라 갱신됐는데도(success/idle) 해제한 쪽의 이벤트 수는 0이다. 데모는 같은 흐름에 두 쌍의 핸들을 걸고 있고 다시 그리는 쪽은 살아 있으므로, 이 0은 "이벤트가 흐르지 않았다"가 아니라 **해제한 그 listener에게 오지 않았다**는 뜻이다 — 해제가 listener 단위라는 더 강한 주장이다 (DC8-8-17)',
+        expect: {
+          cards: { inspect: { observedEvents: '0 / 0' } },
+          cache: [
+            { key: 'profile', owners: '2', status: 'success / idle' },
+            { key: 'profile/readonly', owners: '1', status: 'success / idle' },
+          ],
+        },
+      },
+      { press: 'inspect-resubscribe' },
+      {
+        note: '재개 직후는 0이다. 해제 중에 지나간 이벤트가 몰려오지 않는다',
+        expect: {
+          cards: {
+            inspect: { inspectSubscribed: 'true', observedEvents: '0 / 0' },
+          },
+        },
+      },
+      { press: 'refetch' },
+      { press: 'settle-all' },
+      {
+        note: '재개한 listener에게 다시 이벤트가 온다. 이 수는 누적 총계가 아니라 이 눌림 수열에 대한 값이고(DC8-8-13), WRITE 이벤트는 여전히 0이다',
+        expect: {
+          cards: { inspect: { observedEvents: '4 / 0' } },
+        },
+      },
+    ],
+  },
+];
+
 export const SCENARIOS: readonly Scenario[] = [
   ...M2_05_08,
   ...M2_07,
@@ -1802,4 +2159,5 @@ export const SCENARIOS: readonly Scenario[] = [
   ...M2_15,
   ...M2_16,
   ...M2_11_LIVE,
+  ...M2_INSPECT,
 ];

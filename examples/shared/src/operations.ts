@@ -97,6 +97,15 @@ export const OPERATION_GROUPS = [
     ],
   },
   {
+    id: 'inspect',
+    title: '관측 구독',
+    operations: [
+      ['inspect-unsubscribe', '관측 구독 해제'],
+      ['inspect-resubscribe', '관측 구독 재개'],
+      ['cache-remove-live-a', 'live/a 캐시 항목 제거 시도'],
+    ],
+  },
+  {
     id: 'computed',
     title: '콜백 없는 computed',
     operations: [

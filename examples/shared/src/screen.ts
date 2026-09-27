@@ -1,4 +1,9 @@
-import { draftPanel, requestPanel, resourcePanel } from './panels';
+import {
+  draftPanel,
+  inspectPanel,
+  requestPanel,
+  resourcePanel,
+} from './panels';
 import { show } from './fields';
 import type { ChangeLine } from './panels';
 import { POLICY_TEXT, keyText } from './model';
@@ -27,6 +32,16 @@ export type ScreenReading = Readonly<{
    * the order is part of what a person reads.
    */
   changes: Record<string, readonly Record<string, string>[]>;
+  /**
+   * The cache table, in the order the client holds its entries.
+   *
+   * A flat ordered list rather than a map keyed by query key: a released key
+   * stays in the cache with `owners 0` (DC8-8-15), so "which keys exist, in
+   * which order, with how many owners" is one statement and is compared as one.
+   */
+  cache: readonly Record<string, string>[];
+  /** Open WRITEs in start order; a settled one leaves the list entirely. */
+  mutations: readonly Record<string, string>[];
 }>;
 
 /** What a checkbox row shows. Every demo prints the boolean itself. */
@@ -156,6 +171,42 @@ export function screenOf(model: DemoModel): ScreenReading {
     computedSubscribed: show(ui.computedSubscribed),
   };
 
+  /**
+   * The observation card.
+   *
+   * Read at projection time from the client's public surface, exactly as the
+   * demos read it at render time (DC8-8-11). The event counts and field lists
+   * come from `ui` because only the model can see an event arrive.
+   */
+  const inspect = inspectPanel(
+    model.client.inspectCache(),
+    model.client.inspectMutations()
+  );
+  cards.inspect = {
+    cacheSize: show(inspect.cacheSize),
+    cacheOwners: show(inspect.cacheOwners),
+    openMutations: show(inspect.openMutations),
+    inspectSubscribed: flag(ui.inspectSubscribed),
+    observedEvents: `${ui.cacheEventsSeen} / ${ui.mutationEventsSeen}`,
+    cacheEventFields: show(ui.cacheEventFields),
+    mutationEventFields: show(ui.mutationEventFields),
+    envListeners: show(model.environment.listenerCount()),
+  };
+  const cache = inspect.cache.map(line => ({
+    key: line.key,
+    kind: line.kind,
+    owners: String(line.owners),
+    status: line.status,
+  }));
+  const mutations = inspect.mutations.map(line => ({
+    id: String(line.id),
+    phase: line.phase,
+    scope: line.scope,
+    attempt: String(line.attempt),
+    idempotent: flag(line.idempotent),
+    linked: line.linked,
+  }));
+
   const rows: Record<string, Record<string, string>> = {};
   for (const row of requests.rows) {
     // The time columns are wall clock (DC8-5-12) and are read nowhere.
@@ -166,5 +217,5 @@ export function screenOf(model: DemoModel): ScreenReading {
     };
   }
 
-  return { cards, requests: rows, changes };
+  return { cards, requests: rows, changes, cache, mutations };
 }

@@ -10,6 +10,7 @@ import {
   createDemoModel,
   keyText,
   draftPanel,
+  inspectPanel,
   label as fieldLabel,
   requestPanel,
   resourcePanel,
@@ -390,6 +391,92 @@ function LiveCard() {
   );
 }
 
+/**
+ * The observation card.
+ *
+ * `inspectCache()` and `inspectMutations()` are snapshots, so the tick is what
+ * repaints this - the arrangement `ServerCard` uses for the mock server
+ * (DC8-8-12). `owners` is the first number on screen that says two panels share
+ * one key rather than leaving it to be inferred from two cards agreeing.
+ */
+function InspectCard() {
+  const ui = useUi();
+  ui.tick.value; // Subscribe: the client's observation surface is a snapshot.
+  const panel = inspectPanel(
+    model.client.inspectCache(),
+    model.client.inspectMutations()
+  );
+
+  return (
+    <section className="card" data-card="inspect">
+      <h2>{CARD_TITLE.inspect}</h2>
+      <Row field="cacheSize" value={panel.cacheSize} />
+      <Row field="cacheOwners" value={panel.cacheOwners} />
+      <Row field="openMutations" value={panel.openMutations} />
+      <Flag field="inspectSubscribed" on={ui.inspectSubscribed.value} />
+      <Row
+        field="observedEvents"
+        value={`${ui.cacheEventsSeen.value} / ${ui.mutationEventsSeen.value}`}
+      />
+      <Row field="cacheEventFields" value={ui.cacheEventFields.value} />
+      <Row field="mutationEventFields" value={ui.mutationEventFields.value} />
+      <Row field="envListeners" value={model.environment.listenerCount()} />
+      <table>
+        <thead>
+          <tr>
+            <th>key</th>
+            <th>kind</th>
+            <th>소유자</th>
+            <th>status / fetch</th>
+          </tr>
+        </thead>
+        <tbody>
+          {panel.cache.map(row => (
+            <tr key={row.key} data-cache={row.key}>
+              <td data-cell="key">{row.key}</td>
+              <td data-cell="kind">{row.kind}</td>
+              <td data-cell="owners">{row.owners}</td>
+              <td data-cell="status">{row.status}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {panel.mutations.length === 0 ? (
+        <p className="note">미종료 WRITE 없음</p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>작업</th>
+              <th>phase</th>
+              <th>scope</th>
+              <th>시도</th>
+              <th>idempotent</th>
+              <th>연결된 key</th>
+            </tr>
+          </thead>
+          <tbody>
+            {panel.mutations.map(row => (
+              <tr key={row.id} data-mutation={row.id}>
+                <td data-cell="id">{row.id}</td>
+                <td data-cell="phase">{row.phase}</td>
+                <td data-cell="scope">{row.scope}</td>
+                <td data-cell="attempt">{row.attempt}</td>
+                <td data-cell="idempotent">{String(row.idempotent)}</td>
+                <td data-cell="linked">{row.linked}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <p className="note">
+        모두 client의 공개 관측 표면이다. 이벤트에는 조회 값과 입력 DTO가 없고,
+        구독을 해제하면 이후 이벤트가 오지 않는다.
+      </p>
+    </section>
+  );
+}
+
 function Controls() {
   return (
     <>
@@ -437,6 +524,7 @@ export default function App() {
         <DraftSection />
         <LiveCard />
         <ComputedCard />
+        <InspectCard />
       </div>
     </main>
   );

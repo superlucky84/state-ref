@@ -17,6 +17,16 @@ export type ControlledEnvironment = SyncEnvironment &
     emit: (event: SyncEnvironmentEvent) => void;
     /** Every event delivered so far, for the timeline panel. */
     readonly events: readonly SyncEnvironmentEvent[];
+    /**
+     * How many listeners sync currently holds here.
+     *
+     * The demo owns this environment, so this is the one lifecycle count it can
+     * report without reaching into the library (DC8-8-11). A client subscribes
+     * once when its first refetch observer starts and releases when the last
+     * one stops (`packages/sync/src/automatic-refetch.ts`), so a freshly opened
+     * screen reads 0 - which is the first sentence of M2-18's fourth bullet.
+     */
+    listenerCount: () => number;
   }>;
 
 export function createControlledEnvironment(
@@ -55,5 +65,6 @@ export function createControlledEnvironment(
     get events() {
       return log;
     },
+    listenerCount: () => listeners.size,
   };
 }

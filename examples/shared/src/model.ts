@@ -130,6 +130,27 @@ export type DemoUi = Readonly<{
    * rows only once a query has loaded.
    */
   liveDisposed: boolean;
+  /** Whether the demo currently holds the cache/WRITE observation handles. */
+  inspectSubscribed: boolean;
+  /**
+   * Events seen since the last (re)subscribe - never a running total.
+   *
+   * A total moves with every unrelated operation and every server
+   * notification, which is the `ui.tick` trap (`메모 N`, `zip 9NN`): pinning it
+   * would fail the day an operation is added. Counted from the subscribe, the
+   * `0` right after a release is a stable, meaningful reading (DC8-8-13).
+   */
+  cacheEventsSeen: number;
+  mutationEventsSeen: number;
+  /**
+   * The keys observed events actually carried, accumulated and printed.
+   *
+   * M2-19 asks that no query payload and no mutation DTO reach an event. A
+   * boolean would say "checked"; the key list *is* the evidence, and a leak
+   * changes the string on screen (DC8-8-14).
+   */
+  cacheEventFields: string;
+  mutationEventFields: string;
 }>;
 
 export type DraftPair = Readonly<{
@@ -231,6 +252,11 @@ export function createDemoModel(): DemoModel {
     computedValue: '(읽지 않음)',
     computedSubscribed: '(알림 없음)',
     liveDisposed: false,
+    inspectSubscribed: false,
+    cacheEventsSeen: 0,
+    mutationEventsSeen: 0,
+    cacheEventFields: '(이벤트 없음)',
+    mutationEventFields: '(이벤트 없음)',
   });
   // An unbound ref: it reads and writes the store without registering a
   // subscription of its own (Phase 8.4). The panels subscribe through
@@ -245,6 +271,61 @@ export function createDemoModel(): DemoModel {
   repaint = () => {
     ui.tick.value = ui.tick.value + 1;
   };
+
+  // --- The observation card (DC8-8-11~14) ---------------------------------
+  // `inspectCache()` and `inspectMutations()` are snapshots, not reactive
+  // sources, so the card reads them at render time and repaints on the tick -
+  // the request card's arrangement. The events are what the tick needs, because
+  // they are delivered on a *later* turn than the operation that caused them:
+  // pressing `가능한 요청 모두 완료` bumps the tick before sync has moved the
+  // status, so an operation's own bump is already spent.
+  //
+  // Two separate pairs of handles, and the split is the point (DC8-8-17). The
+  // *repaint* pair exists for the whole model's lifetime and only bumps the
+  // tick. The *observed* pair is the one `관측 구독 해제` releases and the one
+  // the card counts. Wiring the table's freshness to the handles under test made
+  // the table freeze the moment they were released - the browser runner caught
+  // that in all five demos at once, which is the shape that says the fixture is
+  // wrong rather than a connector (and it was).
+  const offRepaintCache = client.subscribeCache(() => repaint());
+  const offRepaintMutations = client.subscribeMutations(() => repaint());
+
+  let offCache: (() => void) | null = null;
+  let offMutations: (() => void) | null = null;
+  const cacheFieldsSeen = new Set<string>();
+  const mutationFieldsSeen = new Set<string>();
+  const fieldText = (seen: Set<string>) =>
+    seen.size === 0 ? '(이벤트 없음)' : [...seen].sort().join(',');
+
+  const subscribeInspection = () => {
+    if (offCache) return;
+    ui.cacheEventsSeen.value = 0;
+    ui.mutationEventsSeen.value = 0;
+    offCache = client.subscribeCache(event => {
+      // The event's own key set, printed rather than judged: this is what
+      // "payload는 이벤트에 없다" looks like as a reading (DC8-8-14).
+      for (const field of Object.keys(event.entry)) cacheFieldsSeen.add(field);
+      ui.cacheEventFields.value = fieldText(cacheFieldsSeen);
+      ui.cacheEventsSeen.value = ui.cacheEventsSeen.value + 1;
+    });
+    offMutations = client.subscribeMutations(event => {
+      for (const field of Object.keys(event.entry))
+        mutationFieldsSeen.add(field);
+      ui.mutationEventFields.value = fieldText(mutationFieldsSeen);
+      ui.mutationEventsSeen.value = ui.mutationEventsSeen.value + 1;
+    });
+    ui.inspectSubscribed.value = true;
+  };
+
+  const releaseInspection = () => {
+    offCache?.();
+    offMutations?.();
+    offCache = null;
+    offMutations = null;
+    ui.inspectSubscribed.value = false;
+  };
+
+  subscribeInspection();
 
   // --- The callback-less computed demo (DC8-5-10) -------------------------
   // A manual-sync store, so "reads see current inputs before sync()" and
@@ -788,6 +869,51 @@ export function createDemoModel(): DemoModel {
           '표시를 해제했다. 이후 접근은 명시적으로 거절되고 구독도 남지 않는다.'
         );
 
+      /**
+       * `client.remove()` on the live key.
+       *
+       * It refuses while anything still holds the entry - owners, dirty,
+       * unconfirmed or a pending status (`packages/sync/src/index.ts:1588`) - so
+       * the same button answers twice: refused while the display follows the
+       * key, accepted once it has been released. That refusal is the other half
+       * of what M2-19's seventh item means by 생성/제거.
+       */
+      case 'cache-remove-live-a': {
+        const key = liveKey('a');
+        const removed = client.remove(key);
+        return bump(
+          id,
+          removed
+            ? `소유자가 없는 ${keyText(
+                key
+              )} 캐시 항목을 제거했다. 관측 표에서 줄이 사라지고 제거 이벤트가 온다.`
+            : `${keyText(
+                key
+              )}를 제거하지 않았다. 아직 소유자가 있거나 로컬 차이·미확정·진행 중 상태다 — 붙잡고 있는 것이 있으면 제거는 거절된다.`
+        );
+      }
+
+      case 'inspect-unsubscribe':
+        if (!ui.inspectSubscribed.value)
+          return bump(id, '이미 해제했다. 구독 이후 이벤트 수는 0에 머문다.');
+        releaseInspection();
+        // The counters go to 0 so the next operations can show that nothing
+        // arrives: a frozen non-zero number would be ambiguous between "no
+        // event came" and "we stopped counting".
+        ui.cacheEventsSeen.value = 0;
+        ui.mutationEventsSeen.value = 0;
+        return bump(
+          id,
+          '캐시·WRITE 관측 구독을 해제했다. 이후 조작을 더 해도 구독 이후 이벤트 수는 0에 머문다 — 해제한 구독으로는 이벤트가 오지 않는다.'
+        );
+      case 'inspect-resubscribe':
+        if (ui.inspectSubscribed.value) return bump(id, '이미 구독 중이다.');
+        subscribeInspection();
+        return bump(
+          id,
+          '관측 구독을 다시 걸었다. 세는 것은 이 시점 이후의 이벤트뿐이고, 해제 중에 지나간 것은 오지 않는다.'
+        );
+
       case 'focus':
         environment.setFocused(true);
         ui.focused.value = true;
@@ -841,6 +967,9 @@ export function createDemoModel(): DemoModel {
       panelB.dispose();
       readonlyQuery.dispose();
       if (liveAlive) liveView.dispose();
+      releaseInspection();
+      offRepaintCache();
+      offRepaintMutations();
     },
   };
 }

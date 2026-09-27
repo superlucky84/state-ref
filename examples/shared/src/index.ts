@@ -20,18 +20,29 @@ export type { ControlledEnvironment } from './environment';
 export { createMockServer } from './mock-server';
 export type { MockServer } from './mock-server';
 export {
+  CACHE_CELLS,
+  CACHE_ROW_ATTR,
   CARD_FIELDS,
   CARD_TITLE,
   CARDS_ON_LOAD,
   CHANGE_CELLS,
   CHANGE_ROW_ATTR,
   FIELD_LABEL,
+  MUTATION_CELLS,
+  MUTATION_ROW_ATTR,
   REQUEST_CELLS,
   REQUEST_ROW_ATTR,
   label,
   show,
 } from './fields';
-export type { CardId, ChangeCell, FieldId, RequestCell } from './fields';
+export type {
+  CacheCell,
+  CardId,
+  ChangeCell,
+  FieldId,
+  MutationCell,
+  RequestCell,
+} from './fields';
 export { screenOf } from './screen';
 export type { ScreenReading } from './screen';
 export { SCENARIOS, mismatches, pressesOf } from './scenarios';
@@ -65,13 +76,17 @@ export type { OperationGroupId, OperationId } from './operations';
 export {
   draftChangeLines,
   draftPanel,
+  inspectPanel,
   requestPanel,
   resourceChangeLines,
   resourcePanel,
 } from './panels';
 export type {
+  CacheLine,
   ChangeLine,
   DraftPanel,
+  InspectPanel,
+  MutationLine,
   RequestPanel,
   ResourcePanel,
 } from './panels';

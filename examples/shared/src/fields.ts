@@ -24,6 +24,7 @@ export const CARD_TITLE = {
   operations: '작업과 정책',
   live: '따라가는 표시 (liveView)',
   computed: 'computed 읽기 결과',
+  inspect: '관측 (inspectCache / inspectMutations)',
 } as const;
 
 export type CardId = keyof typeof CARD_TITLE;
@@ -75,6 +76,25 @@ export const FIELD_LABEL = {
   computedCalculations: '계산 실행 횟수',
   computedIdentity: '직전 읽기와 같은 객체',
   computedSubscribed: '구독 콜백이 본 값',
+  // The inspection card. Everything here comes from the library's public
+  // observation surface plus the demo's own environment (DC8-8-11).
+  cacheSize: '캐시 항목 수',
+  cacheOwners: '소유자 합계',
+  openMutations: '미종료 WRITE 수',
+  inspectSubscribed: '관측 구독',
+  /** Since the last (re)subscribe, never a running total (DC8-8-13). */
+  observedEvents: '구독 이후 이벤트 (캐시 / WRITE)',
+  /**
+   * The keys an observed event entry actually carried.
+   *
+   * Printed rather than reduced to a flag: M2-19 asks that no query payload or
+   * mutation DTO reach an event, and a key list changes visibly when one does
+   * (DC8-8-14).
+   */
+  cacheEventFields: '캐시 이벤트 필드',
+  mutationEventFields: 'WRITE 이벤트 필드',
+  /** The demo owns the environment, so it can count what sync subscribed. */
+  envListeners: '환경 listener 수',
 } as const;
 
 export type FieldId = keyof typeof FIELD_LABEL;
@@ -168,6 +188,19 @@ export const CARD_FIELDS: Readonly<
     ],
     onceLoaded: [],
   },
+  inspect: {
+    always: [
+      'cacheSize',
+      'cacheOwners',
+      'openMutations',
+      'inspectSubscribed',
+      'observedEvents',
+      'cacheEventFields',
+      'mutationEventFields',
+      'envListeners',
+    ],
+    onceLoaded: [],
+  },
 };
 
 /** The cards a freshly opened demo renders. Drafts appear only on request. */
@@ -178,6 +211,7 @@ export const CARDS_ON_LOAD: readonly CardId[] = [
   'operations',
   'live',
   'computed',
+  'inspect',
 ];
 
 /**
@@ -208,3 +242,35 @@ export const CHANGE_CELLS = [
   'source',
 ] as const;
 export type ChangeCell = (typeof CHANGE_CELLS)[number];
+
+/**
+ * The cache table's rows: one per `inspectCache()` entry, in the order the
+ * client holds them.
+ *
+ * An ordered list rather than a map, for the same reason the changes table is
+ * one: which key is present and how many owners it has *at which position* is
+ * what M2-11's fifth bullet and M2-19's seventh item read. The key travels in
+ * a cell as well as in the attribute so a reading says what it is about.
+ */
+export const CACHE_ROW_ATTR = 'data-cache';
+export const CACHE_CELLS = ['key', 'kind', 'owners', 'status'] as const;
+export type CacheCell = (typeof CACHE_CELLS)[number];
+
+/**
+ * The open-WRITE table's rows: one per `inspectMutations()` entry, in start
+ * order.
+ *
+ * No time columns: `startedAt`/`settledAt` are wall clock and a reading that
+ * carried them would differ on every run (DC8-8-16), the same rule the request
+ * table follows.
+ */
+export const MUTATION_ROW_ATTR = 'data-mutation';
+export const MUTATION_CELLS = [
+  'id',
+  'phase',
+  'scope',
+  'attempt',
+  'idempotent',
+  'linked',
+] as const;
+export type MutationCell = (typeof MUTATION_CELLS)[number];

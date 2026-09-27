@@ -1,4 +1,10 @@
-import type { QueryStatus, ResourceChange } from '@stateref/sync';
+import type {
+  QueryStatus,
+  ResourceChange,
+  SyncCacheEntry,
+  SyncMutationEntry,
+} from '@stateref/sync';
+import { keyText } from './model';
 import type { DraftChange, DraftStatus } from 'state-ref/draft';
 import type { MockServer } from './mock-server';
 import type { RequestRecord } from './types';
@@ -139,5 +145,85 @@ export function requestPanel(server: MockServer): RequestPanel {
     serverCity: server.value().city,
     serverRevision: server.revision(),
     rows: server.requests(),
+  };
+}
+
+/**
+ * One row of the cache table, from `inspectCache()`.
+ *
+ * `owners` is the whole point: it is the only public number that says how many
+ * handles hold a key, and the demo had no way to show that two panels share
+ * `profile` other than by two cards happening to agree ([DC8-5-01] was an
+ * assumption, not a reading). It is also what M2-11's fifth bullet means by
+ * "구독이 남지 않는다" (DC8-8-15).
+ */
+export type CacheLine = Readonly<{
+  key: string;
+  kind: SyncCacheEntry['kind'];
+  owners: number;
+  /** `status / fetchStatus`, the same pairing a resource panel prints. */
+  status: string;
+}>;
+
+/**
+ * One row of the open-WRITE table, from `inspectMutations()`.
+ *
+ * Settled operations are not retained by the client, so this table emptying is
+ * itself an assertion M2-19's thirteenth item asks for. No timestamps
+ * (DC8-8-16).
+ */
+export type MutationLine = Readonly<{
+  id: number;
+  phase: SyncMutationEntry['phase'];
+  scope: string;
+  attempt: number;
+  idempotent: boolean;
+  /** The keys the WRITE is linked to, or `(없음)` for an unlinked command. */
+  linked: string;
+}>;
+
+export type InspectPanel = Readonly<{
+  cacheSize: number;
+  /** Summed across entries: a released key drops the total without vanishing. */
+  cacheOwners: number;
+  openMutations: number;
+  cache: readonly CacheLine[];
+  mutations: readonly MutationLine[];
+}>;
+
+/**
+ * The client's own observation surface, projected for the screen.
+ *
+ * Nothing here reaches inside the library: both arguments come from
+ * `client.inspectCache()` and `client.inspectMutations()`, which are the public
+ * API M2-19's seventh and thirteenth items name (DC8-8-11).
+ */
+export function inspectPanel(
+  cache: readonly SyncCacheEntry[],
+  mutations: readonly SyncMutationEntry[]
+): InspectPanel {
+  return {
+    cacheSize: cache.length,
+    cacheOwners: cache.reduce((total, entry) => total + entry.owners, 0),
+    openMutations: mutations.length,
+    cache: cache.map(entry => ({
+      key: keyText(entry.queryKey as readonly string[]),
+      kind: entry.kind,
+      owners: entry.owners,
+      status: `${entry.status.status} / ${entry.status.fetchStatus}`,
+    })),
+    mutations: mutations.map(entry => ({
+      id: entry.operationId,
+      phase: entry.phase,
+      scope: entry.scope ?? '(없음)',
+      attempt: entry.attempt,
+      idempotent: entry.idempotent,
+      linked:
+        entry.linkedKeys.length === 0
+          ? '(없음)'
+          : entry.linkedKeys
+              .map(key => keyText(key as readonly string[]))
+              .join(' '),
+    })),
   };
 }

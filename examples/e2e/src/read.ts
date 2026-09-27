@@ -1,8 +1,10 @@
 import type { Page } from '@playwright/test';
 import {
+  CACHE_CELLS,
   CARD_FIELDS,
   CARD_TITLE,
   CHANGE_CELLS,
+  MUTATION_CELLS,
   REQUEST_CELLS,
 } from 'stateref-example-shared';
 import type { CardId, ScreenReading } from 'stateref-example-shared';
@@ -92,7 +94,35 @@ export async function readScreen(page: Page): Promise<ScreenReading> {
     );
   }
 
-  return { cards, requests, changes };
+  /**
+   * The two observation tables, in document order.
+   *
+   * Read from the page like every other reading (DC8-8-01): the demos print
+   * what `inspectCache()`/`inspectMutations()` gave their render, and whether
+   * that survived the connector is the whole question.
+   */
+  const rowsOf = (selector: string, cells: readonly string[]) =>
+    page
+      .locator(selector)
+      .evaluateAll(
+        (nodes, wanted) =>
+          nodes.map(node =>
+            Object.fromEntries(
+              wanted.map(cell => [
+                cell,
+                node
+                  .querySelector(`[data-cell="${cell}"]`)
+                  ?.textContent?.trim() ?? '',
+              ])
+            )
+          ),
+        [...cells]
+      ) as Promise<Record<string, string>[]>;
+
+  const cache = await rowsOf('[data-cache]', CACHE_CELLS);
+  const mutations = await rowsOf('[data-mutation]', MUTATION_CELLS);
+
+  return { cards, requests, changes, cache, mutations };
 }
 
 /**

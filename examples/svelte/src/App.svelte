@@ -4,6 +4,7 @@
     CARD_TITLE,
     OPERATION_GROUPS,
     POLICY_TEXT,
+    inspectPanel,
     requestPanel,
   } from 'stateref-example-shared';
   import type { OperationId } from 'stateref-example-shared';
@@ -36,6 +37,11 @@
   const computedIdentityStable = ui(store => store.computedIdentityStable);
   const computedSubscribed = ui(store => store.computedSubscribed);
   const liveDisposed = ui(store => store.liveDisposed);
+  const inspectSubscribed = ui(store => store.inspectSubscribed);
+  const cacheEventsSeen = ui(store => store.cacheEventsSeen);
+  const mutationEventsSeen = ui(store => store.mutationEventsSeen);
+  const cacheEventFields = ui(store => store.cacheEventFields);
+  const mutationEventFields = ui(store => store.mutationEventFields);
 
   const mutation = connectSvelte(model.mutation.watchStatus)(store => store);
   const readonlyStatus = connectSvelte(model.readonlyQuery.watchStatus)(
@@ -52,8 +58,15 @@
   // what makes Svelte recompute these when an operation runs.
   const readRequests = (_tick: number) => requestPanel(model.server);
   const readDrafts = (_generation: number) => model.drafts();
+  // The client's observation surface and the environment's listener count are
+  // snapshots too, so the tick names them the same way (DC8-8-12).
+  const readInspect = (_tick: number) =>
+    inspectPanel(model.client.inspectCache(), model.client.inspectMutations());
+  const readEnvListeners = (_tick: number) => model.environment.listenerCount();
   $: requests = readRequests($tick);
   $: drafts = readDrafts($draftGeneration);
+  $: inspect = readInspect($tick);
+  $: envListeners = readEnvListeners($tick);
 </script>
 
 <main>
@@ -172,6 +185,73 @@
       <p class="note">
         구독 없는 읽기는 sync() 전에도 최신 값을 본다. 구독 콜백은 sync()에서
         알림을 받는다.
+      </p>
+    </section>
+
+    <section class="card" data-card="inspect">
+      <h2>{CARD_TITLE.inspect}</h2>
+      <Row field="cacheSize" value={inspect.cacheSize} />
+      <Row field="cacheOwners" value={inspect.cacheOwners} />
+      <Row field="openMutations" value={inspect.openMutations} />
+      <Flag field="inspectSubscribed" on={$inspectSubscribed} />
+      <Row
+        field="observedEvents"
+        value={`${$cacheEventsSeen} / ${$mutationEventsSeen}`}
+      />
+      <Row field="cacheEventFields" value={$cacheEventFields} />
+      <Row field="mutationEventFields" value={$mutationEventFields} />
+      <Row field="envListeners" value={envListeners} />
+      <table>
+        <thead>
+          <tr>
+            <th>key</th>
+            <th>kind</th>
+            <th>소유자</th>
+            <th>status / fetch</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each inspect.cache as row (row.key)}
+            <tr data-cache={row.key}>
+              <td data-cell="key">{row.key}</td>
+              <td data-cell="kind">{row.kind}</td>
+              <td data-cell="owners">{row.owners}</td>
+              <td data-cell="status">{row.status}</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+      {#if inspect.mutations.length === 0}
+        <p class="note">미종료 WRITE 없음</p>
+      {:else}
+        <table>
+          <thead>
+            <tr>
+              <th>작업</th>
+              <th>phase</th>
+              <th>scope</th>
+              <th>시도</th>
+              <th>idempotent</th>
+              <th>연결된 key</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each inspect.mutations as row (row.id)}
+              <tr data-mutation={row.id}>
+                <td data-cell="id">{row.id}</td>
+                <td data-cell="phase">{row.phase}</td>
+                <td data-cell="scope">{row.scope}</td>
+                <td data-cell="attempt">{row.attempt}</td>
+                <td data-cell="idempotent">{String(row.idempotent)}</td>
+                <td data-cell="linked">{row.linked}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      {/if}
+      <p class="note">
+        모두 client의 공개 관측 표면이다. 이벤트에는 조회 값과 입력 DTO가 없고,
+        구독을 해제하면 이후 이벤트가 오지 않는다.
       </p>
     </section>
   </div>

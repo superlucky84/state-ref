@@ -5,6 +5,7 @@ import {
   CARD_TITLE,
   OPERATION_GROUPS,
   POLICY_TEXT,
+  inspectPanel,
   requestPanel,
 } from 'stateref-example-shared';
 import type { OperationId } from 'stateref-example-shared';
@@ -37,6 +38,19 @@ const requests = computed(() => {
 const drafts = computed(() => {
   void ui.value.draftGeneration;
   return model.drafts();
+});
+// The client's observation surface is a snapshot as well, and so is the
+// environment's listener count: the tick repaints both (DC8-8-12).
+const inspect = computed(() => {
+  void ui.value.tick;
+  return inspectPanel(
+    model.client.inspectCache(),
+    model.client.inspectMutations()
+  );
+});
+const envListeners = computed(() => {
+  void ui.value.tick;
+  return model.environment.listenerCount();
 });
 
 const run = (id: string) => model.run(id as OperationId);
@@ -171,6 +185,79 @@ const time = (at: number | null) =>
         <p class="note">
           구독 없는 읽기는 sync() 전에도 최신 값을 본다. 구독 콜백은 sync()에서
           알림을 받는다.
+        </p>
+      </section>
+
+      <section class="card" data-card="inspect">
+        <h2>{{ CARD_TITLE.inspect }}</h2>
+        <Row field="cacheSize" :value="inspect.cacheSize" />
+        <Row field="cacheOwners" :value="inspect.cacheOwners" />
+        <Row field="openMutations" :value="inspect.openMutations" />
+        <Flag field="inspectSubscribed" :on="ui.value.inspectSubscribed" />
+        <Row
+          field="observedEvents"
+          :value="`${ui.value.cacheEventsSeen} / ${ui.value.mutationEventsSeen}`"
+        />
+        <Row field="cacheEventFields" :value="ui.value.cacheEventFields" />
+        <Row
+          field="mutationEventFields"
+          :value="ui.value.mutationEventFields"
+        />
+        <Row field="envListeners" :value="envListeners" />
+        <table>
+          <thead>
+            <tr>
+              <th>key</th>
+              <th>kind</th>
+              <th>소유자</th>
+              <th>status / fetch</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="row in inspect.cache"
+              :key="row.key"
+              :data-cache="row.key"
+            >
+              <td data-cell="key">{{ row.key }}</td>
+              <td data-cell="kind">{{ row.kind }}</td>
+              <td data-cell="owners">{{ row.owners }}</td>
+              <td data-cell="status">{{ row.status }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p v-if="inspect.mutations.length === 0" class="note">
+          미종료 WRITE 없음
+        </p>
+        <table v-else>
+          <thead>
+            <tr>
+              <th>작업</th>
+              <th>phase</th>
+              <th>scope</th>
+              <th>시도</th>
+              <th>idempotent</th>
+              <th>연결된 key</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="row in inspect.mutations"
+              :key="row.id"
+              :data-mutation="row.id"
+            >
+              <td data-cell="id">{{ row.id }}</td>
+              <td data-cell="phase">{{ row.phase }}</td>
+              <td data-cell="scope">{{ row.scope }}</td>
+              <td data-cell="attempt">{{ row.attempt }}</td>
+              <td data-cell="idempotent">{{ String(row.idempotent) }}</td>
+              <td data-cell="linked">{{ row.linked }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="note">
+          모두 client의 공개 관측 표면이다. 이벤트에는 조회 값과 입력 DTO가
+          없고, 구독을 해제하면 이후 이벤트가 오지 않는다.
         </p>
       </section>
     </div>
