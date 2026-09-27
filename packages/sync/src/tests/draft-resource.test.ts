@@ -260,3 +260,71 @@ describe('a draft branched from an editable resource', () => {
     write.dispose();
   });
 });
+
+describe('a draft branched from a readonly query', () => {
+  function feed() {
+    const client = createSyncClient({ ssr: true });
+    const query = client.query({
+      queryKey: ['feed'],
+      queryFn: (): Account => ({ city: '서울', name: 'A' }),
+      editable: false,
+    });
+    return { client, query };
+  }
+
+  /**
+   * A readonly query used to answer differently depending on how the app got
+   * its ref. `query.watch(renew)` passed `{ editable: false }` down to core,
+   * so a draft over it refused with `readonly`; `query.ref` handed out the
+   * store's own editable ref, so `createDraft` was told the source was
+   * writable, the write was then refused by the gate above the store, and
+   * `apply()` read that refusal as `missing-source` - a source that is
+   * present and readable reported as gone, and latched, so no later apply
+   * could recover.
+   */
+  it('refuses to apply with readonly, whichever way the ref was obtained', async () => {
+    const { query } = feed();
+    await query.load();
+
+    for (const source of [query.ref, query.watch()]) {
+      const draft = createDraft(source);
+      draft.ref.city.value = '대전';
+      expect(draft.isDirty()).toBe(true);
+
+      expect(draft.apply()).toEqual({ ok: false, reason: 'readonly' });
+      // No change, and the source is still there - the draft says so too.
+      expect(query.ref.city.value).toBe('서울');
+      expect(draft.ref.city.value).toBe('대전');
+      expect(draft.changes()[0].source).toEqual({
+        exists: true,
+        value: '서울',
+      });
+      expect(draft.changes()[0].conflict).toBe(false);
+      // Asking again gives the same answer rather than a harsher one.
+      expect(draft.apply()).toEqual({ ok: false, reason: 'readonly' });
+      draft.discard();
+    }
+    query.dispose();
+  });
+
+  it("answers a direct write in this package's own words on both paths", async () => {
+    const { query } = feed();
+    await query.load();
+
+    expect(() => {
+      query.ref.city.value = '대전';
+    }).toThrow('This query is readonly.');
+    expect(() => {
+      query.watch().city.value = '대전';
+    }).toThrow('This query is readonly.');
+
+    const controller = new AbortController();
+    expect(() => {
+      query.watch(() => controller.signal).city.value = '대전';
+    }).toThrow('This query is readonly.');
+
+    expect(query.ref.city.value).toBe('서울');
+    controller.abort();
+    query.dispose();
+  });
+});

@@ -6,7 +6,16 @@ export function guardRef<T>(
   assertActive: () => void,
   refs = new WeakMap<object, object>(),
   snapshots = new WeakMap<object, object>(),
-  snapshotValues = true
+  snapshotValues = true,
+  /**
+   * Answer a write to a readonly query in this package's own words.
+   *
+   * The ref underneath is non-editable, so core would refuse the write anyway
+   * - but with its generic settings message, which says nothing about which
+   * query refused or why. Both ways of getting a ref (`query.ref` and
+   * `query.watch(renew)`) pass through here, so both say the same thing.
+   */
+  readonly = false
 ): StateRefStore<T> {
   const snapshot = (value: unknown): unknown => {
     if (!snapshotValues) return value;
@@ -63,6 +72,7 @@ export function guardRef<T>(
       },
       set(target, key, value, receiver) {
         assertActive();
+        if (readonly) throw new TypeError('This query is readonly.');
         return Reflect.set(target, key, value, receiver);
       },
     });

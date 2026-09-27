@@ -74,7 +74,25 @@ function preserveBranch(next: unknown, previous: unknown, path: DataPath) {
 
 export class ResourceStore<T> {
   readonly watch: Watch<T>;
+  /** The store's own ref. Internal writes go through it, so it is editable. */
   readonly ref: StateRefStore<T>;
+  /**
+   * The ref an app is handed.
+   *
+   * For an editable resource it is the same one. For a readonly resource it
+   * is a non-editable view of the same store, because `editable` has to be
+   * visible on the ref itself rather than only in the gate below: a reader
+   * that asks the ref whether it may be written - `connectRef(ref).editable`,
+   * which is what `createDraft` asks - would otherwise be told yes and then
+   * have its write refused. `query.watch(renew)` already passes
+   * `{ editable: false }` through `guardedWatch`, so without this the same
+   * readonly query answered differently depending on which way the app got
+   * its ref.
+   *
+   * Unbound on purpose: it exists to be read from, and a bound ref would add
+   * a second live subscription to the store for no subscriber.
+   */
+  readonly appRef: StateRefStore<T>;
   private readonly link: ReturnType<typeof connectRef<T>>;
   private readonly journal = createWriteJournal();
   private readonly owner = Object.freeze({});
@@ -161,6 +179,9 @@ export class ResourceStore<T> {
     });
     this.watch = store.watch;
     this.ref = store.watch(() => this.subscriptionAbort.signal);
+    this.appRef = editable
+      ? this.ref
+      : store.watch(undefined, { editable: false });
     this.link = connectRef(this.ref);
     this.stopObserve = observeRef(this.ref, this.publishStatus);
   }

@@ -1028,7 +1028,8 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
         assertActive,
         refs,
         snapshots,
-        entry!.getResource().editable
+        entry!.getResource().editable,
+        !entry!.getResource().editable
       );
     let dataWatch: Watch<T> | null = null;
     const statusWatch = guardedWatch(
@@ -1046,7 +1047,7 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
       },
       get ref() {
         assertActive();
-        return guardData(entry!.getResource().ref);
+        return guardData(entry!.getResource().appRef);
       },
       get watch() {
         assertActive();
@@ -1054,7 +1055,9 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
         if (!dataWatch) {
           dataWatch = guardedWatch(
             resource.watch,
-            resource.ref,
+            // `watch()` with no renew returns this one, so it has to carry the
+            // same `editable` the bound path gets from the flag below.
+            resource.appRef,
             guardData,
             assertActive,
             controllers,
