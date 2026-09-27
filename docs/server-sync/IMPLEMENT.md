@@ -256,6 +256,7 @@
 
 ### 2026-09-27 — Phase 8.8 10단계, 번들 페이지와 코어 결함 CI-30
 
+- done: **[Phase 8.8](./PHASE8_8.md) 13단계 — 수명 카드.** 데모가 만든 draft마다 구독을 걸어 **원본 변경 한 번이 깨운 draft 수**를 센다 — client가 보는 숫자(캐시·소유자·listener)는 draft를 누수시켜도 움직이지 않으므로 그것으로는 이 항목을 확인할 수 없다. 유지 사유 넷·손에 든 ref·서버 없는 draft도 같은 카드에 올렸다. **[M2-18](./MANUAL_TEST_CHECKLIST.md#m2-18) 항목 1·2·3·5 통과**(항목 4의 polling·SSR만 남았다). 조작 77 → **85개**, 시나리오 54 → **57개**, 브라우저 스위트 74 → **77개**.
 - done: **[Phase 8.8](./PHASE8_8.md) 12단계 — 합산 행과 검토 표면.** `화면 전체 미저장` 한 행이 원본과 열린 draft를 합산하고(부모의 `dirty`는 그대로 둔다), readonly 카드가 그 조회의 검토 목록과 version을 보인다. **[M2-16](./MANUAL_TEST_CHECKLIST.md#m2-16) 네 항목 전부 통과.** 체크리스트가 적어 둔 "readonly에는 changes도 version도 없다"는 **틀렸다** — 둘 다 있고 영원히 비어 있으며 거절하는 것은 `capture()`다. 조작 72 → **77개**, 시나리오 51 → **54개**, 브라우저 스위트 71 → **74개**.
 - done: **[Phase 8.8](./PHASE8_8.md) 11단계 — 경계 카드.** child ref(`office.room`)와 readonly 조회에서 분기하는 draft 한 칸으로 세 거절(`missing-source`·`conflict`·`readonly`)을 같은 네 버튼에서 갈라 보이고, 예약 키·미지원 값·직접 변형을 원본과 draft 양쪽에 같은 상수로 쓴다. **[M2-17](./MANUAL_TEST_CHECKLIST.md#m2-17) 항목 1·2·3 통과, 항목 4 부분.** 미수행 2 → **1개**(M2-20). 수행 중 **sync 결함 [CI-31](../core-improvement/REQUIREMENTS.md)**을 찾아 고쳤다 — readonly 조회의 `ref`가 스스로를 editable이라고 말해, 살아 있는 원본을 `missing-source`라고 보고하고 그 이유를 latch했다. 조작 60 → **72개**, 시나리오 46 → **51개**, 브라우저 스위트 66 → **71개**, sync 183 → **185개**.
 - done: **[Phase 8.8](./PHASE8_8.md) 10단계 — 번들 페이지 러너.** `examples/bundles`의 8개 페이지(ESM 네 조합 + UMD 네 로드 순서)를 실제 Chromium에서 열어 그 페이지들이 이미 인쇄하는 `판정` 행을 읽는다. **[M2-01 통과](./MANUAL_TEST_CHECKLIST.md#m2-01)**(7항목 전부), **[M2-02](./MANUAL_TEST_CHECKLIST.md#m2-02) 항목 1·2 통과·3·4 부분**. 미수행 4 → **2개**(M2-17·M2-20).
@@ -267,7 +268,7 @@
 - **회귀 테스트를 쓰다 한 번 속았다.** `false` 반환 해제를 시험하는 테스트를 처음에 `watch()`의 **unbound ref**로 읽게 썼는데, unbound ref는 `run`을 물지 않아 아무것도 등록하지 않는다 — 수정을 빼도 통과했다. 구독이 돌려준 ref로 고쳐야 네 개가 모두 잡는다. 주석으로 남겼다.
 - **계약 변경.** 번들 페이지의 행·버튼에 `data-row`·`data-action` id를 붙였다([DC8-8-21](./PHASE8_8.md)) — 판독이 `<dt>`의 한글 텍스트로 행을 찾고 있었고 라벨 한 단어를 고치면 장치가 깨진다. 기대값은 `examples/e2e`가 든다: 번들 페이지는 조합마다 한 장뿐이라 어긋날 상대가 없고, `stateref-example-shared`를 가져오면 core 단독 페이지의 모듈 그래프가 오염돼 그 페이지가 증명하려는 경계가 무너진다. 서버는 다섯 빌드 루트를 한 origin으로 내는 작은 정적 서버이고, 모호함은 **요청 시점에** 500으로 거절한다([DC8-8-22](./PHASE8_8.md)).
 - 수치: 브라우저 스위트 58 → **66개**(번들 8개는 4.6초), 코어 338 → **342개**. `pnpm test:e2e` **66/66**·콘솔 오류 0, `pnpm gate` **19단계 PASS**(minified 3696 → **3727 B** gzip, 목표 ≤ 3800), `pnpm -r test` 전 패키지 통과.
-- next: **M2-18의 남은 항목**(항목 1의 draft 20회 반복, 항목 2·3·5). 그다음 SSR hydration(Preact·Svelte·Solid에는 SSR 데모 자체가 없다), M2-19는 항목별로 고르고, 마지막이 M2-20이다. M2-17 항목 4의 readonly 예외는 서버가 비-plain 값을 보내는 fixture가 필요하므로 남겨 둔다.
+- next: **SSR hydration**(React 5191·Vue 5192에는 SSR 데모가 있고 Preact·Svelte·Solid에는 없다). 그다음 M2-19는 항목별로 고르고, 마지막이 M2-20이다. M2-17 항목 4의 readonly 예외와 M2-18 항목 4의 polling은 fixture가 필요하므로 남겨 둔다.
 - blockers: 없다.
 - 시작 기준 commit: `0e1562d`. 코어 수정은 `5614d7e`, 예제·장치는 `b5050a8`다.
 
