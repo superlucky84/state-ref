@@ -254,6 +254,20 @@
 
 ## 5. 인계
 
+### 2026-09-27 — Phase 8.8 8단계, 둘째 client와 M2-03
+
+- done: **[Phase 8.8](./PHASE8_8.md) 8단계 — 둘째 client.** 같은 환경·**같은 key `profile`**에 둘째 `SyncClient`를 열고 조작으로 해제한다([DC8-8-18](./PHASE8_8.md) — 다른 key라면 섞이지 않는 것이 당연하고 아무것도 주장하지 못한다).
+- **채운 칸:** [M2-03](./MANUAL_TEST_CHECKLIST.md#m2-03) **항목 1·2·6 통과**(항목 3·4·5는 `staleTime 0`·벽시계 `gcTime`·정책 하나·`refetchInterval: false`로 도달 불가), [M2-19](./MANUAL_TEST_CHECKLIST.md#m2-19) **7항 통과**(`client별`까지)·**13항의 `client별`**, [M2-18](./MANUAL_TEST_CHECKLIST.md#m2-18) **4항 뒷문장**. 미수행 6 → **4개**(M2-01·02·17·20). M2-19 13항에 남은 것은 `queued` 하나다.
+- **격리가 화면에 섰다.** 둘째 client는 주 client가 이미 로드한 `profile`을 열어도 `pending / idle`이고(기준을 물려받지 않는다), `둘째 client 조회`가 READ를 2 → 3으로 늘리며(요청을 공유하지 않는다), `제주`로 편집해도 패널 둘은 `서울`·clean이고 반대로 패널을 `부산`으로 바꿔도 둘째 client는 `제주`다. **두 캐시 표가 같은 이름의 줄을 따로 든다.**
+- **반대 방향도 같은 계측으로 성립했다.** 한 client 안에서 패널 두 장은 `owners=2`로 한 항목을 공유하고 `최초 조회`는 패널 조회 하나만 낸다 — **패널 B는 아무것도 요청하지 않았는데 함께 `pending / fetching`이다.** M2-03 첫째 항목이 요구한 "진행 READ는 공유한다"가 그것이다.
+- **`환경 listener 수`가 1 → 2 → 1을 그린다.** 둘째 client를 *열기만* 하면 1 그대로(관찰자는 `load()`에서 시작한다), 조회하면 2, 해제하면 1이다. **해제할 수 있는 client가 있어야 시험되는 문장**이고 패널 조회는 화면과 수명이 같다.
+- **판정력 확인(DC8-8-07), 주입 2종.** `openProbe`가 새 client를 만들지 않고 주 client를 쓰게 하자 **다섯 전부**가 세 시나리오에서 실패하며 `probe cache: expected 1 row(s), got 2`와 **`resource-a/city: expected 서울, got 제주`**(편집이 패널로 새어 나갔다)를 함께 말했다. Vue의 probe 카드만 주 client의 소유자 수를 인쇄하게 하자 **vue만** `probe/cacheOwners: expected 1, got 3`으로 실패했다. scratchpad 백업 → 복원 → `diff` 동일 확인.
+- **구조 변경.** 캐시·WRITE 표 판독을 **카드 범위**로 바꿨다([DC8-8-20](./PHASE8_8.md)) — 두 client의 항목을 한 목록에 섞으면 `client별`이 흐려진다. **빈 표도 판독**이므로 표 소유를 계약에 선언했다(`CACHE_TABLE_CARDS`·`MUTATION_TABLE_CARDS`): 줄이 있는지로 추론하면 "줄이 없다"와 "표가 없다"를 구별할 수 없어 두 판독기가 이유 없이 갈린다. `keyText`는 계약 모듈로 옮겼다(모델이 투영을 import하면서 순환이 될 자리였다).
+- 수치: 조작 54 → **58개**, 시나리오 39 → **43개**, `examples/shared` 91 → **95개**, 브라우저 스위트 51 → **55개**. `pnpm test:e2e` **55/55**·콘솔 오류 0, `pnpm gate` **19단계 PASS**, `pnpm check:examples` PASS(다섯 데모 모두 58개 렌더). `packages/` 무변경.
+- next: **scope 있는 둘째 mutation.** [M2-11](./MANUAL_TEST_CHECKLIST.md#m2-11) 셋째 항목(복수 mutation의 명시적 순서·충돌 정책)과 M2-19 13항의 마지막 조각(`queued`)이 같은 것을 요구한다. 그다음 같은 key를 보는 둘째 live view(M2-11 다섯째의 남은 문장), 합산 행(M2-16 둘째), readonly 카드·owner 교차 조작(M2-16 넷째), M2-01·02(번들·SSR).
+- blockers: 없다.
+- 시작 기준 commit: `92f480a`. 이 단계의 코드는 `4bb2b4d`이다.
+
 ### 2026-09-27 — Phase 8.8 7단계, 관측 카드와 M2-19 7·13항
 
 - done: **[Phase 8.8](./PHASE8_8.md) 7단계 — 관측 카드.** `client.inspectCache()`·`inspectMutations()`와 소유자 수·환경 listener 수를 화면에 올렸다. 읽는 것은 전부 라이브러리의 **공개 관측 표면**과 데모가 소유한 환경뿐이다([DC8-8-11](./PHASE8_8.md)) — M2-19의 7·13항이 판정 대상으로 지목하는 것이 그 표면이므로, 내부를 들여다보고 채운 칸은 항목이 요구한 것을 확인한 것이 아니다.

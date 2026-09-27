@@ -2,7 +2,7 @@
 
 - 개정일: 2026-09-24. 기준 SHA: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
 - 기준: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md).
-- 상태: Phase 8.7 수행 중. 2026-09-27 기준 **M2-05·M2-07·M2-08·M2-09·M2-10·M2-12·M2-13·M2-14·M2-15 통과**, M2-04·M2-06·M2-11·M2-16·M2-18·M2-19 부분 수행, 나머지 6항목(M2-01·02·03·17·20) 미수행이다. 미수행 항목은 기능 동작의 증거가 아니다. 수행 중 찾은 블로커 B8-7-01~05·09~12는 모두 해소했고, B8-7-06~08은 계측 부재로 [Phase 8.5 단계 11](./PHASE8_5.md)에서 처리했다. **[B8-7-13](#b8-7-13)은 미해소**다 — 데모 계측 문제이며 M2-10을 막지 않았다.
+- 상태: Phase 8.7 수행 중. 2026-09-27 기준 **M2-05·M2-07·M2-08·M2-09·M2-10·M2-12·M2-13·M2-14·M2-15 통과**, M2-03·M2-04·M2-06·M2-11·M2-16·M2-18·M2-19 부분 수행, 나머지 4항목(M2-01·02·17·20) 미수행이다. 미수행 항목은 기능 동작의 증거가 아니다. 수행 중 찾은 블로커 B8-7-01~05·09~12는 모두 해소했고, B8-7-06~08은 계측 부재로 [Phase 8.5 단계 11](./PHASE8_5.md)에서 처리했다. **[B8-7-13](#b8-7-13)은 미해소**다 — 데모 계측 문제이며 M2-10을 막지 않았다.
 
 ## 1. 환경과 fixture
 
@@ -102,14 +102,22 @@ fixture는 시간을 제어하지 못한다([DC8-5-12](./PHASE8_5.md)). 제어 �
 
 ### M2-03 — 공유 캐시·편집과 client 격리 (R2-03/07)
 
-- [ ] 같은 key를 두 패널에서 동시에 조회한다. 진행 READ는 공유한다.
-- [ ] 한 패널의 resourceRef 수정이 다른 패널에 보이지만 WRITE는 없다.
-- [ ] fresh/stale/GC 정책을 실제 설정값대로 확인한다.
-- [ ] client별 브라우저 환경 adapter로 focus/reconnect를 발생시킨다. `true`는 stale일 때만, `'always'`는 fresh 상태도 다시 읽고 `false`는 읽지 않는지 확인한다.
-- [ ] foreground/background/offline에서 polling을 실행한다. 같은 key 두 관찰자의 같은 interval tick은 READ 한 번을 공유하고, linked WRITE 중에는 자동 READ가 시작되지 않는지 확인한다.
-- [ ] 별도 client/SSR 요청에서는 같은 key의 값·편집·오류·요청을 공유하지 않는다.
+- [x] 같은 key를 두 패널에서 동시에 조회한다. 진행 READ는 공유한다.
+- [x] 한 패널의 resourceRef 수정이 다른 패널에 보이지만 WRITE는 없다.
+- [ ] fresh/stale/GC 정책을 실제 설정값대로 확인한다. — **도달 불가.** 데모는 `staleTime 0`으로 돌아 항상 stale이고, `gcTime`은 벽시계에 묶여 있다([DC8-5-12](./PHASE8_5.md) — fixture는 sync의 시계를 제어하지 못한다).
+- [ ] client별 브라우저 환경 adapter로 focus/reconnect를 발생시킨다. `true`는 stale일 때만, `'always'`는 fresh 상태도 다시 읽고 `false`는 읽지 않는지 확인한다. — **도달 불가.** 세 값을 구별하려면 정책이 서로 다른 조회 세 개가 필요하고, 데모는 정책 하나(`refetchOnFocus: true`)로 돈다.
+- [ ] foreground/background/offline에서 polling을 실행한다. 같은 key 두 관찰자의 같은 interval tick은 READ 한 번을 공유하고, linked WRITE 중에는 자동 READ가 시작되지 않는지 확인한다. — **도달 불가.** `refetchInterval: false`라 polling 자체가 없다(DC8-5-12).
+- [x] 별도 client/SSR 요청에서는 같은 key의 값·편집·오류·요청을 공유하지 않는다. — 별도 client 쪽을 확인했다. SSR 요청의 격리는 [M2-19](#m2-19) 쪽 범위다.
 
-**합격:** client 안에서는 정의된 공유, client 사이에는 격리. **결과: 미수행.**
+**합격:** client 안에서는 정의된 공유, client 사이에는 격리. **결과: 항목 1·2·6 통과, 항목 3·4·5 도달 불가(데모 정책 하나·벽시계).**
+
+**e2e 실행으로 채움**([DC8-8-08](./PHASE8_8.md)). 구현 SHA `4bb2b4d`, 2026-09-27, 시나리오 `M2-03-share`·`M2-03-isolate`, 명령 `pnpm test:e2e`, **데모 다섯 종 전부.** 첫째 항목은 [관측 카드](./PHASE8_8.md)의 소유자 수가, 여섯째 항목은 **둘째 client**가 만들어 준 판정이다 — 둘 다 이 문서가 오래 추론에 맡겨 두었던 자리다.
+
+- **한 client 안에서는 한 항목을 공유한다.** 패널 두 장이 `profile owners=2`로 한 캐시 항목을 들고, `최초 조회`는 패널 조회 하나와 readonly 조회 하나만 낸다(READ `2 / 0`, `READ-3`은 없다). **패널 B는 아무것도 요청하지 않았는데 함께 `pending / fetching`이다** — 그것이 진행 READ를 공유한다는 뜻이다.
+- **편집은 보이고 WRITE는 없다.** `도시 → 부산` 하나로 패널 두 장이 `부산`·`dirty=true`가 되고, 요청 수는 `2 / 0` 그대로이며 미종료 WRITE 목록은 비어 있다.
+- **둘째 client는 기준을 물려받지 않는다.** 같은 key `profile`에 열었는데도 그 client의 조회는 `pending / idle`이고, 주 client가 이미 로드했다는 사실이 아무 영향을 주지 않는다. 캐시 표도 자기 항목 하나만 든다([DC8-8-18](./PHASE8_8.md) — 다른 key라면 아무것도 주장하지 못한다).
+- **요청도 공유하지 않는다.** `둘째 client 조회`가 READ를 2 → 3으로 늘리고 그 key는 `profile`이다. 캐시가 다르면 공유할 진행 READ가 없다.
+- **편집이 양방향으로 새지 않는다.** 둘째 client에서만 `제주`로 바꾸면 패널 둘은 `서울`·clean 그대로고, 이어서 패널을 `부산`으로 바꾸면 둘째 client는 `제주`·version `1 / 0` 그대로다. 두 기준이 각자 움직인다.
 
 ### M2-04 — 로딩·오류·ref 유지 (R2-04)
 
@@ -457,15 +465,18 @@ fixture는 시간을 제어하지 못한다([DC8-5-12](./PHASE8_5.md)). 제어 �
 - [ ] draft 생성·종료를 20회 반복하고 구독·기록이 누적되지 않는지 확인한다.
 - [ ] dirty/pending/복구 대기/열린 원본 구독의 유지 사유를 확인한다.
 - [ ] 한 화면 종료가 다른 화면이나 서버 없는 draft 사용을 중단하지 않는다.
-- [ ] 시작 전 query는 환경 listener와 polling timer를 만들지 않고, 마지막 시작 관찰자와 polling handle을 dispose하면 listener/timer가 남지 않는지 확인한다. SSR client에는 둘 다 생기지 않아야 한다. — **부분.** 첫 문장의 listener 쪽만 확인했다(아래 출처). polling timer는 데모가 `refetchInterval: false`로 돌아 애초에 생기지 않으므로 항상 0인 행은 증거가 되지 않는다. dispose 쪽은 **둘째 client**를 요구한다 — 패널 조회의 수명은 화면의 수명과 같아 "마지막 시작 관찰자"를 해제할 수 없다.
+- [ ] 시작 전 query는 환경 listener와 polling timer를 만들지 않고, 마지막 시작 관찰자와 polling handle을 dispose하면 listener/timer가 남지 않는지 확인한다. SSR client에는 둘 다 생기지 않아야 한다. — **부분.** listener 쪽은 **시작 전과 dispose 뒤 모두 확인했다**(아래 출처). polling timer는 데모가 `refetchInterval: false`로 돌아 애초에 생기지 않으므로 항상 0인 행은 증거가 되지 않는다. SSR client 쪽은 `check-example-ssr.mjs`가 Node 렌더로 보고 있으나 브라우저 증거가 아니다([DC8-04](./PHASE8.md)).
 - [ ] 일반 응답 교체와 실제 runtime 만료 뒤 ref의 차이를 확인한다.
 
-**합격:** 입력 보존과 자원 정리가 명시적인 수명 계약을 따름. **결과: 항목 4 부분, 나머지 미수행.**
+**합격:** 입력 보존과 자원 정리가 명시적인 수명 계약을 따름. **결과: 항목 4 부분(listener 양쪽 통과, polling·SSR 도달 불가), 나머지 미수행.**
 
-**항목 4 (첫 문장, listener) — e2e 실행으로 채움**([DC8-8-08](./PHASE8_8.md)). 구현 SHA `550efa3`, 2026-09-27, 시나리오 `M2-19-7-cache`, 명령 `pnpm test:e2e`, **데모 다섯 종 전부.** 데모가 환경을 직접 소유하므로 그 listener 수는 라이브러리 내부를 들여다보지 않고 셀 수 있는 유일한 수명 값이다([DC8-8-11](./PHASE8_8.md)).
+**항목 4 (listener) — e2e 실행으로 채움**([DC8-8-08](./PHASE8_8.md)). 구현 SHA `550efa3`(첫 문장)·`4bb2b4d`(뒷문장), 2026-09-27, 시나리오 `M2-19-7-cache`·`M2-18-4-dispose`, 명령 `pnpm test:e2e`, **데모 다섯 종 전부.** 데모가 환경을 직접 소유하므로 그 listener 수는 라이브러리 내부를 들여다보지 않고 셀 수 있는 유일한 수명 값이다([DC8-8-11](./PHASE8_8.md)).
 
 - **갓 열린 화면의 `환경 listener 수`는 0이다.** 조회 핸들 세 개가 이미 만들어져 캐시 항목 두 개를 잡고 있는데도(`profile owners=2`·`profile/readonly owners=1`) listener는 없다. 자동 재조회 관찰자는 `load()`/`refetch()`에서만 `start()`하기 때문이다(`packages/sync/src/index.ts:1070`).
 - **`최초 조회`를 누르면 1이 된다.** client가 첫 관찰자가 시작될 때 한 번만 구독하고 마지막 관찰자가 멈출 때 놓는다(`packages/sync/src/automatic-refetch.ts`). 조회 세 개가 돌아도 1이다.
+- **둘째 client를 *열기만* 해도 1 그대로다.** 조회 핸들이 하나 더 생겼지만 아직 시작하지 않았으므로 구독이 없다 — 첫 문장이 client 단위로 한 번 더 성립한다.
+- **`둘째 client 조회`에서 2가 된다.** client마다 한 번씩 구독하기 때문이다.
+- **`둘째 client 해제`에서 1로 돌아온다.** 그것이 그 client의 마지막 시작 관찰자였고, 핸들을 dispose하면 그 관찰자도 dispose된다(`packages/sync/src/index.ts:1109`). **이 문장은 해제할 수 있는 client가 있어야 시험된다** — 패널 조회의 수명은 화면의 수명과 같다. 해제한 client의 카드는 모든 행이 `(해제됨)`이고 그 캐시 표는 빈 목록이다.
 
 
 ### M2-19 — 서버 기능 목록 (R2-23)
@@ -476,16 +487,16 @@ fixture는 시간을 제어하지 못한다([DC8-5-12](./PHASE8_5.md)). 제어 �
 - [ ] clean 기준을 저장·복원하고 TTL/buster 불일치에서 적용되지 않는지 확인한다. dirty/pending 기준은 저장 오류가 나며 기존 저장값이 남아 있어야 한다.
 - [ ] 별도 schema 2 복구 snapshot에서 dirty 값·변경 ID·충돌을 복원한다. 복원은 WRITE를 보내지 않아야 하며, 미확정 WRITE는 재조회나 알려진 서버 값 수용 전까지 clean SSR 저장을 막아야 한다. 진행 READ/연결 WRITE 중 저장은 거절해야 한다.
 - [ ] 독립 명령을 offline에서 보관한 뒤 online에서 명시적으로 재개한다. WRITE 직전 재시작한 작업은 `unknown`으로 보이고, 후속 명령도 멈추며 자동 재전송되지 않아야 한다. `maxAge`가 지난 명령도 보존·중단해야 한다. 서버 중복 방지 확인 뒤에만 같은 키로 명시적 재시도한다.
-- [ ] client별 `inspectCache()`와 `subscribeCache()`에서 조회 상태·소유자 수·생성/제거가 맞는지 확인한다. query payload와 mutation DTO는 이벤트에 없어야 하며, 구독 해제 뒤 이벤트가 더 오지 않아야 한다. — **부분.** 조회 상태·소유자 수·생성·제거·payload 없음·해제 뒤 이벤트 없음을 모두 확인했다(아래 출처). 남은 것은 첫 단어 **client별**이다 — 데모에 client가 하나뿐이라 "이 client의 캐시만 보인다"를 대조할 상대가 없다.
+- [ ] client별 `inspectCache()`와 `subscribeCache()`에서 조회 상태·소유자 수·생성/제거가 맞는지 확인한다. query payload와 mutation DTO는 이벤트에 없어야 하며, 구독 해제 뒤 이벤트가 더 오지 않아야 한다. — **부분.** 조회 상태·소유자 수·생성·제거·payload 없음·해제 뒤 이벤트 없음을 모두 확인했다(아래 출처). **client별**까지 확인했다 — 같은 key를 보는 둘째 client의 카드가 나란히 서서 서로의 항목을 보여 주지 않는다(아래 출처). 이 항목은 통과다.
 - [ ] 이미 편집한 resource에서 draft를 만들어 draft가 깨끗한지, draft 편집이 적용 전까지 원본 화면에 보이지 않는지 확인한다. 적용 뒤 draft는 깨끗하고 원본은 편집 상태이며 네트워크 호출이 없어야 한다. 적용은 원본에 root 경로 변경 1건을 남기므로 경로별 선택 제출은 적용 전에 해야 한다. draft가 열린 동안 원본이 바뀌면 겹친 경로가 충돌로 보이고 입력이 지워지지 않아야 하며, 원본 화면을 닫아도 draft 값은 남고 적용만 `missing-source`로 거절돼야 한다.
 - [ ] `autoResume`를 연결한 뒤 오프라인에서 보관한 명령이 재연결에서 자동으로 재개되고, focus나 오프라인 재연결에서는 실행되지 않는지 확인한다. `unknown` 작업은 재연결을 반복해도 재전송되지 않고 후속 명령을 막아야 하며, `retryUnknown` 뒤에만 다시 재개돼야 한다. 해제 뒤에는 재연결이 아무것도 시작하지 않아야 한다. 연결 제출은 자동 재개 대상이 아니다.
 - [ ] `checkpoint: true`로 연 기록에서 WRITE 진행 중 입력한 로컬 편집이 저장되고, 도중에 앱을 종료해도 복원에 남는지 확인한다. 저장된 작업 상태는 계속 `inFlight`이고 연결 query는 미확정이어야 하며, checkpoint 저장이 실패해도 WRITE와 결과 기록은 진행돼야 한다. `checkpoint`를 켜지 않으면 기존처럼 결과 시점에만 저장돼야 한다.
 - [ ] 여러 query를 묶은 연결 제출에서 한 link만 편집해도 WRITE가 시작되지 않고, 전달한 handle 집합이 저장된 key 집합과 다르면 거절되는지 확인한다. 전송 직전 복구 snapshot은 연결된 모든 query를 미확정으로 표시해야 하며, 재시작한 작업은 `unknown`으로 보류돼야 한다. 이전 단일 연결 기록은 마이그레이션되지 않으므로 `buster` 변경이 필요하다.
-- [ ] client별 `inspectMutations()`와 `subscribeMutations()`에서 미종료 WRITE만 보이고 scope 대기는 `queued`, 실행은 `pending`으로 구분되는지 확인한다. 입력 DTO·응답·오류 객체·idempotency 키 값이 이벤트에 없어야 하며, 종료 작업은 목록에서 빠지고 구독 해제 뒤 이벤트가 더 오지 않아야 한다. 관측된 `success`를 재전송 근거로 삼지 않는다. — **부분.** 미종료만 보임·`pending`·종료 뒤 목록에서 빠짐·payload 없음·해제 뒤 이벤트 없음을 확인했다(아래 출처). 남은 것 둘: **`queued`**는 scope 대기가 필요해 둘째 mutation을 요구하고, **client별**은 M2-19 7항과 같은 이유로 둘째 client를 요구한다. 데모는 관측된 결과를 재전송 근거로 쓰지 않는다(재전송 경로 자체가 없다).
+- [ ] client별 `inspectMutations()`와 `subscribeMutations()`에서 미종료 WRITE만 보이고 scope 대기는 `queued`, 실행은 `pending`으로 구분되는지 확인한다. 입력 DTO·응답·오류 객체·idempotency 키 값이 이벤트에 없어야 하며, 종료 작업은 목록에서 빠지고 구독 해제 뒤 이벤트가 더 오지 않아야 한다. 관측된 `success`를 재전송 근거로 삼지 않는다. — **부분.** 미종료만 보임·`pending`·종료 뒤 목록에서 빠짐·payload 없음·해제 뒤 이벤트 없음을 확인했다(아래 출처). **client별**까지 확인했다(아래 출처). 남은 것은 **`queued`** 하나다 — scope 대기를 만들려면 둘째 mutation이 필요하다. 데모는 관측된 결과를 재전송 근거로 쓰지 않는다(재전송 경로 자체가 없다).
 - [ ] 무한 조회 `prefetchInfinite`/`fetchInfinite`/`ensureInfinite`이 임시 소유권을 남기지 않고 기존 화면의 조회 설정을 바꾸지 않는지 확인한다. `infiniteView` 두 관찰자의 placeholder/select가 서로 다르고 페이지 추가 뒤 같은 캐시를 표시하며 한 view를 닫아도 다른 view는 유지돼야 한다.
 - [ ] 미지원/다른 동작은 표시하고 API 이름만으로 완전 호환·동등이라고 안내하지 않는다.
 
-**합격:** 출시 범위의 실제 기능과 제품 설명이 일치함. **결과: 항목 7·13 부분, 나머지 미수행.**
+**합격:** 출시 범위의 실제 기능과 제품 설명이 일치함. **결과: 항목 7 통과, 항목 13 부분(`queued`만 남음), 나머지 미수행.**
 
 **항목 7·13 — e2e 실행으로 채움**([DC8-8-08](./PHASE8_8.md)). 구현 SHA `550efa3`, 2026-09-27, 시나리오 `M2-19-7-cache`·`M2-19-7-remove`·`M2-19-13-mutations`·`M2-19-7-unsubscribe`, 명령 `pnpm test:e2e`, **데모 다섯 종 전부.** [관측 카드](./PHASE8_8.md)가 읽는 것은 전부 client의 공개 표면이다([DC8-8-11](./PHASE8_8.md)) — 내부를 들여다보고 채운 칸은 이 항목이 요구한 것을 확인한 것이 아니다.
 
@@ -496,6 +507,7 @@ fixture는 시간을 제어하지 못한다([DC8-5-12](./PHASE8_5.md)). 제어 �
 - **이벤트에 payload가 없다.** 불리언 한 칸이 아니라 **관측된 키의 합집합을 그대로 인쇄**해 판정했다([DC8-8-14](./PHASE8_8.md)): 캐시 이벤트는 `kind,owners,queryKey,status`, WRITE 이벤트는 `attempt,idempotent,linkedKeys,operationId,phase,scope,settledAt,startedAt`이다. 조회 값도, 입력 DTO도, 응답도, 오류 객체도 없고, `idempotent`은 불리언일 뿐 키 값이 아니다. payload가 새면 이 문자열이 바뀐다.
 - **미종료 WRITE만 보인다.** 로컬 편집과 제출 고정만으로는 목록이 비어 있고(`미종료 WRITE 없음`), `저장 실행` 중에는 `#1 pending scope=(없음) attempt=0 idempotent=false linked=profile` 한 줄이며, 완료하면 **목록이 빈다** — client가 종료 작업을 보관하지 않기 때문이다.
 - **구독 해제 뒤 이벤트가 오지 않는다.** `관측 구독 해제` 뒤 `재조회`·`가능한 요청 모두 완료`로 캐시를 실제로 움직였고 **표는 그것을 따라 갱신됐는데도** 해제한 쪽의 수는 `0 / 0`이다. 데모가 같은 흐름에 두 쌍의 핸들을 걸고 있어서([DC8-8-17](./PHASE8_8.md)) 이 0은 "이벤트가 흐르지 않았다"가 아니라 **"해제한 그 listener에게 오지 않았다"**를 말한다 — 항목이 요구하는 것이 그 listener 단위의 해제다. `관측 구독 재개` 직후도 0이고(해제 중에 지나간 것이 몰려오지 않는다), 그 뒤의 재조회부터 다시 센다.
+- **관측은 client별이다.** 시나리오 `M2-19-per-client`(구현 SHA `4bb2b4d`, 2026-09-27, 다섯 데모 전부). 같은 key `profile`을 두 client가 들고 있고 **두 캐시 표가 서로의 줄을 보여 주지 않는다** — 주 client는 `profile owners=2`·`profile/readonly owners=1`, 둘째 client는 `profile owners=1` 하나뿐이다. 주 client에서 `저장 실행`이 진행 중일 때 그 WRITE는 주 client의 목록에만 나타나고, 둘째 client에는 WRITE 표 자체가 없다. 두 이벤트 계수기도 각자 자기 client에서 일어난 일만 센다. **주입으로 확인했다:** probe가 새 client를 만들지 않고 주 client를 그대로 쓰게 하자 다섯 전부가 실패하며 `probe cache: expected 1 row(s), got 2`와 `resource-a/city: expected 서울, got 제주`를 함께 말했다.
 - **수를 누적 총계로 두지 않았다**([DC8-8-13](./PHASE8_8.md)). 총계는 조작 수·서버 알림 수에 따라 달라지는 값이고 `메모 N`·`zip 9NN`과 같은 함정이다. 화면이 보여 주는 것은 **마지막 (재)구독 이후**의 수다.
 
 
