@@ -1,6 +1,7 @@
 import { defineConfig } from '@playwright/test';
 import { DEMOS, urlOf } from './src/demos';
 import { BUNDLE_PORT, bundleUrl } from './src/bundles';
+import { SSR_DEMOS, ssrUrlOf } from './src/ssr';
 
 /**
  * Phase 8.8's runner (docs/server-sync/PHASE8_8.md).
@@ -47,5 +48,14 @@ export default defineConfig({
       reuseExistingServer: false,
       timeout: 60_000,
     },
+    ...SSR_DEMOS.map(demo => ({
+      // These render per request through Vite's middleware, so there is no
+      // `dist` to preview - the demo's own `dev:ssr` server is the page.
+      command: `pnpm --filter ${demo.pkg} run dev:ssr`,
+      env: { PORT: String(demo.port) },
+      url: ssrUrlOf(demo),
+      reuseExistingServer: false,
+      timeout: 60_000,
+    })),
   ],
 });

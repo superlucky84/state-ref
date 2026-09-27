@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { connectReact } from '@stateref/connect-react';
 import type { SsrModel } from 'stateref-example-shared';
 
@@ -19,6 +19,16 @@ export default function SsrPage({ model }: { model: SsrModel }) {
   const profile = useProfile();
   const derived = useDerived();
   const combined = useCombined();
+  /**
+   * The row that says the browser has taken over.
+   *
+   * `false` on the server and `true` after the first client commit, which is
+   * both the signal a reader waits on and a hydration check in itself: a
+   * server that rendered `true` here would be reported as a mismatch. The
+   * harness reads the DOM, never a `window` global (DC8-8-01).
+   */
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
 
   return (
     <main>
@@ -35,6 +45,10 @@ export default function SsrPage({ model }: { model: SsrModel }) {
         <div className="row">
           <span>우편번호</span>
           <b data-testid="zip">{profile.zip.value}</b>
+        </div>
+        <div className="row">
+          <span>hydration</span>
+          <b data-testid="hydrated">{String(hydrated)}</b>
         </div>
       </section>
       <section className="card">

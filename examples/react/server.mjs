@@ -13,7 +13,10 @@ import { createServer as createHttpServer } from 'node:http';
 
 const port = Number(process.env.PORT ?? 5191);
 const vite = await createServer({
-  server: { middlewareMode: true },
+  // The HMR socket follows the port, so the React and Vue SSR servers can run
+  // side by side - Phase 8.8's browser runner starts both at once, and Vite's
+  // default socket port would collide.
+  server: { middlewareMode: true, hmr: { port: port + 100 } },
   appType: 'custom',
 });
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onMounted, ref } from 'vue';
 import { connectVue } from '@stateref/connect-vue';
 import type { SsrModel } from 'stateref-example-shared';
 
@@ -18,6 +19,19 @@ const zip = profile(store => store.zip);
 const derived = connectVue(props.model.derived)(store => store);
 const combined = connectVue(props.model.combined)(store => store[0].city);
 const upper = connectVue(props.model.combined)(store => store[1].upperCase);
+
+/**
+ * The row that says the browser has taken over.
+ *
+ * `false` on the server and `true` once mounted, which is both the signal a
+ * reader waits on and a hydration check in itself: a server that rendered
+ * `true` here would be reported as a mismatch. The harness reads the DOM,
+ * never a `window` global (DC8-8-01).
+ */
+const hydrated = ref(false);
+onMounted(() => {
+  hydrated.value = true;
+});
 </script>
 
 <template>
@@ -34,6 +48,9 @@ const upper = connectVue(props.model.combined)(store => store[1].upperCase);
       </div>
       <div class="row">
         <span>우편번호</span><b data-testid="zip">{{ zip.value }}</b>
+      </div>
+      <div class="row">
+        <span>hydration</span><b data-testid="hydrated">{{ hydrated }}</b>
       </div>
     </section>
     <section class="card">
