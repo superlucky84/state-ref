@@ -256,6 +256,7 @@
 
 ### 2026-09-27 — Phase 8.8 10단계, 번들 페이지와 코어 결함 CI-30
 
+- done: **[Phase 8.8](./PHASE8_8.md) 11단계 — 경계 카드.** child ref(`office.room`)와 readonly 조회에서 분기하는 draft 한 칸으로 세 거절(`missing-source`·`conflict`·`readonly`)을 같은 네 버튼에서 갈라 보이고, 예약 키·미지원 값·직접 변형을 원본과 draft 양쪽에 같은 상수로 쓴다. **[M2-17](./MANUAL_TEST_CHECKLIST.md#m2-17) 항목 1·2·3 통과, 항목 4 부분.** 미수행 2 → **1개**(M2-20). 수행 중 **sync 결함 [CI-31](../core-improvement/REQUIREMENTS.md)**을 찾아 고쳤다 — readonly 조회의 `ref`가 스스로를 editable이라고 말해, 살아 있는 원본을 `missing-source`라고 보고하고 그 이유를 latch했다. 조작 60 → **72개**, 시나리오 46 → **51개**, 브라우저 스위트 66 → **71개**, sync 183 → **185개**.
 - done: **[Phase 8.8](./PHASE8_8.md) 10단계 — 번들 페이지 러너.** `examples/bundles`의 8개 페이지(ESM 네 조합 + UMD 네 로드 순서)를 실제 Chromium에서 열어 그 페이지들이 이미 인쇄하는 `판정` 행을 읽는다. **[M2-01 통과](./MANUAL_TEST_CHECKLIST.md#m2-01)**(7항목 전부), **[M2-02](./MANUAL_TEST_CHECKLIST.md#m2-02) 항목 1·2 통과·3·4 부분**. 미수행 4 → **2개**(M2-17·M2-20).
 - **예상대로 배관이었다.** 페이지와 `판정` 행은 [Phase 8.5](./PHASE8_5.md)부터 있었고, 빠진 것은 그것을 읽는 실행기가 **jsdom**이라는 사실 하나였다 — `scripts/check-example-bundles.mjs`가 스스로 `It is jsdom, not a browser: it is not the M2-01 result`라고 적고 있었다([DC8-04](./PHASE8.md)). 그 파일은 gate 안에 있고 브라우저가 필요 없으므로 **그대로 두고**, 판정을 채우는 것은 새 실행 쪽으로 옮겼다.
 - **그런데 배관을 잇자 코어 결함이 나왔다 — [CI-30](../core-improvement/REQUIREMENTS.md).** core 단독 페이지에서 `구독 해제` 뒤 버튼을 누르자 **알림 수가 3 → 4 → 5로 올라갔다.** `removeRun`이 기록을 지워도 호출자가 든 ref가 그 `run`을 물고 있고, 그 ref로 읽으면 `collector`가 기록을 다시 만든다. 읽기/쓰기 쌍마다 되살아난다(실측: 쓰기만 2회, 읽기 한 번 끼우면 **3회**, 5번 반복 **6회**). **`CI-24`가 같은 되살아남을 패스 안에서 이미 막아 놨고** — 그 주석이 이 부류를 정확히 묘사한다 — 앱이 화면을 다시 그리며 읽는 입구는 열려 있었다.
@@ -265,7 +266,7 @@
 - **회귀 테스트를 쓰다 한 번 속았다.** `false` 반환 해제를 시험하는 테스트를 처음에 `watch()`의 **unbound ref**로 읽게 썼는데, unbound ref는 `run`을 물지 않아 아무것도 등록하지 않는다 — 수정을 빼도 통과했다. 구독이 돌려준 ref로 고쳐야 네 개가 모두 잡는다. 주석으로 남겼다.
 - **계약 변경.** 번들 페이지의 행·버튼에 `data-row`·`data-action` id를 붙였다([DC8-8-21](./PHASE8_8.md)) — 판독이 `<dt>`의 한글 텍스트로 행을 찾고 있었고 라벨 한 단어를 고치면 장치가 깨진다. 기대값은 `examples/e2e`가 든다: 번들 페이지는 조합마다 한 장뿐이라 어긋날 상대가 없고, `stateref-example-shared`를 가져오면 core 단독 페이지의 모듈 그래프가 오염돼 그 페이지가 증명하려는 경계가 무너진다. 서버는 다섯 빌드 루트를 한 origin으로 내는 작은 정적 서버이고, 모호함은 **요청 시점에** 500으로 거절한다([DC8-8-22](./PHASE8_8.md)).
 - 수치: 브라우저 스위트 58 → **66개**(번들 8개는 4.6초), 코어 338 → **342개**. `pnpm test:e2e` **66/66**·콘솔 오류 0, `pnpm gate` **19단계 PASS**(minified 3696 → **3727 B** gzip, 목표 ≤ 3800), `pnpm -r test` 전 패키지 통과.
-- next: **M2-17(경로·배열·데이터 경계).** `remove-office`·`reorder-contacts`는 이미 있고, draft가 `office` 아래를 쥐는 조작과 타입 교체·예약 키 조작이 필요하다. 그다음 M2-16 항목 2·4, M2-18의 남은 항목, SSR hydration(Preact·Svelte·Solid에는 SSR 데모 자체가 없다), M2-19는 항목별로 고른다.
+- next: **M2-16 항목 2(합산 행)·항목 4(readonly 카드와 owner 교차 조작).** 그다음 M2-18의 남은 항목, SSR hydration(Preact·Svelte·Solid에는 SSR 데모 자체가 없다), M2-19는 항목별로 고른다. M2-17 항목 4의 readonly 예외는 서버가 비-plain 값을 보내는 fixture가 필요하므로 남겨 둔다.
 - blockers: 없다.
 - 시작 기준 commit: `0e1562d`. 코어 수정은 `5614d7e`, 예제·장치는 `b5050a8`다.
 

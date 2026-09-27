@@ -38,6 +38,9 @@
 - [ ] **DC8-8-19 / 둘째 client 카드는 tick으로 읽는다:** 동적으로 생긴 조회 핸들마다 커넥터 훅을 만들면 다섯 데모에 `DraftCard` 같은 컴포넌트가 하나씩 더 늘어난다. 그 경로(`connectX(query.watchStatus)`)는 **패널 두 장이 이미 충분히 덮고 있고**, 이 카드의 목적은 커넥터가 아니라 **client 격리**다. 그래서 카드는 모델이 만든 문자열 묶음을 tick 구독으로 읽는다 — 관측 카드와 같은 방식이다. 대신 **probe client의 캐시 이벤트에도 repaint 구독을 걸어야** tick이 제때 오른다([DC8-8-17](#요구와-결정)과 같은 이유이며, 빠뜨리면 같은 종류의 실패가 다시 난다). 이 카드가 시험하지 않는 것을 적어 두는 것이 요점이다.
 - [ ] **DC8-8-20 / 표는 카드 범위로 읽는다:** 두 client의 캐시 항목을 한 표에 섞으면 "client별"이 흐려진다. `cache`와 `mutations` 판독을 `changes`처럼 **카드별 목록**으로 바꾸고, 각 카드가 자기 `[data-cache]`만 들게 한다. 판독기는 이미 카드 범위로 `[data-change]`를 읽고 있었으므로 같은 자리에 붙는다.
 - [x] **DC8-8-21 / 번들 페이지의 계약은 그 페이지들이 스스로 든다:** 다섯 데모의 라벨을 `fields.ts`로 모은 이유는 **한 화면을 다섯 벌 그리기** 때문이었다. 번들 페이지는 조합마다 한 장뿐이라 어긋날 상대가 없으므로 기대값은 `examples/e2e` 쪽에 둔다. `examples/bundles`가 지는 의무는 **행과 버튼의 안정된 id**(`data-row`·`data-action`)뿐이다 — 그리고 그것이 꼭 필요하다: 지금까지 판독은 `<dt>`의 한글 텍스트로 행을 찾고 있었고([DC8-8-04](#요구와-결정)가 피하려던 바로 그 모양), 라벨 한 단어를 고치면 장치가 깨진다. **반대로 `stateref-example-shared`를 가져오는 것은 금지다** — core 단독 페이지의 모듈 그래프에 `state-ref`와 `@stateref/sync`가 들어와 그 페이지가 증명하려는 경계를 스스로 무너뜨린다.
+- [x] **DC8-8-23 / 경계 draft는 한 칸이고 원본만 바꿔 끼운다:** 두 카드를 두면 두 원본이 화면에 동시에 서지만, 이 항목이 읽는 것은 **같은 네 버튼이 원본에 따라 다른 이유를 낸다**는 것이다. 한 칸이면 그 비교가 시나리오의 구조 자체가 되고, 다섯 데모가 그려야 할 카드도 하나로 끝난다. 값 행이 `city`/`zip`/`memo`가 아니라 `boundaryValue` 하나인 것도 같은 이유다 — 원본이 잎(문자열)일 수도 레코드일 수도 있어, 한쪽에만 있는 행은 두 시나리오를 가로질러 비교할 수 없다.
+- [x] **DC8-8-24 / 두 지원 범위는 같은 상수로 비교한다:** 예약 키·미지원 값 조작은 원본용과 draft용이 **같은 payload 상수**를 쓴다. 거의 같은 값 둘을 각각 거절했다면 그것은 비교가 아니라 주장이다. 범위가 같다는 것이 M2-17 넷째 항목의 내용이므로, 다른 것은 층(그리고 그 층의 문장)뿐이어야 한다.
+- [x] **DC8-8-25 / 타입 교체는 글자를 바꾸지 않는다:** `office.room`을 `"301"`에서 `["301"]`로 바꾼다. 숫자나 다른 문자열로 바꾸면 화면에서 **값이 달라진 것**으로 읽히고, 그러면 `conflict`가 타입 때문인지 값 때문인지 구별되지 않는다. 글자를 고정하면 남는 차이는 따옴표와 괄호뿐이고, 거절의 근거가 타입이라는 것이 화면에서 읽힌다.
 - [x] **DC8-8-22 / 번들 페이지는 한 origin에서 낸다:** ESM 조합 네 개는 각자 다른 디렉터리로 빌드되고 UMD는 다섯째이며, 모든 페이지가 자산을 `/assets/...`·`/vendor/...`로 **루트에서** 참조한다. 한 디렉터리로 모으려면 번들 빌드를 고쳐야 하고 그것은 [DC8-8-06](#요구와-결정)이 금지한다(자산 경로는 `check-example-bundles.mjs`가 읽는다). 그래서 작은 정적 서버 하나가 **다섯 루트를 순서대로** 뒤진다. 모호함은 **요청 시점에** 거절한다 — 두 루트가 같은 경로를 다른 내용으로 내면 500이다. 빌드 시점에 전수 검사하면 어떤 페이지도 요청하지 않는 파일까지 걸리고(ESM 루트마다 자기 `module-graph.json`이 있다) 그 예외 목록은 썩는다.
 
 ## 구현 단계와 기준 테스트
@@ -412,6 +415,49 @@ core 단독 페이지에서 `구독 해제`를 누른 뒤 `도시 → 부산`을
 
 **회귀 테스트를 쓰다 한 번 속았다.** `false` 반환 해제를 시험하는 테스트를 처음에 `watch()`의 **unbound ref**로 읽게 썼는데, unbound ref는 `run`을 물지 않으므로 아무것도 등록하지 않는다 — 수정을 빼도 통과했다. 구독이 돌려준 ref로 읽도록 고쳐야 네 개가 모두 결함을 잡는다. **주입이 바꾸는 값이 테스트가 읽는 바로 그 값인지 확인한다**([단계 5](#단계-5--주입으로-확인한-두-가지-2026-09-26)의 교훈이 다시 나왔다).
 
+### 단계 11 — 경계 카드, 그리고 경로에 따라 다르게 답하던 조회 (2026-09-27)
+
+M2-17의 네 항목은 전부 **무변경 실패**를 요구한다. 거절이 나야 하고, 그 거절이 아무것도 바꾸지 않아야 한다. 데모에는 `remove-office`·`reorder-contacts`가 이미 있었지만 **그 거절을 받을 draft가 없었다** — draft A·B는 둘 다 `panelA.ref`(레코드 전체)에서 분기하므로 부모가 사라질 수도, readonly일 수도 없다.
+
+**경계 카드는 draft 한 칸이고 원본만 바꿔 끼운다.** `office.room`(child ref)이거나 readonly 조회다. 같은 네 버튼이 원본에 따라 다른 이유를 낸다 — 그것이 이 항목의 내용이므로 카드를 둘로 나누지 않았다. 조작 60 → **72개**, 시나리오 46 → **51개**, `examples/shared` 98 → **103개**, 브라우저 스위트 66 → **71개**. `pnpm test:e2e` **71/71**, gate 19단계 불변.
+
+| 원본 | 무엇이 일어나는가 | `apply()` |
+| --- | --- | --- |
+| `office.room` + `사무실(부모) 제거` | 경로가 사라진다 | `missing-source` |
+| `office.room` + `방 번호를 배열로 교체` | 경로는 살고 타입이 바뀐다 | `conflict` |
+| readonly 조회 | 원본이 모든 쓰기를 거절한다 | `readonly` |
+
+**두 거절을 가르는 것은 경로의 존재다.** 타입 교체는 `"301"`을 `["301"]`로 바꾼다 — 화면의 글자는 같고 따옴표와 괄호만 다르다. 그런데도 `conflict`이고 `missing-source`가 아닌 이유가 그것이다. 읽는 사람이 값 불일치와 혼동하지 않도록 **일부러 같은 글자**를 골랐다.
+
+**그리고 readonly가 거짓말을 하고 있었다 — [CI-31](../core-improvement/REQUIREMENTS.md).**
+
+readonly 조회에서 분기한 draft에 적용을 누르면 `missing-source`가 나왔다. **그 순간에도 원본을 읽으면 `서울`이 나온다.** 게다가 그 이유가 latch되어 `changes()[].source`가 영구히 `{exists:false}`가 되고, 이후 어떤 적용도 회복하지 못한다.
+
+| 앱이 ref를 얻는 길 | `connectRef().editable` | `apply()` |
+| --- | --- | --- |
+| `query.watch(renew)` | `false` | **`readonly`** — 원본도 `{exists:true,'서울'}` |
+| `query.ref` | `true` | `missing-source` + latch |
+| `query.watch()` (renew 없이) | `true` | `missing-source` + latch |
+
+**라이브러리는 절반은 이미 옳았다.** sync는 readonly를 core store *바깥*(`ResourceStore`의 `onWrite`)에서 막고, store 자체는 내부 쓰기가 지나가야 하므로 editable이다. `query.watch(renew)`는 `guardedWatch`가 core에 `{ editable: false }`를 넘겨 제대로 답했지만, `query.ref`는 그 내부 ref를 `guardRef`로 감싸기만 해서 넘겼다 — `guardRef`의 다섯째 인자는 `editable`이 아니라 `snapshotValues`다. 그래서 **같은 조회가 ref를 얻은 경로에 따라 다르게 답했다.**
+
+**첫 수정이 틀렸고 gate가 잡았다.** `draft.apply()`의 catch에서 "경로가 아직 읽히면 `readonly`"로 바꿨더니 **dispose된 resource도 경로는 읽히므로** `readonly`가 되어 sync 테스트 3개가 깨졌다. 그 테스트 이름이 답을 주고 있었다 — `reports an unreachable source instead of rethrowing its owner error`. `missing-source`의 뜻은 "소유자에 닿지 못함"이고, readonly 원본은 **닿는다.** 그렇다면 고칠 자리는 draft가 아니라 **닿을 수 있는데 쓰기만 거절하는 원본을 editable이라고 말하는 쪽**이었다. core는 한 줄도 건드리지 않았고 core 번들은 3727 B 그대로다.
+
+**덤으로 메시지가 일치했다.** 전에는 `query.ref` 쓰기가 `This query is readonly.`, `watch(renew)` 쓰기가 core의 일반 메시지였다. guard가 거절에 이름을 붙이면서 세 경로가 같은 문장을 답한다.
+
+**2×3 표가 M2-17의 셋째·넷째 항목을 함께 연다.** 예약 키·미지원 값·직접 변형을 **원본과 draft 양쪽**에 같은 상수로 쓴다. 여섯 번 다 거절되고, 그 뒤 원본이 `dirty=false`·`version 0 / 0`·변경 줄 없음이다 — "조용히 손상시키지 않음"이라는 합격 기준이 숫자로 선다. 두 조작이 **같은 payload 상수**를 쓰는 것이 중요하다: 거의 같은 값 둘을 거절했다면 비교가 아니라 주장이 된다.
+
+**주입 2종으로 판정력을 확인했다**(DC8-8-07).
+
+| 주입 | 결과 |
+| --- | --- |
+| svelte의 경계 카드가 tick을 따르지 않게 함 | **svelte만 실패**(3개 시나리오), 나머지 넷은 통과. 경계 카드를 쓰지 않는 `M2-17-2-array`·`M2-17-3-rules`는 svelte에서도 통과한다 |
+| 모델이 `office`(부모)에서 분기하게 함 — child ref가 아니라 | **다섯이 함께 실패**, 같은 단계·같은 칸에서. fixture 결함의 모양 그대로다 |
+
+둘 다 scratchpad에 원본을 두고 복원 뒤 `diff`로 동일함을 확인했다.
+
+**항목 4는 부분으로 남긴다.** "편집 가능 query와 draft의 범위가 같다"는 위 표로 확인했다. "readonly query는 그 범위 밖의 값을 실을 수 있다"(`ResourceStore`가 `editable`일 때만 `assertEditable`·`frozenCopy`를 건다, `packages/sync/src/resource.ts:99`)는 **코드를 읽어 확인했을 뿐 화면 증거가 없다** — 서버가 그런 값을 보내는 fixture가 없고, 만들면 다섯 데모의 readonly 패널 렌더에 영향을 준다. 코드 확인을 통과로 적지 않는다.
+
 ## 인계
 
 - done: 계획과 **구현 1~2단계.** `examples/e2e` 워크스페이스, 다섯 `webServer`, `pnpm test:e2e`, 그리고 `fields.ts`의 선택자 계약과 다섯 데모의 `data-card`·`data-field`·요청 줄 속성. 실제 Chromium에서 10/10 통과(**Preact·Vue·Svelte·Solid의 첫 브라우저 증거**). 한 종만 실패하는 것을 세 번 확인했다 — 주입 2종과 **실제 누락 1종**(Solid의 `data-field`).
@@ -431,6 +477,7 @@ core 단독 페이지에서 `구독 해제`를 누른 뒤 `도시 → 부산`을
 - done(이어서): **단계 8 — 둘째 client.** 같은 환경·같은 key에 둘째 `SyncClient`를 열어 **M2-19 7·13항의 `client별`·M2-18 4항 뒷문장·M2-03 첫째·둘째·여섯째 항목**에 닿았다. 조작 54 → **58개**, 시나리오 39 → **43개**, `examples/shared` 91 → **95개**, 브라우저 스위트 51 → **55개**. `pnpm test:e2e` **55/55**, gate 19단계 불변. 주입 2종(모델 1·Vue 1)으로 판정력을 확인하고 복원했다. 표 판독을 카드 범위로 바꾸고 표 소유를 계약에 선언했다([DC8-8-20](#요구와-결정)).
 - done(이어서): **단계 9 — 여러 명령의 순서.** 연결하지 않은 명령을 scope와 함께/없이 실행해 **M2-11 셋째 항목**(명시적 순서·충돌 정책)과 **M2-19 13항의 마지막 문장**(`queued`)에 닿았다. 조작 58 → **60개**, 시나리오 43 → **46개**, `examples/shared` 95 → **98개**, 브라우저 스위트 55 → **58개**. `pnpm test:e2e` **58/58**. 주입 2종(모델 1·Preact 1)으로 확인하고 복원했다. **M2-19 13항 통과.**
 - done(이어서): **단계 10 — 번들 페이지 러너.** `examples/bundles`의 8개 페이지를 실제 Chromium에서 읽어 **M2-01 전부와 M2-02의 core 쪽**에 닿았다. 브라우저 스위트 58 → **66개**, `pnpm test:e2e` **66/66**. 예상대로 배관이었지만 **코어 결함 [CI-30](../core-improvement/REQUIREMENTS.md)이 나왔다** — 해제한 구독이 ref를 읽는 순간 되살아난다(`CI-24`의 다른 입구). 코어 338 → **342개**. 주입 2종(코어 1·UMD 페이지 1)으로 확인하고 복원했다.
-- next: **M2-17(경로·배열·데이터 경계).** `remove-office`·`reorder-contacts`는 이미 있고, 필요한 것은 draft가 `office` 아래를 쥐는 조작과 타입 교체·예약 키 조작이다. 그다음 M2-16 항목 2(합산 행)·항목 4(readonly 카드와 owner 교차 조작), M2-18의 남은 항목, SSR hydration(`check-example-ssr.mjs`가 서버 HTML은 이미 보고 있고 hydration만 남았다 — 다만 Preact·Svelte·Solid에는 SSR 데모 자체가 없다), M2-19는 항목별로 고른다. 사람 몫 둘은 DC8-8-09대로 남긴다.
+- done(이어서): **단계 11 — 경계 카드.** child ref와 readonly 원본에서 분기하는 draft 한 칸으로 **M2-17 항목 1·2·3 통과, 항목 4 부분**. 조작 60 → **72개**, 시나리오 46 → **51개**, `examples/shared` 98 → **103개**, 브라우저 스위트 66 → **71개**. `pnpm test:e2e` **71/71**, gate 19단계 불변. **sync 결함 [CI-31](../core-improvement/REQUIREMENTS.md)을 찾아 고쳤다** — readonly 조회의 `ref`가 스스로를 editable이라고 말해, 적용이 살아 있는 원본을 `missing-source`라고 보고하고 그 이유를 latch했다. core는 건드리지 않았다. sync 183 → **185개**. 주입 2종(svelte 1·모델 1)으로 확인하고 복원했다.
+- next: **M2-16 항목 2(합산 행)·항목 4(readonly 카드와 owner 교차 조작).** 그다음 M2-18의 남은 항목, SSR hydration(`check-example-ssr.mjs`가 서버 HTML은 이미 보고 있고 hydration만 남았다 — 다만 Preact·Svelte·Solid에는 SSR 데모 자체가 없다), M2-19는 항목별로 고른다. M2-17 항목 4의 readonly 예외는 fixture가 필요하므로 남겨 둔다. 사람 몫 둘은 DC8-8-09대로 남긴다.
 - blockers: 없음. chromium은 내려받았다(headless shell 153.0.8010.12).
 - 시작 기준 commit: `4b8c760` + M2-11 계측과 이 단계 변경(미커밋).

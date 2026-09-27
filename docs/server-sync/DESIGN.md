@@ -258,6 +258,8 @@ F2-06의 서버 렌더 경계는 [Phase 8.4](./PHASE8_4.md)에 고정했다. Rea
 - 열린 draft, dirty resource, 진행 작업, 복구 대기 각각의 유지 사유와 해제를 관찰할 수 있어야 한다. 구독 하나의 해제가 다른 소비자를 중단하지 않는다.
 - 편집 모델은 우선 순환 없는 plain JSON 트리와 배열 원자성을 검증한다. query 자체의 반환 데이터 지원 범위는 별도로 검토하며, 이를 이유로 기능 동등성을 주장하지 않는다.
 - `value`/`toJSON` 등 core 예약 키, 함수·Date·Map·순환 구조·직접 일반 객체 변형의 처리와 타입을 명시한다. 조용히 값을 손상시키지 않는다.
+- **확정 (2026-09-27, [M2-17](./MANUAL_TEST_CHECKLIST.md#m2-17)에서 실측).** 편집 가능 query와 draft의 지원 범위는 **같다.** 같은 값이 두 층에서 각자의 문장으로 거절된다 — 예약 키는 `Resource payload key <k> is reserved.` / `Draft payload key <k> is reserved.`, 비-plain 값은 `Editable resources require plain, acyclic data.` / `Draft values must be plain, acyclic data.`, 읽어 온 값의 직접 변형은 `Resource snapshots cannot be modified directly.` / `Draft snapshots cannot be modified directly.`다. **readonly query만 예외다**: `ResourceStore`가 `editable`일 때만 `assertEditable`·`frozenCopy`를 걸므로(`packages/sync/src/resource.ts:99`), readonly 조회는 서버가 준 값을 검사도 동결도 없이 그대로 싣는다. 그래서 "query 데이터 지원"과 "편집 가능 데이터 지원"의 구분은 **query별 `editable` 한 축**이고, 편집 가능 쪽에서 draft와 query가 갈리지는 않는다.
+- **`draft.apply()`의 거절 이유는 네 가지이고 서로를 대신하지 않는다.** `missing-source`는 원본에 **닿지 못함**(경로 소멸·소유자 만료), `readonly`는 닿지만 쓰기를 거절함, `conflict`는 닿고 쓸 수 있으나 기준이 어긋남, `invalid-source`는 원본 값이 편집 모델 밖임이다. 원본이 쓰기를 거절하는 것과 사라진 것을 한 이유로 묶으면 **살아 있는 원본을 사라졌다고 보고**하게 되고, 그 보고는 되돌릴 수 없다([CI-31](../core-improvement/REQUIREMENTS.md)). 그래서 readonly를 store 바깥 게이트로만 막는 구현은 `connectRef(ref).editable`에 그 사실을 실어야 한다.
 
 ## 8. 구현 전 조사 항목
 
