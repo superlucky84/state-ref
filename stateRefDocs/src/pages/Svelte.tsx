@@ -7,8 +7,9 @@ export const Svelte = mount(() => {
       <h1>Svelte Integration</h1>
 
       <p>
-        Use <code>@stateref/connect-svelte</code> to connect a StateRef store to Svelte.
-        It returns Svelte <code>Writable</code> stores that integrate with Svelte's reactivity.
+        Use <code>@stateref/connect-svelte</code> to connect a StateRef store to
+        Svelte. It returns Svelte <code>Writable</code> stores that integrate
+        with Svelte's reactivity.
       </p>
 
       <h2>Install</h2>
@@ -21,7 +22,8 @@ export const Svelte = mount(() => {
       <h2>Basic Usage</h2>
 
       <p>
-        The Svelte connector uses a callback pattern to select which part of the store to track:
+        The Svelte connector uses a callback pattern to select which part of the
+        store to track:
       </p>
 
       <CodeBlock
@@ -57,16 +59,16 @@ export const useProfile = connectSvelte(watch);`}
 
       <h2>How It Works</h2>
 
-      <p>
-        The Svelte connector bridges StateRef with Svelte's store system:
-      </p>
+      <p>The Svelte connector bridges StateRef with Svelte's store system:</p>
 
       <ul>
         <li>
-          <code>connectSvelte(watch)</code> returns a function that accepts a selector callback
+          <code>connectSvelte(watch)</code> returns a function that accepts a
+          selector callback
         </li>
         <li>
-          The selector receives the StateRefStore and returns the specific property to track
+          The selector receives the StateRefStore and returns the specific
+          property to track
         </li>
         <li>
           Returns a Svelte <code>Writable</code> store
@@ -77,16 +79,12 @@ export const useProfile = connectSvelte(watch);`}
         <li>
           Two-way binding: Svelte changes sync back to StateRef, and vice versa
         </li>
-        <li>
-          Cleanup is automatic on component destroy
-        </li>
+        <li>Cleanup is automatic on component destroy</li>
       </ul>
 
       <h2>Selecting Properties</h2>
 
-      <p>
-        Use the selector callback to pick specific properties:
-      </p>
+      <p>Use the selector callback to pick specific properties:</p>
 
       <CodeBlock
         language="typescript"
@@ -119,9 +117,7 @@ const useStore = connectSvelte(watch);`}
 
       <h2>Working with Objects</h2>
 
-      <p>
-        You can also select entire objects:
-      </p>
+      <p>You can also select entire objects:</p>
 
       <CodeBlock
         language="html"
@@ -179,9 +175,7 @@ export const increment = () => {
 
       <h2>Using with Svelte's Reactive Statements</h2>
 
-      <p>
-        Combine with Svelte's reactive statements for derived values:
-      </p>
+      <p>Combine with Svelte's reactive statements for derived values:</p>
 
       <CodeBlock
         language="html"
@@ -202,9 +196,7 @@ export const increment = () => {
 
       <h2>Two-Way Binding with bind:value</h2>
 
-      <p>
-        Svelte's two-way binding works seamlessly:
-      </p>
+      <p>Svelte's two-way binding works seamlessly:</p>
 
       <CodeBlock
         language="html"
@@ -225,9 +217,7 @@ export const increment = () => {
 
       <h2>TypeScript Tips</h2>
 
-      <p>
-        The connector preserves types from your store:
-      </p>
+      <p>The connector preserves types from your store:</p>
 
       <CodeBlock
         language="typescript"
@@ -243,6 +233,34 @@ const done = useTodo(store => store.done);
 // done is Writable<boolean>`}
       />
 
+      <h2>Readonly Query Views</h2>
+
+      <p>
+        <code>connectSvelteView</code> binds a readonly query view from{' '}
+        <a href="#/guide/sync-view">@stateref/sync</a>. It takes the same{' '}
+        <code>Watch</code> shape as <code>connectSvelte</code> but never hands
+        out setters, because a display can be a selected value or a placeholder
+        that was never on the server.
+      </p>
+
+      <CodeBlock
+        language="html"
+        code={`<script lang="ts">
+  const view = connectSvelteView(live.watch);
+  const city = view(ref => ref.data.value);
+</script>
+
+<span>{$city ?? '-'}</span>`}
+      />
+
+      <p>
+        Edit the actual data through <code>live.query?.ref</code> once it has
+        loaded, not through the display. Unmounting this component ends{' '}
+        <strong>its own subscription only</strong> - the view itself is released
+        by whoever owns it, with <code>live.dispose()</code>, so a second screen
+        watching the same view keeps working.
+      </p>
+
       <h2>Related</h2>
 
       <ul>
@@ -250,7 +268,8 @@ const done = useTodo(store => store.done);
           <a href="#/guide/create-store">createStore</a> - store creation
         </li>
         <li>
-          <a href="#/guide/manual-sync">Manual Sync (Flux)</a> - action-based updates
+          <a href="#/guide/manual-sync">Manual Sync (Flux)</a> - action-based
+          updates
         </li>
         <li>
           <a href="#/guide/watch">Watch Function</a> - subscription behavior

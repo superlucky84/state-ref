@@ -60,16 +60,15 @@ export function ProfileCard() {
         <li>
           Updates are driven by reading <code>.value</code> in the render
         </li>
-        <li>
-          Cleanup is automatic on unmount (AbortController)
-        </li>
+        <li>Cleanup is automatic on unmount (AbortController)</li>
       </ul>
 
       <h2>Preact vs React</h2>
 
       <p>
-        The Preact connector is nearly identical to the React version. The main difference
-        is that it uses <code>preact/hooks</code> instead of React's hooks:
+        The Preact connector is nearly identical to the React version. The main
+        difference is that it uses <code>preact/hooks</code> instead of React's
+        hooks:
       </p>
 
       <CodeBlock
@@ -87,8 +86,8 @@ const useStore = connectPreact(watch);`}
       <h2>Manual Sync with Actions</h2>
 
       <p>
-        If you use <code>createStoreManualSync</code>, keep writes in actions and
-        call <code>sync()</code> after updates.
+        If you use <code>createStoreManualSync</code>, keep writes in actions
+        and call <code>sync()</code> after updates.
       </p>
 
       <CodeBlock
@@ -132,6 +131,34 @@ const useTodo = connectPreact(watch);
 // useTodo() returns StateRefStore<Todo>`}
       />
 
+      <h2>Readonly Query Views</h2>
+
+      <p>
+        <code>connectPreactView</code> binds a readonly query view from{' '}
+        <a href="#/guide/sync-view">@stateref/sync</a>. It takes the same{' '}
+        <code>Watch</code> shape as <code>connectPreact</code> but never hands
+        out setters, because a display can be a selected value or a placeholder
+        that was never on the server.
+      </p>
+
+      <CodeBlock
+        language="tsx"
+        code={`const useLive = connectPreactView(live.watch);
+
+function CityDisplay() {
+  const state = useLive();
+  return <span>{state.data.value ?? '-'}</span>;
+}`}
+      />
+
+      <p>
+        Edit the actual data through <code>live.query?.ref</code> once it has
+        loaded, not through the display. Unmounting this component ends{' '}
+        <strong>its own subscription only</strong> - the view itself is released
+        by whoever owns it, with <code>live.dispose()</code>, so a second screen
+        watching the same view keeps working.
+      </p>
+
       <h2>Related</h2>
 
       <ul>
@@ -139,13 +166,15 @@ const useTodo = connectPreact(watch);
           <a href="#/guide/create-store">createStore</a> - store creation
         </li>
         <li>
-          <a href="#/guide/manual-sync">Manual Sync (Flux)</a> - action-based updates
+          <a href="#/guide/manual-sync">Manual Sync (Flux)</a> - action-based
+          updates
         </li>
         <li>
           <a href="#/guide/watch">Watch Function</a> - subscription behavior
         </li>
         <li>
-          <a href="#/guide/react">React</a> - React integration (nearly identical API)
+          <a href="#/guide/react">React</a> - React integration (nearly
+          identical API)
         </li>
       </ul>
     </div>

@@ -97,6 +97,14 @@ const countRef: StateRefStore<number> = countWatch();
         the store or subscribe to changes.
       </p>
 
+      <p>
+        Called <strong>with</strong> a callback it subscribes and returns the
+        reference bound to that subscription. Called <strong>without</strong>{' '}
+        one it hands back a live reference that does not subscribe: reads and
+        writes through it stay current, but it registers no notification path of
+        its own. See <a href="#/guide/references">Understanding References</a>.
+      </p>
+
       <CodeBlock
         language="typescript"
         code={`type Watch<V> = (

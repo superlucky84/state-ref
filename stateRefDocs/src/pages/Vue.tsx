@@ -7,8 +7,8 @@ export const Vue = mount(() => {
       <h1>Vue Integration</h1>
 
       <p>
-        Use <code>@stateref/connect-vue</code> to connect a StateRef store to Vue 3.
-        It bridges StateRef's reactivity with Vue's reactive system.
+        Use <code>@stateref/connect-vue</code> to connect a StateRef store to
+        Vue 3. It bridges StateRef's reactivity with Vue's reactive system.
       </p>
 
       <h2>Install</h2>
@@ -21,7 +21,8 @@ export const Vue = mount(() => {
       <h2>Basic Usage</h2>
 
       <p>
-        The Vue connector uses a callback pattern to select which part of the store to track:
+        The Vue connector uses a callback pattern to select which part of the
+        store to track:
       </p>
 
       <CodeBlock
@@ -60,32 +61,32 @@ const age = useProfile(store => store.age);
       <h2>How It Works</h2>
 
       <p>
-        The Vue connector creates a bridge between StateRef and Vue's reactivity:
+        The Vue connector creates a bridge between StateRef and Vue's
+        reactivity:
       </p>
 
       <ul>
         <li>
-          <code>connectVue(watch)</code> returns a function that accepts a selector callback
+          <code>connectVue(watch)</code> returns a function that accepts a
+          selector callback
         </li>
         <li>
-          The selector receives the StateRefStore and returns the specific property to track
+          The selector receives the StateRefStore and returns the specific
+          property to track
         </li>
         <li>
-          Returns a Vue <code>Reactive</code> object with a <code>.value</code> property
+          Returns a Vue <code>Reactive</code> object with a <code>.value</code>{' '}
+          property
         </li>
         <li>
           Two-way binding: Vue changes sync back to StateRef, and vice versa
         </li>
-        <li>
-          Cleanup is automatic on component unmount
-        </li>
+        <li>Cleanup is automatic on component unmount</li>
       </ul>
 
       <h2>Selecting Properties</h2>
 
-      <p>
-        Use the selector callback to pick specific properties:
-      </p>
+      <p>Use the selector callback to pick specific properties:</p>
 
       <CodeBlock
         language="typescript"
@@ -112,9 +113,7 @@ theme.value = 'light';`}
 
       <h2>Working with Objects</h2>
 
-      <p>
-        You can also select entire objects:
-      </p>
+      <p>You can also select entire objects:</p>
 
       <CodeBlock
         language="typescript"
@@ -174,9 +173,7 @@ const count = useCounter(store => store.count);
 
       <h2>Composition API Pattern</h2>
 
-      <p>
-        Organize your store access in a composable:
-      </p>
+      <p>Organize your store access in a composable:</p>
 
       <CodeBlock
         language="typescript"
@@ -237,9 +234,7 @@ const { name, age, email, incrementAge } = useProfileStore();
 
       <h2>TypeScript Tips</h2>
 
-      <p>
-        The connector preserves types from your store:
-      </p>
+      <p>The connector preserves types from your store:</p>
 
       <CodeBlock
         language="typescript"
@@ -255,6 +250,37 @@ const done = useTodo(store => store.done);
 // done is Reactive<{ value: boolean }>`}
       />
 
+      <h2>Readonly Query Views</h2>
+
+      <p>
+        <code>connectVueView</code> binds a readonly query view from{' '}
+        <a href="#/guide/sync-view">@stateref/sync</a>. It takes the same{' '}
+        <code>Watch</code> shape as <code>connectVue</code> but never hands out
+        setters, because a display can be a selected value or a placeholder that
+        was never on the server.
+      </p>
+
+      <CodeBlock
+        language="vue"
+        code={`<script setup lang="ts">
+const view = connectVueView(live.watch);
+const city = view(ref => ref.data.value);
+const phase = view(ref => ref.phase.value);
+</script>
+
+<template>
+  <span>{{ phase === 'pending' ? '…' : city ?? '-' }}</span>
+</template>`}
+      />
+
+      <p>
+        Edit the actual data through <code>live.query?.ref</code> once it has
+        loaded, not through the display. Unmounting this component ends{' '}
+        <strong>its own subscription only</strong> - the view itself is released
+        by whoever owns it, with <code>live.dispose()</code>, so a second screen
+        watching the same view keeps working.
+      </p>
+
       <h2>Related</h2>
 
       <ul>
@@ -262,7 +288,8 @@ const done = useTodo(store => store.done);
           <a href="#/guide/create-store">createStore</a> - store creation
         </li>
         <li>
-          <a href="#/guide/manual-sync">Manual Sync (Flux)</a> - action-based updates
+          <a href="#/guide/manual-sync">Manual Sync (Flux)</a> - action-based
+          updates
         </li>
         <li>
           <a href="#/guide/watch">Watch Function</a> - subscription behavior

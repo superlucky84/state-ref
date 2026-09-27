@@ -98,6 +98,14 @@ const countRef: StateRefStore<number> = countWatch();
         변경을 구독하는 데 사용됩니다.
       </p>
 
+      <p>
+        콜백과 <strong>함께</strong> 부르면 구독하고 그 구독에 바인딩된 참조를
+        돌려줍니다. 콜백 <strong>없이</strong> 부르면 구독하지 않는 살아 있는
+        참조를 돌려줍니다 — 그 참조로 읽고 쓰는 값은 항상 최신이지만, 자기 알림
+        경로를 등록하지는 않습니다.{' '}
+        <a href="#/ko/guide/references">참조 이해하기</a>를 보세요.
+      </p>
+
       <CodeBlock
         language="typescript"
         code={`type Watch<V> = (

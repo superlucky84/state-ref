@@ -55,15 +55,11 @@ export function ProfileCard() {
       <h2>업데이트 동작</h2>
 
       <ul>
-        <li>
-          훅은 마운트 시 구독하고, 추적된 값이 바뀌면 리렌더링됩니다
-        </li>
+        <li>훅은 마운트 시 구독하고, 추적된 값이 바뀌면 리렌더링됩니다</li>
         <li>
           렌더에서 <code>.value</code>를 읽는 것이 추적의 기준입니다
         </li>
-        <li>
-          언마운트 시 자동으로 정리됩니다 (AbortController)
-        </li>
+        <li>언마운트 시 자동으로 정리됩니다 (AbortController)</li>
       </ul>
 
       <h2>수동 동기화 + 액션</h2>
@@ -101,8 +97,8 @@ export function Counter() {
       <h2>TypeScript 팁</h2>
 
       <p>
-        <code>createStore</code>의 타입이 훅으로 그대로 전달되므로
-        컴포넌트에서 타입이 안전하게 유지됩니다.
+        <code>createStore</code>의 타입이 훅으로 그대로 전달되므로 컴포넌트에서
+        타입이 안전하게 유지됩니다.
       </p>
 
       <CodeBlock
@@ -114,6 +110,35 @@ const useTodo = connectReact(watch);
 // useTodo()는 StateRefStore<Todo> 반환`}
       />
 
+      <h2>읽기 전용 조회 view</h2>
+
+      <p>
+        <code>connectReactView</code>는{' '}
+        <a href="#/ko/guide/sync-view">@stateref/sync</a>의 읽기 전용 조회
+        view를 연결합니다. <code>connectReact</code>와 같은 <code>Watch</code>{' '}
+        모양을 받지만 setter는 내주지 않습니다. 표시는 선택된 값일 수도, 서버에
+        존재한 적 없는 placeholder일 수도 있기 때문입니다.
+      </p>
+
+      <CodeBlock
+        language="tsx"
+        code={`const useLive = connectReactView(live.watch);
+
+function CityDisplay() {
+  const state = useLive();
+  if (state.phase.value === 'pending') return <span>불러오는 중…</span>;
+  return <span>{state.data.value ?? '-'}</span>;
+}`}
+      />
+
+      <p>
+        실제 데이터는 로드된 뒤 <code>live.query?.ref</code>로 편집하세요.
+        표시로 하지 않습니다. 이 컴포넌트의 언마운트는{' '}
+        <strong>자기 구독만</strong> 끝냅니다 — view 자체는 소유자가{' '}
+        <code>live.dispose()</code>로 놓으므로, 같은 view를 보는 둘째 화면은
+        계속 동작합니다.
+      </p>
+
       <h2>관련 문서</h2>
 
       <ul>
@@ -121,7 +146,8 @@ const useTodo = connectReact(watch);
           <a href="#/ko/guide/create-store">createStore</a> - 스토어 생성
         </li>
         <li>
-          <a href="#/ko/guide/manual-sync">수동 동기화 (Flux)</a> - 액션 기반 업데이트
+          <a href="#/ko/guide/manual-sync">수동 동기화 (Flux)</a> - 액션 기반
+          업데이트
         </li>
         <li>
           <a href="#/ko/guide/watch">Watch 함수</a> - 구독 동작

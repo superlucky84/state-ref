@@ -7,8 +7,9 @@ export const Solid = mount(() => {
       <h1>Solid Integration</h1>
 
       <p>
-        Use <code>@stateref/connect-solid</code> to connect a StateRef store to Solid.js.
-        It returns Solid <code>Signal</code> pairs that integrate with Solid's fine-grained reactivity.
+        Use <code>@stateref/connect-solid</code> to connect a StateRef store to
+        Solid.js. It returns Solid <code>Signal</code> pairs that integrate with
+        Solid's fine-grained reactivity.
       </p>
 
       <h2>Install</h2>
@@ -21,7 +22,8 @@ export const Solid = mount(() => {
       <h2>Basic Usage</h2>
 
       <p>
-        The Solid connector uses a callback pattern to select which part of the store to track:
+        The Solid connector uses a callback pattern to select which part of the
+        store to track:
       </p>
 
       <CodeBlock
@@ -59,19 +61,20 @@ function ProfileCard() {
 
       <h2>How It Works</h2>
 
-      <p>
-        The Solid connector bridges StateRef with Solid's signal system:
-      </p>
+      <p>The Solid connector bridges StateRef with Solid's signal system:</p>
 
       <ul>
         <li>
-          <code>connectSolid(watch)</code> returns a function that accepts a selector callback
+          <code>connectSolid(watch)</code> returns a function that accepts a
+          selector callback
         </li>
         <li>
-          The selector receives the StateRefStore and returns the specific property to track
+          The selector receives the StateRefStore and returns the specific
+          property to track
         </li>
         <li>
-          Returns a Solid <code>Signal</code> pair: <code>[getter, setter]</code>
+          Returns a Solid <code>Signal</code> pair:{' '}
+          <code>[getter, setter]</code>
         </li>
         <li>
           Call the getter function to read values: <code>name()</code>
@@ -89,9 +92,7 @@ function ProfileCard() {
 
       <h2>Selecting Properties</h2>
 
-      <p>
-        Use the selector callback to pick specific properties:
-      </p>
+      <p>Use the selector callback to pick specific properties:</p>
 
       <CodeBlock
         language="typescript"
@@ -130,9 +131,7 @@ function Settings() {
 
       <h2>Working with Objects</h2>
 
-      <p>
-        You can also select entire objects:
-      </p>
+      <p>You can also select entire objects:</p>
 
       <CodeBlock
         language="tsx"
@@ -196,9 +195,7 @@ function Counter() {
 
       <h2>Using with Solid's Reactive Primitives</h2>
 
-      <p>
-        Combine with Solid's reactive primitives for derived values:
-      </p>
+      <p>Combine with Solid's reactive primitives for derived values:</p>
 
       <CodeBlock
         language="tsx"
@@ -218,9 +215,7 @@ function FullName() {
 
       <h2>Input Binding Pattern</h2>
 
-      <p>
-        Handle input binding with Solid:
-      </p>
+      <p>Handle input binding with Solid:</p>
 
       <CodeBlock
         language="tsx"
@@ -253,9 +248,7 @@ function Form() {
 
       <h2>TypeScript Tips</h2>
 
-      <p>
-        The connector preserves types from your store:
-      </p>
+      <p>The connector preserves types from your store:</p>
 
       <CodeBlock
         language="typescript"
@@ -271,6 +264,33 @@ const [done, setDone] = useTodo(store => store.done);
 // done is Accessor<boolean>, setDone is Setter<boolean>`}
       />
 
+      <h2>Readonly Query Views</h2>
+
+      <p>
+        <code>connectSolidView</code> binds a readonly query view from{' '}
+        <a href="#/guide/sync-view">@stateref/sync</a>. It takes the same{' '}
+        <code>Watch</code> shape as <code>connectSolid</code> but never hands
+        out setters, because a display can be a selected value or a placeholder
+        that was never on the server.
+      </p>
+
+      <CodeBlock
+        language="tsx"
+        code={`function CityDisplay() {
+  const view = connectSolidView(live.watch);
+  const city = view(ref => ref.data.value);
+  return <span>{city() ?? '-'}</span>;
+}`}
+      />
+
+      <p>
+        Edit the actual data through <code>live.query?.ref</code> once it has
+        loaded, not through the display. Unmounting this component ends{' '}
+        <strong>its own subscription only</strong> - the view itself is released
+        by whoever owns it, with <code>live.dispose()</code>, so a second screen
+        watching the same view keeps working.
+      </p>
+
       <h2>Related</h2>
 
       <ul>
@@ -278,7 +298,8 @@ const [done, setDone] = useTodo(store => store.done);
           <a href="#/guide/create-store">createStore</a> - store creation
         </li>
         <li>
-          <a href="#/guide/manual-sync">Manual Sync (Flux)</a> - action-based updates
+          <a href="#/guide/manual-sync">Manual Sync (Flux)</a> - action-based
+          updates
         </li>
         <li>
           <a href="#/guide/watch">Watch Function</a> - subscription behavior
