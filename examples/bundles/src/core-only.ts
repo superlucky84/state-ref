@@ -26,33 +26,35 @@ const ref = watch((state, isFirst) => {
 });
 let subscribed = true;
 
-page.row('city', () => ref.city.value);
-page.row('count', () => String(ref.count.value));
-page.row('구독 알림 수', () => String(notifications));
-page.row('구독 상태', () => (subscribed ? '구독 중' : '해제됨'));
-page.row('네트워크 호출', () => `${networkCalls()}회`);
+page.row('city', 'city', () => ref.city.value);
+page.row('count', 'count', () => String(ref.count.value));
+page.row('notices', '구독 알림 수', () => String(notifications));
+page.row('subscribed', '구독 상태', () => (subscribed ? '구독 중' : '해제됨'));
+page.row('network', '네트워크 호출', () => `${networkCalls()}회`);
 page.row(
+  'draftGlobal',
   'window.stateRefDraft',
   () => typeof (window as { stateRefDraft?: unknown }).stateRefDraft
 );
 page.row(
+  'batchGlobal',
   'window.stateRefBatch',
   () => typeof (window as { stateRefBatch?: unknown }).stateRefBatch
 );
 
-page.action('도시 → 부산', () => {
+page.action('edit-city', '도시 → 부산', () => {
   ref.city.value = '부산';
 });
-page.action('count +1', () => {
+page.action('inc-count', 'count +1', () => {
   ref.count.value = ref.count.value + 1;
 });
-page.action('두 경로 연속 쓰기', () => {
+page.action('write-two', '두 경로 연속 쓰기', () => {
   // No batch helper here: each write notifies on its own, which is the
   // default core contract the combined page contrasts with.
   ref.city.value = '대전';
   ref.count.value = ref.count.value + 10;
 });
-page.action('구독 해제', () => {
+page.action('unsubscribe', '구독 해제', () => {
   if (!subscribed) {
     page.log('이미 해제했다.');
     return;

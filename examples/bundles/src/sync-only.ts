@@ -47,26 +47,26 @@ query.watchStatus(() => {
   page.paint();
 });
 
-page.row('status.loaded', () => String(query.status.loaded.value));
-page.row('status.status', () => query.status.status.value);
-page.row('dirty', () => String(query.status.dirty.value));
-page.row('version', () => String(query.status.version.value));
-page.row('ref.city', () => query.ref.city.value);
-page.row('서버 값', () => `${stored.city} / rev ${revision}`);
-page.row('READ / WRITE', () => `${reads} / ${writes}`);
-page.row('네트워크 호출', () => `${networkCalls()}회`);
+page.row('loaded', 'status.loaded', () => String(query.status.loaded.value));
+page.row('status', 'status.status', () => query.status.status.value);
+page.row('dirty', 'dirty', () => String(query.status.dirty.value));
+page.row('version', 'version', () => String(query.status.version.value));
+page.row('city', 'ref.city', () => query.ref.city.value);
+page.row('server', '서버 값', () => `${stored.city} / rev ${revision}`);
+page.row('counts', 'READ / WRITE', () => `${reads} / ${writes}`);
+page.row('network', '네트워크 호출', () => `${networkCalls()}회`);
 
-page.action('조회 (load)', () => {
+page.action('load', '조회 (load)', () => {
   void query
     .load()
     .then(() => page.log('조회를 마쳤다. 이제 ref를 읽고 쓸 수 있다.'))
     .catch(error => page.log(`조회 실패: ${String(error)}`));
 });
-page.action('도시 → 부산', () => {
+page.action('edit-city', '도시 → 부산', () => {
   query.ref.city.value = '부산';
   page.log('resource를 편집했다. 편집만으로는 WRITE가 시작되지 않는다.');
 });
-page.action('저장 (mutation)', () => {
+page.action('save', '저장 (mutation)', () => {
   const submission = query.capture();
   void mutation
     .run({
@@ -78,12 +78,12 @@ page.action('저장 (mutation)', () => {
     .catch(error => page.log(`저장 실패: ${String(error)}`));
   page.log('조회 shape와 다른 DTO를 보냈다.');
 });
-page.action('서버가 먼저 바뀜', () => {
+page.action('server-edit', '서버가 먼저 바뀜', () => {
   stored = { ...stored, city: '광주' };
   revision += 1;
   page.log('클라이언트 모르게 서버를 바꿨다. 재조회로 확인한다.');
 });
-page.action('재조회 (refetch)', () => {
+page.action('refetch', '재조회 (refetch)', () => {
   void query
     .refetch()
     .then(() => page.log('재조회를 마쳤다.'))

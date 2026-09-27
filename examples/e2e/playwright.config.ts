@@ -1,5 +1,6 @@
 import { defineConfig } from '@playwright/test';
 import { DEMOS, urlOf } from './src/demos';
+import { BUNDLE_PORT, bundleUrl } from './src/bundles';
 
 /**
  * Phase 8.8's runner (docs/server-sync/PHASE8_8.md).
@@ -29,12 +30,22 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  webServer: DEMOS.map(demo => ({
-    command: `pnpm --filter ${demo.pkg} exec vite preview --port ${demo.port} --strictPort`,
-    url: urlOf(demo),
-    // A stale server from an earlier run would serve an older `dist` and the
-    // harness would report on a build nobody made.
-    reuseExistingServer: false,
-    timeout: 60_000,
-  })),
+  webServer: [
+    ...DEMOS.map(demo => ({
+      command: `pnpm --filter ${demo.pkg} exec vite preview --port ${demo.port} --strictPort`,
+      url: urlOf(demo),
+      // A stale server from an earlier run would serve an older `dist` and the
+      // harness would report on a build nobody made.
+      reuseExistingServer: false,
+      timeout: 60_000,
+    })),
+    {
+      // The bundle pages need several build roots served as one origin, which
+      // `vite preview` cannot do without changing their build (DC8-8-06).
+      command: `node src/bundle-server.mjs ${BUNDLE_PORT}`,
+      url: bundleUrl('/'),
+      reuseExistingServer: false,
+      timeout: 60_000,
+    },
+  ],
 });

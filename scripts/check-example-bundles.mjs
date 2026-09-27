@@ -187,9 +187,13 @@ for (const name of Object.keys(VENDOR_FILES)) {
  * Run each built UMD page in jsdom and read the verdict it prints.
  *
  * A page whose inline script has a typo would still be a file on disk, and
- * the person performing M2-01 would be the one to find out. This runs the
- * page scripts in the order the page declares, so the load order itself is
- * exercised. It is jsdom, not a browser: it is not the M2-01 result.
+ * a gate that never opened it would not notice. This runs the page scripts in
+ * the order the page declares, so the load order itself is exercised.
+ *
+ * It is jsdom, not a browser, so it is still not the M2-01 result (DC8-04).
+ * `examples/e2e/src/bundles.spec.ts` reads the same `data-row` values in real
+ * Chromium and that run is what fills the checklist. This one stays because it
+ * is in the gate and needs no browser download.
  */
 const vendorTag = /<script src="\/vendor\/([\w.-]+)"><\/script>/g;
 
@@ -260,5 +264,5 @@ console.log(
     `and the ${UMD_PAGES.length} UMD pages reach their verdict on the real ` +
     'dist files.' +
     '\nNo core, draft or batch artifact references a network API.' +
-    '\n(Build time and jsdom. Whether the pages work in a browser is M2-01, Phase 8.7.)'
+    '\n(Build time and jsdom. The browser run is `pnpm test:e2e`, which reads the\nsame rows in real Chromium and is what fills M2-01.)'
 );

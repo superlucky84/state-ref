@@ -15,10 +15,17 @@ const need = (id: string): HTMLElement => {
 };
 
 export type Page = Readonly<{
-  /** Add a button to the action row. */
-  action: (label: string, run: () => void) => void;
-  /** Declare a panel row and how to read its current value. */
-  row: (label: string, read: () => string) => void;
+  /**
+   * Add a button to the action row.
+   *
+   * `id` is what a harness presses (`data-action`), `label` is what a person
+   * reads. They are separate so renaming the Korean label breaks nothing
+   * (DC8-8-04 in docs/server-sync/PHASE8_8.md); a harness addressing the
+   * button by its text would break on a rewording instead.
+   */
+  action: (id: string, label: string, run: () => void) => void;
+  /** Declare a panel row: `id` for `data-row`, `label` for the reader. */
+  row: (id: string, label: string, read: () => string) => void;
   /** Repaint every declared row. */
   paint: () => void;
   /** Append a line to the page log and repaint. */
@@ -46,9 +53,10 @@ export function createPage(): Page {
   };
 
   return {
-    action(label, run) {
+    action(id, label, run) {
       const button = document.createElement('button');
       button.type = 'button';
+      button.dataset.action = id;
       button.textContent = label;
       button.addEventListener('click', () => {
         try {
@@ -61,10 +69,12 @@ export function createPage(): Page {
       actions.append(button);
     },
 
-    row(label, read) {
+    row(id, label, read) {
       const term = document.createElement('dt');
       term.textContent = label;
       const value = document.createElement('dd');
+      // The id travels on the value, which is what a reading is about.
+      value.dataset.row = id;
       panel.append(term, value);
       rows.push({ value, read });
     },

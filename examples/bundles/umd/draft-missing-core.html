@@ -24,17 +24,21 @@
     <script>
       (function () {
         var panel = document.getElementById('panel');
-        function row(label, value) {
+        function row(id, label, value) {
           var dt = document.createElement('dt');
           dt.textContent = label;
           var dd = document.createElement('dd');
+          // The id is what a harness reads; the label is what a person reads
+          // (DC8-8-04). Addressing a row by its Korean text would make a
+          // rewording break the harness rather than the page.
+          dd.setAttribute('data-row', id);
           dd.textContent = String(value);
           panel.appendChild(dt);
           panel.appendChild(dd);
         }
 
-        row('typeof stateRef', typeof window.stateRef);
-        row('typeof stateRefDraft', typeof window.stateRefDraft);
+        row('coreGlobal', 'typeof stateRef', typeof window.stateRef);
+        row('draftGlobal', 'typeof stateRefDraft', typeof window.stateRefDraft);
 
         var message = '(오류 없음 — 예상과 다름)';
         var threw = false;
@@ -45,8 +49,9 @@
           message = String(error && error.message ? error.message : error);
         }
 
-        row('createDraft 호출', message);
+        row('callResult', 'createDraft 호출', message);
         row(
+          'verdict',
           '판정',
           threw && /core bundle/.test(message)
             ? '코어 누락을 분명히 알린다 — 정상'

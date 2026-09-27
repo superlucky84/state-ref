@@ -26,31 +26,36 @@
     <script>
       (function () {
         var panel = document.getElementById('panel');
-        function row(label, value) {
+        function row(id, label, value) {
           var dt = document.createElement('dt');
           dt.textContent = label;
           var dd = document.createElement('dd');
+          // The id is what a harness reads; the label is what a person reads
+          // (DC8-8-04). Addressing a row by its Korean text would make a
+          // rewording break the harness rather than the page.
+          dd.setAttribute('data-row', id);
           dd.textContent = String(value);
           panel.appendChild(dt);
           panel.appendChild(dd);
         }
 
-        row('typeof stateRef', typeof window.stateRef);
-        row('typeof stateRefDraft', typeof window.stateRefDraft);
+        row('coreGlobal', 'typeof stateRef', typeof window.stateRef);
+        row('draftGlobal', 'typeof stateRefDraft', typeof window.stateRefDraft);
 
         var source = window.stateRef.createStore({ city: '서울' })();
         var draft = window.stateRefDraft.createDraft(source);
         draft.ref.city.value = '대전';
 
-        row('draft 편집 후 원본', source.city.value);
-        row('draft 값', draft.ref.city.value);
-        row('changes', draft.changes().length);
+        row('sourceAfterEdit', 'draft 편집 후 원본', source.city.value);
+        row('draftValue', 'draft 값', draft.ref.city.value);
+        row('changes', 'changes', draft.changes().length);
 
         var applied = draft.apply();
-        row('apply', JSON.stringify(applied));
-        row('apply 후 원본', source.city.value);
+        row('applyResult', 'apply', JSON.stringify(applied));
+        row('sourceAfterApply', 'apply 후 원본', source.city.value);
         draft.discard();
         row(
+          'verdict',
           '판정',
           applied.ok && source.city.value === '대전'
             ? '두 전역이 함께 동작 — 정상'

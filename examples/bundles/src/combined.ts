@@ -47,32 +47,42 @@ query.watchStatus(() => {
   page.paint();
 });
 
-page.row('status.loaded', () => String(query.status.loaded.value));
-page.row('resource city', () => query.ref.city.value);
-page.row('resource dirty', () => String(query.status.dirty.value));
-page.row('draft city', () => (draft ? draft.ref.city.value : '(draft 없음)'));
-page.row('draft changes', () => (draft ? String(draft.changes().length) : '-'));
-page.row('core a / b', () => `${plain.a.value} / ${plain.b.value}`);
-page.row('core 알림 수', () => String(notifications));
-page.row('READ 횟수', () => String(reads));
-page.row('네트워크 호출', () => `${networkCalls()}회`);
+page.row('loaded', 'status.loaded', () => String(query.status.loaded.value));
+page.row('resourceCity', 'resource city', () => query.ref.city.value);
+page.row('resourceDirty', 'resource dirty', () =>
+  String(query.status.dirty.value)
+);
+page.row('draftCity', 'draft city', () =>
+  draft ? draft.ref.city.value : '(draft 없음)'
+);
+page.row('draftChanges', 'draft changes', () =>
+  draft ? String(draft.changes().length) : '-'
+);
+page.row(
+  'coreValues',
+  'core a / b',
+  () => `${plain.a.value} / ${plain.b.value}`
+);
+page.row('coreNotices', 'core 알림 수', () => String(notifications));
+page.row('reads', 'READ 횟수', () => String(reads));
+page.row('network', '네트워크 호출', () => `${networkCalls()}회`);
 
-page.action('조회 (load)', () => {
+page.action('load', '조회 (load)', () => {
   void query
     .load()
     .then(() => page.log('조회를 마쳤다.'))
     .catch(error => page.log(`조회 실패: ${String(error)}`));
 });
-page.action('resource 도시 → 부산', () => {
+page.action('resource-city', 'resource 도시 → 부산', () => {
   query.ref.city.value = '부산';
   page.log('resource를 편집했다. WRITE는 없다.');
 });
-page.action('resource에서 draft 분기', () => {
+page.action('branch', 'resource에서 draft 분기', () => {
   draft?.discard();
   draft = createDraft(query.ref);
   page.log('원본이 dirty여도 draft는 clean에서 시작한다.');
 });
-page.action('draft 도시 → 대전', () => {
+page.action('draft-city', 'draft 도시 → 대전', () => {
   if (!draft) {
     page.log('먼저 draft를 분기한다.');
     return;
@@ -80,7 +90,7 @@ page.action('draft 도시 → 대전', () => {
   draft.ref.city.value = '대전';
   page.log('draft만 바꿨다.');
 });
-page.action('draft apply', () => {
+page.action('apply', 'draft apply', () => {
   if (!draft) {
     page.log('먼저 draft를 분기한다.');
     return;
@@ -92,14 +102,14 @@ page.action('draft apply', () => {
       : `적용 거절: ${result.reason}`
   );
 });
-page.action('batch로 두 경로 쓰기', () => {
+page.action('batch-write', 'batch로 두 경로 쓰기', () => {
   batch(() => {
     plain.a.value = plain.a.value + 1;
     plain.b.value = plain.b.value + 10;
   });
   page.log('가장 바깥 batch가 끝날 때 구독당 알림 1회다.');
 });
-page.action('batch 없이 두 경로 쓰기', () => {
+page.action('plain-write', 'batch 없이 두 경로 쓰기', () => {
   plain.a.value = plain.a.value + 1;
   plain.b.value = plain.b.value + 10;
   page.log('기본 계약대로 쓰기마다 동기 알림이다.');

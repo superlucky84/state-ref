@@ -26,18 +26,22 @@
     <script>
       (function () {
         var panel = document.getElementById('panel');
-        function row(label, value) {
+        function row(id, label, value) {
           var dt = document.createElement('dt');
           dt.textContent = label;
           var dd = document.createElement('dd');
+          // The id is what a harness reads; the label is what a person reads
+          // (DC8-8-04). Addressing a row by its Korean text would make a
+          // rewording break the harness rather than the page.
+          dd.setAttribute('data-row', id);
           dd.textContent = String(value);
           panel.appendChild(dt);
           panel.appendChild(dd);
         }
 
-        row('typeof stateRef', typeof window.stateRef);
-        row('typeof stateRefDraft', typeof window.stateRefDraft);
-        row('typeof stateRefBatch', typeof window.stateRefBatch);
+        row('coreGlobal', 'typeof stateRef', typeof window.stateRef);
+        row('draftGlobal', 'typeof stateRefDraft', typeof window.stateRefDraft);
+        row('batchGlobal', 'typeof stateRefBatch', typeof window.stateRefBatch);
 
         var seen = [];
         var watch = window.stateRef.createStore({ count: 0 });
@@ -48,9 +52,9 @@
         ref.count.value = 1;
         ref.count.value = 2;
 
-        row('구독이 본 값', seen.join(' → '));
-        row('현재 count', ref.count.value);
-        row('판정', seen.length === 3 ? '쓰기마다 동기 알림 — 정상' : '예상과 다름');
+        row('seen', '구독이 본 값', seen.join(' → '));
+        row('count', '현재 count', ref.count.value);
+        row('verdict', '판정', seen.length === 3 ? '쓰기마다 동기 알림 — 정상' : '예상과 다름');
       })();
     </script>
   </body>

@@ -30,17 +30,21 @@
     <script>
       (function () {
         var panel = document.getElementById('panel');
-        function row(label, value) {
+        function row(id, label, value) {
           var dt = document.createElement('dt');
           dt.textContent = label;
           var dd = document.createElement('dd');
+          // The id is what a harness reads; the label is what a person reads
+          // (DC8-8-04). Addressing a row by its Korean text would make a
+          // rewording break the harness rather than the page.
+          dd.setAttribute('data-row', id);
           dd.textContent = String(value);
           panel.appendChild(dt);
           panel.appendChild(dd);
         }
 
-        row('코어만 로드했을 때 stateRefBatch', window.__batchGlobalBeforeLoad);
-        row('batch 로드 후 stateRefBatch', typeof window.stateRefBatch);
+        row('batchBeforeLoad', '코어만 로드했을 때 stateRefBatch', window.__batchGlobalBeforeLoad);
+        row('batchAfterLoad', 'batch 로드 후 stateRefBatch', typeof window.stateRefBatch);
 
         var seen = [];
         var watch = window.stateRef.createStore({ b: 0, c: 0 });
@@ -58,9 +62,10 @@
         ref.b.value = 5;
         ref.c.value = 6;
 
-        row('batch 안 두 경로 쓰기 → 알림', afterBatch.join(' | '));
-        row('batch 밖 두 경로 쓰기 → 알림', seen.slice(afterBatch.length).join(' | '));
+        row('insideBatch', 'batch 안 두 경로 쓰기 → 알림', afterBatch.join(' | '));
+        row('outsideBatch', 'batch 밖 두 경로 쓰기 → 알림', seen.slice(afterBatch.length).join(' | '));
         row(
+          'verdict',
           '판정',
           window.__batchGlobalBeforeLoad === 'undefined' &&
             afterBatch.length === 2 &&
