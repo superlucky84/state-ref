@@ -103,6 +103,10 @@ export const OPERATION_GROUPS = [
       ['inspect-unsubscribe', '관측 구독 해제'],
       ['inspect-resubscribe', '관측 구독 재개'],
       ['cache-remove-live-a', 'live/a 캐시 항목 제거 시도'],
+      ['probe-open', '둘째 client 열기 (같은 key)'],
+      ['probe-load', '둘째 client 조회'],
+      ['probe-edit', '둘째 client에서 도시 → 제주'],
+      ['probe-dispose', '둘째 client 해제'],
     ],
   },
   {

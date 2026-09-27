@@ -52,6 +52,12 @@ const envListeners = computed(() => {
   void ui.value.tick;
   return model.environment.listenerCount();
 });
+// The second client's card. Same key, different client (DC8-8-18); read through
+// the tick rather than a connector (DC8-8-19).
+const probe = computed(() => {
+  void ui.value.tick;
+  return model.probe();
+});
 
 const run = (id: string) => model.run(id as OperationId);
 const time = (at: number | null) =>
@@ -258,6 +264,40 @@ const time = (at: number | null) =>
         <p class="note">
           모두 client의 공개 관측 표면이다. 이벤트에는 조회 값과 입력 DTO가
           없고, 구독을 해제하면 이후 이벤트가 오지 않는다.
+        </p>
+      </section>
+
+      <section v-if="probe" class="card" data-card="probe">
+        <h2>{{ CARD_TITLE.probe }}</h2>
+        <Row field="probeState" :value="probe.state" />
+        <Row field="status" :value="probe.status" />
+        <Row field="dirty" :value="probe.dirty" />
+        <Row field="version" :value="probe.version" />
+        <Row v-if="probe.city !== null" field="city" :value="probe.city" />
+        <Row field="cacheSize" :value="probe.cacheSize" />
+        <Row field="cacheOwners" :value="probe.cacheOwners" />
+        <Row field="observedEvents" :value="probe.events" />
+        <table>
+          <thead>
+            <tr>
+              <th>key</th>
+              <th>kind</th>
+              <th>소유자</th>
+              <th>status / fetch</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in probe.cache" :key="row.key" :data-cache="row.key">
+              <td data-cell="key">{{ row.key }}</td>
+              <td data-cell="kind">{{ row.kind }}</td>
+              <td data-cell="owners">{{ row.owners }}</td>
+              <td data-cell="status">{{ row.status }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="note">
+          같은 key를 보지만 캐시가 다르다. 이 client의 편집·기준·요청은 패널 두
+          장과 공유되지 않고, 해제하면 이 client의 환경 listener만 사라진다.
         </p>
       </section>
     </div>

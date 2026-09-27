@@ -24,6 +24,9 @@ import {
   toSaveDto,
   withMemo,
 } from './scenario';
+import { inspectPanel } from './panels';
+import type { CacheLine } from './panels';
+import { keyText } from './fields';
 import { operationLabel } from './operations';
 import type { OperationId } from './operations';
 import type { Profile, SaveAddressDto, SaveAddressResponse } from './types';
@@ -92,7 +95,6 @@ export const READONLY_KEY = ['profile', 'readonly'] as const;
  * Derived from the key the query is actually opened with, so the column cannot
  * drift from `queryKey` (DC8-5-50).
  */
-export const keyText = (key: readonly string[]) => key.join('/');
 
 /**
  * The keys the live view follows, and the ids that select them.
@@ -161,6 +163,32 @@ export type DraftPair = Readonly<{
 
 export type ComputedSource = Readonly<{ dep: number; unrelated: number }>;
 
+/**
+ * What the second client's card shows, as strings.
+ *
+ * Strings all the way down because a disposed handle refuses every access and
+ * the card then prints `(해제됨)` in every row - the live view card's shape.
+ * The model builds this rather than handing the demos a handle that can throw
+ * inside a template.
+ *
+ * It is read through `ui.tick`, not through a connector: the binding it would
+ * exercise (`connectX(query.watchStatus)`) is what the two resource panels
+ * already cover, and this card exists to show *client isolation* (DC8-8-19).
+ */
+export type ProbePanel = Readonly<{
+  /** `(없음)` before it is opened; `열림`; `해제됨` afterwards. */
+  state: string;
+  status: string;
+  dirty: string;
+  version: string;
+  /** null while there is no baseline, so the row is absent like a panel's. */
+  city: string | null;
+  cacheSize: string;
+  cacheOwners: string;
+  events: string;
+  cache: readonly CacheLine[];
+}>;
+
 export type DemoModel = Readonly<{
   server: MockServer;
   environment: ControlledEnvironment;
@@ -174,6 +202,8 @@ export type DemoModel = Readonly<{
   liveView: LiveQueryViewHandle<Profile, Profile>;
   mutation: MutationHandle<SaveAddressDto, SaveAddressResponse>;
   drafts: () => DraftPair;
+  /** The second client's card, or null before it has ever been opened. */
+  probe: () => ProbePanel | null;
   watchUi: Watch<DemoUi>;
   run: (id: OperationId) => void;
   dispose: () => void;
@@ -326,6 +356,92 @@ export function createDemoModel(): DemoModel {
   };
 
   subscribeInspection();
+  // --- The second client (DC8-8-18~19) ------------------------------------
+  // Same environment, and deliberately the *same key*. A different key would
+  // prove nothing - that two caches do not mix is only a claim when both hold
+  // an entry for `profile` (M2-03's sixth bullet, R2-07).
+  type Probe = {
+    client: SyncClient;
+    query: QueryHandle<Profile>;
+    off: () => void;
+    events: number;
+  };
+  let probe: Probe | null = null;
+  /** Kept after a dispose so the card can say `해제됨` instead of vanishing. */
+  let probeEverOpened = false;
+
+  const openProbe = () => {
+    const second = createSyncClient({ environment });
+    const query = second.query<Profile>({
+      queryKey: PANEL_KEY,
+      queryFn: server.readFor(keyText(PANEL_KEY)),
+      ...AUTO_REFETCH,
+      ...RETRY_POLICY,
+    });
+    const record: Probe = {
+      client: second,
+      query,
+      events: 0,
+      off: () => {},
+    };
+    // One handle that counts and *then* repaints, in that order: the card reads
+    // the count through the tick, so repainting first would leave it a step
+    // behind. The main client needs two handles because an operation releases
+    // one of them (DC8-8-17); nothing releases this one but dispose.
+    record.off = second.subscribeCache(() => {
+      record.events += 1;
+      repaint();
+    });
+    probe = record;
+    probeEverOpened = true;
+  };
+
+  const disposeProbe = () => {
+    if (!probe) return;
+    probe.off();
+    // Disposing the handle disposes its automatic-refetch observer
+    // (`packages/sync/src/index.ts:1109`), and this client's last started
+    // observer stopping is what releases its environment subscription. That is
+    // the only way M2-18's fourth bullet can be tested: the panel queries live
+    // as long as the screen does.
+    probe.query.dispose();
+    probe = null;
+  };
+
+  const probeOf = (): ProbePanel | null => {
+    if (!probeEverOpened) return null;
+    if (!probe) {
+      return {
+        state: '해제됨',
+        status: '(해제됨)',
+        dirty: '(해제됨)',
+        version: '(해제됨)',
+        city: null,
+        cacheSize: '(해제됨)',
+        cacheOwners: '(해제됨)',
+        events: '(해제됨)',
+        cache: [],
+      };
+    }
+    const status = probe.query.status.value;
+    const panel = inspectPanel(
+      probe.client.inspectCache(),
+      probe.client.inspectMutations()
+    );
+    return {
+      state: '열림',
+      status: `${status.status} / ${status.fetchStatus}`,
+      dirty: String(status.dirty),
+      version: `${status.version} / ${status.conflicts}`,
+      // `ref` throws before a baseline exists, so the row waits for one - the
+      // same condition the resource panels mount their value rows under.
+      city: status.loaded ? probe.query.ref.city.value : null,
+      cacheSize: String(panel.cacheSize),
+      cacheOwners: String(panel.cacheOwners),
+      events: String(probe.events),
+      cache: panel.cache,
+    };
+  };
 
   // --- The callback-less computed demo (DC8-5-10) -------------------------
   // A manual-sync store, so "reads see current inputs before sync()" and
@@ -893,6 +1009,45 @@ export function createDemoModel(): DemoModel {
         );
       }
 
+      case 'probe-open':
+        if (probe) return bump(id, '이미 열려 있다.');
+        openProbe();
+        return bump(
+          id,
+          `같은 key ${keyText(
+            PANEL_KEY
+          )}에 둘째 client를 열었다. 캐시는 별도이고, 아직 조회하지 않았으므로 환경 listener는 늘지 않는다.`
+        );
+      case 'probe-load': {
+        if (!probe) return bump(id, '둘째 client가 없다. 먼저 연다.');
+        void probe.query.load().catch(() => undefined);
+        return bump(
+          id,
+          '둘째 client의 조회를 시작했다. 주 client가 같은 key를 이미 들고 있어도 요청은 따로 나간다 — 캐시가 다르므로 공유할 진행 READ가 없다.'
+        );
+      }
+      case 'probe-edit': {
+        if (!probe) return bump(id, '둘째 client가 없다. 먼저 연다.');
+        if (!probe.query.status.loaded.value)
+          return bump(id, '둘째 client가 아직 로드되지 않았다. 먼저 조회한다.');
+        probe.query.ref.city.value = CITY.probe;
+        return bump(
+          id,
+          `둘째 client에서만 도시를 ${CITY.probe}로 바꿨다. 같은 key지만 패널 두 장에는 보이지 않고 WRITE도 없다.`
+        );
+      }
+      case 'probe-dispose':
+        if (!probe)
+          return bump(
+            id,
+            probeEverOpened ? '이미 해제했다.' : '둘째 client가 없다.'
+          );
+        disposeProbe();
+        return bump(
+          id,
+          '둘째 client의 조회를 해제했다. 그 client의 마지막 시작 관찰자였으므로 환경 listener 수가 하나 줄어든다.'
+        );
+
       case 'inspect-unsubscribe':
         if (!ui.inspectSubscribed.value)
           return bump(id, '이미 해제했다. 구독 이후 이벤트 수는 0에 머문다.');
@@ -957,6 +1112,7 @@ export function createDemoModel(): DemoModel {
     liveView,
     mutation,
     drafts: () => drafts,
+    probe: probeOf,
     watchUi,
     run,
     dispose() {
@@ -970,6 +1126,7 @@ export function createDemoModel(): DemoModel {
       releaseInspection();
       offRepaintCache();
       offRepaintMutations();
+      disposeProbe();
     },
   };
 }

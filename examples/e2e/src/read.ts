@@ -1,10 +1,12 @@
 import type { Page } from '@playwright/test';
 import {
   CACHE_CELLS,
+  CACHE_TABLE_CARDS,
   CARD_FIELDS,
   CARD_TITLE,
   CHANGE_CELLS,
   MUTATION_CELLS,
+  MUTATION_TABLE_CARDS,
   REQUEST_CELLS,
 } from 'stateref-example-shared';
 import type { CardId, ScreenReading } from 'stateref-example-shared';
@@ -27,6 +29,38 @@ const text = (value: string | null | undefined) => (value ?? '').trim();
 export async function readScreen(page: Page): Promise<ScreenReading> {
   const cards: Record<string, Record<string, string>> = {};
   const changes: Record<string, readonly Record<string, string>[]> = {};
+  const cache: Record<string, readonly Record<string, string>[]> = {};
+  const mutations: Record<string, readonly Record<string, string>[]> = {};
+
+  /**
+   * One table inside a card, row by row, in document order.
+   *
+   * Scoped to the card rather than the page: two clients hold an entry for the
+   * same key, and a page-wide read would merge their tables into one list -
+   * blurring exactly the `client별` the checklist is asking about (DC8-8-20).
+   */
+  const tableIn = (
+    scope: ReturnType<Page['locator']>,
+    rowAttr: string,
+    cells: readonly string[]
+  ) =>
+    scope
+      .locator(`[${rowAttr}]`)
+      .evaluateAll(
+        (nodes, wanted) =>
+          nodes.map(node =>
+            Object.fromEntries(
+              wanted.map(cell => [
+                cell,
+                node
+                  .querySelector(`[data-cell="${cell}"]`)
+                  ?.textContent?.trim() ?? '',
+              ])
+            )
+          ),
+        [...cells]
+      ) as Promise<Record<string, string>[]>;
+
   for (const card of Object.keys(CARD_TITLE) as CardId[]) {
     const scope = page.locator(`[data-card="${card}"]`);
     // A draft card exists only after the drafts are branched, and reading an
@@ -54,22 +88,15 @@ export async function readScreen(page: Page): Promise<ScreenReading> {
 
     // In document order: which change survived and which one went is what the
     // remaining checklist items read, and the order is part of that.
-    changes[card] = (await scope
-      .locator('[data-change]')
-      .evaluateAll(
-        (nodes, cells) =>
-          nodes.map(node =>
-            Object.fromEntries(
-              cells.map(cell => [
-                cell,
-                node
-                  .querySelector(`[data-cell="${cell}"]`)
-                  ?.textContent?.trim() ?? '',
-              ])
-            )
-          ),
-        [...CHANGE_CELLS]
-      )) as Record<string, string>[];
+    changes[card] = await tableIn(scope, 'data-change', CHANGE_CELLS);
+    // An empty table is a reading, so the entry is made for every card the
+    // contract says owns one - never inferred from finding rows.
+    if (CACHE_TABLE_CARDS.includes(card)) {
+      cache[card] = await tableIn(scope, 'data-cache', CACHE_CELLS);
+    }
+    if (MUTATION_TABLE_CARDS.includes(card)) {
+      mutations[card] = await tableIn(scope, 'data-mutation', MUTATION_CELLS);
+    }
   }
 
   const requests: Record<string, Record<string, string>> = {};
@@ -93,34 +120,6 @@ export async function readScreen(page: Page): Promise<ScreenReading> {
       REQUEST_CELLS.map((cell, index) => [cell, values[index]])
     );
   }
-
-  /**
-   * The two observation tables, in document order.
-   *
-   * Read from the page like every other reading (DC8-8-01): the demos print
-   * what `inspectCache()`/`inspectMutations()` gave their render, and whether
-   * that survived the connector is the whole question.
-   */
-  const rowsOf = (selector: string, cells: readonly string[]) =>
-    page
-      .locator(selector)
-      .evaluateAll(
-        (nodes, wanted) =>
-          nodes.map(node =>
-            Object.fromEntries(
-              wanted.map(cell => [
-                cell,
-                node
-                  .querySelector(`[data-cell="${cell}"]`)
-                  ?.textContent?.trim() ?? '',
-              ])
-            )
-          ),
-        [...cells]
-      ) as Promise<Record<string, string>[]>;
-
-  const cache = await rowsOf('[data-cache]', CACHE_CELLS);
-  const mutations = await rowsOf('[data-mutation]', MUTATION_CELLS);
 
   return { cards, requests, changes, cache, mutations };
 }

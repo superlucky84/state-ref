@@ -25,6 +25,7 @@ export const CARD_TITLE = {
   live: '따라가는 표시 (liveView)',
   computed: 'computed 읽기 결과',
   inspect: '관측 (inspectCache / inspectMutations)',
+  probe: '둘째 client (같은 key, 별도 캐시)',
 } as const;
 
 export type CardId = keyof typeof CARD_TITLE;
@@ -95,11 +96,32 @@ export const FIELD_LABEL = {
   mutationEventFields: 'WRITE 이벤트 필드',
   /** The demo owns the environment, so it can count what sync subscribed. */
   envListeners: '환경 listener 수',
+  /**
+   * The second client's own row.
+   *
+   * Everything else the probe card shows reuses the ids the resource panels and
+   * the observation card already use - `status`, `dirty`, `version`, `city`,
+   * `cacheSize`, `cacheOwners`, `observedEvents`. The labels mean exactly the
+   * same thing there; what differs is the client, and the card is the scope
+   * (DC8-8-04). Two cards printing `캐시 항목 수` side by side with different
+   * numbers is how `client별` reads.
+   */
+  probeState: 'client 상태',
 } as const;
 
 export type FieldId = keyof typeof FIELD_LABEL;
 
 export const label = (field: FieldId) => FIELD_LABEL[field];
+
+/**
+ * How a query key becomes the text on screen.
+ *
+ * It lives here rather than beside the model because three places print it -
+ * the request table's key column, the live view card's key row, and the cache
+ * tables - and two of them are projections that must not import the model
+ * (which imports them).
+ */
+export const keyText = (key: readonly string[]) => key.join('/');
 
 /**
  * How a row's value becomes the text on screen.
@@ -201,6 +223,20 @@ export const CARD_FIELDS: Readonly<
     ],
     onceLoaded: [],
   },
+  // The probe card does not exist until the second client is opened, and it
+  // stays afterwards saying `해제됨` - the same shape as the live view card.
+  probe: {
+    always: [
+      'probeState',
+      'status',
+      'dirty',
+      'version',
+      'cacheSize',
+      'cacheOwners',
+      'observedEvents',
+    ],
+    onceLoaded: ['city'],
+  },
 };
 
 /** The cards a freshly opened demo renders. Drafts appear only on request. */
@@ -251,7 +287,23 @@ export type ChangeCell = (typeof CHANGE_CELLS)[number];
  * one: which key is present and how many owners it has *at which position* is
  * what M2-11's fifth bullet and M2-19's seventh item read. The key travels in
  * a cell as well as in the attribute so a reading says what it is about.
+ *
+ * Read inside the owning card's scope, like a changes table: two clients hold
+ * an entry for the same key, and merging their tables would blur exactly the
+ * `client별` the checklist asks about (DC8-8-20).
  */
+/**
+ * Which cards own one of these tables.
+ *
+ * Declared rather than inferred, because an *empty* table is a reading: the
+ * observation card saying 미종료 WRITE 없음 is what M2-19's thirteenth item asks
+ * for after a WRITE settles. A reader that only recorded non-empty tables could
+ * not tell "no rows" from "no table", and the model reader and the DOM reader
+ * would then disagree for no reason worth reporting.
+ */
+export const CACHE_TABLE_CARDS: readonly CardId[] = ['inspect', 'probe'];
+export const MUTATION_TABLE_CARDS: readonly CardId[] = ['inspect'];
+
 export const CACHE_ROW_ATTR = 'data-cache';
 export const CACHE_CELLS = ['key', 'kind', 'owners', 'status'] as const;
 export type CacheCell = (typeof CACHE_CELLS)[number];

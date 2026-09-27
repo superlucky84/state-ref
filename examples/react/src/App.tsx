@@ -477,6 +477,61 @@ function InspectCard() {
   );
 }
 
+/**
+ * The second client's card.
+ *
+ * Same key as the panels, different client - so the two cache tables stand side
+ * by side holding a `profile` row each, which is how `client별` reads
+ * (DC8-8-18). The model builds the strings because a disposed handle refuses
+ * every access, and the card is read through the tick rather than a connector
+ * (DC8-8-19): the binding a per-handle hook would exercise is what the two
+ * resource panels already cover, and this card is about isolation.
+ */
+function ProbeCard() {
+  const ui = useUi();
+  ui.tick.value; // Subscribe: the probe's status is read as a snapshot.
+  const probe = model.probe();
+  if (!probe) return null;
+
+  return (
+    <section className="card" data-card="probe">
+      <h2>{CARD_TITLE.probe}</h2>
+      <Row field="probeState" value={probe.state} />
+      <Row field="status" value={probe.status} />
+      <Row field="dirty" value={probe.dirty} />
+      <Row field="version" value={probe.version} />
+      {probe.city !== null && <Row field="city" value={probe.city} />}
+      <Row field="cacheSize" value={probe.cacheSize} />
+      <Row field="cacheOwners" value={probe.cacheOwners} />
+      <Row field="observedEvents" value={probe.events} />
+      <table>
+        <thead>
+          <tr>
+            <th>key</th>
+            <th>kind</th>
+            <th>소유자</th>
+            <th>status / fetch</th>
+          </tr>
+        </thead>
+        <tbody>
+          {probe.cache.map(row => (
+            <tr key={row.key} data-cache={row.key}>
+              <td data-cell="key">{row.key}</td>
+              <td data-cell="kind">{row.kind}</td>
+              <td data-cell="owners">{row.owners}</td>
+              <td data-cell="status">{row.status}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="note">
+        같은 key를 보지만 캐시가 다르다. 이 client의 편집·기준·요청은 패널 두
+        장과 공유되지 않고, 해제하면 이 client의 환경 listener만 사라진다.
+      </p>
+    </section>
+  );
+}
+
 function Controls() {
   return (
     <>
@@ -525,6 +580,7 @@ export default function App() {
         <LiveCard />
         <ComputedCard />
         <InspectCard />
+        <ProbeCard />
       </div>
     </main>
   );

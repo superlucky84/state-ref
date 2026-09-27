@@ -290,6 +290,12 @@ export default function App() {
     void tick();
     return model.environment.listenerCount();
   });
+  // The second client's card. Same key, different client (DC8-8-18); read
+  // through the tick rather than a connector (DC8-8-19).
+  const probe = createMemo(() => {
+    void tick();
+    return model.probe();
+  });
   const time = (at: number | null) =>
     at ? new Date(at).toLocaleTimeString() : '-';
 
@@ -489,6 +495,51 @@ export default function App() {
             없고, 구독을 해제하면 이후 이벤트가 오지 않는다.
           </p>
         </section>
+
+        <Show when={probe()} keyed>
+          {view => (
+            <section class="card" data-card="probe">
+              <h2>{CARD_TITLE.probe}</h2>
+              <Row field="probeState" value={view.state} />
+              <Row field="status" value={view.status} />
+              <Row field="dirty" value={view.dirty} />
+              <Row field="version" value={view.version} />
+              <Show when={view.city !== null}>
+                <Row field="city" value={view.city} />
+              </Show>
+              <Row field="cacheSize" value={view.cacheSize} />
+              <Row field="cacheOwners" value={view.cacheOwners} />
+              <Row field="observedEvents" value={view.events} />
+              <table>
+                <thead>
+                  <tr>
+                    <th>key</th>
+                    <th>kind</th>
+                    <th>소유자</th>
+                    <th>status / fetch</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <For each={view.cache}>
+                    {row => (
+                      <tr data-cache={row.key}>
+                        <td data-cell="key">{row.key}</td>
+                        <td data-cell="kind">{row.kind}</td>
+                        <td data-cell="owners">{row.owners}</td>
+                        <td data-cell="status">{row.status}</td>
+                      </tr>
+                    )}
+                  </For>
+                </tbody>
+              </table>
+              <p class="note">
+                같은 key를 보지만 캐시가 다르다. 이 client의 편집·기준·요청은
+                패널 두 장과 공유되지 않고, 해제하면 이 client의 환경 listener만
+                사라진다.
+              </p>
+            </section>
+          )}
+        </Show>
       </div>
     </main>
   );

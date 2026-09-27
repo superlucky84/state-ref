@@ -4,7 +4,7 @@ import type {
   SyncCacheEntry,
   SyncMutationEntry,
 } from '@stateref/sync';
-import { keyText } from './model';
+import { keyText } from './fields';
 import type { DraftChange, DraftStatus } from 'state-ref/draft';
 import type { MockServer } from './mock-server';
 import type { RequestRecord } from './types';

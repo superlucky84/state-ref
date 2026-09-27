@@ -4,9 +4,9 @@ import {
   requestPanel,
   resourcePanel,
 } from './panels';
-import { show } from './fields';
-import type { ChangeLine } from './panels';
-import { POLICY_TEXT, keyText } from './model';
+import { keyText, show } from './fields';
+import type { CacheLine, ChangeLine } from './panels';
+import { POLICY_TEXT } from './model';
 import type { DemoModel } from './model';
 
 /**
@@ -33,19 +33,29 @@ export type ScreenReading = Readonly<{
    */
   changes: Record<string, readonly Record<string, string>[]>;
   /**
-   * The cache table, in the order the client holds its entries.
+   * Card id -> its cache table, in the order that client holds its entries.
    *
-   * A flat ordered list rather than a map keyed by query key: a released key
+   * An ordered list per card, like `changes`. A list because a released key
    * stays in the cache with `owners 0` (DC8-8-15), so "which keys exist, in
-   * which order, with how many owners" is one statement and is compared as one.
+   * which order, with how many owners" is one statement. Per card because two
+   * clients hold an entry for the same key, and merging the tables would blur
+   * exactly the `client별` the checklist asks about (DC8-8-20).
    */
-  cache: readonly Record<string, string>[];
-  /** Open WRITEs in start order; a settled one leaves the list entirely. */
-  mutations: readonly Record<string, string>[];
+  cache: Record<string, readonly Record<string, string>[]>;
+  /** Card id -> its open WRITEs in start order; a settled one leaves the list. */
+  mutations: Record<string, readonly Record<string, string>[]>;
 }>;
 
 /** What a checkbox row shows. Every demo prints the boolean itself. */
 const flag = (on: boolean) => String(on);
+
+/** One cache row, exactly as the five tables print it. */
+const cacheRow = (line: CacheLine) => ({
+  key: line.key,
+  kind: line.kind,
+  owners: String(line.owners),
+  status: line.status,
+});
 
 /** One changes row, exactly as the five tables print it. */
 const changeRow = (line: ChangeLine) => ({
@@ -192,20 +202,43 @@ export function screenOf(model: DemoModel): ScreenReading {
     mutationEventFields: show(ui.mutationEventFields),
     envListeners: show(model.environment.listenerCount()),
   };
-  const cache = inspect.cache.map(line => ({
-    key: line.key,
-    kind: line.kind,
-    owners: String(line.owners),
-    status: line.status,
-  }));
-  const mutations = inspect.mutations.map(line => ({
-    id: String(line.id),
-    phase: line.phase,
-    scope: line.scope,
-    attempt: String(line.attempt),
-    idempotent: flag(line.idempotent),
-    linked: line.linked,
-  }));
+  const cache: Record<string, readonly Record<string, string>[]> = {
+    inspect: inspect.cache.map(cacheRow),
+  };
+  const mutations: Record<string, readonly Record<string, string>[]> = {
+    inspect: inspect.mutations.map(line => ({
+      id: String(line.id),
+      phase: line.phase,
+      scope: line.scope,
+      attempt: String(line.attempt),
+      idempotent: flag(line.idempotent),
+      linked: line.linked,
+    })),
+  };
+
+  /**
+   * The second client's card.
+   *
+   * The model builds the strings (a disposed handle refuses every access), and
+   * the card exists only once the probe has been opened - like a draft card.
+   * Its cache table is the same shape as the observation card's and stands
+   * beside it: same key, different client (DC8-8-18).
+   */
+  const probe = model.probe();
+  if (probe) {
+    const fields: Record<string, string> = {
+      probeState: probe.state,
+      status: probe.status,
+      dirty: probe.dirty,
+      version: probe.version,
+      cacheSize: probe.cacheSize,
+      cacheOwners: probe.cacheOwners,
+      observedEvents: probe.events,
+    };
+    if (probe.city !== null) fields.city = probe.city;
+    cards.probe = fields;
+    cache.probe = probe.cache.map(cacheRow);
+  }
 
   const rows: Record<string, Record<string, string>> = {};
   for (const row of requests.rows) {

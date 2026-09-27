@@ -22,6 +22,7 @@ export type { MockServer } from './mock-server';
 export {
   CACHE_CELLS,
   CACHE_ROW_ATTR,
+  CACHE_TABLE_CARDS,
   CARD_FIELDS,
   CARD_TITLE,
   CARDS_ON_LOAD,
@@ -30,8 +31,10 @@ export {
   FIELD_LABEL,
   MUTATION_CELLS,
   MUTATION_ROW_ATTR,
+  MUTATION_TABLE_CARDS,
   REQUEST_CELLS,
   REQUEST_ROW_ATTR,
+  keyText,
   label,
   show,
 } from './fields';
@@ -63,9 +66,14 @@ export {
   READING_QUERIES,
   READONLY_KEY,
   createDemoModel,
-  keyText,
 } from './model';
-export type { ComputedSource, DemoModel, DemoUi, DraftPair } from './model';
+export type {
+  ComputedSource,
+  DemoModel,
+  DemoUi,
+  DraftPair,
+  ProbePanel,
+} from './model';
 export { OPERATION_GROUPS, OPERATION_IDS, operationLabel } from './operations';
 export {
   createSsrModelFromSnapshot,

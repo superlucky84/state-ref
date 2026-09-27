@@ -31,20 +31,24 @@ export type Expectation = Readonly<{
     Record<string, readonly Readonly<Record<string, Match>>[]>
   >;
   /**
-   * The cache table, compared as a whole list in the order it is shown.
+   * Card id -> its cache table, compared as a whole list in shown order.
    *
    * One statement, not per-key assertions: a released key stays in the cache
    * with `owners 0` (DC8-8-15), so "which keys exist and how many owners each
-   * has" only means something as a list. `[]` would say the cache is empty.
+   * has" only means something as a list. Keyed by card because two clients hold
+   * an entry for the same key (DC8-8-20).
    */
-  cache?: readonly Readonly<Record<string, Match>>[];
+  cache?: Readonly<Record<string, readonly Readonly<Record<string, Match>>[]>>;
   /**
-   * Open WRITEs, as a whole list in start order.
+   * Card id -> its open WRITEs, as a whole list in start order.
    *
    * `[]` is how a scenario says 미종료 WRITE 없음 - which is what M2-19's
-   * thirteenth item asks for after a WRITE settles.
+   * thirteenth item asks for after a WRITE settles, and how it says that the
+   * second client never started one.
    */
-  mutations?: readonly Readonly<Record<string, Match>>[];
+  mutations?: Readonly<
+    Record<string, readonly Readonly<Record<string, Match>>[]>
+  >;
   /** Cards that must NOT be on screen. */
   absentCards?: readonly string[];
   /** Request ids that must not exist yet - pins "no request was issued". */
@@ -169,9 +173,12 @@ export function mismatches(
     compareRows(`${card} changes`, reading.changes[card], wantRows, out);
   }
 
-  if (expected.cache) compareRows('cache', reading.cache, expected.cache, out);
-  if (expected.mutations)
-    compareRows('mutations', reading.mutations, expected.mutations, out);
+  for (const [card, wantRows] of Object.entries(expected.cache ?? {})) {
+    compareRows(`${card} cache`, reading.cache[card], wantRows, out);
+  }
+  for (const [card, wantRows] of Object.entries(expected.mutations ?? {})) {
+    compareRows(`${card} mutations`, reading.mutations[card], wantRows, out);
+  }
 
   for (const card of expected.absentCards ?? []) {
     if (reading.cards[card]) out.push(`card ${card} should not be on screen`);
@@ -1861,21 +1868,23 @@ export const M2_INSPECT: readonly Scenario[] = [
               envListeners: '0',
             },
           },
-          cache: [
-            {
-              key: 'profile',
-              kind: 'query',
-              owners: '2',
-              status: 'pending / idle',
-            },
-            {
-              key: 'profile/readonly',
-              kind: 'query',
-              owners: '1',
-              status: 'pending / idle',
-            },
-          ],
-          mutations: [],
+          cache: {
+            inspect: [
+              {
+                key: 'profile',
+                kind: 'query',
+                owners: '2',
+                status: 'pending / idle',
+              },
+              {
+                key: 'profile/readonly',
+                kind: 'query',
+                owners: '1',
+                status: 'pending / idle',
+              },
+            ],
+          },
+          mutations: { inspect: [] },
         },
       },
       { press: 'load' },
@@ -1889,14 +1898,16 @@ export const M2_INSPECT: readonly Scenario[] = [
               mutationEventFields: '(이벤트 없음)',
             },
           },
-          cache: [
-            { key: 'profile', owners: '2', status: 'pending / fetching' },
-            {
-              key: 'profile/readonly',
-              owners: '1',
-              status: 'pending / fetching',
-            },
-          ],
+          cache: {
+            inspect: [
+              { key: 'profile', owners: '2', status: 'pending / fetching' },
+              {
+                key: 'profile/readonly',
+                owners: '1',
+                status: 'pending / fetching',
+              },
+            ],
+          },
         },
       },
       { press: 'settle-all' },
@@ -1904,10 +1915,16 @@ export const M2_INSPECT: readonly Scenario[] = [
         note: '완료 뒤 두 항목 모두 success/idle이고 소유자 수는 그대로다',
         expect: {
           cards: { inspect: { cacheSize: '2', cacheOwners: '3' } },
-          cache: [
-            { key: 'profile', owners: '2', status: 'success / idle' },
-            { key: 'profile/readonly', owners: '1', status: 'success / idle' },
-          ],
+          cache: {
+            inspect: [
+              { key: 'profile', owners: '2', status: 'success / idle' },
+              {
+                key: 'profile/readonly',
+                owners: '1',
+                status: 'success / idle',
+              },
+            ],
+          },
         },
       },
       { press: 'live-activate-a' },
@@ -1915,11 +1932,13 @@ export const M2_INSPECT: readonly Scenario[] = [
         note: '새 key가 생기는 것이 표에 한 줄로 나타난다 (M2-19 7항의 "생성")',
         expect: {
           cards: { inspect: { cacheSize: '3', cacheOwners: '4' } },
-          cache: [
-            { key: 'profile', owners: '2' },
-            { key: 'profile/readonly', owners: '1' },
-            { key: 'live/a', owners: '1', status: 'pending / fetching' },
-          ],
+          cache: {
+            inspect: [
+              { key: 'profile', owners: '2' },
+              { key: 'profile/readonly', owners: '1' },
+              { key: 'live/a', owners: '1', status: 'pending / fetching' },
+            ],
+          },
         },
       },
     ],
@@ -1938,12 +1957,14 @@ export const M2_INSPECT: readonly Scenario[] = [
         note: 'key를 바꾸면 이전 key의 구독이 곧바로 사라진다: live/a가 owners 0이 되고 live/b가 1을 든다. 캐시 항목은 남으므로 cacheSize는 4로 늘고 소유자 합계는 4에 머문다 — 구독이 남지 않는 것과 캐시에서 사라지는 것은 다른 사실이다 (DC8-8-15)',
         expect: {
           cards: { inspect: { cacheSize: '4', cacheOwners: '4' } },
-          cache: [
-            { key: 'profile', owners: '2' },
-            { key: 'profile/readonly', owners: '1' },
-            { key: 'live/a', owners: '0' },
-            { key: 'live/b', owners: '1', status: 'pending / fetching' },
-          ],
+          cache: {
+            inspect: [
+              { key: 'profile', owners: '2' },
+              { key: 'profile/readonly', owners: '1' },
+              { key: 'live/a', owners: '0' },
+              { key: 'live/b', owners: '1', status: 'pending / fetching' },
+            ],
+          },
         },
       },
       { press: 'settle-all' },
@@ -1955,12 +1976,14 @@ export const M2_INSPECT: readonly Scenario[] = [
             inspect: { cacheSize: '4', cacheOwners: '3' },
             live: { liveKey: '(없음)', liveEnabled: 'false' },
           },
-          cache: [
-            { key: 'profile', owners: '2' },
-            { key: 'profile/readonly', owners: '1' },
-            { key: 'live/a', owners: '0' },
-            { key: 'live/b', owners: '0' },
-          ],
+          cache: {
+            inspect: [
+              { key: 'profile', owners: '2' },
+              { key: 'profile/readonly', owners: '1' },
+              { key: 'live/a', owners: '0' },
+              { key: 'live/b', owners: '0' },
+            ],
+          },
         },
       },
       { press: 'live-dispose' },
@@ -1971,12 +1994,14 @@ export const M2_INSPECT: readonly Scenario[] = [
             inspect: { cacheSize: '4', cacheOwners: '3' },
             live: { liveKey: '(해제됨)', liveCity: '(해제됨)' },
           },
-          cache: [
-            { key: 'profile', owners: '2' },
-            { key: 'profile/readonly', owners: '1' },
-            { key: 'live/a', owners: '0' },
-            { key: 'live/b', owners: '0' },
-          ],
+          cache: {
+            inspect: [
+              { key: 'profile', owners: '2' },
+              { key: 'profile/readonly', owners: '1' },
+              { key: 'live/a', owners: '0' },
+              { key: 'live/b', owners: '0' },
+            ],
+          },
         },
       },
     ],
@@ -1994,11 +2019,13 @@ export const M2_INSPECT: readonly Scenario[] = [
         note: '표시가 live/a를 보고 있으므로 소유자가 1이다',
         expect: {
           cards: { inspect: { cacheSize: '3', cacheOwners: '4' } },
-          cache: [
-            { key: 'profile', owners: '2' },
-            { key: 'profile/readonly', owners: '1' },
-            { key: 'live/a', owners: '1', status: 'success / idle' },
-          ],
+          cache: {
+            inspect: [
+              { key: 'profile', owners: '2' },
+              { key: 'profile/readonly', owners: '1' },
+              { key: 'live/a', owners: '1', status: 'success / idle' },
+            ],
+          },
         },
       },
       { press: 'cache-remove-live-a' },
@@ -2009,11 +2036,13 @@ export const M2_INSPECT: readonly Scenario[] = [
             inspect: { cacheSize: '3', cacheOwners: '4' },
             operations: { lastResult: { contains: '제거하지 않았다' } },
           },
-          cache: [
-            { key: 'profile', owners: '2' },
-            { key: 'profile/readonly', owners: '1' },
-            { key: 'live/a', owners: '1' },
-          ],
+          cache: {
+            inspect: [
+              { key: 'profile', owners: '2' },
+              { key: 'profile/readonly', owners: '1' },
+              { key: 'live/a', owners: '1' },
+            ],
+          },
         },
       },
       { press: 'live-deactivate' },
@@ -2021,11 +2050,13 @@ export const M2_INSPECT: readonly Scenario[] = [
         note: '비활성화로 소유자가 0이 됐지만 항목은 아직 남아 있다 (DC8-8-15)',
         expect: {
           cards: { inspect: { cacheSize: '3', cacheOwners: '3' } },
-          cache: [
-            { key: 'profile', owners: '2' },
-            { key: 'profile/readonly', owners: '1' },
-            { key: 'live/a', owners: '0' },
-          ],
+          cache: {
+            inspect: [
+              { key: 'profile', owners: '2' },
+              { key: 'profile/readonly', owners: '1' },
+              { key: 'live/a', owners: '0' },
+            ],
+          },
         },
       },
       { press: 'cache-remove-live-a' },
@@ -2036,10 +2067,16 @@ export const M2_INSPECT: readonly Scenario[] = [
             inspect: { cacheSize: '2', cacheOwners: '3' },
             operations: { lastResult: { contains: '제거했다' } },
           },
-          cache: [
-            { key: 'profile', owners: '2', status: 'success / idle' },
-            { key: 'profile/readonly', owners: '1', status: 'success / idle' },
-          ],
+          cache: {
+            inspect: [
+              { key: 'profile', owners: '2', status: 'success / idle' },
+              {
+                key: 'profile/readonly',
+                owners: '1',
+                status: 'success / idle',
+              },
+            ],
+          },
         },
       },
     ],
@@ -2057,7 +2094,7 @@ export const M2_INSPECT: readonly Scenario[] = [
         note: '로컬 편집과 제출 고정만으로는 WRITE가 시작되지 않으므로 목록은 비어 있다',
         expect: {
           cards: { inspect: { openMutations: '0' } },
-          mutations: [],
+          mutations: { inspect: [] },
         },
       },
       { press: 'save' },
@@ -2071,16 +2108,18 @@ export const M2_INSPECT: readonly Scenario[] = [
                 'attempt,idempotent,linkedKeys,operationId,phase,scope,settledAt,startedAt',
             },
           },
-          mutations: [
-            {
-              id: '1',
-              phase: 'pending',
-              scope: '(없음)',
-              attempt: '0',
-              idempotent: 'false',
-              linked: 'profile',
-            },
-          ],
+          mutations: {
+            inspect: [
+              {
+                id: '1',
+                phase: 'pending',
+                scope: '(없음)',
+                attempt: '0',
+                idempotent: 'false',
+                linked: 'profile',
+              },
+            ],
+          },
         },
       },
       { press: 'settle-all' },
@@ -2088,7 +2127,7 @@ export const M2_INSPECT: readonly Scenario[] = [
         note: '종료한 작업은 client가 보관하지 않으므로 목록이 빈다. 미종료만 보인다는 것이 이 항목의 내용이다',
         expect: {
           cards: { inspect: { openMutations: '0' } },
-          mutations: [],
+          mutations: { inspect: [] },
         },
       },
     ],
@@ -2120,10 +2159,16 @@ export const M2_INSPECT: readonly Scenario[] = [
         note: '재조회가 캐시를 실제로 움직였고 표가 그것을 따라 갱신됐는데도(success/idle) 해제한 쪽의 이벤트 수는 0이다. 데모는 같은 흐름에 두 쌍의 핸들을 걸고 있고 다시 그리는 쪽은 살아 있으므로, 이 0은 "이벤트가 흐르지 않았다"가 아니라 **해제한 그 listener에게 오지 않았다**는 뜻이다 — 해제가 listener 단위라는 더 강한 주장이다 (DC8-8-17)',
         expect: {
           cards: { inspect: { observedEvents: '0 / 0' } },
-          cache: [
-            { key: 'profile', owners: '2', status: 'success / idle' },
-            { key: 'profile/readonly', owners: '1', status: 'success / idle' },
-          ],
+          cache: {
+            inspect: [
+              { key: 'profile', owners: '2', status: 'success / idle' },
+              {
+                key: 'profile/readonly',
+                owners: '1',
+                status: 'success / idle',
+              },
+            ],
+          },
         },
       },
       { press: 'inspect-resubscribe' },
@@ -2147,6 +2192,247 @@ export const M2_INSPECT: readonly Scenario[] = [
   },
 ];
 
+/**
+ * The second client (Phase 8.8 단계 8).
+ *
+ * Same environment, same key `profile` - a different key would prove nothing
+ * (DC8-8-18). What the two cards show side by side is the whole point: two cache
+ * tables each holding a `profile` row, two event counters, and two baselines
+ * that do not move together.
+ *
+ * Measured through the model first; every string here was copied from a reading.
+ */
+export const M2_CLIENTS: readonly Scenario[] = [
+  {
+    id: 'M2-03-share',
+    title: '한 client 안에서는 같은 key를 공유한다',
+    pins: 'M2-03 첫째·둘째 항목 (같은 key 공유, 편집은 보이고 WRITE는 없다)',
+    steps: [
+      { press: 'load' },
+      {
+        note: '패널 두 장이 한 key를 보므로 소유자가 2다. `최초 조회`는 패널 조회 하나와 readonly 조회 하나만 냈고 — 패널 B는 아무것도 요청하지 않았는데 함께 fetching이다. 그것이 진행 READ를 공유한다는 뜻이다',
+        expect: {
+          cards: {
+            'resource-a': { status: 'pending / fetching' },
+            'resource-b': { status: 'pending / fetching' },
+            requests: { counts: '2 / 0' },
+            inspect: { cacheSize: '2', cacheOwners: '3' },
+          },
+          cache: {
+            inspect: [
+              { key: 'profile', owners: '2', status: 'pending / fetching' },
+              {
+                key: 'profile/readonly',
+                owners: '1',
+                status: 'pending / fetching',
+              },
+            ],
+          },
+          requests: {
+            'READ-1': { key: 'profile' },
+            'READ-2': { key: 'profile/readonly' },
+          },
+          absentRequests: ['READ-3'],
+        },
+      },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      {
+        note: '한 패널의 편집이 다른 패널에 그대로 보이고, 요청은 늘지 않는다 — 편집만으로 WRITE는 없다',
+        expect: {
+          cards: {
+            'resource-a': { city: '부산', dirty: 'true' },
+            'resource-b': { city: '부산', dirty: 'true' },
+            requests: { counts: '2 / 0' },
+            inspect: { openMutations: '0' },
+          },
+          mutations: { inspect: [] },
+          absentRequests: ['READ-3'],
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-03-isolate',
+    title: '둘째 client는 같은 key의 값·편집·요청을 공유하지 않는다',
+    pins: 'M2-03 여섯째 항목 (별도 client 격리, R2-07)',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      {
+        note: '주 client만 있는 상태. probe 카드는 아직 없다',
+        expect: { absentCards: ['probe'] },
+      },
+      { press: 'probe-open' },
+      {
+        note: '같은 key `profile`에 둘째 client를 열었다. 캐시가 따로이므로 그 client의 표는 자기 항목 하나만 들고, 기준이 없어 `pending / idle`이다 — 주 client는 이미 로드됐는데도 값을 물려받지 않는다. 아직 조회하지 않았으므로 환경 listener는 1 그대로다',
+        expect: {
+          cards: {
+            probe: {
+              probeState: '열림',
+              status: 'pending / idle',
+              cacheSize: '1',
+              cacheOwners: '1',
+              observedEvents: '0',
+            },
+            inspect: { cacheSize: '2', cacheOwners: '3', envListeners: '1' },
+          },
+          cache: {
+            probe: [
+              {
+                key: 'profile',
+                kind: 'query',
+                owners: '1',
+                status: 'pending / idle',
+              },
+            ],
+            inspect: [
+              { key: 'profile', owners: '2', status: 'success / idle' },
+              {
+                key: 'profile/readonly',
+                owners: '1',
+                status: 'success / idle',
+              },
+            ],
+          },
+        },
+      },
+      { press: 'probe-load' },
+      { press: 'settle-all' },
+      {
+        note: '요청이 따로 나갔다: 주 client가 같은 key를 이미 들고 있는데도 READ가 2 → 3으로 늘고 그 key는 `profile`이다. 공유할 진행 READ가 없다는 뜻이다',
+        expect: {
+          cards: {
+            probe: { status: 'success / idle', city: '서울', dirty: 'false' },
+            requests: { counts: '3 / 0' },
+          },
+          requests: { 'READ-3': { key: 'profile', outcome: 'success' } },
+        },
+      },
+      { press: 'probe-edit' },
+      {
+        note: '둘째 client에서만 도시를 바꿨다. 같은 key인데 패널 두 장은 서울·clean 그대로고 요청도 늘지 않는다',
+        expect: {
+          cards: {
+            probe: { city: '제주', dirty: 'true', version: '1 / 0' },
+            'resource-a': { city: '서울', dirty: 'false', version: '0 / 0' },
+            'resource-b': { city: '서울', dirty: 'false' },
+            requests: { counts: '3 / 0' },
+          },
+        },
+      },
+      { press: 'edit-busan' },
+      {
+        note: '반대 방향도 마찬가지다. 패널은 부산·dirty가 되고 둘째 client는 제주·version 1 그대로다 — 두 기준이 각자 움직인다',
+        expect: {
+          cards: {
+            'resource-a': { city: '부산', dirty: 'true', version: '1 / 0' },
+            probe: { city: '제주', dirty: 'true', version: '1 / 0' },
+            requests: { counts: '3 / 0' },
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-19-per-client',
+    title: '관측은 client별이다',
+    pins: 'M2-19 7항·13항의 `client별`',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'probe-open' },
+      { press: 'probe-load' },
+      { press: 'settle-all' },
+      {
+        note: '두 표가 같은 이름의 줄을 따로 들고 있다. 주 client의 표에 둘째 client의 항목이 나타나지 않고, 그 반대도 아니다 — `inspectCache()`는 자기 client의 캐시만 본다',
+        expect: {
+          cards: {
+            inspect: { cacheSize: '2', cacheOwners: '3' },
+            probe: { cacheSize: '1', cacheOwners: '1' },
+          },
+          cache: {
+            inspect: [
+              { key: 'profile', owners: '2' },
+              { key: 'profile/readonly', owners: '1' },
+            ],
+            probe: [{ key: 'profile', owners: '1' }],
+          },
+        },
+      },
+      { press: 'edit-busan' },
+      { press: 'capture' },
+      { press: 'save' },
+      {
+        note: '주 client의 진행 중 WRITE는 주 client의 목록에만 있다. 둘째 client에는 WRITE 표가 아예 없다 — `inspectMutations()`도 client별이다',
+        expect: {
+          cards: { inspect: { openMutations: '1' } },
+          mutations: {
+            inspect: [{ id: '1', phase: 'pending', linked: 'profile' }],
+          },
+        },
+      },
+      { press: 'settle-all' },
+      {
+        note: '완료 뒤 주 client의 목록이 빈다. 그 동안 둘째 client의 이벤트 수는 자기 client에서 일어난 일만 센다 — 주 client의 WRITE와 복구는 거기 세어지지 않는다',
+        expect: {
+          cards: {
+            inspect: { openMutations: '0' },
+            probe: { observedEvents: '3', city: '서울', dirty: 'false' },
+          },
+          mutations: { inspect: [] },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-18-4-dispose',
+    title:
+      '마지막 시작 관찰자를 해제하면 그 client의 환경 listener가 남지 않는다',
+    pins: 'M2-18 4항 뒷문장 (dispose 뒤 listener 없음)',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      {
+        note: '주 client 하나가 조회를 시작했으므로 listener는 1이다',
+        expect: { cards: { inspect: { envListeners: '1' } } },
+      },
+      { press: 'probe-open' },
+      {
+        note: '둘째 client를 열어도 아직 1이다. 관찰자는 load()/refetch()에서만 시작한다',
+        expect: { cards: { inspect: { envListeners: '1' } } },
+      },
+      { press: 'probe-load' },
+      { press: 'settle-all' },
+      {
+        note: 'client마다 한 번씩 구독하므로 2가 된다',
+        expect: {
+          cards: {
+            inspect: { envListeners: '2' },
+            probe: { status: 'success / idle' },
+          },
+        },
+      },
+      { press: 'probe-dispose' },
+      {
+        note: '둘째 client의 조회를 해제했다. 그것이 그 client의 마지막 시작 관찰자였으므로 listener가 1로 돌아온다 — 패널 조회는 화면과 수명이 같아 이 문장을 시험할 수 없고, 해제할 수 있는 client가 있어야 닿는다. 해제한 client의 행은 모두 `(해제됨)`이고 그 캐시 표는 비어 있다',
+        expect: {
+          cards: {
+            inspect: { envListeners: '1', cacheSize: '2', cacheOwners: '3' },
+            probe: {
+              probeState: '해제됨',
+              status: '(해제됨)',
+              cacheSize: '(해제됨)',
+              observedEvents: '(해제됨)',
+            },
+          },
+          cache: { probe: [] },
+        },
+      },
+    ],
+  },
+];
+
 export const SCENARIOS: readonly Scenario[] = [
   ...M2_05_08,
   ...M2_07,
@@ -2160,4 +2446,5 @@ export const SCENARIOS: readonly Scenario[] = [
   ...M2_16,
   ...M2_11_LIVE,
   ...M2_INSPECT,
+  ...M2_CLIENTS,
 ];

@@ -18,6 +18,14 @@ export const CITY = {
   draft: '대전',
   /** The change that overlaps the draft and turns into a conflict. */
   overlap: '광주',
+  /**
+   * The second client's edit.
+   *
+   * A value of its own on purpose: the point of the probe is that the same key
+   * in another client does not share the edit, and reusing `부산` would leave
+   * "both say 부산" reading as agreement rather than as isolation.
+   */
+  probe: '제주',
 } as const;
 
 export const INITIAL_PROFILE: Profile = {
