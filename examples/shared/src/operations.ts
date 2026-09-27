@@ -45,6 +45,7 @@ export const OPERATION_GROUPS = [
       ['edit-gwangju', `도시 → 광주 (draft와 겹침)`],
       ['reorder-contacts', '연락처 배열 재정렬'],
       ['remove-office', '사무실(부모) 제거'],
+      ['swap-room-type', '방 번호를 배열로 교체 (타입 교체)'],
       ['readonly-write', 'readonly 조회에 쓰기 시도'],
     ],
   },
@@ -62,6 +63,7 @@ export const OPERATION_GROUPS = [
       ['draft-a-write-after-discard', '폐기한 draft A에 쓰기 시도'],
       ['draft-a-resolve-source', 'draft A 충돌 → 원본 선택'],
       ['draft-a-resolve-draft', 'draft A 충돌 → draft 선택'],
+      ['draft-a-rename-contact', 'draft A 연락처 1 이름 변경'],
     ],
   },
   {
@@ -109,6 +111,22 @@ export const OPERATION_GROUPS = [
       ['probe-load', '둘째 client 조회'],
       ['probe-edit', '둘째 client에서 도시 → 제주'],
       ['probe-dispose', '둘째 client 해제'],
+    ],
+  },
+  {
+    id: 'boundary',
+    title: '경계와 데이터 규칙',
+    operations: [
+      ['boundary-branch-room', '원본 office.room에서 draft 분기 (child ref)'],
+      ['boundary-branch-readonly', 'readonly 조회에서 draft 분기'],
+      ['boundary-edit', '경계 draft 값 변경'],
+      ['boundary-apply', '경계 draft 로컬 적용'],
+      ['draft-a-reserved-key', 'draft A에 예약 키 쓰기'],
+      ['draft-a-unsupported-value', 'draft A에 미지원 값 쓰기'],
+      ['draft-a-mutate-snapshot', 'draft A가 읽은 값 직접 변형'],
+      ['resource-reserved-key', '원본에 예약 키 쓰기'],
+      ['resource-unsupported-value', '원본에 미지원 값 쓰기'],
+      ['resource-mutate-snapshot', '원본이 읽은 값 직접 변형'],
     ],
   },
   {

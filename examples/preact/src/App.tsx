@@ -545,6 +545,40 @@ function ProbeCard() {
   );
 }
 
+/**
+ * The boundary card.
+ *
+ * One draft slot over a source the ordinary draft cards cannot hold: a child
+ * ref under `office`, whose parent an edit can remove from under it, or the
+ * readonly query, which refuses every write. Read through the tick like the
+ * probe card (DC8-8-19) - the binding a per-framework draft component would
+ * exercise is what draft A and draft B already cover, and the value here is a
+ * leaf string for one source and a record for the other.
+ */
+function BoundaryCard() {
+  const ui = useUi();
+  ui.tick.value; // Subscribe: the draft's status is read as a snapshot.
+  const boundary = model.boundary();
+  if (!boundary) return null;
+
+  return (
+    <section class="card" data-card="boundary">
+      <h2>{CARD_TITLE.boundary}</h2>
+      <Row field="boundarySource" value={boundary.source} />
+      <Row field="boundaryValue" value={boundary.value} />
+      <Row field="draftDirty" value={boundary.dirty} />
+      <Row field="version" value={boundary.version} />
+      <Changes rows={boundary.changes} />
+      <p class="note">
+        분기도 편집도 어느 원본에서나 된다. 갈리는 것은 적용이다 — 부모가 사라진
+        원본은 missing-source, 타입이 바뀐 원본은 conflict, readonly 원본은
+        readonly로 거절하고, 어느 쪽도 원본을 바꾸지 않으며 draft의 입력도
+        남는다.
+      </p>
+    </section>
+  );
+}
+
 function Controls() {
   return (
     <>
@@ -594,6 +628,7 @@ export default function App() {
         <ComputedCard />
         <InspectCard />
         <ProbeCard />
+        <BoundaryCard />
       </div>
     </main>
   );

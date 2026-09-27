@@ -52,9 +52,11 @@ export { SCENARIOS, mismatches, pressesOf } from './scenarios';
 export type { Expectation, Match, Scenario, Step } from './scenarios';
 export {
   CITY,
+  CONTACT_RENAME,
   INITIAL_PROFILE,
   removeOffice,
   reorderContacts,
+  ROOM_EDIT,
   toSaveDto,
   withMemo,
 } from './scenario';
@@ -68,6 +70,7 @@ export {
   createDemoModel,
 } from './model';
 export type {
+  BoundaryPanel,
   ComputedSource,
   DemoModel,
   DemoUi,

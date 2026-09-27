@@ -296,6 +296,12 @@ export default function App() {
     void tick();
     return model.probe();
   });
+  // The boundary card. One draft slot over a child ref or the readonly query;
+  // read through the tick for the same reason the probe card is (DC8-8-19).
+  const boundary = createMemo(() => {
+    void tick();
+    return model.boundary();
+  });
   const time = (at: number | null) =>
     at ? new Date(at).toLocaleTimeString() : '-';
 
@@ -536,6 +542,25 @@ export default function App() {
                 같은 key를 보지만 캐시가 다르다. 이 client의 편집·기준·요청은
                 패널 두 장과 공유되지 않고, 해제하면 이 client의 환경 listener만
                 사라진다.
+              </p>
+            </section>
+          )}
+        </Show>
+
+        <Show when={boundary()} keyed>
+          {view => (
+            <section class="card" data-card="boundary">
+              <h2>{CARD_TITLE.boundary}</h2>
+              <Row field="boundarySource" value={view.source} />
+              <Row field="boundaryValue" value={view.value} />
+              <Row field="draftDirty" value={view.dirty} />
+              <Row field="version" value={view.version} />
+              <Changes rows={view.changes} />
+              <p class="note">
+                분기도 편집도 어느 원본에서나 된다. 갈리는 것은 적용이다 —
+                부모가 사라진 원본은 missing-source, 타입이 바뀐 원본은
+                conflict, readonly 원본은 readonly로 거절하고, 어느 쪽도 원본을
+                바꾸지 않으며 draft의 입력도 남는다.
               </p>
             </section>
           )}

@@ -28,6 +28,17 @@ export const CITY = {
   probe: '제주',
 } as const;
 
+/**
+ * The boundary fixture's own values.
+ *
+ * `ROOM_EDIT` is what the child-ref draft types into `office.room`, and
+ * `CONTACT_RENAME` is the rename that turns into an edit of the whole
+ * `contacts` array - an array element is one atomic edit, so an index is
+ * never treated as an entity id (Phase 7.1).
+ */
+export const ROOM_EDIT = '999';
+export const CONTACT_RENAME = '최';
+
 export const INITIAL_PROFILE: Profile = {
   city: CITY.server,
   zip: '01',

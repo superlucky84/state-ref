@@ -2560,6 +2560,361 @@ export const M2_ORDER: readonly Scenario[] = [
   },
 ];
 
+/**
+ * M2-17 - path, array and data boundaries.
+ *
+ * Four refusals that must all be *no-change* failures, and the two rules that
+ * keep unsupported data out of both an editable query and a draft. The three
+ * apply refusals share the same four buttons and differ only in the source, so
+ * the reading is which reason the same sequence produces from each.
+ */
+const M2_17: readonly Scenario[] = [
+  {
+    id: 'M2-17-1-missing',
+    title:
+      '원본의 부모가 사라지면 적용이 missing-source로 거절하고 아무것도 바꾸지 않는다',
+    pins: 'M2-17 첫째 항목 (부모 소멸)',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'boundary-branch-room' },
+      { press: 'boundary-edit' },
+      {
+        note: 'child ref에서 분기한 draft다. 원본이 레코드가 아니라 그 안의 한 칸이므로 변경 경로가 `(root)`이고, 그 한 칸이 곧 draft 전체다',
+        expect: {
+          cards: {
+            boundary: {
+              boundarySource: '원본 office.room',
+              boundaryValue: '999',
+              draftDirty: 'true',
+              version: '1 / 0',
+            },
+          },
+          changes: {
+            boundary: [
+              {
+                path: '(root)',
+                before: '"301"',
+                after: '"999"',
+                source: '"301"',
+                conflict: '-',
+              },
+            ],
+          },
+        },
+      },
+      { press: 'remove-office' },
+      {
+        note: '부모를 없애자 draft는 **적용을 누르기 전에 이미** 원본이 없음을 안다 — `원본` 칸이 `(없음)`이 되고 충돌로 선다. 입력 `999`는 그대로다',
+        expect: {
+          cards: {
+            boundary: { boundaryValue: '999', version: '2 / 1' },
+            'resource-a': { office: '(없음)' },
+          },
+          changes: {
+            boundary: [
+              {
+                path: '(root)',
+                after: '"999"',
+                source: '(없음)',
+                conflict: 'conflict',
+              },
+            ],
+          },
+        },
+      },
+      { press: 'boundary-apply' },
+      {
+        note: '적용이 `missing-source`로 거절하고 **원본도 draft도 그대로다.** 원본의 변경 기록에는 사무실을 없앤 한 줄만 있고 방 번호를 쓴 줄은 없다 — 무변경 실패다',
+        expect: {
+          cards: {
+            operations: {
+              lastResult: { contains: '적용 거절: missing-source' },
+            },
+            boundary: { boundaryValue: '999', draftDirty: 'true' },
+            'resource-a': { office: '(없음)', version: '1 / 0' },
+          },
+          changes: {
+            'resource-a': [{ path: 'office', after: 'null', conflict: '-' }],
+            boundary: [
+              {
+                path: '(root)',
+                after: '"999"',
+                source: '(없음)',
+                conflict: 'conflict',
+              },
+            ],
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-17-1-type',
+    title:
+      '원본의 타입이 바뀌면 적용이 conflict로 거절한다 — 글자가 같아도 같은 값이 아니다',
+    pins: 'M2-17 첫째 항목 (타입 교체)',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'boundary-branch-room' },
+      { press: 'boundary-edit' },
+      { press: 'swap-room-type' },
+      {
+        note: '원본은 이 쓰기를 받는다 — `office.room`이 문자열에서 배열이 됐다. draft의 `before`는 `"301"`, `원본`은 `["301"]`이다. **화면의 글자는 같고 따옴표와 괄호만 다르다**',
+        expect: {
+          cards: {
+            'resource-a': { office: '{"floor":3,"room":["301"]}' },
+            boundary: { version: '2 / 1' },
+          },
+          changes: {
+            'resource-a': [
+              { path: 'office.room', before: '"301"', after: '["301"]' },
+            ],
+            boundary: [
+              {
+                path: '(root)',
+                before: '"301"',
+                after: '"999"',
+                source: '["301"]',
+                conflict: 'conflict',
+              },
+            ],
+          },
+        },
+      },
+      { press: 'boundary-apply' },
+      {
+        note: '`conflict`로 거절한다 — 경로는 살아 있으므로 `missing-source`가 아니다. 원본의 배열은 그대로 남고 draft의 `999`도 남는다',
+        expect: {
+          cards: {
+            operations: { lastResult: { contains: '적용 거절: conflict' } },
+            'resource-a': { office: '{"floor":3,"room":["301"]}' },
+            boundary: { boundaryValue: '999', draftDirty: 'true' },
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-17-1-readonly',
+    title: 'readonly 원본은 분기와 편집을 받고 적용만 readonly로 거절한다',
+    pins: 'M2-17 첫째 항목 (readonly) · CI-31',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'boundary-branch-readonly' },
+      { press: 'boundary-edit' },
+      {
+        note: 'readonly 조회에서도 분기와 편집은 된다. 거절은 적용에서만 난다 — 그래서 입력을 쥔 채로 검토할 수 있다',
+        expect: {
+          cards: {
+            boundary: { boundarySource: 'readonly 조회', draftDirty: 'true' },
+          },
+          changes: {
+            boundary: [
+              {
+                path: 'city',
+                before: '"서울"',
+                after: '"대전"',
+                source: '"서울"',
+                conflict: '-',
+              },
+            ],
+          },
+        },
+      },
+      { press: 'boundary-apply' },
+      {
+        note: '`readonly`로 거절한다. **원본이 사라졌다고 말하지 않는다** — `원본` 칸은 여전히 `"서울"`이고 충돌도 아니다. 거절 뒤에도 draft는 멀쩡하다',
+        expect: {
+          cards: {
+            operations: { lastResult: { contains: '적용 거절: readonly' } },
+            boundary: { draftDirty: 'true', version: '1 / 0' },
+          },
+          changes: {
+            boundary: [
+              {
+                path: 'city',
+                before: '"서울"',
+                after: '"대전"',
+                source: '"서울"',
+                conflict: '-',
+              },
+            ],
+          },
+        },
+      },
+      { press: 'boundary-apply' },
+      {
+        note: '다시 물어도 같은 답이다. 거절이 draft를 망가뜨리지 않았다는 뜻이고, 이 문장이 [CI-31](../core-improvement/REQUIREMENTS.md)이 고친 자리다',
+        expect: {
+          cards: {
+            operations: { lastResult: { contains: '적용 거절: readonly' } },
+            boundary: { version: '1 / 0' },
+          },
+          changes: {
+            boundary: [{ path: 'city', source: '"서울"', conflict: '-' }],
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-17-2-array',
+    title:
+      '배열 한 칸을 고쳐도 변경은 배열 하나다 — 재정렬 뒤 같은 인덱스를 이전 entity로 취급하지 않는다',
+    pins: 'M2-17 둘째 항목 (배열 재정렬 경계)',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'branch-drafts' },
+      { press: 'draft-a-rename-contact' },
+      {
+        note: '`contacts[0].name`을 고쳤는데 기록된 경로는 **`contacts`**다. 배열 하나가 원자 단위이고 인덱스는 entity ID가 아니다 — 경로가 `contacts.0.name`이었다면 재정렬 뒤 그 경로는 다른 사람을 가리킨다',
+        expect: {
+          cards: { 'draft-a': { draftDirty: 'true', version: '1 / 0' } },
+          changes: {
+            'draft-a': [
+              {
+                path: 'contacts',
+                after: { contains: '"name":"최"' },
+                conflict: '-',
+              },
+            ],
+          },
+        },
+      },
+      { press: 'reorder-contacts' },
+      {
+        note: '원본을 뒤집자 그 한 줄이 충돌이 된다. `원본` 칸이 뒤집힌 배열을 보여 준다 — 비교 대상이 배열 전체이므로 순서가 바뀐 것도 차이다',
+        expect: {
+          cards: {
+            'resource-a': { contacts: '박,이,김' },
+            'draft-a': { version: '2 / 1' },
+          },
+          changes: {
+            'draft-a': [
+              {
+                path: 'contacts',
+                source: { contains: '[{"id":"c3"' },
+                conflict: 'conflict',
+              },
+            ],
+          },
+        },
+      },
+      { press: 'draft-a-apply' },
+      {
+        note: '`conflict`로 거절한다. **원본의 순서가 그대로다** — 0번 자리에 `최`를 써넣지 않았다. 원자적 경계를 넘는 적용이 막힌 자리다',
+        expect: {
+          cards: {
+            operations: { lastResult: { contains: '적용 거절: conflict' } },
+            'resource-a': { contacts: '박,이,김' },
+            'draft-a': { draftDirty: 'true' },
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-17-3-rules',
+    title:
+      '예약 키·미지원 값·직접 변형은 원본과 draft 양쪽에서 각자의 말로 거절되고 아무것도 남기지 않는다',
+    pins: 'M2-17 셋째·넷째 항목 (예약 키·미지원 값·직접 변형, query와 draft의 지원 범위)',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'branch-drafts' },
+      { press: 'draft-a-reserved-key' },
+      {
+        note: 'draft는 예약 키를 이름을 대며 거절한다',
+        expect: {
+          cards: {
+            operations: {
+              lastResult: {
+                contains: 'Draft payload key toJSON is reserved.',
+              },
+            },
+          },
+        },
+      },
+      { press: 'draft-a-unsupported-value' },
+      {
+        note: 'Map은 평범한 acyclic 데이터가 아니다',
+        expect: {
+          cards: {
+            operations: {
+              lastResult: {
+                contains: 'Draft values must be plain, acyclic data.',
+              },
+            },
+          },
+        },
+      },
+      { press: 'draft-a-mutate-snapshot' },
+      {
+        note: '읽어 온 값은 스냅숏이라 직접 고칠 수 없다 — 조용히 고쳐지는 대신 던진다',
+        expect: {
+          cards: {
+            operations: {
+              lastResult: {
+                contains: 'Draft snapshots cannot be modified directly.',
+              },
+            },
+          },
+        },
+      },
+      { press: 'resource-reserved-key' },
+      {
+        note: '**같은 값을 원본에 쓰면 원본이 자기 말로 거절한다.** 두 지원 범위가 같다는 것이 이 짝의 내용이고, 층이 다르므로 문장도 다르다',
+        expect: {
+          cards: {
+            operations: {
+              lastResult: {
+                contains: 'Resource payload key toJSON is reserved.',
+              },
+            },
+          },
+        },
+      },
+      { press: 'resource-unsupported-value' },
+      {
+        note: '원본도 Map을 받지 않는다. draft 쪽 문장과 짝이 되는 자리다',
+        expect: {
+          cards: {
+            operations: {
+              lastResult: {
+                contains: 'Editable resources require plain, acyclic data.',
+              },
+            },
+          },
+        },
+      },
+      { press: 'resource-mutate-snapshot' },
+      {
+        note: '여섯 번의 거절이 끝났고 **원본은 clean이다** — dirty도 변경 줄도 없고 사무실도 처음 그대로다. 지원하지 않는 구조가 조용히 원본을 손상시키지 않았다는 것이 이 항목의 합격 기준이다',
+        expect: {
+          cards: {
+            operations: {
+              lastResult: {
+                contains: 'Resource snapshots cannot be modified directly.',
+              },
+            },
+            'resource-a': {
+              dirty: 'false',
+              version: '0 / 0',
+              office: '{"floor":3,"room":"301"}',
+            },
+            'draft-a': { draftDirty: 'false' },
+          },
+          changes: { 'resource-a': [], 'draft-a': [] },
+        },
+      },
+    ],
+  },
+];
+
 export const SCENARIOS: readonly Scenario[] = [
   ...M2_05_08,
   ...M2_07,
@@ -2575,4 +2930,5 @@ export const SCENARIOS: readonly Scenario[] = [
   ...M2_INSPECT,
   ...M2_CLIENTS,
   ...M2_ORDER,
+  ...M2_17,
 ];

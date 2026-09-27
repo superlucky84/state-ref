@@ -26,6 +26,7 @@ export const CARD_TITLE = {
   computed: 'computed 읽기 결과',
   inspect: '관측 (inspectCache / inspectMutations)',
   probe: '둘째 client (같은 key, 별도 캐시)',
+  boundary: '경계 draft (child ref / readonly 원본)',
 } as const;
 
 export type CardId = keyof typeof CARD_TITLE;
@@ -107,6 +108,22 @@ export const FIELD_LABEL = {
    * numbers is how `client별` reads.
    */
   probeState: 'client 상태',
+  /**
+   * Which ref the boundary draft was branched from.
+   *
+   * The card takes one draft at a time and the source is what the readings
+   * are about: `원본 office.room` is a *child* ref, so its parent can vanish
+   * under it, and `readonly 조회` is a source that refuses every write. The
+   * same buttons then read two different refusals, and the row says which.
+   */
+  boundarySource: 'draft 원본',
+  /**
+   * The draft's whole value, which is a leaf string for the child ref and a
+   * record for the readonly source. `city`/`zip`/`memo` would fit only one of
+   * the two, and a row that exists for one source and not the other cannot be
+   * compared across the scenarios this card is for.
+   */
+  boundaryValue: '현재 값',
 } as const;
 
 export type FieldId = keyof typeof FIELD_LABEL;
@@ -236,6 +253,12 @@ export const CARD_FIELDS: Readonly<
       'observedEvents',
     ],
     onceLoaded: ['city'],
+  },
+  // Branched on request like a draft card, and it keeps `dirty`/`version`
+  // under the ids the draft cards use - the card is the scope (DC8-8-04).
+  boundary: {
+    always: ['boundarySource', 'boundaryValue', 'draftDirty', 'version'],
+    onceLoaded: [],
   },
 };
 

@@ -1,5 +1,5 @@
 import { createComputed, createStore, createStoreManualSync } from 'state-ref';
-import type { Watch } from 'state-ref';
+import type { StateRefStore, Watch } from 'state-ref';
 import { createDraft } from 'state-ref/draft';
 import type { Draft } from 'state-ref/draft';
 import { createSyncClient } from '@stateref/sync';
@@ -17,19 +17,26 @@ import { createMockServer } from './mock-server';
 import type { MockServer } from './mock-server';
 import {
   CITY,
+  CONTACT_RENAME,
   INITIAL_PROFILE,
   removeOffice,
+  ROOM_EDIT,
   reorderContacts,
   SAVED_PATHS,
   toSaveDto,
   withMemo,
 } from './scenario';
-import { inspectPanel } from './panels';
-import type { CacheLine } from './panels';
-import { keyText } from './fields';
+import { draftChangeLines, inspectPanel } from './panels';
+import type { CacheLine, ChangeLine } from './panels';
+import { keyText, show } from './fields';
 import { operationLabel } from './operations';
 import type { OperationId } from './operations';
-import type { Profile, SaveAddressDto, SaveAddressResponse } from './types';
+import type {
+  Office,
+  Profile,
+  SaveAddressDto,
+  SaveAddressResponse,
+} from './types';
 
 /**
  * The demo, minus the UI.
@@ -128,6 +135,8 @@ export type DemoUi = Readonly<{
   online: boolean;
   /** Incremented whenever the drafts are branched again. */
   draftGeneration: number;
+  /** The same, for the boundary card's one draft slot. */
+  boundaryGeneration: number;
   computedCalculations: number;
   computedIdentityStable: boolean;
   computedValue: string;
@@ -173,6 +182,30 @@ export type DraftPair = Readonly<{
 export type ComputedSource = Readonly<{ dep: number; unrelated: number }>;
 
 /**
+ * What the boundary card shows, as strings.
+ *
+ * One slot, two possible sources: a *child* ref under `office`, whose parent
+ * an ordinary resource edit can remove from under it, and the readonly query,
+ * which refuses every write. Both are things `createDraft` accepts and
+ * `apply()` then refuses for different reasons, which is what M2-17's first
+ * bullet asks to see.
+ *
+ * Strings, and read through `ui.tick` rather than through a connector, for
+ * the reason the probe card is (DC8-8-19): the binding a per-framework draft
+ * component would exercise is what draft A and draft B already cover, and the
+ * value here is a leaf string for one source and a record for the other, so
+ * there is no one typed component that fits both.
+ */
+export type BoundaryPanel = Readonly<{
+  /** `원본 office.room` or `readonly 조회`. */
+  source: string;
+  value: string;
+  dirty: string;
+  version: string;
+  changes: readonly ChangeLine[];
+}>;
+
+/**
  * What the second client's card shows, as strings.
  *
  * Strings all the way down because a disposed handle refuses every access and
@@ -213,6 +246,8 @@ export type DemoModel = Readonly<{
   drafts: () => DraftPair;
   /** The second client's card, or null before it has ever been opened. */
   probe: () => ProbePanel | null;
+  /** The boundary card, or null before a boundary draft has been branched. */
+  boundary: () => BoundaryPanel | null;
   watchUi: Watch<DemoUi>;
   run: (id: OperationId) => void;
   dispose: () => void;
@@ -286,6 +321,7 @@ export function createDemoModel(): DemoModel {
     focused: true,
     online: true,
     draftGeneration: 0,
+    boundaryGeneration: 0,
     computedCalculations: 0,
     computedIdentityStable: true,
     computedValue: '(읽지 않음)',
@@ -474,6 +510,76 @@ export function createDemoModel(): DemoModel {
   let drafts: DraftPair = { a: null, b: null, generation: 0 };
   /** The last discarded draft A, kept so a dead ref can be touched on purpose. */
   let discarded: Draft<Profile> | null = null;
+
+  /**
+   * The boundary card's one draft, and which ref it came from.
+   *
+   * A discriminated pair rather than two slots: the card takes one at a time
+   * and the same four buttons drive both, so the reading that matters is
+   * which refusal the *same* sequence produces from each source.
+   */
+  type BoundaryDraft =
+    | Readonly<{ origin: 'room'; draft: Draft<string> }>
+    | Readonly<{ origin: 'readonly'; draft: Draft<Profile> }>;
+  let boundary: BoundaryDraft | null = null;
+  let boundaryAbort: AbortController | null = null;
+  /**
+   * The payloads the two data rules refuse.
+   *
+   * Values rather than literals at each call site so the resource row and the
+   * draft row are refusing *the same thing* - that is the whole reading of
+   * M2-17's third and fourth bullets, and two nearly-equal literals would
+   * make it an argument rather than a comparison.
+   */
+  const RESERVED_KEY_PAYLOAD = { floor: 9, room: '901', toJSON: 'x' };
+  /** What the server holds at `office.room`, so a type swap keeps the text. */
+  const SERVER_ROOM = INITIAL_PROFILE.office!.room;
+  const unsupportedValue = () => new Map([['floor', 9]]);
+  const BOUNDARY_SOURCE = {
+    room: '원본 office.room',
+    readonly: 'readonly 조회',
+  } as const;
+  /** The child ref the boundary draft branches from, under a nullable parent. */
+  const roomRef = () =>
+    (panelA.ref.office as unknown as StateRefStore<Office>).room;
+
+  const releaseBoundary = () => {
+    boundaryAbort?.abort();
+    boundaryAbort = null;
+    boundary?.draft.discard();
+    boundary = null;
+  };
+
+  /**
+   * Branch the boundary draft and give the card its own repaint.
+   *
+   * The card is read through `ui.tick`, and a draft settles its status on a
+   * microtask, so an operation's own `bump` can run before the status the card
+   * is about to print has moved. The repaint subscription is separate from
+   * anything an operation switches off, which is what DC8-8-17 asks for.
+   */
+  const openBoundary = (next: BoundaryDraft) => {
+    releaseBoundary();
+    boundary = next;
+    boundaryAbort = new AbortController();
+    next.draft.watchStatus(() => {
+      ui.tick.value = ui.tick.value + 1;
+      return boundaryAbort!.signal;
+    });
+    ui.boundaryGeneration.value = ui.boundaryGeneration.value + 1;
+  };
+
+  const boundaryOf = (): BoundaryPanel | null => {
+    if (!boundary) return null;
+    const status = boundary.draft.status.value;
+    return {
+      source: BOUNDARY_SOURCE[boundary.origin],
+      value: show(boundary.draft.ref.value),
+      dirty: String(status.dirty),
+      version: `${status.version} / ${status.conflicts}`,
+      changes: draftChangeLines(boundary.draft.changes()),
+    };
+  };
   /** The live view refuses every access once disposed, so track it. */
   let liveAlive = true;
   let submission: ResourceSubmission<Profile> | null = null;
@@ -766,6 +872,23 @@ export function createDemoModel(): DemoModel {
         if (!loaded()) return notLoaded(id);
         panelA.ref.office.value = removeOffice(panelA.ref.value).office;
         return bump(id, '사무실을 없앴다. 그 아래를 쥔 draft는 부모를 잃는다.');
+      case 'swap-room-type': {
+        if (!loaded()) return notLoaded(id);
+        if (panelA.ref.office.value === null) {
+          return bump(id, '사무실이 없다. 먼저 조회한다.');
+        }
+        // The cast is the point. `Office.room` is typed as a string, and
+        // nothing in the type system stops a server, a migration or another
+        // client from putting a different shape at that path; M2-17 is about
+        // what the runtime does when one does.
+        // The same text, a different type: a reader cannot mistake the
+        // refusal for a value disagreement.
+        roomRef().value = [SERVER_ROOM] as unknown as string;
+        return bump(
+          id,
+          `방 번호를 문자열 ${SERVER_ROOM}에서 배열 ["${SERVER_ROOM}"]로 바꿨다. 글자는 같고 타입만 달라졌다 — 원본은 이 쓰기를 받는다.`
+        );
+      }
       case 'readonly-write': {
         if (!readonlyQuery.status.loaded.value) return notLoaded(id);
         const before = readonlyQuery.ref.city.value;
@@ -867,6 +990,134 @@ export function createDemoModel(): DemoModel {
           result.ok
             ? `${choice} 쪽으로 해소했다.`
             : `해소 실패: ${result.reason}`
+        );
+      }
+
+      case 'draft-a-rename-contact': {
+        const draft = requireDraft('a');
+        if (!draft) return bump(id, '먼저 draft를 분기한다.');
+        draft.ref.contacts[0].name.value = CONTACT_RENAME;
+        return bump(
+          id,
+          `draft A 연락처 1의 이름을 ${CONTACT_RENAME}로 바꿨다. 배열 안의 한 칸을 고쳤지만 기록되는 변경 경로는 contacts다 — 배열 하나가 원자 단위이고, 인덱스는 entity ID가 아니다.`
+        );
+      }
+
+      case 'boundary-branch-room': {
+        if (!loaded()) return notLoaded(id);
+        if (panelA.ref.office.value === null) {
+          return bump(id, '사무실이 없어 그 아래에서 분기할 수 없다.');
+        }
+        openBoundary({ origin: 'room', draft: createDraft(roomRef()) });
+        return bump(
+          id,
+          'office.room에서 draft를 분기했다. 원본이 레코드가 아니라 그 안의 한 칸이므로, 원본의 부모가 그 아래에서 사라질 수 있다.'
+        );
+      }
+      case 'boundary-branch-readonly': {
+        if (!readonlyQuery.status.loaded.value) return notLoaded(id);
+        openBoundary({
+          origin: 'readonly',
+          draft: createDraft(readonlyQuery.ref),
+        });
+        return bump(
+          id,
+          'readonly 조회에서 draft를 분기했다. 분기도 편집도 되고, 거절은 적용에서 난다.'
+        );
+      }
+      case 'boundary-edit': {
+        if (!boundary) return bump(id, '먼저 경계 draft를 분기한다.');
+        if (boundary.origin === 'room') {
+          boundary.draft.ref.value = ROOM_EDIT;
+          return bump(id, `경계 draft의 방 번호를 ${ROOM_EDIT}로 바꿨다.`);
+        }
+        boundary.draft.ref.city.value = CITY.draft;
+        return bump(id, `경계 draft의 도시를 ${CITY.draft}으로 바꿨다.`);
+      }
+      case 'boundary-apply': {
+        if (!boundary) return bump(id, '먼저 경계 draft를 분기한다.');
+        const result = boundary.draft.apply();
+        return bump(
+          id,
+          result.ok
+            ? `로컬 적용 ${result.applied}건.`
+            : `적용 거절: ${result.reason} — 원본은 그대로이고 draft의 입력도 남는다.`
+        );
+      }
+
+      case 'draft-a-reserved-key': {
+        const draft = requireDraft('a');
+        if (!draft) return bump(id, '먼저 draft를 분기한다.');
+        try {
+          draft.ref.office.value = {
+            ...RESERVED_KEY_PAYLOAD,
+          } as unknown as Office;
+        } catch (error) {
+          return bump(id, `draft 거절: ${String(error)}`);
+        }
+        return bump(id, 'draft가 예약 키를 받았다 — 거절되지 않았다.');
+      }
+      case 'draft-a-unsupported-value': {
+        const draft = requireDraft('a');
+        if (!draft) return bump(id, '먼저 draft를 분기한다.');
+        try {
+          draft.ref.office.value = unsupportedValue() as unknown as Office;
+        } catch (error) {
+          return bump(id, `draft 거절: ${String(error)}`);
+        }
+        return bump(id, 'draft가 미지원 값을 받았다 — 거절되지 않았다.');
+      }
+      case 'draft-a-mutate-snapshot': {
+        const draft = requireDraft('a');
+        if (!draft) return bump(id, '먼저 draft를 분기한다.');
+        const office = draft.ref.office.value;
+        if (office === null) return bump(id, '사무실이 없어 변형할 값이 없다.');
+        try {
+          (office as { room: string }).room = ROOM_EDIT;
+        } catch (error) {
+          return bump(id, `draft 거절: ${String(error)}`);
+        }
+        return bump(
+          id,
+          `draft가 읽은 값을 직접 고쳤다 — 거절되지 않았다. 지금 값: ${show(
+            draft.ref.office.value
+          )}`
+        );
+      }
+      case 'resource-reserved-key': {
+        if (!loaded()) return notLoaded(id);
+        try {
+          panelA.ref.office.value = {
+            ...RESERVED_KEY_PAYLOAD,
+          } as unknown as Office;
+        } catch (error) {
+          return bump(id, `원본 거절: ${String(error)}`);
+        }
+        return bump(id, '원본이 예약 키를 받았다 — 거절되지 않았다.');
+      }
+      case 'resource-unsupported-value': {
+        if (!loaded()) return notLoaded(id);
+        try {
+          panelA.ref.office.value = unsupportedValue() as unknown as Office;
+        } catch (error) {
+          return bump(id, `원본 거절: ${String(error)}`);
+        }
+        return bump(id, '원본이 미지원 값을 받았다 — 거절되지 않았다.');
+      }
+      case 'resource-mutate-snapshot': {
+        if (!loaded()) return notLoaded(id);
+        const office = panelA.ref.office.value;
+        if (office === null) return bump(id, '사무실이 없어 변형할 값이 없다.');
+        try {
+          (office as { room: string }).room = ROOM_EDIT;
+        } catch (error) {
+          return bump(id, `원본 거절: ${String(error)}`);
+        }
+        return bump(
+          id,
+          `원본이 읽은 값을 직접 고쳤다 — 거절되지 않았다. 지금 값: ${show(
+            panelA.ref.office.value
+          )}`
         );
       }
 
@@ -1151,9 +1402,11 @@ export function createDemoModel(): DemoModel {
     mutation,
     drafts: () => drafts,
     probe: probeOf,
+    boundary: boundaryOf,
     watchUi,
     run,
     dispose() {
+      releaseBoundary();
       drafts.a?.discard();
       drafts.b?.discard();
       mutation.dispose();

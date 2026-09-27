@@ -240,6 +240,25 @@ export function screenOf(model: DemoModel): ScreenReading {
     cache.probe = probe.cache.map(cacheRow);
   }
 
+  /**
+   * The boundary card.
+   *
+   * Like a draft card it exists only once branched, and like the probe card
+   * the model builds its strings (DC8-8-19). Its changes table is read in the
+   * card's own scope, beside the draft cards' - which is how a refusal that
+   * left the draft's input alone reads as a row that is still there.
+   */
+  const boundary = model.boundary();
+  if (boundary) {
+    cards.boundary = {
+      boundarySource: boundary.source,
+      boundaryValue: boundary.value,
+      draftDirty: boundary.dirty,
+      version: boundary.version,
+    };
+    changes.boundary = boundary.changes.map(changeRow);
+  }
+
   const rows: Record<string, Record<string, string>> = {};
   for (const row of requests.rows) {
     // The time columns are wall clock (DC8-5-12) and are read nowhere.
