@@ -2,7 +2,7 @@
 
 - 개정일: 2026-09-24. 기준 SHA: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
 - 기준: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md).
-- 상태: Phase 8.7 수행 중. 2026-09-27 기준 **M2-01·M2-05·M2-07·M2-08·M2-09·M2-10·M2-12·M2-13·M2-14·M2-15·M2-16 통과**, M2-02·M2-03·M2-04·M2-06·M2-11·M2-17·M2-18·M2-19 부분 수행, 나머지 1항목(M2-20) 미수행이다. M2-11은 항목 5의 둘째 view만, M2-17은 항목 1·2·3이 통과하고 항목 4의 readonly 예외만 남았으며, M2-18은 항목 4의 polling·SSR만, M2-19는 7·13항만 통과다. 미수행 항목은 기능 동작의 증거가 아니다. 수행 중 찾은 블로커 B8-7-01~05·09~12는 모두 해소했고, B8-7-06~08은 계측 부재로 [Phase 8.5 단계 11](./PHASE8_5.md)에서 처리했다. **[B8-7-13](#b8-7-13)은 미해소**다 — 데모 계측 문제이며 M2-10을 막지 않았다.
+- 상태: Phase 8.7 수행 중. 2026-09-27 기준 **M2-01·M2-05·M2-07·M2-08·M2-09·M2-10·M2-12·M2-13·M2-14·M2-15·M2-16 통과**, M2-02·M2-03·M2-04·M2-06·M2-11·M2-17·M2-18·M2-19 부분 수행, 나머지 1항목(M2-20) 미수행이다. M2-04는 항목 5(렌더 계측)만 사람 몫으로 남았고, M2-11은 항목 5의 둘째 view만, M2-17은 항목 4의 readonly 예외만, M2-18은 항목 4의 polling·SSR만, M2-19는 7·13항만 통과다. 미수행 항목은 기능 동작의 증거가 아니다. 수행 중 찾은 블로커 B8-7-01~05·09~12는 모두 해소했고, B8-7-06~08은 계측 부재로 [Phase 8.5 단계 11](./PHASE8_5.md)에서 처리했다. **[B8-7-13](#b8-7-13)은 미해소**다 — 데모 계측 문제이며 M2-10을 막지 않았다.
 
 ## 1. 환경과 fixture
 
@@ -154,11 +154,19 @@ fixture는 시간을 제어하지 못한다([DC8-5-12](./PHASE8_5.md)). 제어 �
 - [x] 초기 로딩과 오류 UI가 가짜 성공 payload를 보여주지 않는다.
 - [x] 첫 조회 실패 후 명시적으로 복구한다.
 - [x] 정상 서버 응답 교체 뒤 기존 ref는 같은 경로의 최신 값을 읽는다.
-- [ ] Vue `onServerPrefetch`에서 로드한 값이 서버 HTML에 반영되고 브라우저 hydration에서도 일치한다. `combineWatch`·`createComputed`를 연결한 화면에서도 확인한다. — **Vue SSR 데모(5192) 차례에 수행.**
+- [x] Vue `onServerPrefetch`에서 로드한 값이 서버 HTML에 반영되고 브라우저 hydration에서도 일치한다. `combineWatch`·`createComputed`를 연결한 화면에서도 확인한다. — **통과.** 서버 HTML이 조회한 값을 담고, 브라우저가 이어받은 뒤 네 행(`city`·`zip`·`derived`·`combined`)이 모두 같으며, hydration 중 경고도 오류도 없다. **React SSR 데모(4191)도 같은 판정으로 함께 돌린다**(아래 출처).
 - [ ] 변경 없는 leaf와 status만 바뀐 payload의 불필요한 갱신을 확인한다. — **데모에 렌더 횟수 계측이 없다. React DevTools의 하이라이트가 필요하다.**
 - [x] 콜백 없는 computed를 반복해서 읽으면 객체 참조가 유지되고, 의존 값이 바뀌면 `sync()` 전에도 최신 계산값을 읽는다. 구독 콜백은 수동 `sync()` 때 알림을 받는지 확인한다.
 
-**합격:** 데이터 준비와 오류·구독 의미가 분명함. **결과: 부분 수행.** 2026-09-24, React 데모(http://localhost:5181), 구현 SHA `57388d8` + fixture 보강([DC8-5-29~31](./PHASE8_5.md)), 검증자 superlucky84, Chrome 153.0.8010.53. 6개 항목 중 4개를 확인했다. 남은 둘은 Vue SSR 데모와 렌더 계측이 필요하며, 그때까지 통과가 아니다.
+**합격:** 데이터 준비와 오류·구독 의미가 분명함. **결과: 항목 1·2·3·4·6 통과, 항목 5는 사람 몫([DC8-8-09](./PHASE8_8.md)).** 항목 1·2·3·6은 2026-09-24, React 데모(http://localhost:5181), 구현 SHA `57388d8` + fixture 보강([DC8-5-29~31](./PHASE8_5.md)), 검증자 superlucky84, Chrome 153.0.8010.53.
+
+**항목 4 — e2e 실행으로 채움**([DC8-8-08](./PHASE8_8.md)). 구현 SHA `8bb2e6f`, 2026-09-27, 시나리오 `ssr.spec.ts`(`react-ssr`·`vue-ssr`), 명령 `pnpm test:e2e`, **실제 Chromium.** `scripts/check-example-ssr.mjs`는 Node 렌더로 서버 HTML만 보고 **스스로 hydration의 증거가 아니라고 적고 있다** — 이 실행이 나머지 절반이다.
+
+- **서버 HTML이 이미 조회한 값을 담는다.** 스크립트가 돌기 전의 응답을 그대로 읽어 `city`·`zip`·`derived`·`combined` 네 행을 모두 찾는다. placeholder였다면 로드가 끝나기 전에 렌더가 나갔다는 뜻이다.
+- **브라우저가 이어받은 뒤 네 행이 같다.** 서버 HTML에서 읽은 문자열과 DOM에서 읽은 문자열을 **통째로 비교**한다. 다시 조회했거나 snapshot 복원이 틀린 client는 프레임워크가 조용해도 여기서 갈린다.
+- **`hydration` 행이 신호이자 검사다.** 서버는 `false`로, 첫 client 커밋은 `true`로 렌더한다. 판독기는 그 행이 `true`가 될 때까지 기다리므로 **시간이 아니라 hydration을 기다리고**, 서버가 `true`를 렌더했다면 그 자체가 불일치로 보고된다.
+- **경고도 실패로 센다.** React는 hydration 불일치를 오류로, **Vue는 `console.warn`으로** 낸다. [DC8-8-05](./PHASE8_8.md)의 수집은 오류만 보므로, 이 spec만 경고까지 모은다 — 그러지 않으면 불일치한 Vue 페이지가 통과한다.
+- **Preact·Svelte·Solid는 여전히 미검증이다.** 그 셋에는 서버 렌더 자체가 없고, 만드는 것은 실행기가 아니라 데모 셋이다([DC8-5-04](./PHASE8_5.md)).
 
 - 초기 로딩: `최초 조회` 직후 resource 패널 A가 `아직 로드되지 않았다. 여기에 가짜 성공 값을 보이지 않는다`를 표시하고 `status/fetch=pending/fetching`, `version/conflicts=0 / 0`. 값 영역 자체가 마운트되지 않는다. 가짜 성공 payload 없음.
 - 오류 UI(fixture 보강 뒤 재수행): `다음 READ 연속 실패 (재시도 소진)` → `최초 조회` → `가능한 요청 모두 완료` 반복. 재시도 예산이 소진되자 resource 패널 A가 `오류: Error: READ-7 failed`와 `status/fetch=error/idle`을 표시했다. 값 영역은 마운트되지 않고 `dirty=false`, `version/conflicts=0 / 0`, `changes 변경 없음`이다. 오류 화면에 가짜 성공 payload가 없다.
