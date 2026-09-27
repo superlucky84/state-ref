@@ -2433,6 +2433,133 @@ export const M2_CLIENTS: readonly Scenario[] = [
   },
 ];
 
+/**
+ * Ordering between several commands (Phase 8.8 단계 9).
+ *
+ * Three readings, and the contrast is what makes the claim mean anything: an
+ * unscoped pair both reach the server, a scoped pair does not, and a linked
+ * save is refused outright while another is in flight. Together they are what
+ * M2-11's third bullet calls 명시적 순서·충돌 정책, and the `queued` phase is
+ * the last clause M2-19's thirteenth item was missing.
+ */
+export const M2_ORDER: readonly Scenario[] = [
+  {
+    id: 'M2-11-3-unordered',
+    title: 'scope를 선언하지 않은 명령들에는 순서가 약속되지 않는다',
+    pins: 'M2-11 셋째 항목 (여러 mutation의 명시적 순서) — 대비 항',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'command-run' },
+      { press: 'command-run' },
+      {
+        note: '연결하지 않은 명령 둘은 장벽에 걸리지 않고 **둘 다 pending**이다. WRITE가 2건 나가 둘 다 떠 있다 — sync는 선언하지 않은 순서를 만들어 내지 않는다',
+        expect: {
+          cards: {
+            inspect: { openMutations: '2' },
+            operations: { mutationPending: '2' },
+            requests: { counts: '2 / 2', inFlight: '2' },
+          },
+          mutations: {
+            inspect: [
+              {
+                id: '1',
+                phase: 'pending',
+                scope: '(없음)',
+                linked: '(없음)',
+              },
+              {
+                id: '2',
+                phase: 'pending',
+                scope: '(없음)',
+                linked: '(없음)',
+              },
+            ],
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-11-3-scoped',
+    title:
+      '같은 scope의 둘째 명령은 queued로 기다리고, 앞선 작업이 끝난 뒤에 나간다',
+    pins: 'M2-11 셋째 항목 (명시적 순서) · M2-19 13항 (scope 대기는 queued, 실행은 pending)',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'command-scoped' },
+      { press: 'command-scoped' },
+      {
+        note: '같은 scope를 선언하면 첫째만 pending이고 둘째는 queued다. 그리고 **WRITE는 1건뿐이다** — queued는 이름표가 아니라 요청이 아직 서버에 가지 않았다는 뜻이다',
+        expect: {
+          cards: {
+            inspect: { openMutations: '2' },
+            operations: { mutationPending: '2' },
+            requests: { counts: '2 / 1', inFlight: '1' },
+          },
+          mutations: {
+            inspect: [
+              { id: '1', phase: 'pending', scope: 'address' },
+              { id: '2', phase: 'queued', scope: 'address' },
+            ],
+          },
+        },
+      },
+      { press: 'settle-write' },
+      {
+        note: '앞선 작업을 완료하자 목록에서 빠지고 둘째가 pending으로 올라가 WRITE가 2건이 된다. 화면이 끝난 작업의 번호를 말한다 — 순서가 선언한 대로 지켜졌다',
+        expect: {
+          cards: {
+            inspect: { openMutations: '1' },
+            operations: {
+              lastResult: { contains: '작업 1: success' },
+              mutationPending: '1',
+            },
+            requests: { counts: '2 / 2' },
+          },
+          mutations: {
+            inspect: [{ id: '2', phase: 'pending', scope: 'address' }],
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 'M2-11-3-barrier',
+    title: '같은 조회에 연결된 저장은 겹치지 않는다',
+    pins: 'M2-11 셋째 항목 (충돌 정책)',
+    steps: [
+      { press: 'load' },
+      { press: 'settle-all' },
+      { press: 'edit-busan' },
+      { press: 'capture' },
+      { press: 'save' },
+      { press: 'save' },
+      {
+        note: '연결된 저장이 진행 중이면 둘째 저장은 시작되지 않는다. 목록에 줄이 하나뿐이고 WRITE도 1건이며, 화면이 이유를 말한다 — 순서를 선언하지 않은 연결 저장들의 충돌 정책은 "겹치지 않는다"다',
+        expect: {
+          cards: {
+            inspect: { openMutations: '1' },
+            operations: {
+              mutationPending: '1',
+              lastResult: {
+                contains: '이 조회에 연결된 저장이 이미 진행 중이다',
+              },
+            },
+            requests: { counts: '2 / 1', inFlight: '1' },
+          },
+          mutations: {
+            inspect: [
+              { id: '1', phase: 'pending', scope: '(없음)', linked: 'profile' },
+            ],
+          },
+        },
+      },
+    ],
+  },
+];
+
 export const SCENARIOS: readonly Scenario[] = [
   ...M2_05_08,
   ...M2_07,
@@ -2447,4 +2574,5 @@ export const SCENARIOS: readonly Scenario[] = [
   ...M2_11_LIVE,
   ...M2_INSPECT,
   ...M2_CLIENTS,
+  ...M2_ORDER,
 ];

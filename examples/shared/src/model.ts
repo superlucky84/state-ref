@@ -73,6 +73,15 @@ export const POLICY_TEXT =
  */
 export const QUERY_RETRY = 3;
 /**
+ * The scope the demo's ordered commands declare.
+ *
+ * sync guarantees start order only *within* a declared scope
+ * (`packages/sync/src/index.ts:910`); unscoped operations are concurrent and
+ * nothing invents an order for them. M2-11's third bullet asks for that
+ * distinction, so the demo offers the same command both ways.
+ */
+export const COMMAND_SCOPE = 'address';
+/**
  * How many queries share `server.read`: the panel key and the readonly key.
  *
  * `load` starts both, and they draw from one queued-outcome list, so a run of
@@ -1006,6 +1015,35 @@ export function createDemoModel(): DemoModel {
             : `${keyText(
                 key
               )}를 제거하지 않았다. 아직 소유자가 있거나 로컬 차이·미확정·진행 중 상태다 — 붙잡고 있는 것이 있으면 제거는 거절된다.`
+        );
+      }
+
+      /**
+       * An unlinked command, with and without a declared scope.
+       *
+       * Unlinked on purpose (R2-08's `resource 없는 명령`): a linked save is
+       * refused while another linked save on the same query is in flight, which
+       * is the library's own barrier and the *other* half of M2-11's third
+       * bullet. Two unlinked commands may overlap, and that is what makes the
+       * ordering claim testable - scoped, the second waits as `queued`;
+       * unscoped, both run as `pending` and no order is promised.
+       */
+      case 'command-run':
+      case 'command-scoped': {
+        if (!loaded()) return notLoaded(id);
+        const scoped = id === 'command-scoped';
+        const operation = mutation.start(
+          toSaveDto(panelA.ref.value, server.revision()),
+          scoped ? { scope: COMMAND_SCOPE } : {}
+        );
+        void operation.result.then(result => {
+          bump(`${id} 결과`, `작업 ${result.operationId}: ${result.kind}`);
+        });
+        return bump(
+          id,
+          scoped
+            ? `scope \`${COMMAND_SCOPE}\`로 독립 명령을 시작했다. 같은 scope의 앞선 작업이 끝나기 전에는 queued로 기다린다 — 순서는 선언한 scope 안에서만 보장된다.`
+            : '순서를 지정하지 않고 독립 명령을 시작했다. 같은 조회에 연결하지 않았으므로 장벽에 걸리지 않고, 여러 개가 동시에 pending으로 나아간다.'
         );
       }
 

@@ -84,6 +84,8 @@ export const OPERATION_GROUPS = [
       ['save-with-refetch', '저장 실행 (사후 재조회 수용)'],
       ['save-reject-remove', '저장 실행 (거절 시 제출 입력 되돌림)'],
       ['edit-after-capture', '제출 뒤 추가 입력'],
+      ['command-run', '독립 명령 실행 (순서 지정 없음)'],
+      ['command-scoped', '독립 명령 실행 (scope 지정, 순서 보장)'],
     ],
   },
   {
