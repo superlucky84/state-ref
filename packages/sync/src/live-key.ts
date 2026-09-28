@@ -4,49 +4,55 @@ import { hashQueryKey } from './key';
 import type { QueryKey } from './key';
 import { guardRef, guardedWatch } from './ref-guard';
 import type { QueryOptions, QueryHandle } from './index';
-import type {
-  QueryViewHandle,
-  QueryViewRef,
-  QueryViewState,
-  QueryViewWatch,
-} from './view';
+import {
+  IDLE_STATUS,
+  sameDisplay,
+  type QueryDisplayHandle,
+  type QueryDisplayRef,
+  type QueryDisplayState,
+  type QueryDisplayWatch,
+} from './display';
 
 export type LiveQueryOptions<T> = QueryOptions<T> &
   Readonly<{ enabled?: boolean }>;
 
-export type LiveQueryViewState<S> = Omit<QueryViewState<S>, 'errorSource'> &
-  Readonly<{
-    errorSource: QueryViewState<S>['errorSource'] | 'source';
-    queryKey: QueryKey | null;
-    enabled: boolean;
-  }>;
+/** A query and the one observer's display over it, opened together. */
+export type OpenedQuery<T, S> = Readonly<{
+  query: QueryHandle<T, S>;
+  display: QueryDisplayHandle<S>;
+}>;
 
-export type LiveQueryViewHandle<T, S> = Readonly<{
-  /** The current query handle, or null while disabled. */
-  query: QueryHandle<T> | null;
-  ref: QueryViewRef<LiveQueryViewState<S>>;
-  watch: QueryViewWatch<LiveQueryViewState<S>>;
+export type LiveQueryCursor<T, S> = Readonly<{
+  /** The query for the active key, or null while there is none. */
+  current: () => QueryHandle<T, S> | null;
+  ref: QueryDisplayRef<QueryDisplayState<S>>;
+  watch: QueryDisplayWatch<QueryDisplayState<S>>;
   dispose: () => void;
 }>;
 
-const idle = Object.freeze({
-  data: undefined,
-  phase: 'pending' as const,
-  fetchStatus: 'idle' as const,
-  isPlaceholder: false,
-  error: null,
-  errorSource: null,
-  queryKey: null,
-  enabled: false,
-});
+const idle = <S>(): QueryDisplayState<S> =>
+  Object.freeze({
+    ...IDLE_STATUS,
+    data: undefined as S | undefined,
+    isPlaceholder: false,
+    errorSource: null,
+    queryKey: null,
+    enabled: false,
+  });
 
-/** A stable display cursor that follows a state-ref source across query keys. */
-export function createLiveQueryView<I, T, S>(
+/**
+ * A stable display cursor that follows a state-ref source across query keys.
+ *
+ * The cursor outlives every query it opens, so `ref`/`watch` stay the same
+ * observation point for the handle's whole life while the query underneath
+ * is replaced (DC9-10).
+ */
+export function createLiveQuery<I, T, S>(
   source: Watch<I>,
   resolve: (input: I) => LiveQueryOptions<T> | null,
-  open: (options: QueryOptions<T>) => QueryViewHandle<T, S>
-): LiveQueryViewHandle<T, S> {
-  const store = create<LiveQueryViewState<S>>(idle, { autoSync: false });
+  open: (options: QueryOptions<T>) => OpenedQuery<T, S>
+): LiveQueryCursor<T, S> {
+  const store = create<QueryDisplayState<S>>(idle<S>(), { autoSync: false });
   const sourceAbort = new AbortController();
   const cursorAbort = new AbortController();
   const controllers = new Set<AbortController>();
@@ -54,14 +60,14 @@ export function createLiveQueryView<I, T, S>(
   const refs = new WeakMap<object, object>();
   const snapshots = new WeakMap<object, object>();
   let current = rawRef.value;
-  let currentView: QueryViewHandle<T, S> | null = null;
+  let opened: OpenedQuery<T, S> | null = null;
   let currentSubscription: AbortController | null = null;
   let active = true;
 
   const assertActive = () => {
-    if (!active) throw new Error('This live query view has been disposed.');
+    if (!active) throw new Error('This query handle has been disposed.');
   };
-  const guard = (ref: StateRefStore<LiveQueryViewState<S>>) =>
+  const guard = (ref: StateRefStore<QueryDisplayState<S>>) =>
     guardRef(ref, assertActive, refs, snapshots);
   const watch = guardedWatch(
     store.watch,
@@ -71,27 +77,25 @@ export function createLiveQueryView<I, T, S>(
     controllers,
     true
   );
-  const publish = (next: LiveQueryViewState<S>) => {
-    if (
-      Object.is(next.data, current.data) &&
-      next.phase === current.phase &&
-      next.fetchStatus === current.fetchStatus &&
-      next.isPlaceholder === current.isPlaceholder &&
-      Object.is(next.error, current.error) &&
-      next.errorSource === current.errorSource &&
-      Object.is(next.queryKey, current.queryKey) &&
-      next.enabled === current.enabled
-    )
+  const publish = (next: QueryDisplayState<S>) => {
+    if (Object.is(next.data, current.data) && sameDisplay(next, current))
       return;
     current = next;
     store.updateRef.value = next;
     store.sync();
   };
+  const release = () => {
+    currentSubscription?.abort();
+    currentSubscription = null;
+    opened?.display.dispose();
+    opened?.query.dispose();
+    opened = null;
+  };
 
   const switchTo = (input: I) => {
     let options: LiveQueryOptions<T> | null;
     let key: QueryKey | null;
-    let candidate: QueryViewHandle<T, S> | null;
+    let candidate: OpenedQuery<T, S> | null;
     try {
       options = resolve(input);
       if (
@@ -105,52 +109,46 @@ export function createLiveQueryView<I, T, S>(
       key = hash === null ? null : (JSON.parse(hash) as QueryKey);
       candidate = options && options.enabled !== false ? open(options) : null;
     } catch (error) {
-      currentSubscription?.abort();
-      currentSubscription = null;
-      currentView?.dispose();
-      currentView = null;
+      release();
       publish(
         Object.freeze({
-          ...idle,
-          phase: 'error',
+          ...idle<S>(),
+          status: 'error' as const,
           error,
-          errorSource: 'source',
+          errorSource: 'source' as const,
         })
       );
       return;
     }
-    const previous = currentView;
+    const previous = opened;
     currentSubscription?.abort();
     currentSubscription = null;
-    currentView = candidate;
-    previous?.dispose();
+    opened = candidate;
+    previous?.display.dispose();
+    previous?.query.dispose();
     if (!candidate) {
-      publish(Object.freeze({ ...idle, queryKey: key }));
+      publish(Object.freeze({ ...idle<S>(), queryKey: key }));
       return;
     }
 
-    const display = (state: QueryViewState<S>): LiveQueryViewState<S> =>
+    // The inner display reports its own key and `enabled: true`; the cursor
+    // owns both facts, so it overlays the key it actually resolved.
+    const overlay = (state: QueryDisplayState<S>): QueryDisplayState<S> =>
       Object.freeze({ ...state, queryKey: key, enabled: true });
-    publish(display(candidate.ref.value));
+    publish(overlay(candidate.display.ref.value));
     // A subscriber may synchronously change the source while publish runs.
-    if (currentView !== candidate) return;
+    if (opened !== candidate) return;
     const subscription = new AbortController();
     currentSubscription = subscription;
-    candidate.watch((ref, first) => {
-      if (currentView === candidate) publish(display(ref.value));
+    candidate.display.watch((ref, first) => {
+      if (opened === candidate) publish(overlay(ref.value));
       if (first) return subscription.signal;
     });
-    if (currentView === candidate) {
+    if (opened === candidate) {
       void candidate.query.load().catch(() => {
-        // The query view publishes the error through its own status.
+        // The display publishes the error through its own status.
       });
     }
-  };
-
-  const releaseCurrent = () => {
-    currentSubscription?.abort();
-    currentView?.dispose();
-    currentView = null;
   };
 
   try {
@@ -162,24 +160,24 @@ export function createLiveQueryView<I, T, S>(
       { cache: false }
     );
   } catch (error) {
-    releaseCurrent();
+    release();
     sourceAbort.abort();
     cursorAbort.abort();
     throw error;
   }
 
   return Object.freeze({
-    get query() {
+    current: () => {
       assertActive();
-      return currentView?.query ?? null;
+      return opened?.query ?? null;
     },
-    ref: guard(rawRef) as QueryViewRef<LiveQueryViewState<S>>,
-    watch: watch as QueryViewWatch<LiveQueryViewState<S>>,
+    ref: guard(rawRef) as QueryDisplayRef<QueryDisplayState<S>>,
+    watch: watch as QueryDisplayWatch<QueryDisplayState<S>>,
     dispose: () => {
       if (!active) return;
       active = false;
       sourceAbort.abort();
-      releaseCurrent();
+      release();
       controllers.forEach(controller => controller.abort());
       controllers.clear();
       cursorAbort.abort();

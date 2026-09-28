@@ -56,7 +56,7 @@ describe('infinite cache preparation and views', () => {
     await expect(
       client.fetchInfinite({ ...prepared, maxPages: 2 })
     ).rejects.toThrow('policies');
-    expect(() => client.infiniteView({ ...options, maxPages: 2 })).toThrow(
+    expect(() => client.infiniteQuery({ ...options, maxPages: 2 })).toThrow(
       'policies'
     );
     expect(client.dehydrate().queries[0].kind).toBe('infinite');
@@ -140,31 +140,33 @@ describe('infinite cache preparation and views', () => {
       getNextPageParam: (page: { id: number }) => page.id + 1,
       staleTime: Infinity,
     };
-    const first = client.infiniteView(options, {
+    const first = client.infiniteQuery({
+      ...options,
       placeholderData: { pages: [{ id: -1 }], pageParams: [-1] },
       select: data => data.pages.map(page => page.id).join(','),
     });
-    const second = client.infiniteView(options, {
+    const second = client.infiniteQuery({
+      ...options,
       placeholderData: { pages: [{ id: -2 }], pageParams: [-2] },
       select: data => data.pages.length,
     });
-    expect(first.ref.data.value).toBe('-1');
-    expect(second.ref.data.value).toBe(1);
+    expect(first.display.data.value).toBe('-1');
+    expect(second.display.data.value).toBe(1);
     expect(client.dehydrate().queries).toEqual([]);
-    await first.query.load();
-    expect(first.ref.data.value).toBe('0');
-    expect(second.ref.data.value).toBe(1);
-    await second.query.fetchNextPage();
-    expect(first.ref.data.value).toBe('0,1');
-    expect(second.ref.data.value).toBe(2);
-    expect(first.query.ref.value.pageParams).toEqual([0, 1]);
+    await first.load();
+    expect(first.display.data.value).toBe('0');
+    expect(second.display.data.value).toBe(1);
+    await second.fetchNextPage();
+    expect(first.display.data.value).toBe('0,1');
+    expect(second.display.data.value).toBe(2);
+    expect(first.ref.value.pageParams).toEqual([0, 1]);
     expect(() => {
-      (first.ref.data as { value: string }).value = 'changed';
+      (first.display.data as { value: string }).value = 'changed';
     }).toThrow();
     first.dispose();
-    expect(() => first.ref.data.value).toThrow('disposed');
-    await second.query.fetchNextPage();
-    expect(second.ref.data.value).toBe(3);
+    expect(() => first.display.data.value).toThrow('disposed');
+    await second.fetchNextPage();
+    expect(second.display.data.value).toBe(3);
     second.dispose();
   });
 
@@ -182,31 +184,34 @@ describe('infinite cache preparation and views', () => {
       initialPageParam: 0,
       getNextPageParam: (page: { id: number }) => page.id + 1,
     };
-    const broken = client.infiniteView(options, {
+    const broken = client.infiniteQuery({
+      ...options,
       select: data => {
         if (data.pages[0].id === 0) throw new Error('selector');
         return data.pages.length;
       },
     });
-    const healthy = client.infiniteView(options, {
+    const healthy = client.infiniteQuery({
+      ...options,
       select: data => data.pages[0].id,
     });
-    const pending = broken.query.load();
-    const shared = healthy.query.load();
+    const pending = broken.load();
+    const shared = healthy.load();
     expect(fn).toHaveBeenCalledTimes(1);
     broken.dispose();
     expect(signal?.aborted).toBe(false);
     read.resolve({ id: 0 });
     await Promise.all([pending, shared]);
-    expect(healthy.ref.data.value).toBe(0);
-    const selectorError = client.infiniteView(options, {
+    expect(healthy.display.data.value).toBe(0);
+    const selectorError = client.infiniteQuery({
+      ...options,
       select: () => {
         throw new Error('selector');
       },
     });
-    expect(selectorError.ref.errorSource.value).toBe('select');
-    expect(healthy.ref.errorSource.value).toBe(null);
-    expect(healthy.ref.data.value).toBe(0);
+    expect(selectorError.display.errorSource.value).toBe('select');
+    expect(healthy.display.errorSource.value).toBe(null);
+    expect(healthy.display.data.value).toBe(0);
     selectorError.dispose();
     healthy.dispose();
 
@@ -215,10 +220,11 @@ describe('infinite cache preparation and views', () => {
       pageParams: [] as number[],
     };
     expect(() =>
-      client.infiniteView(
-        { ...options, queryKey: ['invalid-placeholder'] },
-        { placeholderData: badPlaceholder }
-      )
+      client.infiniteQuery({
+        ...options,
+        queryKey: ['invalid-placeholder'],
+        placeholderData: badPlaceholder,
+      })
     ).toThrow('equal nonzero');
     expect(client.size()).toBe(1);
   });

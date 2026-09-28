@@ -18,10 +18,16 @@ import { copyJson, parseSnapshot } from './hydration';
 import type { HydratedQuery, SyncSnapshot } from './hydration';
 import { parseLocalSnapshot } from './local-hydration';
 import type { LocalHydratedQuery, LocalSyncSnapshot } from './local-hydration';
-import { createQueryView } from './view';
-import type { QueryViewHandle, QueryViewOptions } from './view';
-import { createLiveQueryView } from './live-view';
-import type { LiveQueryOptions, LiveQueryViewHandle } from './live-view';
+import { createQueryDisplay } from './display';
+import type {
+  QueryDisplayHandle,
+  QueryDisplayOptions,
+  QueryDisplayRef,
+  QueryDisplayState,
+  QueryDisplayWatch,
+} from './display';
+import { createLiveQuery } from './live-key';
+import type { LiveQueryOptions, OpenedQuery } from './live-key';
 import {
   checkAutomaticRefetchOptions,
   createAutomaticRefetchManager,
@@ -44,7 +50,6 @@ import type {
   InfiniteData,
   InfiniteQueryHandle,
   InfiniteQueryOptions,
-  InfiniteQueryViewHandle,
 } from './infinite';
 
 export { hashQueryKey } from './key';
@@ -97,17 +102,12 @@ export type {
 export type { HydratedQuery, SyncSnapshot } from './hydration';
 export type { LocalHydratedQuery, LocalSyncSnapshot } from './local-hydration';
 export type {
-  QueryViewHandle,
-  QueryViewOptions,
-  QueryViewRef,
-  QueryViewState,
-  QueryViewWatch,
-} from './view';
-export type {
-  LiveQueryOptions,
-  LiveQueryViewHandle,
-  LiveQueryViewState,
-} from './live-view';
+  QueryDisplayOptions,
+  QueryDisplayRef,
+  QueryDisplayState,
+  QueryDisplayWatch,
+} from './display';
+export type { LiveQueryOptions } from './live-key';
 export type {
   AutomaticRefetchOptions,
   AutomaticRefetchPolicy,
@@ -118,7 +118,6 @@ export type {
   InfiniteData,
   InfiniteQueryHandle,
   InfiniteQueryOptions,
-  InfiniteQueryViewHandle,
 } from './infinite';
 
 export type QueryStatus = Readonly<{
@@ -208,12 +207,31 @@ export type SyncClientOptions = Readonly<{
   environment?: SyncEnvironment;
 }>;
 
-export type QueryHandle<T> = Readonly<{
+/**
+ * A query's key, resolved from a state-ref source instead of fixed.
+ *
+ * `resolve` answering null - or options with `enabled: false` - leaves the
+ * handle with no active key: `display` still reports `enabled` and `queryKey`,
+ * but `ref`, `watch`, `status` and the operations throw (DC9-10).
+ */
+export type ReactiveQueryOptions<I, T> = Readonly<{
+  source: Watch<I>;
+  resolve: (input: I) => LiveQueryOptions<T> | null;
+}>;
+
+export type QueryHandle<T, S = T> = Readonly<{
   queryKey: QueryKey;
   ref: StateRefStore<T>;
   watch: Watch<T>;
   status: StateRefStore<QueryStatus>;
   watchStatus: Watch<QueryStatus>;
+  /**
+   * This observer's display state: the shared status plus `data`, projected
+   * by `select` and covered by `placeholderData`. Built on first access, so a
+   * consumer that never reads it pays nothing (DC9-03).
+   */
+  display: QueryDisplayRef<QueryDisplayState<S>>;
+  watchDisplay: QueryDisplayWatch<QueryDisplayState<S>>;
   load: () => Promise<T>;
   refetch: () => Promise<T>;
   invalidate: () => void;
@@ -227,24 +245,24 @@ export type QueryHandle<T> = Readonly<{
 }>;
 
 export type SyncClient = Readonly<{
-  query: <T>(options: QueryOptions<T>) => QueryHandle<T>;
-  infiniteQuery: <Page, Param>(
-    options: InfiniteQueryOptions<Page, Param>
-  ) => InfiniteQueryHandle<Page, Param>;
-  infiniteView: <Page, Param, S = InfiniteData<Page, Param>>(
-    options: InfiniteQueryOptions<Page, Param>,
-    viewOptions?: QueryViewOptions<InfiniteData<Page, Param>, S>
-  ) => InfiniteQueryViewHandle<Page, Param, S>;
-  view: <T, S = T>(
-    options: QueryOptions<T>,
-    viewOptions?: QueryViewOptions<T, S>
-  ) => QueryViewHandle<T, S>;
-  /** Follow a state-ref source, automatically loading its active query key. */
-  liveView: <I, T, S = T>(
-    source: Watch<I>,
-    resolve: (input: I) => LiveQueryOptions<T> | null,
-    viewOptions?: QueryViewOptions<T, S>
-  ) => LiveQueryViewHandle<T, S>;
+  /**
+   * One observer on a query, with an optional display projection.
+   *
+   * The second form takes a state-ref source instead of a fixed key and
+   * follows it, loading each key it resolves to.
+   */
+  query: {
+    <T, S = T>(
+      options: QueryOptions<T> & QueryDisplayOptions<T, S>
+    ): QueryHandle<T, S>;
+    <I, T, S = T>(
+      options: ReactiveQueryOptions<I, T> & QueryDisplayOptions<T, S>
+    ): QueryHandle<T, S>;
+  };
+  infiniteQuery: <Page, Param, S = InfiniteData<Page, Param>>(
+    options: InfiniteQueryOptions<Page, Param> &
+      QueryDisplayOptions<InfiniteData<Page, Param>, S>
+  ) => InfiniteQueryHandle<Page, Param, S>;
   /** Return a fresh cached baseline or perform a READ. */
   fetch: <T>(options: QueryOptions<T>) => Promise<T>;
   /** Best-effort fetch that caches success and swallows load rejections. */
@@ -999,11 +1017,12 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
     }
     return entry;
   };
-  const openQuery = <T>(
+  const openQuery = <T, S = T>(
     queryOptions: QueryOptions<T>,
     kind: 'query' | 'infinite' = 'query',
-    configureExisting = true
-  ): QueryHandle<T> => {
+    configureExisting = true,
+    displayOptions?: QueryDisplayOptions<T, S>
+  ): QueryHandle<T, S> => {
     const entry = getOrCreate(queryOptions, configureExisting, kind);
     entry.attach();
     const automatic = automaticRefetch.observe(
@@ -1032,6 +1051,19 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
         !entry!.getResource().editable
       );
     let dataWatch: Watch<T> | null = null;
+    /**
+     * Built on first access (DC9-03).
+     *
+     * A display owns a store and a status subscription, so making one for
+     * every query would charge consumers that only ever edit the resource.
+     * `watch` above is lazy for the same reason.
+     */
+    let display: QueryDisplayHandle<S> | null = null;
+    const openDisplay = (): QueryDisplayHandle<S> => {
+      assertActive();
+      if (!display) display = createQueryDisplay<T, S>(frozen, displayOptions);
+      return display;
+    };
     const statusWatch = guardedWatch(
       entry.statusStore.watch,
       entry.rawStatus,
@@ -1040,7 +1072,8 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
       controllers,
       true
     );
-    const handle: QueryHandle<T> = {
+    let frozen: QueryHandle<T, S>;
+    const handle: QueryHandle<T, S> = {
       get queryKey() {
         assertActive();
         return JSON.parse(entry!.hash) as QueryKey;
@@ -1068,6 +1101,12 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
       },
       status: guard(entry.rawStatus),
       watchStatus: statusWatch,
+      get display() {
+        return openDisplay().ref;
+      },
+      get watchDisplay() {
+        return openDisplay().watch;
+      },
       load: () => {
         assertActive();
         automatic.start();
@@ -1109,6 +1148,7 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
         if (!active) return;
         active = false;
         try {
+          display?.dispose();
           automatic.dispose();
         } finally {
           controllers.forEach(controller => controller.abort());
@@ -1117,18 +1157,81 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
         }
       },
     };
-    const frozen = Object.freeze(handle);
+    frozen = Object.freeze(handle);
     handles.set(frozen, entry);
     return frozen;
   };
-  const openInfinite = <Page, Param>(
+
+  /**
+   * A handle whose key comes from a state-ref source.
+   *
+   * The cursor outlives the queries it opens, so `display` is one stable
+   * observation point while everything else delegates to the query for the
+   * active key - and says so when there is none (DC9-10).
+   */
+  const openLiveQuery = <I, T, S = T>(
+    options: ReactiveQueryOptions<I, T> & QueryDisplayOptions<T, S>
+  ): QueryHandle<T, S> => {
+    const { source, resolve, ...displayOptions } = options;
+    const cursor = createLiveQuery<I, T, S>(
+      source,
+      resolve,
+      (queryOptions): OpenedQuery<T, S> => {
+        const query = openQuery<T, S>(queryOptions);
+        try {
+          return Object.freeze({
+            query,
+            display: createQueryDisplay<T, S>(query, displayOptions),
+          });
+        } catch (error) {
+          query.dispose();
+          throw error;
+        }
+      }
+    );
+    const active = (): QueryHandle<T, S> => {
+      const query = cursor.current();
+      if (!query) throw new Error('This query has no active key.');
+      return query;
+    };
+    return Object.freeze({
+      get queryKey() {
+        return active().queryKey;
+      },
+      get ref() {
+        return active().ref;
+      },
+      get watch() {
+        return active().watch;
+      },
+      get status() {
+        return active().status;
+      },
+      get watchStatus() {
+        return active().watchStatus;
+      },
+      display: cursor.ref,
+      watchDisplay: cursor.watch,
+      load: () => active().load(),
+      refetch: () => active().refetch(),
+      invalidate: () => active().invalidate(),
+      isDirty: () => active().isDirty(),
+      changes: () => active().changes(),
+      version: () => active().version(),
+      capture: (ids?: readonly number[]) => active().capture(ids),
+      acceptServer: (value: T) => active().acceptServer(value),
+      dispose: cursor.dispose,
+    });
+  };
+  const openInfinite = <Page, Param, S = InfiniteData<Page, Param>>(
     infiniteOptions: InfiniteQueryOptions<Page, Param>,
-    configureExisting = true
+    configureExisting = true,
+    displayOptions?: QueryDisplayOptions<InfiniteData<Page, Param>, S>
   ): {
-    query: QueryHandle<InfiniteData<Page, Param>>;
+    query: QueryHandle<InfiniteData<Page, Param>, S>;
     entry: QueryEntry<InfiniteData<Page, Param>>;
     queryOptions: QueryOptions<InfiniteData<Page, Param>>;
-    handle: InfiniteQueryHandle<Page, Param>;
+    handle: InfiniteQueryHandle<Page, Param, S>;
   } => {
     checkInfiniteOptions(infiniteOptions);
     const hash = hashQueryKey(infiniteOptions.queryKey);
@@ -1187,7 +1290,12 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
           )
         : undefined,
     };
-    const query = openQuery(queryOptions, 'infinite', configureExisting);
+    const query = openQuery<Data, S>(
+      queryOptions,
+      'infinite',
+      configureExisting,
+      displayOptions
+    );
     entry = handles.get(query) as QueryEntry<Data>;
     try {
       if (entry.resource)
@@ -1254,18 +1362,29 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
           },
         });
       });
-    const handle: InfiniteQueryHandle<Page, Param> = Object.freeze({
+    const handle: InfiniteQueryHandle<Page, Param, S> = Object.freeze({
       get ref() {
-        return query.ref as unknown as InfiniteQueryHandle<Page, Param>['ref'];
+        return query.ref as unknown as InfiniteQueryHandle<
+          Page,
+          Param,
+          S
+        >['ref'];
       },
       get watch() {
         return query.watch as unknown as InfiniteQueryHandle<
           Page,
-          Param
+          Param,
+          S
         >['watch'];
       },
       status: query.status,
       watchStatus: query.watchStatus,
+      get display() {
+        return query.display;
+      },
+      get watchDisplay() {
+        return query.watchDisplay;
+      },
       load: query.load,
       refetch: query.refetch,
       fetchNextPage: () => append('next'),
@@ -1286,57 +1405,20 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
     return { query, entry, queryOptions, handle };
   };
   const client: SyncClient = Object.freeze({
-    query<T>(queryOptions: QueryOptions<T>): QueryHandle<T> {
-      return openQuery(queryOptions);
+    query(options: any): any {
+      // The two forms are told apart by the source, not by a flag: a reactive
+      // key has no `queryKey` of its own to check.
+      return 'source' in options
+        ? openLiveQuery(options)
+        : openQuery(options, 'query', true, options);
     },
-    infiniteQuery<Page, Param>(
-      infiniteOptions: InfiniteQueryOptions<Page, Param>
-    ): InfiniteQueryHandle<Page, Param> {
-      return openInfinite(infiniteOptions).handle;
-    },
-    infiniteView<Page, Param, S = InfiniteData<Page, Param>>(
-      infiniteOptions: InfiniteQueryOptions<Page, Param>,
-      viewOptions?: QueryViewOptions<InfiniteData<Page, Param>, S>
-    ): InfiniteQueryViewHandle<Page, Param, S> {
-      if (viewOptions?.placeholderData !== undefined)
-        checkInfiniteData(
-          viewOptions.placeholderData,
-          infiniteOptions.maxPages
-        );
-      const { query, handle } = openInfinite(infiniteOptions);
-      try {
-        const view = createQueryView(query, viewOptions);
-        return Object.freeze({
-          query: handle,
-          ref: view.ref,
-          watch: view.watch,
-          dispose: view.dispose,
-        });
-      } catch (error) {
-        handle.dispose();
-        throw error;
-      }
-    },
-    view<T, S = T>(
-      queryOptions: QueryOptions<T>,
-      viewOptions?: QueryViewOptions<T, S>
-    ): QueryViewHandle<T, S> {
-      const query = client.query(queryOptions);
-      try {
-        return createQueryView(query, viewOptions);
-      } catch (error) {
-        query.dispose();
-        throw error;
-      }
-    },
-    liveView<I, T, S = T>(
-      source: Watch<I>,
-      resolve: (input: I) => LiveQueryOptions<T> | null,
-      viewOptions?: QueryViewOptions<T, S>
-    ): LiveQueryViewHandle<T, S> {
-      return createLiveQueryView(source, resolve, options =>
-        client.view(options, viewOptions)
-      );
+    infiniteQuery<Page, Param, S = InfiniteData<Page, Param>>(
+      options: InfiniteQueryOptions<Page, Param> &
+        QueryDisplayOptions<InfiniteData<Page, Param>, S>
+    ): InfiniteQueryHandle<Page, Param, S> {
+      if (options.placeholderData !== undefined)
+        checkInfiniteData(options.placeholderData, options.maxPages);
+      return openInfinite<Page, Param, S>(options, true, options).handle;
     },
     async fetch<T>(queryOptions: QueryOptions<T>): Promise<T> {
       const entry = getOrCreate(queryOptions, false);

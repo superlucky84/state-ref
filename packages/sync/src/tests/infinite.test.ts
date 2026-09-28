@@ -17,9 +17,9 @@ describe('pagination and infinite queries', () => {
     const cursor = create(1);
     const first = deferred<{ page: number }>();
     let firstSignal: AbortSignal | undefined;
-    const live = client.liveView(
-      cursor.watch,
-      page => ({
+    const live = client.query({
+      source: cursor.watch,
+      resolve: page => ({
         queryKey: ['paged', page],
         queryFn: ({ signal }) => {
           if (page === 1) {
@@ -29,16 +29,17 @@ describe('pagination and infinite queries', () => {
           return { page };
         },
       }),
-      { placeholderData: { page: -1 }, select: data => data.page }
-    );
-    expect(live.ref.data.value).toBe(-1);
+      placeholderData: { page: -1 },
+      select: data => data.page,
+    });
+    expect(live.display.data.value).toBe(-1);
     cursor.updateRef.value = 2;
     expect(firstSignal?.aborted).toBe(true);
-    await live.query?.load();
-    expect(live.ref.data.value).toBe(2);
+    await live.load();
+    expect(live.display.data.value).toBe(2);
     first.resolve({ page: 1 });
     await first.promise;
-    expect(live.ref.data.value).toBe(2);
+    expect(live.display.data.value).toBe(2);
     const pageOne = client.query({
       queryKey: ['paged', 1],
       queryFn: () => ({ page: 1 }),

@@ -1,6 +1,10 @@
 import { hashQueryKey } from './key';
 import type { QueryHandle, QueryOptions } from './index';
-import type { QueryViewRef, QueryViewState, QueryViewWatch } from './view';
+import type {
+  QueryDisplayRef,
+  QueryDisplayState,
+  QueryDisplayWatch,
+} from './display';
 
 export type InfiniteData<Page, Param> = Readonly<{
   pages: readonly Page[];
@@ -33,11 +37,18 @@ export type InfiniteQueryOptions<Page, Param> = Omit<
     initialData?: InfiniteData<Page, Param>;
   }>;
 
-export type InfiniteQueryHandle<Page, Param> = Readonly<{
-  ref: QueryViewRef<InfiniteData<Page, Param>>;
-  watch: QueryViewWatch<InfiniteData<Page, Param>>;
+export type InfiniteQueryHandle<
+  Page,
+  Param,
+  S = InfiniteData<Page, Param>
+> = Readonly<{
+  ref: QueryDisplayRef<InfiniteData<Page, Param>>;
+  watch: QueryDisplayWatch<InfiniteData<Page, Param>>;
   status: QueryHandle<InfiniteData<Page, Param>>['status'];
   watchStatus: QueryHandle<InfiniteData<Page, Param>>['watchStatus'];
+  /** This observer's display state; created on first access (DC9-03). */
+  display: QueryDisplayRef<QueryDisplayState<S>>;
+  watchDisplay: QueryDisplayWatch<QueryDisplayState<S>>;
   load: () => Promise<InfiniteData<Page, Param>>;
   refetch: () => Promise<InfiniteData<Page, Param>>;
   fetchNextPage: () => Promise<InfiniteData<Page, Param>>;
@@ -45,13 +56,6 @@ export type InfiniteQueryHandle<Page, Param> = Readonly<{
   hasNextPage: () => boolean;
   hasPreviousPage: () => boolean;
   invalidate: () => void;
-  dispose: () => void;
-}>;
-
-export type InfiniteQueryViewHandle<Page, Param, S> = Readonly<{
-  query: InfiniteQueryHandle<Page, Param>;
-  ref: QueryViewRef<QueryViewState<S>>;
-  watch: QueryViewWatch<QueryViewState<S>>;
   dispose: () => void;
 }>;
 

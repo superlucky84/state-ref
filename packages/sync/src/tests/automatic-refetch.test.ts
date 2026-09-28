@@ -343,17 +343,17 @@ describe('automatic query refetch', () => {
     const source = create(1);
     let value = 0;
     const read = vi.fn(() => ({ n: ++value }));
-    const live = createSyncClient({ environment: host.environment }).liveView(
-      source.watch,
-      id => ({ queryKey: ['automatic-live', id], queryFn: read }),
-      { select: data => data.n }
-    );
+    const live = createSyncClient({ environment: host.environment }).query({
+      source: source.watch,
+      resolve: id => ({ queryKey: ['automatic-live', id], queryFn: read }),
+      select: data => data.n,
+    });
     await flushAutomaticRead();
-    expect(live.ref.data.value).toBe(1);
+    expect(live.display.data.value).toBe(1);
 
     host.emit('focus');
     await flushAutomaticRead();
-    expect(live.ref.data.value).toBe(2);
+    expect(live.display.data.value).toBe(2);
     live.dispose();
     expect(host.subscriptions()).toBe(0);
   });

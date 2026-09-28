@@ -18,35 +18,41 @@ describe('query display views', () => {
     const read = deferred<{ city: string; count: number }>();
     const queryFn = vi.fn(() => read.promise);
     const options = { queryKey: ['account'], queryFn };
-    const city = client.view(options, {
+    const city = client.query({
+      ...options,
       select: data => data.city,
       placeholderData: { city: '기다리는 중', count: 0 },
     });
-    const count = client.view(options, {
+    const count = client.query({
+      ...options,
       select: data => data.count,
       placeholderData: { city: '다른 표시', count: -1 },
     });
-    expect(city.ref.phase.value).toBe('placeholder');
-    expect(city.ref.data.value).toBe('기다리는 중');
-    expect(count.ref.data.value).toBe(-1);
-    expect(city.query.status.loaded.value).toBe(false);
-    expect(() => city.query.ref).toThrow('not loaded');
+    expect(city.display.isPlaceholder.value).toBe(true);
+    expect(city.display.data.value).toBe('기다리는 중');
+    expect(count.display.data.value).toBe(-1);
+    expect(city.status.loaded.value).toBe(false);
+    expect(() => city.ref).toThrow('not loaded');
     expect(client.dehydrate().queries).toEqual([]);
 
     const phases: string[] = [];
-    city.watch(ref => {
-      phases.push(`${ref.phase.value}:${ref.fetchStatus.value}`);
+    city.watchDisplay(ref => {
+      phases.push(
+        `${ref.isPlaceholder.value ? 'placeholder' : ref.status.value}:${
+          ref.fetchStatus.value
+        }`
+      );
     });
-    const first = city.query.load();
-    const second = count.query.load();
+    const first = city.load();
+    const second = count.load();
     expect(first).toBe(second);
     expect(phases).toContain('placeholder:fetching');
     read.resolve({ city: '서울', count: 2 });
     await first;
-    expect(city.ref.phase.value).toBe('success');
-    expect(city.ref.isPlaceholder.value).toBe(false);
-    expect(city.ref.data.value).toBe('서울');
-    expect(count.ref.data.value).toBe(2);
+    expect(city.display.status.value).toBe('success');
+    expect(city.display.isPlaceholder.value).toBe(false);
+    expect(city.display.data.value).toBe('서울');
+    expect(count.display.data.value).toBe(2);
     expect(client.dehydrate().queries[0].data).toEqual({
       city: '서울',
       count: 2,
@@ -61,25 +67,25 @@ describe('query display views', () => {
       queryKey: ['editable'],
       queryFn: () => ({ city: '서울', count: 1 }),
     };
-    const city = client.view(options, { select: data => data.city });
-    const count = client.view(options, { select: data => data.count });
-    await city.query.load();
+    const city = client.query({ ...options, select: data => data.city });
+    const count = client.query({ ...options, select: data => data.count });
+    await city.load();
     const cityValues: string[] = [];
     const counts: number[] = [];
-    city.watch(ref => {
+    city.watchDisplay(ref => {
       cityValues.push(ref.data.value!);
     });
-    count.watch(ref => {
+    count.watchDisplay(ref => {
       counts.push(ref.data.value!);
     });
-    city.query.ref.city.value = '부산';
+    city.ref.city.value = '부산';
     expect(cityValues).toEqual(['서울', '부산']);
     expect(counts).toEqual([1]);
-    expect(count.query.ref.city.value).toBe('부산');
-    expect(city.query.status.dirty.value).toBe(true);
+    expect(count.ref.city.value).toBe('부산');
+    expect(city.status.dirty.value).toBe(true);
     city.dispose();
-    expect(() => city.ref.data.value).toThrow('disposed');
-    expect(count.ref.data.value).toBe(1);
+    expect(() => city.display.data.value).toThrow('disposed');
+    expect(count.display.data.value).toBe(1);
     count.dispose();
   });
 
@@ -88,30 +94,28 @@ describe('query display views', () => {
     const select = vi.fn((data: { city: string; count: number }) => ({
       city: data.city,
     }));
-    const view = client.view(
-      {
-        queryKey: ['memoized'],
-        queryFn: () => ({ city: '서울', count: 1 }),
-        initialData: { city: '서울', count: 1 },
-      },
-      {
-        select,
-        equals: (next, previous) => next.city === previous.city,
-      }
-    );
-    expect(select).toHaveBeenCalledOnce();
+    const view = client.query({
+      queryKey: ['memoized'],
+      queryFn: () => ({ city: '서울', count: 1 }),
+      initialData: { city: '서울', count: 1 },
+      select,
+      equals: (next, previous) => next.city === previous.city,
+    });
+    // Nothing has selected anything yet: the display is built on first
+    // access (DC9-03), and creating the handle does not touch it.
+    expect(select).not.toHaveBeenCalled();
     const cities: string[] = [];
-    view.watch(ref => {
+    view.watchDisplay(ref => {
       cities.push(ref.data.value!.city);
     });
-    view.query.ref.count.value = 2;
+    view.ref.count.value = 2;
     expect(select).toHaveBeenCalledTimes(2);
     expect(cities).toEqual(['서울']);
-    view.query.ref.city.value = '부산';
+    view.ref.city.value = '부산';
     expect(select).toHaveBeenCalledTimes(3);
     expect(cities).toEqual(['서울', '부산']);
     expect(() => {
-      Reflect.set(view.ref.data, 'value', { city: '광주' });
+      Reflect.set(view.display.data, 'value', { city: '광주' });
     }).toThrow();
     view.dispose();
   });
@@ -124,50 +128,47 @@ describe('query display views', () => {
       .mockResolvedValueOnce({ n: 2 })
       .mockRejectedValueOnce(new Error('offline'))
       .mockResolvedValueOnce({ n: 3 });
-    const selected = client.view<{ n: number }, number>(
-      { queryKey: ['projection-error'], queryFn },
-      {
-        select: data => {
-          if (data.n === 2) throw new Error('bad projection');
-          return data.n;
-        },
-      }
-    );
-    const raw = client.view({ queryKey: ['projection-error'], queryFn });
-    expect(selected.ref.phase.value).toBe('pending');
-    expect(selected.ref.data.value).toBeUndefined();
-    await selected.query.load();
-    expect(selected.ref.data.value).toBe(1);
-    await selected.query.refetch();
-    expect(selected.query.status.status.value).toBe('success');
-    expect(selected.ref.phase.value).toBe('error');
-    expect(selected.ref.errorSource.value).toBe('select');
-    expect(raw.ref.data.value).toEqual({ n: 2 });
-    await expect(raw.query.refetch()).rejects.toThrow('offline');
-    expect(raw.ref.phase.value).toBe('error');
-    expect(raw.ref.errorSource.value).toBe('query');
-    expect(raw.ref.data.value).toEqual({ n: 2 });
-    await selected.query.refetch();
-    expect(selected.ref.phase.value).toBe('success');
-    expect(selected.ref.data.value).toBe(3);
+    const selected = client.query<{ n: number }, number>({
+      queryKey: ['projection-error'],
+      queryFn,
+      select: data => {
+        if (data.n === 2) throw new Error('bad projection');
+        return data.n;
+      },
+    });
+    const raw = client.query({ queryKey: ['projection-error'], queryFn });
+    expect(selected.display.status.value).toBe('pending');
+    expect(selected.display.data.value).toBeUndefined();
+    await selected.load();
+    expect(selected.display.data.value).toBe(1);
+    await selected.refetch();
+    expect(selected.status.status.value).toBe('success');
+    expect(selected.display.status.value).toBe('error');
+    expect(selected.display.errorSource.value).toBe('select');
+    expect(raw.display.data.value).toEqual({ n: 2 });
+    await expect(raw.refetch()).rejects.toThrow('offline');
+    expect(raw.display.status.value).toBe('error');
+    expect(raw.display.errorSource.value).toBe('query');
+    expect(raw.display.data.value).toEqual({ n: 2 });
+    await selected.refetch();
+    expect(selected.display.status.value).toBe('success');
+    expect(selected.display.data.value).toBe(3);
     selected.dispose();
     raw.dispose();
   });
 
   it('removes a placeholder after a first READ error and reads hydrated data directly', async () => {
     const client = createSyncClient({ ssr: true });
-    const failed = client.view(
-      {
-        queryKey: ['failed-view'],
-        queryFn: () => Promise.reject(new Error('offline')),
-      },
-      { placeholderData: { n: 0 } }
-    );
-    expect(failed.ref.phase.value).toBe('placeholder');
-    await expect(failed.query.load()).rejects.toThrow('offline');
-    expect(failed.ref.phase.value).toBe('error');
-    expect(failed.ref.data.value).toBeUndefined();
-    expect(failed.ref.errorSource.value).toBe('query');
+    const failed = client.query({
+      queryKey: ['failed-view'],
+      queryFn: () => Promise.reject(new Error('offline')),
+      placeholderData: { n: 0 },
+    });
+    expect(failed.display.isPlaceholder.value).toBe(true);
+    await expect(failed.load()).rejects.toThrow('offline');
+    expect(failed.display.status.value).toBe('error');
+    expect(failed.display.data.value).toBeUndefined();
+    expect(failed.display.errorSource.value).toBe('query');
     failed.dispose();
 
     const restoredClient = createSyncClient({ ssr: true });
@@ -184,41 +185,40 @@ describe('query display views', () => {
         },
       ],
     });
-    const restored = restoredClient.view(
-      { queryKey: ['hydrated-view'], queryFn: () => ({ n: 9 }) },
-      { select: data => data.n, placeholderData: { n: 0 } }
-    );
-    expect(restored.ref.phase.value).toBe('success');
-    expect(restored.ref.data.value).toBe(4);
+    const restored = restoredClient.query({
+      queryKey: ['hydrated-view'],
+      queryFn: () => ({ n: 9 }),
+      select: data => data.n,
+      placeholderData: { n: 0 },
+    });
+    expect(restored.display.status.value).toBe('success');
+    expect(restored.display.data.value).toBe(4);
     expect(restoredClient.dehydrate().queries[0].data).toEqual({ n: 4 });
     restored.dispose();
   });
 
   it('contains a comparison error until the selected input changes again', () => {
     const client = createSyncClient({ ssr: true });
-    const view = client.view(
-      {
-        queryKey: ['comparison-error'],
-        queryFn: () => ({ n: 1 }),
-        initialData: { n: 1 },
+    const view = client.query({
+      queryKey: ['comparison-error'],
+      queryFn: () => ({ n: 1 }),
+      initialData: { n: 1 },
+      select: data => data.n,
+      equals: () => {
+        throw new Error('comparison failed');
       },
-      {
-        select: data => data.n,
-        equals: () => {
-          throw new Error('comparison failed');
-        },
-      }
-    );
+    });
+    expect(view.display.status.value).toBe('success');
     expect(() => {
-      view.query.ref.n.value = 2;
+      view.ref.n.value = 2;
     }).not.toThrow();
-    expect(view.ref.phase.value).toBe('error');
-    expect(view.ref.errorSource.value).toBe('select');
-    view.query.invalidate();
-    expect(view.ref.phase.value).toBe('error');
-    view.query.ref.n.value = 3;
-    expect(view.ref.phase.value).toBe('success');
-    expect(view.ref.data.value).toBe(3);
+    expect(view.display.status.value).toBe('error');
+    expect(view.display.errorSource.value).toBe('select');
+    view.invalidate();
+    expect(view.display.status.value).toBe('error');
+    view.ref.n.value = 3;
+    expect(view.display.status.value).toBe('success');
+    expect(view.display.data.value).toBe(3);
     view.dispose();
   });
 
@@ -230,18 +230,18 @@ describe('query display views', () => {
       queryFn: () => ({ n: 1 }),
       gcTime: 10,
     };
-    const first = client.view(options);
-    const second = client.view(options);
-    await first.query.load();
+    const first = client.query(options);
+    const second = client.query(options);
+    await first.load();
     let calls = 0;
-    first.watch(ref => {
+    first.watchDisplay(ref => {
       void ref.data.value;
       calls += 1;
     });
     first.dispose();
-    second.query.ref.n.value = 2;
+    second.ref.n.value = 2;
     expect(calls).toBe(1);
-    expect(() => first.watch()).toThrow('disposed');
+    expect(() => first.watchDisplay()).toThrow('disposed');
     second.dispose();
     await vi.advanceTimersByTimeAsync(10);
     expect(client.size()).toBe(1); // dirty edits remain owned by the cache
@@ -254,24 +254,26 @@ describe('query display views', () => {
 
   it('starts a dependent READ from a parent view without caching its placeholder', async () => {
     const client = createSyncClient({ ssr: true });
-    const parent = client.view(
-      { queryKey: ['person'], queryFn: () => ({ id: 7 }) },
-      { select: data => data.id, placeholderData: { id: 0 } }
-    );
-    let child: ReturnType<typeof client.view<{ task: string }>> | null = null;
-    parent.watch(ref => {
+    const parent = client.query({
+      queryKey: ['person'],
+      queryFn: () => ({ id: 7 }),
+      select: data => data.id,
+      placeholderData: { id: 0 },
+    });
+    let child: ReturnType<typeof client.query<{ task: string }>> | null = null;
+    parent.watchDisplay(ref => {
       if (ref.isPlaceholder.value || ref.data.value === undefined) return;
       const id = ref.data.value;
-      child = client.view({
+      child = client.query({
         queryKey: ['tasks', id],
         queryFn: () => ({ task: `task-${id}` }),
       });
     });
     expect(child).toBeNull();
-    await parent.query.load();
+    await parent.load();
     expect(child).not.toBeNull();
-    await child!.query.load();
-    expect(child!.ref.data.value).toEqual({ task: 'task-7' });
+    await child!.load();
+    expect(child!.display.data.value).toEqual({ task: 'task-7' });
     expect(client.dehydrate().queries).toHaveLength(2);
     child!.dispose();
     parent.dispose();
@@ -283,24 +285,24 @@ describe('query display views', () => {
     const secondRead = deferred<{ n: number }>();
     const firstFn = vi.fn(() => firstRead.promise);
     const secondFn = vi.fn(() => secondRead.promise);
-    const first = client.view({ queryKey: ['parallel', 1], queryFn: firstFn });
-    const second = client.view({
+    const first = client.query({ queryKey: ['parallel', 1], queryFn: firstFn });
+    const second = client.query({
       queryKey: ['parallel', 2],
       queryFn: secondFn,
     });
-    const a = first.query.load();
-    const b = second.query.load();
+    const a = first.load();
+    const b = second.load();
     expect(firstFn).toHaveBeenCalledOnce();
     expect(secondFn).toHaveBeenCalledOnce();
-    expect(first.ref.fetchStatus.value).toBe('fetching');
-    expect(second.ref.fetchStatus.value).toBe('fetching');
+    expect(first.display.fetchStatus.value).toBe('fetching');
+    expect(second.display.fetchStatus.value).toBe('fetching');
     secondRead.resolve({ n: 2 });
     await b;
-    expect(second.ref.data.value).toEqual({ n: 2 });
-    expect(first.ref.phase.value).toBe('pending');
+    expect(second.display.data.value).toEqual({ n: 2 });
+    expect(first.display.status.value).toBe('pending');
     firstRead.resolve({ n: 1 });
     await a;
-    expect(first.ref.data.value).toEqual({ n: 1 });
+    expect(first.display.data.value).toEqual({ n: 1 });
     expect(client.size()).toBe(2);
     first.dispose();
     second.dispose();
@@ -313,9 +315,9 @@ describe('live query views', () => {
     const source = create({ id: null as number | null, enabled: false });
     const read = deferred<{ task: string }>();
     const queryFn = vi.fn(() => read.promise);
-    const live = client.liveView(
-      source.watch,
-      input =>
+    const live = client.query({
+      source: source.watch,
+      resolve: input =>
         input.id === null
           ? null
           : {
@@ -323,22 +325,22 @@ describe('live query views', () => {
               queryFn,
               enabled: input.enabled,
             },
-      { placeholderData: { task: '기다리는 중' } }
-    );
-    expect(live.query).toBeNull();
-    expect(live.ref.enabled.value).toBe(false);
+      placeholderData: { task: '기다리는 중' },
+    });
+    expect(() => live.status).toThrow('This query has no active key.');
+    expect(live.display.enabled.value).toBe(false);
     source.updateRef.id.value = 7;
-    expect(live.ref.queryKey.value).toEqual(['tasks', 7]);
-    expect(live.ref.data.value).toBeUndefined();
+    expect(live.display.queryKey.value).toEqual(['tasks', 7]);
+    expect(live.display.data.value).toBeUndefined();
     expect(queryFn).not.toHaveBeenCalled();
     source.updateRef.enabled.value = true;
-    expect(live.ref.enabled.value).toBe(true);
-    expect(live.ref.phase.value).toBe('placeholder');
-    expect(live.ref.data.value).toEqual({ task: '기다리는 중' });
+    expect(live.display.enabled.value).toBe(true);
+    expect(live.display.isPlaceholder.value).toBe(true);
+    expect(live.display.data.value).toEqual({ task: '기다리는 중' });
     expect(queryFn).toHaveBeenCalledOnce();
     read.resolve({ task: 'task-7' });
-    await live.query!.load();
-    expect(live.ref.data.value).toEqual({ task: 'task-7' });
+    await live.load();
+    expect(live.display.data.value).toEqual({ task: 'task-7' });
     expect(client.dehydrate().queries[0].data).toEqual({ task: 'task-7' });
     live.dispose();
   });
@@ -349,9 +351,9 @@ describe('live query views', () => {
     const oldRead = deferred<{ n: number }>();
     const newRead = deferred<{ n: number }>();
     let oldSignal!: AbortSignal;
-    const live = client.liveView(
-      source.watch,
-      input => ({
+    const live = client.query({
+      source: source.watch,
+      resolve: input => ({
         queryKey: ['switch', input.id],
         queryFn: ({ signal }) => {
           if (input.id === 1) {
@@ -362,24 +364,25 @@ describe('live query views', () => {
         },
         retry: 0,
       }),
-      { select: data => data.n, placeholderData: { n: -1 } }
-    );
-    const firstQuery = live.query!;
+      select: data => data.n,
+      placeholderData: { n: -1 },
+    });
+    const firstStatus = live.status;
     const seen: Array<[number | undefined, number | undefined]> = [];
-    live.watch(ref => {
+    live.watchDisplay(ref => {
       seen.push([ref.queryKey.value?.[1] as number, ref.data.value]);
     });
-    expect(live.ref.data.value).toBe(-1);
+    expect(live.display.data.value).toBe(-1);
     source.updateRef.id.value = 2;
     expect(oldSignal.aborted).toBe(true);
-    expect(() => firstQuery.status.value).toThrow('disposed');
-    expect(live.ref.queryKey.value).toEqual(['switch', 2]);
-    expect(live.ref.data.value).toBe(-1);
+    expect(() => firstStatus.value).toThrow('disposed');
+    expect(live.display.queryKey.value).toEqual(['switch', 2]);
+    expect(live.display.data.value).toBe(-1);
     oldRead.resolve({ n: 1 });
     await Promise.resolve();
     newRead.resolve({ n: 2 });
-    await live.query!.load();
-    expect(live.ref.data.value).toBe(2);
+    await live.load();
+    expect(live.display.data.value).toBe(2);
     expect(seen.every(([key, value]) => key !== 2 || value !== 1)).toBe(true);
     expect(client.dehydrate().queries).toEqual([
       expect.objectContaining({ queryKey: ['switch', 2], data: { n: 2 } }),
@@ -404,23 +407,23 @@ describe('live query views', () => {
         return nextRead.promise;
       },
     });
-    const live = client.liveView(source.watch, resolve);
-    const shared = client.view(resolve({ id: 1, enabled: true }));
+    const live = client.query({ source: source.watch, resolve: resolve });
+    const shared = client.query(resolve({ id: 1, enabled: true }));
     source.updateRef.id.value = 2;
     expect(oldSignal.aborted).toBe(false);
     oldRead.resolve({ n: 1 });
-    await shared.query.load();
-    expect(shared.ref.data.value).toEqual({ n: 1 });
-    expect(live.ref.queryKey.value).toEqual(['shared-switch', 2]);
-    expect(live.ref.data.value).toBeUndefined();
+    await shared.load();
+    expect(shared.display.data.value).toEqual({ n: 1 });
+    expect(live.display.queryKey.value).toEqual(['shared-switch', 2]);
+    expect(live.display.data.value).toBeUndefined();
     source.updateRef.enabled.value = false;
-    expect(live.query).toBeNull();
-    expect(live.ref.enabled.value).toBe(false);
-    expect(live.ref.fetchStatus.value).toBe('idle');
-    expect(live.ref.data.value).toBeUndefined();
+    expect(() => live.status).toThrow('This query has no active key.');
+    expect(live.display.enabled.value).toBe(false);
+    expect(live.display.fetchStatus.value).toBe('idle');
+    expect(live.display.data.value).toBeUndefined();
     nextRead.resolve({ n: 2 });
     await Promise.resolve();
-    expect(live.ref.data.value).toBeUndefined();
+    expect(live.display.data.value).toBeUndefined();
     shared.dispose();
     live.dispose();
   });
@@ -429,20 +432,23 @@ describe('live query views', () => {
     const client = createSyncClient({ ssr: true });
     const source = create({ revision: 1 });
     const queryFn = vi.fn(() => ({ n: 1 }));
-    const live = client.liveView(source.watch, input => ({
-      queryKey: ['same-key'],
-      queryFn,
-      staleTime: input.revision === 1 ? Infinity : 0,
-    }));
-    await live.query!.load();
+    const live = client.query({
+      source: source.watch,
+      resolve: input => ({
+        queryKey: ['same-key'],
+        queryFn,
+        staleTime: input.revision === 1 ? Infinity : 0,
+      }),
+    });
+    await live.load();
     expect(queryFn).toHaveBeenCalledOnce();
-    const previous = live.query!;
+    const previousStatus = live.status;
     source.updateRef.revision.value = 2;
-    expect(() => previous.status.value).toThrow('disposed');
-    await live.query!.load();
+    expect(() => previousStatus.value).toThrow('disposed');
+    await live.load();
     expect(queryFn).toHaveBeenCalledTimes(2);
     live.dispose();
-    expect(() => live.ref.data.value).toThrow('disposed');
+    expect(() => live.display.data.value).toThrow('disposed');
     source.updateRef.revision.value = 3;
     expect(queryFn).toHaveBeenCalledTimes(2);
   });
@@ -451,45 +457,51 @@ describe('live query views', () => {
     const client = createSyncClient({ ssr: true });
     const source = create({ id: 1 });
     const second = deferred<{ n: number }>();
-    const live = client.liveView(source.watch, input => ({
-      queryKey: ['loaded-switch', input.id],
-      queryFn: () => (input.id === 1 ? { n: 1 } : second.promise),
-      staleTime: Infinity,
-    }));
-    await live.query!.load();
-    expect(live.ref.data.value).toEqual({ n: 1 });
+    const live = client.query({
+      source: source.watch,
+      resolve: input => ({
+        queryKey: ['loaded-switch', input.id],
+        queryFn: () => (input.id === 1 ? { n: 1 } : second.promise),
+        staleTime: Infinity,
+      }),
+    });
+    await live.load();
+    expect(live.display.data.value).toEqual({ n: 1 });
     source.updateRef.id.value = 2;
-    expect(live.ref.queryKey.value).toEqual(['loaded-switch', 2]);
-    expect(live.ref.data.value).toBeUndefined();
-    expect(live.ref.phase.value).toBe('pending');
+    expect(live.display.queryKey.value).toEqual(['loaded-switch', 2]);
+    expect(live.display.data.value).toBeUndefined();
+    expect(live.display.status.value).toBe('pending');
     source.updateRef.id.value = 1;
-    expect(live.ref.data.value).toEqual({ n: 1 });
+    expect(live.display.data.value).toEqual({ n: 1 });
     second.resolve({ n: 2 });
     await Promise.resolve();
-    expect(live.ref.data.value).toEqual({ n: 1 });
+    expect(live.display.data.value).toEqual({ n: 1 });
     live.dispose();
   });
 
   it('clears the prior view and reports an invalid source key locally', async () => {
     const client = createSyncClient({ ssr: true });
     const source = create({ id: 1 });
-    const live = client.liveView(source.watch, input => ({
-      queryKey: ['valid', input.id === 2 ? undefined : input.id],
-      queryFn: () => ({ n: input.id }),
-    }));
-    await live.query!.load();
-    const prior = live.query;
+    const live = client.query({
+      source: source.watch,
+      resolve: input => ({
+        queryKey: ['valid', input.id === 2 ? undefined : input.id],
+        queryFn: () => ({ n: input.id }),
+      }),
+    });
+    await live.load();
+    const priorStatus = live.status;
     source.updateRef.id.value = 2;
-    expect(live.query).toBeNull();
-    expect(() => prior!.status.value).toThrow('disposed');
-    expect(live.ref.queryKey.value).toBeNull();
-    expect(live.ref.data.value).toBeUndefined();
-    expect(live.ref.phase.value).toBe('error');
-    expect(live.ref.errorSource.value).toBe('source');
-    expect(live.ref.error.value).toBeInstanceOf(TypeError);
+    expect(() => live.status).toThrow('This query has no active key.');
+    expect(() => priorStatus.value).toThrow('disposed');
+    expect(live.display.queryKey.value).toBeNull();
+    expect(live.display.data.value).toBeUndefined();
+    expect(live.display.status.value).toBe('error');
+    expect(live.display.errorSource.value).toBe('source');
+    expect(live.display.error.value).toBeInstanceOf(TypeError);
     source.updateRef.id.value = 3;
-    await live.query!.load();
-    expect(live.ref.data.value).toEqual({ n: 3 });
+    await live.load();
+    expect(live.display.data.value).toEqual({ n: 3 });
     live.dispose();
   });
 });

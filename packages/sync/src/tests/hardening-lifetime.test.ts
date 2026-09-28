@@ -339,12 +339,12 @@ describe('repetition leaves nothing behind', () => {
       refetchInterval: 50,
     });
     await query.load();
-    const view = client.view({
+    const view = client.query({
       queryKey: ['round'],
       queryFn: () => ({ n: 1 }),
       gcTime: 1000,
     });
-    await view.query.load();
+    await view.load();
 
     const draft = createDraft(query.ref);
     draft.ref.n.value = index;
@@ -363,11 +363,14 @@ describe('repetition leaves nothing behind', () => {
     query.dispose();
 
     const source = create({ id: 1 });
-    const live = client.liveView(source.watch, (input: { id: number }) => ({
-      queryKey: ['live', input.id],
-      queryFn: () => ({ n: input.id }),
-      gcTime: 1000,
-    }));
+    const live = client.query({
+      source: source.watch,
+      resolve: (input: { id: number }) => ({
+        queryKey: ['live', input.id],
+        queryFn: () => ({ n: input.id }),
+        gcTime: 1000,
+      }),
+    });
     await vi.advanceTimersByTimeAsync(0);
     source.updateRef.id.value = 2; // Switching keys releases the previous entry.
     await vi.advanceTimersByTimeAsync(0);
@@ -536,17 +539,17 @@ describe('release after an error', () => {
     );
     expect(() => query.dispose()).not.toThrow(); // Disposing twice is a no-op.
 
-    const view = client.view({
+    const view = client.query({
       queryKey: ['reuse-view'],
       queryFn: () => ({ n: 1 }),
     });
-    await view.query.load();
-    const heldView = view.ref;
+    await view.load();
+    const heldView = view.display;
     view.dispose();
     expect(() => heldView.data.value).toThrow(
-      'This query view has been disposed.'
+      'This query display has been disposed.'
     );
-    expect(() => view.query.isDirty()).toThrow(
+    expect(() => view.isDirty()).toThrow(
       'This query handle has been disposed.'
     );
 
