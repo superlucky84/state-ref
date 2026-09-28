@@ -2,7 +2,7 @@
 
 - 개정일: 2026-09-28. 기준: [REQUIREMENTS](./REQUIREMENTS.md) R2-28, [DESIGN](./DESIGN.md) §5.4.
 - 기준 commit: `32b87df`.
-- **상태: 2026-09-28 후보 A 확정(사용자), 구현 진행 중.** `DC9-01~10`은 아래에서 닫혔다. 구현이 끝날 때까지 이 문서의 계약을 현재 동작의 서술로 읽지 않는다.
+- **상태: 완료 (2026-09-28).** 후보 A로 8단계를 마쳤다. `DC9-01~10` 전부 닫힘. 현재 동작의 계약은 [DESIGN §5.4](./DESIGN.md), 수행 결과는 [M2-21](./MANUAL_TEST_CHECKLIST.md#m2-21)에 있다.
 - 이 단계는 기능을 더하지 않는다. **이미 있는 기능의 공개 표면을 줄이는 것이 전부다.**
 
 ## 1. 왜 지금인가
@@ -22,13 +22,15 @@ view(queryOptions, viewOptions) {
 
 합성(composition)을 선택(alternation)으로 제시하면 사용자는 "둘 중 뭘 쓰지?"로 읽는다. 실제 질문은 "레이어를 하나 얹을까?"다. 그리고 얹어도 편집·`load`·`capture`·`version` 때문에 `view.query.*`로 한 칸 더 들어가야 하므로, 얹은 레이어 밑이 그대로 비친다.
 
-## 2. 현재 공개 표면 (측정)
+## 2. 통합 전 공개 표면 (측정)
+
+아래 줄 번호는 **`32b87df` 시점**이다. 통합에서 `view.ts`는 `display.ts`로, `live-view.ts`는 `live-key.ts`로 바뀌었으므로 그 두 파일 이름은 링크가 아니다.
 
 | 축 | 개수 | 위치 |
 |---|---|---|
 | `SyncClient` 조회 팩토리 | **5** | `query` `infiniteQuery` `view` `infiniteView` `liveView` — [index.ts:230-247](../../packages/sync/src/index.ts) |
 | 조회 handle 타입 | **5** | `QueryHandle` `InfiniteQueryHandle` `QueryViewHandle` `InfiniteQueryViewHandle` `LiveQueryViewHandle` |
-| **상태 어휘** | **3** | `QueryStatus`(11필드, [index.ts:124](../../packages/sync/src/index.ts)) / `QueryViewState`(6, [view.ts:15](../../packages/sync/src/view.ts)) / `LiveQueryViewState`(8, [live-view.ts:17](../../packages/sync/src/live-view.ts)) |
+| **상태 어휘** | **3** | `QueryStatus`(11필드, [index.ts:124](../../packages/sync/src/index.ts)) / `QueryViewState`(6, `view.ts:15`) / `LiveQueryViewState`(8, `live-view.ts:17`) |
 
 ### 2.1 상태 어휘 셋이 겹치는 방식
 
@@ -110,7 +112,7 @@ B는 A가 너무 크다고 판단될 때의 대안이지 병행 대상이 아니
 
 - **DC9-01 [x]** **후보 A**(사용자 확정). 근거는 §4 — 기능을 잃지 않고(§2.3), 어휘 문제를 B와 똑같이 해결하며 홉까지 없애고, 미발행이라 비용이 지금 0이다. → 검증: T2-28, [M2-21](./MANUAL_TEST_CHECKLIST.md#m2-21)
 - **DC9-02 [x]** 표시 속성 이름은 **`display`**(사용자 확정). `view`는 없어질 팩토리 이름이라 전환기에 같은 단어가 두 뜻을 갖는다. → 검증: 공개 타입 fixture
-- **DC9-03 [x]** `display`는 **첫 접근 때 만든다.** 상시 생성하면 모든 query가 view store와 `watchStatus` 구독 하나를 더 진다([view.ts:177](../../packages/sync/src/view.ts)). `openQuery`가 이미 `watch`를 같은 방식으로 지연 생성하므로([index.ts:1050](../../packages/sync/src/index.ts)) 새 패턴이 아니다. → 검증: 번들·구독 수 계측(`IC2-08`), NFR2-01/06
+- **DC9-03 [x]** `display`는 **첫 접근 때 만든다.** 상시 생성하면 모든 query가 view store와 `watchStatus` 구독 하나를 더 진다(`view.ts:177`). `openQuery`가 이미 `watch`를 같은 방식으로 지연 생성하므로([index.ts:1050](../../packages/sync/src/index.ts)) 새 패턴이 아니다. → 검증: 번들·구독 수 계측(`IC2-08`), NFR2-01/06
 - **DC9-04 [x]** 반응형 key는 **`client.query({ source, resolve, ... })` 오버로드로 흡수**한다. `liveView`는 없앤다. 두 오버로드는 `source`의 존재로 갈리고 `T`는 `queryFn`/`resolve`의 반환에서 추론한다. → 검증: T2-28의 타입 negative case
 - **DC9-05 [x]** `errorSource`는 `'query' | 'select' | 'source' | null` 하나로 둔다. `'source'`는 고정 key 조회에서 발생할 수 없지만 타입을 갈라 두 종류의 handle을 만드는 비용이 더 크다. → 검증: [DC5-04-04](./PHASE5_4.md) 회귀
 - **DC9-06 [x]** `connectXView`는 **남긴다.** React·Preact는 본문이 같지만 Vue·Svelte·Solid는 실제로 다른 구현이다(§2.2). → 검증: [DC5-05-02](./PHASE5_5.md) 회귀
@@ -163,8 +165,9 @@ B는 A가 너무 크다고 판단될 때의 대안이지 병행 대상이 아니
 
 ## 8. 인계
 
-- done: 현재 표면 측정(§2), 후보와 권고(§3·§4), **결정 10건 전부 닫힘**(§5), 마이그레이션 범위 측정(§6). 사용자가 후보 **A**와 이름 **`display`**를 골랐다.
-- 기준선(`IC2-08`, `32b87df` 시점): sync ESM **87,460 B raw / 21,290 B gzip**. core는 이번 단계에서 건드리지 않으므로 **바이트 동일**해야 한다.
-- next: [IMPLEMENT Phase 9](./IMPLEMENT.md)의 단계 3(sync 구현)부터. 단계 1·2는 이 문서와 [DESIGN §5.4](./DESIGN.md)가 닫았다.
+- done: **8단계 전부.** 팩토리 5 → 2, handle 타입 5 → 2, 상태 어휘 3 → 1. 커밋 `c549226`·`e7cec3e`·`fcae59b`·`0ffed43`·`6bf4663`.
+- **§2의 측정이 §4의 권고를 지탱했다:** 관찰자별 의미가 이미 `query`에 있었으므로(§2.3) 통합이 기능을 잃지 않았다 — 조작 **91**, 시나리오 **62**, `examples/shared` **114**, 브라우저 **84**로 전부 그대로다.
+- **§7이 경고한 것 중 둘이 실제로 왔다.** `display` 비용은 지연 생성으로 막았고(+301 B gzip, 런타임 0), **표시 계약 넷 중 읽기 전용은 주입이 통과해 구멍을 드러냈다** — 계약은 지켜지고 있었지만 그것을 시험하는 테스트가 없었다. §7이 예상하지 못한 것도 둘 있었다: 지연 생성이 비교 오류의 관측 가능성을 바꾼다는 것, 그리고 display가 공유 status를 싣자 `equals`가 무력해진다는 것.
+- next: 사람이 다섯 데모를 눈으로 여는 것과 [문서 사이트](../docs-site/HANDOFF.md)의 보류 해제분.
 - blockers: 없다.
-- 기준 commit: `0c57d21`.
+- 기준 commit: `0c57d21`. 구현 마지막 커밋은 `6bf4663`.

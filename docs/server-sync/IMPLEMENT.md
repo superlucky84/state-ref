@@ -245,12 +245,12 @@
 
 - [x] **1. 계약 고정.** `DC9-01~10`을 닫았다([Phase 9 §5](./PHASE9.md)). 확정 계약은 [DESIGN §5.4](./DESIGN.md)에 있다. `phase`를 **삭제**하고 `display`를 `QueryStatus`의 상위집합으로 두는 것이 이 단계의 핵심 산출물이다(`DC9-09`).
 - [x] **2. 기준선 기록 (`IC2-08`).** `32b87df` 시점 sync ESM **87,460 B raw / 21,290 B gzip**. core는 이번 단계에서 건드리지 않으므로 바이트 동일해야 한다. `display`는 지연 생성이므로(`DC9-03`) 표시를 쓰지 않는 소비자의 런타임 비용은 0이어야 하며, 이를 구독 수로 확인한다.
-- [ ] **3. sync 구현.** `packages/sync`에서 표시를 조회 handle의 속성으로 옮기고 상태 어휘를 하나로 합친다. 기준 테스트: sync 런타임 전체(현재 185개) 회귀 + T2-28.
-- [ ] **4. 커넥터.** `connectXView`는 유지하되(`DC2-22`) 입력 타입만 새 표시 타입으로 맞춘다. 기준 테스트: 커넥터 5종 테스트(36/27/36/26/25) 회귀, [DC5-05-02/03](./PHASE5_5.md) 계약 테스트.
-- [ ] **5. 예제.** `examples/shared`와 5종 화면을 새 표면으로 옮긴다. **조작·시나리오 수가 줄면 안 된다** — 줄었다면 기능을 잃은 것이다. 기준 테스트: `pnpm test:e2e` 84/84, `examples/shared` 114개.
-- [ ] **6. Test Hardening.** 표시 계약 넷([DESIGN §5.4](./DESIGN.md))마다 **결함 주입**으로 판정력을 확인한다. 주입은 화면이 계속 돌면서 값만 틀리게 만들어야 하고, **통과한 주입은 그 계약이 시험되고 있지 않다는 뜻이다.** 기준 테스트: 주입 4종이 각각 정확히 관련 테스트만 실패시킴.
-- [ ] **7. Integration Test.** 5종 데모를 실제 브라우저에서 돌리고 [M2-21](./MANUAL_TEST_CHECKLIST.md#m2-21)을 수행한다. 기준 테스트: `pnpm test:e2e` 전체·콘솔 오류 0, `pnpm gate` 전 단계.
-- [ ] **8. 문서.** `stateRefDocs/src`의 21개 파일과 `packages/*/README.md`를 새 표면으로 옮긴다. **사이트의 코드 블록은 gate 밖이므로**(`scripts/check-doc-examples.mjs`는 README 3개만 컴파일한다) 새 주장은 일회용 probe로 측정하거나 소스 타입을 직접 읽어 쓴다. 기준 테스트: `pnpm --filter state-ref-docs build`, 라우트·링크 전수 해소.
+- [x] **3. sync 구현.** `packages/sync`에서 표시를 조회 handle의 속성으로 옮기고 상태 어휘를 하나로 합친다. 기준 테스트: sync 런타임 전체(현재 185개) 회귀 + T2-28.
+- [x] **4. 커넥터.** `connectXView`는 유지하되(`DC2-22`) 입력 타입만 새 표시 타입으로 맞춘다. 기준 테스트: 커넥터 5종 테스트(36/27/36/26/25) 회귀, [DC5-05-02/03](./PHASE5_5.md) 계약 테스트.
+- [x] **5. 예제.** `examples/shared`와 5종 화면을 새 표면으로 옮긴다. **조작·시나리오 수가 줄면 안 된다** — 줄었다면 기능을 잃은 것이다. 기준 테스트: `pnpm test:e2e` 84/84, `examples/shared` 114개.
+- [x] **6. Test Hardening.** 표시 계약 넷([DESIGN §5.4](./DESIGN.md))마다 **결함 주입**으로 판정력을 확인한다. 주입은 화면이 계속 돌면서 값만 틀리게 만들어야 하고, **통과한 주입은 그 계약이 시험되고 있지 않다는 뜻이다.** 기준 테스트: 주입 4종이 각각 정확히 관련 테스트만 실패시킴.
+- [x] **7. Integration Test.** 5종 데모를 실제 브라우저에서 돌리고 [M2-21](./MANUAL_TEST_CHECKLIST.md#m2-21)을 수행한다. 기준 테스트: `pnpm test:e2e` 전체·콘솔 오류 0, `pnpm gate` 전 단계.
+- [x] **8. 문서.** `stateRefDocs/src`의 21개 파일과 `packages/*/README.md`를 새 표면으로 옮긴다. **사이트의 코드 블록은 gate 밖이므로**(`scripts/check-doc-examples.mjs`는 README 3개만 컴파일한다) 새 주장은 일회용 probe로 측정하거나 소스 타입을 직접 읽어 쓴다. 기준 테스트: `pnpm --filter state-ref-docs build`, 라우트·링크 전수 해소.
 
 **기준 테스트:** T2-28 전체, T2-01~27 회귀(기능이 줄지 않았음의 증거), F2 지원표 재확인, M2-21.
 
@@ -272,9 +272,24 @@
 
 ## 5. 인계
 
+### 2026-09-28 — Phase 9 완료, 조회 표면이 2개 팩토리·1개 어휘가 됐다
+
+- done: **후보 A 구현 완료 (8단계 전부).** `client.view`·`infiniteView`·`liveView`가 사라지고 `select`·`placeholderData`·`equals`가 `query`·`infiniteQuery`의 옵션이 됐다. 표시는 handle의 `display`/`watchDisplay`이고 첫 접근 때 만들어진다. 반응형 key는 `client.query({ source, resolve })`가 흡수했다. 커밋 `c549226`(sync)·`e7cec3e`(커넥터)·`fcae59b`(예제·fixture·패키지 문서)·`0ffed43`(하드닝)·`6bf4663`(문서 사이트).
+- **수치: 팩토리 5 → 2, handle 타입 5 → 2, 상태 어휘 3 → 1.** `phase`는 더한 게 아니라 **뺐다**(`DC9-09`) — `status`에 placeholder 사실을 더한 값이었고 `isPlaceholder`가 이미 들고 있었다. 화면은 `displayPhase`로 유도해 같은 네 단어를 그대로 찍는다.
+- **기능은 줄지 않았다:** 조작 **91**, 시나리오 **62**, `examples/shared` **114**, 브라우저 **84** — 전부 통합 전과 같다. core **342**, sync **186**(+1), 커넥터 36/27/36/26/25.
+- **측정하다 찾은 것 셋.**
+  1. **지연 생성은 의미가 있다.** `equals`가 던지는 비교 오류는 display가 그 전환을 지켜보고 있었을 때만 생긴다 — 편집 뒤에 만들어진 display는 비교한 적이 없으므로 보고할 것이 없다. 테스트를 그 순서로 고쳤다.
+  2. **display가 공유 status를 싣자 `equals`가 무력해졌다.** `dirty`/`version` 변경이 재투영을 부르고 새 선택 객체가 `data`를 보는 모든 구독자를 깨웠다 — `equals`가 막으려던 바로 그것이다. 같다고 답하면 이전 `data` 객체를 그대로 싣도록 고쳤다.
+  3. **주입 하나가 통과했고 그것이 구멍을 가리켰다.** 표시 읽기 전용은 guard 플래그가 아니라 manual sync 모드가 막고 있었고, **그 거절을 시험하는 테스트가 없었다.** 런타임 테스트를 더한 뒤 실제로 막는 자리를 주입하자 3개가 실패했다.
+- **비용:** sync ESM 87,460 → **88,805 B raw**(21,290 → **21,591 B gzip**, +301 B). 표시를 읽지 않는 소비자의 런타임 비용은 0이다(`DC9-03`). `packages/state-ref` 변경 **0줄**. 부정 케이스 진단이 나빠졌다 — `query`가 오버로드라(`DC9-04`) 잘못된 속성이 그 줄이 아니라 호출 전체를 실패시키고 오버로드 둘이 통째로 인쇄된다. 값은 여전히 거절된다.
+- **gate가 두 번 잡았다:** 이름 바꾼 테스트 파일을 F2 지원표가 아직 인용하고 있었고(`support-table`), 템플릿 리터럴 안의 백틱이 `ApiSync` 두 장을 깨뜨렸다(사이트 빌드).
+- next: **사람이 다섯 데모를 눈으로 여는 것**([M2-21](./MANUAL_TEST_CHECKLIST.md#m2-21)의 마지막 줄)과 [문서 사이트 인계](../docs-site/HANDOFF.md)의 보류 해제분 — Home·Introduction·QuickStart의 새 기능 언급, 패키지 README의 낡은 절, 무한 조회 가이드, 링크 검사 gate 편입.
+- blockers: 없다.
+- 시작 기준 commit: `255b851`. 마지막 구현 커밋은 `6bf4663`이고 이 문서는 그 다음이다.
+
 ### 2026-09-28 — Phase 9 설계 착수, 조회 표면의 통합 (미결)
 
-- done: 사용자 보고("`view`와 `query`가 겹쳐 헷갈린다")를 측정했다. 원인은 유사성이 아니라 **`client.view()`가 `client.query()`를 소유한 래퍼인데 API가 대안처럼 생긴 것**이다([index.ts:1320](../../packages/sync/src/index.ts), [view.ts:221](../../packages/sync/src/view.ts)). 현재 표면은 조회 팩토리 **5**·handle 타입 **5**·상태 어휘 **3**이고, 어휘 셋은 같은 사실을 다른 단어로 말한다(`phase`=`status`+`placeholder`, `isPlaceholder`=`loaded`의 반대말, `fetchStatus`·`error`는 동일).
+- done: 사용자 보고("`view`와 `query`가 겹쳐 헷갈린다")를 측정했다. 원인은 유사성이 아니라 **`client.view()`가 `client.query()`를 소유한 래퍼인데 API가 대안처럼 생긴 것**이다([index.ts:1320](../../packages/sync/src/index.ts), `view.ts:221`). 현재 표면은 조회 팩토리 **5**·handle 타입 **5**·상태 어휘 **3**이고, 어휘 셋은 같은 사실을 다른 단어로 말한다(`phase`=`status`+`placeholder`, `isPlaceholder`=`loaded`의 반대말, `fetchStatus`·`error`는 동일).
 - **관찰자별 의미는 이미 `query`에 있다.** `client.query()` 핸들은 캐시만 공유하는 관찰자별 핸들이다([model.ts:342-343](../../examples/shared/src/model.ts)). 따라서 `select`·`placeholderData`가 관찰자별이라는 사실은 별도 *팩토리*의 근거가 아니라 별도 *ref*의 근거다 — 이것이 통합이 기능을 잃지 않는 이유다.
 - **커넥터는 반반이라 합치지 않는다.** React·Preact의 `connectX`/`connectXView`는 같은 `connectWatch`를 불러 타입만 다르지만([connect-react/src/index.ts:9, 32, 37](../../packages/connect-react/src/index.ts)), Vue·Svelte·Solid의 단방향/양방향은 실제로 다른 구현이다. 읽기 전용 구분 자체는 버릴 게 아니다.
 - 산출물: [Phase 9](./PHASE9.md)(측정·후보 A/B/C·권고·열린 결정 `DC9-01~08`·마이그레이션 범위), [DESIGN](./DESIGN.md)의 `DC2-19~23`·§5.4·`IC2-08`, [REQUIREMENTS](./REQUIREMENTS.md)의 `R2-28`, 이 문서의 `T2-28`과 위 Phase 9 계획, [M2-21](./MANUAL_TEST_CHECKLIST.md#m2-21). **코드 변경 0줄, 테스트 0개.**

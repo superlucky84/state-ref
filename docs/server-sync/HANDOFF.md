@@ -1,13 +1,15 @@
 # 서버 동기화·독립 Draft 현재 인계
 
-> **현재 재개 지점 (2026-09-28): 조회 공개 표면의 통합 결정이 열려 있다.**
+> **현재 재개 지점 (2026-09-28): 조회 공개 표면의 통합을 마쳤다.**
 >
 > 사용자 보고로 [Phase 9](./PHASE9.md) 설계를 시작했다 — `view`와 `query`가 겹쳐 보이는 문제이며, 측정 결과 **`client.view()`가 `client.query()`를 소유한 래퍼인데 API가 대안처럼 생긴 것**이 원인이다. 현재 조회 팩토리 **5**·handle 타입 **5**·상태 어휘 **3**.
 >
-> - 열린 결정: [`DC2-19~23`](./DESIGN.md) (§1 표)와 [`DC9-01~08`](./PHASE9.md). 계약은 [DESIGN §5.4](./DESIGN.md), 계획은 [IMPLEMENT Phase 9](./IMPLEMENT.md), 수동 항목은 [M2-21](./MANUAL_TEST_CHECKLIST.md#m2-21).
-> - **`DC2-19`(후보 A/B/C)와 `DC2-23`(문서 사이트보다 먼저 할지)은 사용자 결정이다.** 권고는 A와 "먼저"다.
-> - **그 둘이 닫히기 전까지 sync 공개 표면과 [문서 사이트](../docs-site/HANDOFF.md)의 조회 관련 페이지를 바꾸지 않는다.** 나중에 통합하면 같은 21개 페이지를 두 번 쓴다.
-> - 코드 변경 0줄. Phase 9는 설계 단계이며 `[ ]` 행을 계약으로 인용하지 않는다.
+> 사용자가 후보 **A**를 골랐고 8단계를 전부 마쳤다. **팩토리 5 → 2, handle 타입 5 → 2, 상태 어휘 3 → 1.** `client.view`·`infiniteView`·`liveView`가 사라지고 표시는 handle의 `display`/`watchDisplay`가 됐다. `phase`는 삭제했다 — `isPlaceholder`가 이미 들고 있던 사실이다.
+>
+> - 현재 동작의 계약은 [DESIGN §5.4](./DESIGN.md), 근거와 측정은 [Phase 9](./PHASE9.md), 수행 결과는 [M2-21](./MANUAL_TEST_CHECKLIST.md#m2-21).
+> - **기능은 줄지 않았다:** 조작 91, 시나리오 62, `examples/shared` 114, 브라우저 84 — 전부 통합 전과 같다. `pnpm gate` 19단계 PASS, `pnpm test:e2e` 84/84.
+> - `packages/state-ref` 변경 0줄. sync ESM +301 B gzip.
+> - **다음:** 사람이 다섯 데모를 눈으로 여는 것, 그리고 [문서 사이트](../docs-site/HANDOFF.md)의 보류가 풀린 항목들.
 >
 > 아래 본문은 2026-09-24 기준 기록이다.
 
@@ -62,7 +64,7 @@
 - **Phase 8.4:** React·Preact·Vue·Solid의 실제 서버 렌더는 renew 없는 `watch()`로 값을 읽는다. 처음 수정은 프레임워크 갱신 콜백만 없앴다. 코어 경로 트리에서 콜백 없는 ref 11개가 no-op 구독 11개를 남기는 것을 뒤늦게 확인해, 콜백 없는 `watch()` 자체를 구독 없는 ref로 고쳤다. 수정 전에는 같은 store를 11회 렌더하고 쓴 뒤 네 커넥터가 각각 11회 renew를 받았다. 이는 **장수 store 재사용** 조건의 측정이며 요청마다 별도 store/client를 버리는 앱의 지속 누수를 입증하지 않는다. Svelte는 기존 `onDestroy`로 0회였으므로 구현을 유지했다. 네 커넥터의 읽기 전용 View, React의 별도 client 편집 격리·dirty snapshot 거절·clean 복원을 확인했다. 브라우저 hydration과 loading/error 화면은 8.5 데모와 8.7 수동 검증에 남긴다. 상세 기록은 [Phase 8.4](./PHASE8_4.md)에 있다.
 - 비교 기준은 `@tanstack/query-core@5.103.1`의 기능 목록이다. TanStack 런타임·플러그인·API 호환 또는 F2 전체 동등성을 선언하지 않는다. 과거 `resource.save`, `draft.save`, draft 직접 서버 저장, 서버 부분 저장 scope 설계는 현재 계약이 아니다.
 
-주요 코드 위치: [core batch](../../packages/state-ref/src/batch/index.ts), [draft](../../packages/state-ref/src/draft/index.ts), [sync query/client](../../packages/sync/src/index.ts), [무한 조회](../../packages/sync/src/infinite.ts), [network gate](../../packages/sync/src/network.ts), [browser adapter](../../packages/sync/src/browser-environment.ts), [자동 재조회](../../packages/sync/src/automatic-refetch.ts), [view](../../packages/sync/src/view.ts), [live view](../../packages/sync/src/live-view.ts), [clean hydration 형식](../../packages/sync/src/hydration.ts), [로컬 복구 형식](../../packages/sync/src/local-hydration.ts), [영속화와 명령 queue](../../packages/sync/src/persistence.ts), [resource 기록](../../packages/sync/src/resource.ts), [mutation](../../packages/sync/src/mutation.ts). 소비자 예제는 [sync README](../../packages/sync/README.md)를 따른다.
+주요 코드 위치: [core batch](../../packages/state-ref/src/batch/index.ts), [draft](../../packages/state-ref/src/draft/index.ts), [sync query/client](../../packages/sync/src/index.ts), [무한 조회](../../packages/sync/src/infinite.ts), [network gate](../../packages/sync/src/network.ts), [browser adapter](../../packages/sync/src/browser-environment.ts), [자동 재조회](../../packages/sync/src/automatic-refetch.ts), [display](../../packages/sync/src/display.ts), [반응형 key](../../packages/sync/src/live-key.ts), [clean hydration 형식](../../packages/sync/src/hydration.ts), [로컬 복구 형식](../../packages/sync/src/local-hydration.ts), [영속화와 명령 queue](../../packages/sync/src/persistence.ts), [resource 기록](../../packages/sync/src/resource.ts), [mutation](../../packages/sync/src/mutation.ts). 소비자 예제는 [sync README](../../packages/sync/README.md)를 따른다.
 
 ## 마지막 검증 증거
 

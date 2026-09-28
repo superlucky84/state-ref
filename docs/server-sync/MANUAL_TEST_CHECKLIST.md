@@ -2,7 +2,7 @@
 
 - 개정일: 2026-09-24. 기준 SHA: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
 - 기준: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md).
-- **[M2-21](#m2-21)(통합된 조회 표면)을 열었다 — 미수행이며 진입 조건인 [DC2-19](./DESIGN.md)가 미결이다.** 설계는 [Phase 9](./PHASE9.md).
+- **[M2-21](#m2-21)(통합된 조회 표면) 수행 완료 (2026-09-28): 여덟 항목 중 일곱 통과, 하나 부분.** 설계는 [Phase 9](./PHASE9.md), 계약은 [DESIGN §5.4](./DESIGN.md).
 - 상태: Phase 8.7 수행 중. 2026-09-28 기준 **M2-01·M2-05·M2-07·M2-08·M2-09·M2-10·M2-11·M2-12·M2-13·M2-14·M2-15·M2-16·M2-20 통과**, M2-02·M2-03·M2-04·M2-06·M2-17·M2-18·M2-19 부분 수행이며 **미수행은 없다.** M2-04는 항목 5(렌더 계측)만 사람 몫으로 남았고, M2-17은 항목 4의 readonly 예외만, M2-18은 항목 4의 polling·SSR만, M2-19는 3·7·8·13·15항만 통과다. M2-11은 마지막 항목(공유 READ 유지)이 [M2-20](#m2-20) 단계에서 닿아 여섯 항목 전부 통과가 됐다. 미수행 항목은 기능 동작의 증거가 아니다. 수행 중 찾은 블로커 B8-7-01~05·09~12·20은 모두 해소했고, B8-7-06~08은 계측 부재로 [Phase 8.5 단계 11](./PHASE8_5.md)에서 처리했다. **[B8-7-13](#b8-7-13)은 미해소**다 — 데모 계측 문제이며 M2-10을 막지 않았다.
 
 ## 1. 환경과 fixture
@@ -689,24 +689,24 @@ fixture는 시간을 제어하지 못한다([DC8-5-12](./PHASE8_5.md)). 제어 �
 
 ### M2-21 — 통합된 조회 표면 (R2-28)
 
-**미수행. 진입 조건이 아직 닫히지 않았다** — [DC2-19](./DESIGN.md)가 미결이고 구현이 없다. 이 절은 통합이 확정·구현된 뒤에 수행한다. 설계는 [Phase 9](./PHASE9.md), 계약은 [DESIGN §5.4](./DESIGN.md)다.
+**수행 2026-09-28. 여덟 항목 중 일곱 통과, 하나 부분.** 구현은 `c549226`·`e7cec3e`·`fcae59b`·`0ffed43`, 설계는 [Phase 9](./PHASE9.md), 계약은 [DESIGN §5.4](./DESIGN.md)다. **표면이 줄었다는 사실은 어느 항목도 통과시키지 않았다 — 아래는 전부 실행 결과다.**
 
-수행 시 5종 데모 전부에서 확인한다. **표면이 줄었다는 사실은 어느 항목도 통과시키지 않는다.**
+- [x] 한 조회에서 **자원 편집과 표시 읽기를 같은 handle로** 수행한다. — **통과.** `client.query({ queryKey, queryFn, select, placeholderData })` 하나가 `ref`(편집)와 `display`(표시)를 든다. probe로 실측: 편집 `account.ref.address.city.value = 'Busan'` 뒤 `account.display.data.value`가 `Busan`이 된다. `load`·`refetch`·`capture`·`version`·`acceptServer`가 전부 같은 handle에 있다(`view.query` 홉 소멸). 표시 쪽 setter는 타입(공개 fixture의 `@ts-expect-error`)과 런타임(`direct modification is not allowed`) 양쪽에서 거절된다.
+- [x] **상태 어휘가 하나다.** — **통과.** `QueryDisplayState`가 `QueryStatus`의 상위집합이고 필드 이름이 같다. probe 실측으로 `display`에서 `status`·`fetchStatus`·`dirty`·`version`·`errorSource`·`queryKey`·`enabled`가 전부 읽혔다. **`phase`는 삭제됐고**(`DC9-09`) 공개 fixture가 그 접근이 실패하는 것을 `@ts-expect-error`로 고정한다. 화면은 `displayPhase`/`displayPhaseOf`로 유도해 예전 네 단어를 그대로 찍는다.
+- [x] **select 오류 격리.** — **통과.** 결함 주입으로 판정력 확인: `errorSource`를 `'select'` 대신 `'query'`로 만들자 **3개가 실패**했다(`display.test.ts` 2, `infinite-helpers.test.ts` 1 — 그중 하나가 "isolates selection errors and keeps a shared READ after one view exits").
+- [x] **placeholder 비캐시.** — **통과.** `placeholderData`를 `initialData`로 설치하는 주입에 **3개가 실패**했다(전부 `display.test.ts`: 두 placeholder가 한 기준 밖에 머무는 것, 첫 READ 실패 뒤 사라지는 것, 부모 표시에서 시작한 의존 READ가 placeholder를 캐시하지 않는 것).
+- [x] **언마운트는 구독만 끝낸다**([DC5-05-03](./PHASE5_5.md)). — **통과.** `connectReact`의 unmount abort를 제거하는 주입에 **4개가 실패**했다(`sync-ui` 1 — "releases its subscription on unmount without disposing the query", `unmount-leak` 3). 브라우저 쪽 증거는 `M2-20-live-local`이 그대로 든다: 둘째 표시의 행이 마운트·언마운트되고 그 언마운트가 **구독만** 끝낸다(다섯 데모 전부).
+- [x] **반응형 key 전환.** — **통과.** `M2-11-4-activate`·`M2-11-4-cancel`·`M2-11-4-late`·`M2-11-5-release`·`M2-20-live-shared`가 통합 후 표면에서 다섯 데모 전부 통과했다. 소유자 수로 갈리는 대비도 그대로다 — `M2-11-4-cancel`은 `aborted`, `M2-20-live-shared`는 `in-flight`.
+- [x] **기능이 줄지 않았다.** — **통과.** 조작 **91**, 시나리오 **62**, `examples/shared` **114**, 브라우저 스위트 **84** — 전부 통합 전과 같다(실측). core **342**, sync **185 → 186**(읽기 전용 런타임 테스트 1개 추가), 커넥터 36/27/36/26/25. F2 지원표의 어느 행도 내려가지 않았고 `scripts/check-support-table.mjs`가 근거 파일 실재를 확인한다.
+- [~] **결함 주입 4종이 관련 테스트만 정확히 실패시킨다.** — **부분.** 넷 중 셋이 처음부터 판정했다. **셋째(표시 읽기 전용)는 처음에 통과했고, 그것이 이 단계의 소득이다** — probe로 재 보니 두 경로 모두 런타임에서 거절하고 있었지만(`create(..., { autoSync: false })`의 manual sync 모드가 `watch` ref를 이미 읽기 전용으로 준다) **그 거절을 시험하는 테스트가 하나도 없었다.** 런타임 거절 테스트를 더하고 실제로 막는 자리(`store.watch`가 editable ref를 내주게)를 주입하자 그 테스트를 포함해 **3개**가 실패했다. 부분으로 두는 이유: 네 계약이 지금은 모두 판정되지만, 넷 중 하나는 **사후에** 장치를 갖춘 것이므로 "처음부터 넷 다 시험되고 있었다"로 읽으면 안 된다.
 
-- [ ] 한 조회에서 **자원 편집과 표시 읽기를 같은 handle로** 수행한다. 편집한 값이 표시에 반영되고, 표시 쪽에는 setter가 없다(타입·런타임 모두). 통합 전 `view.query.*`로 가야 했던 조작(`load`·`refetch`·`capture`·`version`·`acceptServer`)이 전부 같은 handle에서 닿는다.
-- [ ] **상태 어휘가 하나다.** 화면의 상태 행이 `pending`/`placeholder`/`success`/`error`와 fetch 상태를 한 어휘로 말하고, 같은 사실을 두 이름으로 보이는 자리가 없다. 통합 전 세 어휘(`QueryStatus`·`QueryViewState`·`LiveQueryViewState`)로 갈라졌던 필드가 어디로 갔는지 화면에서 확인한다.
-- [ ] **select 오류 격리.** 한 관찰자의 `select`를 실패시키면 **그 관찰자만** error가 되고 같은 key의 다른 관찰자와 조회 자체의 READ 상태는 그대로다.
-- [ ] **placeholder 비캐시.** placeholder를 보이는 동안 캐시 검사 행과 `dehydrate()` 결과에 그 값이 없다. 같은 key의 다른 관찰자는 자기 placeholder를 본다.
-- [ ] **언마운트는 구독만 끝낸다**([DC5-05-03](./PHASE5_5.md)). 같은 key를 보는 둘째 화면을 언마운트해도 다른 화면의 조회·표시·소유자 수가 유지된다. M2-20의 `M2-20-live-shared`와 같은 판독을 통합 후 표면에서 다시 낸다.
-- [ ] **반응형 key 전환.** disabled→enabled, key 전환, 늦은 결과 차단이 통합 후에도 같다. 진행 중 READ의 abort 여부가 **소유자 수**로 갈리는 M2-20의 대비가 그대로 재현된다.
-- [ ] **기능이 줄지 않았다.** 조작 수·시나리오 수가 통합 전(조작 91·시나리오 62·`examples/shared` 114·브라우저 84) 아래로 내려가지 않는다. 줄었다면 기능을 잃은 것이며 그 항목의 이름을 댄다.
-- [ ] **결함 주입 4종**(표시 계약 넷 각각)이 관련 테스트만 정확히 실패시킨다. 주입은 화면이 계속 돌면서 값만 틀리게 만들어야 한다. **통과한 주입은 그 계약이 시험되고 있지 않다는 뜻이다.**
+**합격:** 위 여덟 항목을 확인하고 F2 지원표의 어느 행도 내려가지 않음. **결과: 일곱 통과, 하나 부분.** 수행 환경: `pnpm gate` 19단계 PASS, `pnpm test:e2e` **84/84**·콘솔 오류 0, `pnpm -r test` 전 패키지 통과. sync ESM 87,460 → **88,805 B raw**(21,290 → **21,591 B gzip**, +301 B gzip). `packages/state-ref` 변경 **0줄**.
 
-**합격:** 위 여덟 항목을 다섯 데모 전부에서 확인하고, F2 지원표의 어느 행도 내려가지 않음. **결과: 미수행.**
+**남은 사람 몫:** 다섯 데모를 눈으로 열어 보는 것. 브라우저 러너가 84개를 통과시켰지만 **사람이 화면을 본 적은 없다** — [문서 사이트 체크리스트](../docs-site/MANUAL_TEST_CHECKLIST.md)의 미수행과 같은 성격이다.
 
 ## 3. 출시 판정과 인계
 
-M2-01~21, 해당 출시 범위 F2, 자동 gate와 예제 타입 검사를 통과해야 한다. M2-21은 [DC2-19](./DESIGN.md) 확정과 구현 이후에만 수행 가능하다. 전체 기능 동등성은 전체 목록이 검증된 경우에만 선언한다. 실패에는 재현 절차·환경·구현 SHA·증거를 기록하며 미수행을 PASS로 바꾸지 않는다.
+M2-01~21, 해당 출시 범위 F2, 자동 gate와 예제 타입 검사를 통과해야 한다. 전체 기능 동등성은 전체 목록이 검증된 경우에만 선언한다. 실패에는 재현 절차·환경·구현 SHA·증거를 기록하며 미수행을 PASS로 바꾸지 않는다.
 
 ### 2026-09-19 구현 브랜치 진행
 

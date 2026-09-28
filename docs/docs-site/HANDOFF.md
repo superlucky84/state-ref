@@ -2,13 +2,12 @@
 
 **재개할 때 이 문서를 먼저 읽는다.**
 
-> **보류 (2026-09-28): 조회 관련 페이지는 지금 건드리지 않는다.**
+> **보류 해제 (2026-09-28): 조회 표면 통합을 마쳤고 사이트도 옮겼다.**
 >
-> sync의 조회 공개 표면을 통합할지 결정하는 [Phase 9](../server-sync/PHASE9.md)가 열렸다([`DC2-19~23`](../server-sync/DESIGN.md)). 통합이 확정되면 `liveView`·`infiniteView`·`client.view`·`QueryView*`를 쓰는 **21개 사이트 파일**을 다시 써야 하므로, **결정 전에 그 페이지를 더 쓰면 같은 일을 두 번 한다.**
+> [Phase 9](../server-sync/PHASE9.md)가 끝났다. `client.view`·`infiniteView`·`liveView`가 사라지고 표시는 조회 핸들의 `display`/`watchDisplay`이며 `phase`는 없다. 사이트 쪽은 **이미 옮겼다** — `view와 liveView` 장을 `표시와 반응형 key`로 다시 썼고(en+ko), API Reference·Sync 개요·자동 재조회·query/resource·커넥터 5장과 사이드바를 갱신했다(커밋 `6bf4663`).
 >
-> - **보류:** 아래 "다음에 할 일"의 1~3번(Home·Introduction·QuickStart의 새 기능 언급, 패키지 README의 sync 절, 무한 조회 가이드) 중 **조회 API를 인용하는 부분.**
-> - **지금 해도 되는 것:** 4번(링크 해소 검사를 `scripts/`로 고정), 5번(MANUAL_TEST_CHECKLIST 수행 — 화면 확인), 6번(한국어판 문체 검토). draft·batch·plugin 쪽 문장은 이번 통합 범위 밖이다.
-> - 결정 주체는 사용자다. `DC2-19`가 닫히면 이 보류도 풀린다.
+> - **아래 "다음에 할 일"은 그대로 유효하다.** 1~3번을 쓸 때 조회 API는 새 표면(`client.query`의 `select`/`placeholderData`, `display`, `{ source, resolve }`)으로 인용한다.
+> - **사이트의 코드 블록은 여전히 gate 밖이다.** `scripts/check-doc-examples.mjs`는 README 3개만 컴파일한다. 새 주장은 일회용 probe로 재거나 소스 타입을 직접 읽는다.
 
 ## 지금 상태 (2026-09-28)
 
