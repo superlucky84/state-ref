@@ -89,6 +89,33 @@ describe('query display views', () => {
     count.dispose();
   });
 
+  it('refuses a write to the display through either path', async () => {
+    const client = createSyncClient({ ssr: true });
+    const query = client.query({
+      queryKey: ['readonly-display'],
+      queryFn: () => ({ city: '서울' }),
+      initialData: { city: '서울' },
+      select: (data: { city: string }) => data.city,
+    });
+    const held = query.display;
+    const refused = 'direct modification is not allowed';
+    expect(() => {
+      (held.data as unknown as { value: string }).value = '부산';
+    }).toThrow(refused);
+    expect(held.data.value).toBe('서울');
+    query.watchDisplay(ref => {
+      expect(() => {
+        (ref.data as unknown as { value: string }).value = '대구';
+      }).toThrow(refused);
+      return false;
+    });
+    expect(held.data.value).toBe('서울');
+    // The resource is the way to change anything, and it is the same handle.
+    query.ref.city.value = '광주';
+    expect(held.data.value).toBe('광주');
+    query.dispose();
+  });
+
   it('memoizes select across status changes and supports a view-local equality rule', async () => {
     const client = createSyncClient({ ssr: true });
     const select = vi.fn((data: { city: string; count: number }) => ({
