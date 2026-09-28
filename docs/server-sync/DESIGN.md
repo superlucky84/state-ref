@@ -2,6 +2,7 @@
 
 - 개정일: 2026-09-23. 기준: [REQUIREMENTS](./REQUIREMENTS.md).
 - 기준 commit: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
+- **미결 결정 DC2-19~23(표시와 자원의 통합)이 열려 있다.** 계약 초안·측정·후보는 [Phase 9](./PHASE9.md)와 아래 §5.4에 있으며, 결정 전까지 sync 공개 표면을 바꾸지 않는다.
 - 상태: Phase 8.4까지 자동 검증했다. 5종 커넥터는 실제 서버 렌더 뒤 UI 구독을 남기지 않는다([Phase 8.4](./PHASE8_4.md)). 브라우저 hydration·loading/error 화면, M2 수동 검증과 전체 서버 기능 동등성은 미완료다. `[x]` 결정 행은 전체 서버 기능 동등성의 구현·테스트 통과가 아니다.
 - 최신 구현 SHA와 현재 재개 지점은 [HANDOFF](./HANDOFF.md)를 따른다. 아래 날짜별 인계는 당시의 기록이다.
 - draft 공개 API는 [Phase 2 기록](./PHASE2.md)에, query/resource 기본 API는 [Phase 3 기록](./PHASE3.md)에 고정했다. mutation과 UI 투영의 현재 검증 범위는 [IMPLEMENT](./IMPLEMENT.md)와 [HANDOFF](./HANDOFF.md)를 따른다.
@@ -28,6 +29,11 @@
 | DC2-16 | [x] draft의 ref/Watch와 반응형 status를 payload 밖에서 제공 | 기존 5종 커넥터 입력 형식을 재사용하고 metadata 필드 충돌을 피함 | R2-20/24/25, T2-20/24/25 |
 | DC2-17 | [x] 원본 알림은 재검사 신호, 편집 경로와 과거 기준은 draft가 소유 | 부모 객체 참조 변화만으로 충돌을 판정하지 않고 무관한 원본 갱신을 병합 | R2-16/17, T2-16/17 |
 | DC2-18 | [x] 선택적 `state-ref/batch`에서 명시적 동기 `batch(fn)` | `watch` 콜백 ref와 보관 ref 모두 같은 setter를 사용하며, 비동기 스케줄러 없이 알림 횟수를 줄임. [Phase 3.5](./PHASE3_5.md) 자동 검증 | R2-27, T2-27 |
+| DC2-19 | [ ] **미결.** 표시(display)와 자원(resource)의 공개 표면을 통합한다 | `view`는 `query`의 대안이 아니라 `query`를 소유한 래퍼인데 API가 대안처럼 생겼다. 후보와 권고는 [Phase 9](./PHASE9.md) | R2-28, T2-28, M2-21 |
+| DC2-20 | [ ] **미결.** 조회 상태 어휘를 하나로 줄인다 | 같은 조회의 같은 사실을 `QueryStatus`·`QueryViewState`·`LiveQueryViewState` 세 어휘로 말하고 있다 | R2-28, T2-28 |
+| DC2-21 | [ ] **미결.** 표시 ref는 남기고 표시 *팩토리*만 없앤다 | select 격리·placeholder 비캐시·읽기 전용은 별도 ref로 충족되며 별도 팩토리를 요구하지 않는다 | R2-28, T2-28 |
+| DC2-22 | [ ] **미결.** `connectXView`는 유지한다 | React·Preact는 본문이 같지만 Vue·Svelte·Solid의 단방향/양방향은 실제로 다른 물건이다 | R2-28, T2-24/28 |
+| DC2-23 | [ ] **미결.** 이 통합을 문서 사이트 확장보다 먼저 수행한다 | 나중에 하면 같은 21개 페이지를 두 번 쓴다. `@stateref/sync` 미발행이라 breaking 비용이 지금 가장 싸다 | R2-28 |
 
 이전 DC-01~21의 의미는 기준 commit의 Git 이력에 보존된다. 이번 문서의 DC2와 혼용하지 않는다.
 
@@ -223,6 +229,27 @@ Phase 0에서 서버 엔진의 참조 버전과 key/epoch/기본 타이밍 계�
 - 기존 resource별 단일 WRITE 큐를 일반 mutation에 그대로 적용하지 않는다. 동시 실행과 명시적 순서 제어, 연결된 작업의 충돌 정책은 IC2-03/04에서 확정한다.
 - 여러 resource의 명시적 갱신을 허용해도 서버 간 원자성이나 외부 API 전체 rollback을 보장하지 않는다.
 
+### 5.4 표시와 자원의 통합 (DC2-19~23, 미결)
+
+**이 절은 현재 구현의 서술이 아니라 열린 설계다.** 측정·후보·마이그레이션 범위는 [Phase 9](./PHASE9.md)에 있고, 여기에는 계약으로 굳어야 할 것만 적는다. 결정 전까지 [Phase 5.3](./PHASE5_3.md)·[5.4](./PHASE5_4.md)·[5.5](./PHASE5_5.md)의 현재 계약이 유효하다.
+
+**문제.** `client.view()`는 `client.query()`를 호출해 소유한다([index.ts:1320](../../packages/sync/src/index.ts), dispose는 [view.ts:221](../../packages/sync/src/view.ts)). 합성인데 API가 선택처럼 생겼고, `view`를 골라도 편집·`load`·`capture`·`version` 때문에 `view.query.*`로 되돌아온다. 여기에 같은 조회의 같은 사실을 말하는 상태 어휘가 셋이다 — `QueryStatus`(11필드) / `QueryViewState`(6) / `LiveQueryViewState`(8). `phase`는 `status.status`에 `'placeholder'`를 더한 것이고 `isPlaceholder`는 `loaded`의 반대말이며 `fetchStatus`·`error`는 양쪽에 동일하다.
+
+**관찰자별 의미는 이미 `query`에 있다.** `client.query()` 핸들은 캐시만 공유하는 관찰자별 핸들이다([model.ts:342-343](../../examples/shared/src/model.ts)의 두 패널). 따라서 `select`·`placeholderData`·`equals`가 관찰자별이라는 사실은 **별도 ref의 근거이지 별도 팩토리의 근거가 아니다**(DC2-21).
+
+**통합해도 반드시 살아남아야 하는 것 넷.** 어느 후보를 고르든 이 넷을 깨면 그 후보는 탈락이다.
+
+1. `select`/`equals` 실패는 **그 관찰자만** `errorSource: 'select'`로 만들고 원본 query의 READ 성공·오류 상태를 바꾸지 않는다([Phase 5.3](./PHASE5_3.md)).
+2. `placeholderData`는 공유 캐시·`dehydrate()`에 들어가지 않으며 편집·제출할 수 없다([Phase 5.3](./PHASE5_3.md)).
+3. 표시값을 UI에서 편집 원본으로 쓰지 않는다. 실제 편집은 자원 ref를 지난다([DC5-05-02](./PHASE5_5.md)).
+4. 컴포넌트 언마운트는 해당 커넥터 구독만 끝내고, 공유 표시를 한 화면의 언마운트가 해제하지 않는다([DC5-05-03](./PHASE5_5.md)). 현재 증거는 [M2-20](./MANUAL_TEST_CHECKLIST.md#m2-20)의 `M2-20-live-shared`다.
+
+**커넥터는 합치지 않는다(DC2-22).** React·Preact의 `connectX`/`connectXView`는 같은 `connectWatch`를 부르므로 타입만 다르지만([connect-react/src/index.ts:9, 32, 37](../../packages/connect-react/src/index.ts)), Vue·Svelte·Solid는 `Ref`/`Writable`/`Signal` 쌍과 `readonly`/`Readable`/읽기 전용이 실제로 다른 구현이다. 읽기 전용 구분은 유지하고, 갈라야 할 자리가 *팩토리*가 아닐 뿐이다.
+
+**비용이 지금 가장 싸다(DC2-23).** `@stateref/sync`는 미발행이고(`npm view @stateref/sync` → 404, `version 0.1.0`) 이 브랜치에는 upstream이 없다. 외부 소비자가 0이므로 breaking change의 외부 비용도 0이며 시간이 갈수록만 커진다. 내부 비용은 측정했다 — `stateRefDocs/src` **21개 파일**, 전체 **249회 출현**([Phase 9 §6](./PHASE9.md)).
+
+`DC2-19`가 닫히기 전까지 sync의 공개 표면과 문서 사이트의 조회 관련 페이지를 **바꾸지 않는다.** 과거 Phase 기록(5.3·5.4·5.5·5.13)은 당시의 기록이므로 고치지 않으며, 통합이 확정되면 이 절이 그것들을 대체한다.
+
 ## 6. 서버 기능 동등성 목록
 
 이는 제품 목표의 범위를 잃지 않기 위한 목록이다. 비교 기준 버전과 Phase 0 하위 시나리오는 [Phase 0 기록](./PHASE0.md)에 고정했다. 기능군별 범위는 [Phase 5.1 표](./PHASE5_1.md#phase-51-시점-f2-기능별-상태), [Phase 5.2](./PHASE5_2.md#f2-상태-갱신과-검증), [Phase 5.3](./PHASE5_3.md#f2-범위와-증거), [Phase 5.4](./PHASE5_4.md), [Phase 5.5](./PHASE5_5.md), [Phase 5.6](./PHASE5_6.md), [Phase 5.7](./PHASE5_7.md), [Phase 5.8](./PHASE5_8.md), [Phase 5.9](./PHASE5_9.md), [Phase 5.10](./PHASE5_10.md), [Phase 5.11](./PHASE5_11.md), [Phase 5.12](./PHASE5_12.md), [Phase 5.13](./PHASE5_13.md), [Phase 5.14](./PHASE5_14.md), [Phase 5.15](./PHASE5_15.md), [Phase 5.16](./PHASE5_16.md), [Phase 5.17](./PHASE5_17.md), [Phase 6](./PHASE6.md), [Phase 7.1](./PHASE7_1.md), [Phase 7.2](./PHASE7_2.md), [Phase 7.3](./PHASE7_3.md)의 갱신에 있다. 복원·플랫폼의 상세 계약은 IC2-06에서 추적한다. 단계별 구현과 '전체 동등성 완료'를 구분한다.
@@ -271,9 +298,18 @@ F2-06의 서버 렌더 경계는 [Phase 8.4](./PHASE8_4.md)에 고정했다. Rea
 - [x] **IC2-05 / Phase 0~6** 일반 로컬 원본의 현재 기준, 원자적 local apply·재진입·부모 소멸·배열 경계·원본 유지와 해제는 [Phase 2](./PHASE2.md)에서 검증했다. resource 원본의 분기·겹친 갱신·미확정 WRITE 중 분기·수명 경계는 [Phase 6](./PHASE6.md)에서 검증했다. apply는 root 경로 변경 1건을 남기고, 해제된 원본의 쓰기 실패는 `missing-source`로 보고한다.
 - [ ] **IC2-06 / Phase 0~5** hydration/영속화 시 서버 기준과 로컬 변경·진행 작업을 구별하는 저장 형식, 개발 도구와 플랫폼 통합을 설계한다. [Phase 5.1](./PHASE5_1.md)에서 clean baseline SSR 전달, [Phase 5.6](./PHASE5_6.md)에서 client별 환경 사건·자동 재조회, [Phase 5.8](./PHASE5_8.md)에서 query network mode와 브라우저 adapter, [Phase 5.9](./PHASE5_9.md)에서 clean 기준 영속화와 독립 명령 queue, [Phase 5.10](./PHASE5_10.md)에서 로컬 변경·미확정 기준 복원, [Phase 5.11](./PHASE5_11.md)에서 단일 연결 제출의 durable 장벽, [Phase 5.12](./PHASE5_12.md)에서 client별 읽기 전용 캐시 관측 경계를 구현했다. [Phase 5.14](./PHASE5_14.md)에서 mutation 작업 관측, [Phase 5.15](./PHASE5_15.md)에서 다중 연결 제출 기록, [Phase 5.16](./PHASE5_16.md)에서 전송 중 편집의 연속 checkpoint, [Phase 5.17](./PHASE5_17.md)에서 보관 명령의 자동 재개를 구현했다. 개발 도구 UI·플랫폼 자동 설치와 연결 제출의 자동 재개는 미완료이거나 계약상 미제공이다.
 
+- [ ] **IC2-08 / Phase 9** 표시와 자원을 하나의 조회 handle로 합칠 때의 공개 타입·추론·번들 비용을 조사한다. 표시 ref를 상시 생성하면 모든 query가 view store와 `watchStatus` 구독 하나를 더 지므로([view.ts:177](../../packages/sync/src/view.ts)) NFR2-01/06의 예산을 재측정해야 한다. 반응형 key를 `queryKey`로 흡수할 때의 union 추론과 `errorSource: 'source'`의 자리도 함께 확정한다. [Phase 9 DC9-03/04/05](./PHASE9.md).
+
 IC2-03의 목록은 최소 범위를 확정하는 게이트다. 구현 중 새 기능이나 호환성 차이를 발견하면 F2 목록과 테스트를 함께 갱신하고, 출시 범위를 줄이는 결정이 필요하면 이유와 미지원 항목을 명시한다.
 
 ## 9. 인계
+
+### 2026-09-28 — 표시와 자원의 통합 설계 착수 (DC2-19~23, 미결)
+
+- done: 사용자 보고("`view`와 `query`가 겹쳐 헷갈린다")를 측정으로 확인하고 [Phase 9](./PHASE9.md)에 현재 표면(팩토리 5·handle 5·상태 어휘 3), 후보 A/B/C와 권고, 열린 결정 `DC9-01~08`, 마이그레이션 범위(21개 페이지·249회)를 기록했다. DESIGN에 `DC2-19~23`과 §5.4, `IC2-08`을 열었다. **구현·테스트는 없다.**
+- next: **`DC2-19`(후보 선택)와 `DC2-23`(문서 사이트보다 먼저 할지)은 사용자 결정이다.** 그 둘이 닫히기 전에는 sync 공개 표면과 조회 관련 문서 페이지를 바꾸지 않는다. A로 확정되면 [IMPLEMENT Phase 9](./IMPLEMENT.md) 단계 1(계약 고정)부터.
+- blockers: `DC2-19` 미결. `IC2-08`(번들·추론 비용)은 구현 진입 조건이다.
+- 기록 시 최신 commit: `32b87df`; 이번 문서 개정은 미커밋이다.
 
 ### 2026-09-20 — Phase 4 기본 mutation·제출 기록
 

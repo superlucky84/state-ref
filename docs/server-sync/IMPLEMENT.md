@@ -49,6 +49,7 @@
 | T2-25 | 값/예약 키/직접 객체 변형의 오류·지원 계약, metadata와 payload 이름 충돌 없음 | R2-25 |
 | T2-26 | changes snapshot readonly, ID 재사용 없음, 오래된 검토/다른 owner로 apply·resolve 시 새 입력 보존 | R2-26 |
 | T2-27 | `watch` 콜백 인자·반환 ref·별도 `watch()` ref에서 쓰기, 최초 callback은 등록당 1회, batch 종료 시 store별 최종 값 구독 알림 1회, 중첩·예외·manual sync·reentrancy·metadata·5종 커넥터와 번들/성능 게이트 | R2-27 |
+| T2-28 | 통합된 조회 표면의 공개 타입·추론과 표시 계약 회귀: select 오류가 그 관찰자만 error로 만들고 query 상태를 바꾸지 않음, placeholder가 캐시·`dehydrate()`에 없음, 표시값 setter 없음(타입 negative), 언마운트가 그 커넥터 구독만 종료, 반응형 key 전환의 abort·늦은 결과 차단, 5종 커넥터 회귀, 번들·구독 수 예산 | R2-28 |
 
 필수 fixture는 (1) 네트워크 없는 core 원본과 draft 2개, (2) 같은 key를 보는 resource 패널 2개와 주소 draft 2개, (3) 조회와 다른 DTO의 mutation, (4) 서버 기준·resource 값·draft 기준·각 changes/dirty/pending을 동시에 관찰하는 패널이다.
 
@@ -238,6 +239,23 @@
 
 **종료:** 지원하는 모든 커넥터·출시 기능의 gate와 수동 검증 통과. 기능 동등성 목표의 잔여 항목은 명시하고 미수행을 PASS로 바꾸지 않음.
 
+### Phase 9 — 조회 표면의 통합 (설계, 미착수)
+
+**진입:** **`DC2-19`가 닫혀야 진입한다.** 현재 미결이며 사용자 결정 대상이다. 설계·측정·후보는 [Phase 9](./PHASE9.md), 계약은 [DESIGN §5.4](./DESIGN.md)에 있다. 이 단계는 **기능을 더하지 않고 공개 표면만 줄인다.**
+
+- [ ] **1. 계약 고정.** `DC9-01~08`을 닫고 통합 후 공개 타입을 선언 fixture로 먼저 쓴다. 구현 전에 타입이 컴파일되는지 확인한다. 기준 테스트: T2-28의 타입 negative case, `IC2-08`의 추론 확인.
+- [ ] **2. 비용 측정 (`IC2-08`).** 표시 ref 상시 생성 대 지연 생성의 번들·구독 수를 실측한다. NFR2-01/06 예산을 넘으면 `DC9-03`을 지연 생성으로 닫는다. 기준 테스트: `pnpm gate`의 번들 단계, 구독 수 계측.
+- [ ] **3. sync 구현.** `packages/sync`에서 표시를 조회 handle의 속성으로 옮기고 상태 어휘를 하나로 합친다. 기준 테스트: sync 런타임 전체(현재 185개) 회귀 + T2-28.
+- [ ] **4. 커넥터.** `connectXView`는 유지하되(`DC2-22`) 입력 타입만 새 표시 타입으로 맞춘다. 기준 테스트: 커넥터 5종 테스트(36/27/36/26/25) 회귀, [DC5-05-02/03](./PHASE5_5.md) 계약 테스트.
+- [ ] **5. 예제.** `examples/shared`와 5종 화면을 새 표면으로 옮긴다. **조작·시나리오 수가 줄면 안 된다** — 줄었다면 기능을 잃은 것이다. 기준 테스트: `pnpm test:e2e` 84/84, `examples/shared` 114개.
+- [ ] **6. Test Hardening.** 표시 계약 넷([DESIGN §5.4](./DESIGN.md))마다 **결함 주입**으로 판정력을 확인한다. 주입은 화면이 계속 돌면서 값만 틀리게 만들어야 하고, **통과한 주입은 그 계약이 시험되고 있지 않다는 뜻이다.** 기준 테스트: 주입 4종이 각각 정확히 관련 테스트만 실패시킴.
+- [ ] **7. Integration Test.** 5종 데모를 실제 브라우저에서 돌리고 [M2-21](./MANUAL_TEST_CHECKLIST.md#m2-21)을 수행한다. 기준 테스트: `pnpm test:e2e` 전체·콘솔 오류 0, `pnpm gate` 전 단계.
+- [ ] **8. 문서.** `stateRefDocs/src`의 21개 파일과 `packages/*/README.md`를 새 표면으로 옮긴다. **사이트의 코드 블록은 gate 밖이므로**(`scripts/check-doc-examples.mjs`는 README 3개만 컴파일한다) 새 주장은 일회용 probe로 측정하거나 소스 타입을 직접 읽어 쓴다. 기준 테스트: `pnpm --filter state-ref-docs build`, 라우트·링크 전수 해소.
+
+**기준 테스트:** T2-28 전체, T2-01~27 회귀(기능이 줄지 않았음의 증거), F2 지원표 재확인, M2-21.
+
+**종료:** 조회 팩토리와 상태 어휘가 `DC9-01`이 고른 수로 줄고, 표시 계약 넷이 결함 주입으로 판정력을 보이며, 기능 동등성 표(F2)의 어느 행도 내려가지 않고, `pnpm gate`·`pnpm test:e2e`·문서 빌드가 모두 통과한다. **표면이 줄었다는 사실을 기능이 줄지 않았다는 증거로 쓰지 않는다 — 둘을 따로 보인다.**
+
 ## 4. 실행과 현재 결과
 
 현재 저장소 명령은 `pnpm gate`, `pnpm test`, `pnpm test:core`, `pnpm test:react`, `pnpm test:preact`, `pnpm test:vue`, `pnpm test:svelte`, `pnpm test:solid` 및 `pnpm --filter @stateref/sync test`다. gate는 draft·batch 타입/ESM/UMD smoke와 sync query/resource/mutation/view 타입·소비자 fixture·ESM bundle smoke를 포함한다. bare `npx vitest` 등으로 고정 도구를 임의 대체하지 않는다.
@@ -253,6 +271,16 @@
 | 수동 시나리오 | 2026-09-28 기준 M2-01·05·07·08·09·10·11·12·13·14·15·16·20 통과, 나머지 일곱은 부분. **미수행은 없다.** [실행 기록](./MANUAL_TEST_CHECKLIST.md) |
 
 ## 5. 인계
+
+### 2026-09-28 — Phase 9 설계 착수, 조회 표면의 통합 (미결)
+
+- done: 사용자 보고("`view`와 `query`가 겹쳐 헷갈린다")를 측정했다. 원인은 유사성이 아니라 **`client.view()`가 `client.query()`를 소유한 래퍼인데 API가 대안처럼 생긴 것**이다([index.ts:1320](../../packages/sync/src/index.ts), [view.ts:221](../../packages/sync/src/view.ts)). 현재 표면은 조회 팩토리 **5**·handle 타입 **5**·상태 어휘 **3**이고, 어휘 셋은 같은 사실을 다른 단어로 말한다(`phase`=`status`+`placeholder`, `isPlaceholder`=`loaded`의 반대말, `fetchStatus`·`error`는 동일).
+- **관찰자별 의미는 이미 `query`에 있다.** `client.query()` 핸들은 캐시만 공유하는 관찰자별 핸들이다([model.ts:342-343](../../examples/shared/src/model.ts)). 따라서 `select`·`placeholderData`가 관찰자별이라는 사실은 별도 *팩토리*의 근거가 아니라 별도 *ref*의 근거다 — 이것이 통합이 기능을 잃지 않는 이유다.
+- **커넥터는 반반이라 합치지 않는다.** React·Preact의 `connectX`/`connectXView`는 같은 `connectWatch`를 불러 타입만 다르지만([connect-react/src/index.ts:9, 32, 37](../../packages/connect-react/src/index.ts)), Vue·Svelte·Solid의 단방향/양방향은 실제로 다른 구현이다. 읽기 전용 구분 자체는 버릴 게 아니다.
+- 산출물: [Phase 9](./PHASE9.md)(측정·후보 A/B/C·권고·열린 결정 `DC9-01~08`·마이그레이션 범위), [DESIGN](./DESIGN.md)의 `DC2-19~23`·§5.4·`IC2-08`, [REQUIREMENTS](./REQUIREMENTS.md)의 `R2-28`, 이 문서의 `T2-28`과 위 Phase 9 계획, [M2-21](./MANUAL_TEST_CHECKLIST.md#m2-21). **코드 변경 0줄, 테스트 0개.**
+- next: **`DC2-19`(후보 A/B/C)와 `DC2-23`(문서 사이트보다 먼저 할지)이 사용자 결정이다.** 권고는 A와 "먼저"이며 근거는 [Phase 9 §4](./PHASE9.md)다 — `@stateref/sync`는 미발행(`npm view` 404)이고 브랜치에 upstream이 없어 breaking 비용이 지금 0이며, 나중에 하면 같은 21개 문서 페이지를 두 번 쓴다. 결정 전까지 sync 공개 표면과 조회 관련 문서 페이지를 바꾸지 않는다.
+- blockers: `DC2-19` 미결. 진입 전 `IC2-08`(표시 ref 상시/지연 생성의 번들·구독 비용)을 측정해야 한다.
+- 시작 기준 commit: `32b87df`. 이 문서 개정은 그 다음 커밋이다.
 
 ### 2026-09-28 — Phase 8.8 16단계, 마지막 항목 M2-20
 

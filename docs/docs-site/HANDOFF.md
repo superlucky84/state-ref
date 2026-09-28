@@ -2,6 +2,14 @@
 
 **재개할 때 이 문서를 먼저 읽는다.**
 
+> **보류 (2026-09-28): 조회 관련 페이지는 지금 건드리지 않는다.**
+>
+> sync의 조회 공개 표면을 통합할지 결정하는 [Phase 9](../server-sync/PHASE9.md)가 열렸다([`DC2-19~23`](../server-sync/DESIGN.md)). 통합이 확정되면 `liveView`·`infiniteView`·`client.view`·`QueryView*`를 쓰는 **21개 사이트 파일**을 다시 써야 하므로, **결정 전에 그 페이지를 더 쓰면 같은 일을 두 번 한다.**
+>
+> - **보류:** 아래 "다음에 할 일"의 1~3번(Home·Introduction·QuickStart의 새 기능 언급, 패키지 README의 sync 절, 무한 조회 가이드) 중 **조회 API를 인용하는 부분.**
+> - **지금 해도 되는 것:** 4번(링크 해소 검사를 `scripts/`로 고정), 5번(MANUAL_TEST_CHECKLIST 수행 — 화면 확인), 6번(한국어판 문체 검토). draft·batch·plugin 쪽 문장은 이번 통합 범위 밖이다.
+> - 결정 주체는 사용자다. `DC2-19`가 닫히면 이 보류도 풀린다.
+
 ## 지금 상태 (2026-09-28)
 
 - **HEAD `55e37e6`, worktree CLEAN.** 이 브랜치(`feat/server-sync-draft`)에는 upstream이 없다 — push하지 말고 ahead 수를 말하지 말 것.

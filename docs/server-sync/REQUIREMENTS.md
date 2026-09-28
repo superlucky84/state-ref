@@ -92,6 +92,9 @@ batch의 export 경로는 `state-ref/batch`로 확정했다. 그 밖의 미구�
 | R2-25 | 데이터와 타입 경계 | query 데이터 지원과 편집 가능 데이터 지원을 구분, 미지원 값·예약 키·직접 객체 변형 처리 명시 | T2-25, M2-17 |
 | R2-26 | 변경 검토의 유효성 | 버전 있는 변경 snapshot, 오래된 검토에 의한 적용/충돌 해결이 새 입력을 지우지 않음 | T2-26, M2-16 |
 | R2-27 | 명시적 동기 batch | `watch` 콜백 ref와 반환/보관 ref의 쓰기, 중첩 호출, 최종 값 기준 구독자 1회 알림, 즉시 값 읽기, 동기 종료·예외·metadata·커넥터 경계를 검증한다. 기본 동기 쓰기와 manual sync 의미는 유지 | T2-27, M2-02 |
+| R2-28 | 조회 공개 표면의 통합 | 표시(display)와 자원(resource)을 사용자가 **하나의 조회 개념**으로 학습할 수 있어야 한다. 상태 어휘는 하나이며, 표시 계약 넷(select 오류 격리·placeholder 비캐시·표시값 비편집·언마운트가 구독만 종료)은 통합 후에도 유지한다. 기능을 줄이거나 조용히 범위에서 빼지 않는다 | T2-28, M2-21 |
+
+R2-28의 수용 범위는 **공개 표면이지 기능이 아니다.** 현재 `SyncClient`는 조회 팩토리 5개(`query`·`infiniteQuery`·`view`·`infiniteView`·`liveView`), handle 타입 5개, 상태 어휘 3개(`QueryStatus`·`QueryViewState`·`LiveQueryViewState`)를 노출하며 `client.view()`는 `client.query()`를 소유한 래퍼다. 사용자 보고는 "둘 다 학습하는 비용이 `view`의 편의보다 크다"이며 측정으로 확인했다. 후보·권고·마이그레이션 범위는 [Phase 9](./PHASE9.md), 계약은 [DESIGN §5.4](./DESIGN.md)와 `DC2-19~23`에 있고 **전부 미결이다.** 이 요구사항은 통합의 *방향*만 고정하며 어떤 후보를 고를지는 `DC2-19`가 닫는다.
 
 F2-08의 Phase 5.12 하위 수용 범위는 client별 현재 캐시 metadata 조회와 생성·변경·제거 구독이다. query payload·로컬 편집 값·mutation DTO는 이벤트에 포함하지 않고, listener 해제와 오류 격리는 T2-23/M2-19에서 확인한다. [Phase 5.12 계약](./PHASE5_12.md)을 따른다.
 
