@@ -4,7 +4,7 @@ import {
   requestPanel,
   resourcePanel,
 } from './panels';
-import { keyText, show } from './fields';
+import { displayPhase, keyText, show } from './fields';
 import type { CacheLine, ChangeLine } from './panels';
 import { POLICY_TEXT } from './model';
 import type { DemoModel } from './model';
@@ -158,12 +158,12 @@ export function screenOf(model: DemoModel): ScreenReading {
    * the refusal is a reading, not a crash.
    */
   try {
-    const live = model.liveView.ref.value;
+    const live = model.liveView.display.value;
     cards.live = {
       liveKey:
         live.queryKey === null ? '(없음)' : keyText(live.queryKey as string[]),
       liveEnabled: flag(live.enabled),
-      livePhase: `${live.phase} / ${live.fetchStatus}`,
+      livePhase: `${displayPhase(live)} / ${live.fetchStatus}`,
       liveCity: show(live.data?.city ?? '(없음)'),
     };
   } catch {

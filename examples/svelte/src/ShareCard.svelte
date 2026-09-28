@@ -1,5 +1,6 @@
 <script lang="ts">
   import { connectSvelteView } from '@stateref/connect-svelte';
+  import { displayPhaseOf } from 'stateref-example-shared';
   import { model } from './demo-model';
   import Row from './Row.svelte';
 
@@ -14,7 +15,7 @@
   export let watch: NonNullable<ReturnType<typeof model.shareWatch>>;
 
   const view = connectSvelteView(watch);
-  const phase = view(ref => ref.phase.value);
+  const phase = view(ref => displayPhaseOf(ref));
   const fetchStatus = view(ref => ref.fetchStatus.value);
   const city = view(ref => ref.data.value?.city);
 </script>

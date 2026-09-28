@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { connectVueView } from '@stateref/connect-vue';
+import { displayPhaseOf } from 'stateref-example-shared';
 import { model } from './demo-model';
 import Row from './Row.vue';
 
@@ -16,7 +17,7 @@ const props = defineProps<{
 }>();
 
 const view = connectVueView(props.watch);
-const phase = view(ref => ref.phase.value);
+const phase = view(ref => displayPhaseOf(ref));
 const fetchStatus = view(ref => ref.fetchStatus.value);
 const city = view(ref => ref.data.value?.city);
 </script>

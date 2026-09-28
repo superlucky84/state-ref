@@ -13,6 +13,7 @@ import {
   requestPanel,
   resourcePanel,
   show,
+  displayPhaseOf,
 } from 'stateref-example-shared';
 import type {
   CardId,
@@ -105,10 +106,10 @@ function Changes(props: { rows: readonly ChangeLine[] }) {
  * while it is alive - the same shape as a resource panel's value rows.
  */
 function LiveRows() {
-  const view = connectSolidView(model.liveView.watch);
+  const view = connectSolidView(model.liveView.watchDisplay);
   const key = view(ref => ref.queryKey.value);
   const enabled = view(ref => ref.enabled.value);
-  const phase = view(ref => ref.phase.value);
+  const phase = view(ref => displayPhaseOf(ref));
   const fetchStatus = view(ref => ref.fetchStatus.value);
   const city = view(ref => ref.data.value?.city);
   return (
@@ -136,7 +137,7 @@ function ShareRows(props: {
   watch: NonNullable<ReturnType<typeof model.shareWatch>>;
 }) {
   const view = connectSolidView(props.watch);
-  const phase = view(ref => ref.phase.value);
+  const phase = view(ref => displayPhaseOf(ref));
   const fetchStatus = view(ref => ref.fetchStatus.value);
   const city = view(ref => ref.data.value?.city);
   return (

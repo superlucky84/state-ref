@@ -34,6 +34,8 @@ export {
   MUTATION_TABLE_CARDS,
   REQUEST_CELLS,
   REQUEST_ROW_ATTR,
+  displayPhase,
+  displayPhaseOf,
   keyText,
   label,
   show,

@@ -14,6 +14,7 @@ import {
   requestPanel,
   resourcePanel,
   show,
+  displayPhaseOf,
 } from 'stateref-example-shared';
 import type {
   CardId,
@@ -36,7 +37,7 @@ const useUi = connectPreact(model.watchUi);
 const useStatusA = connectPreact(model.panelA.watchStatus);
 const useStatusB = connectPreact(model.panelB.watchStatus);
 const useReadonlyStatus = connectPreact(model.readonlyQuery.watchStatus);
-const useLiveView = connectPreactView(model.liveView.watch);
+const useLiveView = connectPreactView(model.liveView.watchDisplay);
 const useMutationStatus = connectPreact(model.mutation.watchStatus);
 
 // `query.watch` throws before the first load, so these are built on demand.
@@ -385,7 +386,7 @@ function LiveRows() {
       <Row field="liveEnabled" value={String(view.enabled.value)} />
       <Row
         field="livePhase"
-        value={`${view.phase.value} / ${view.fetchStatus.value}`}
+        value={`${displayPhaseOf(view)} / ${view.fetchStatus.value}`}
       />
       <Row field="liveCity" value={view.data.value?.city ?? '(없음)'} />
     </>
@@ -425,7 +426,7 @@ function ShareRows({
     <>
       <Row
         field="livePhase"
-        value={`${view.phase.value} / ${view.fetchStatus.value}`}
+        value={`${displayPhaseOf(view)} / ${view.fetchStatus.value}`}
       />
       <Row field="liveCity" value={view.data.value?.city ?? '(없음)'} />
     </>

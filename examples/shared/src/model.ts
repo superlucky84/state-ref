@@ -4,13 +4,11 @@ import { createDraft } from 'state-ref/draft';
 import type { Draft, DraftChange } from 'state-ref/draft';
 import { createSyncClient } from '@stateref/sync';
 import type {
-  LiveQueryViewHandle,
   MutationHandle,
   MutationLink,
   QueryHandle,
-  QueryViewHandle,
-  QueryViewState,
-  QueryViewWatch,
+  QueryDisplayState,
+  QueryDisplayWatch,
   ResourceSubmission,
   SyncClient,
 } from '@stateref/sync';
@@ -31,7 +29,7 @@ import {
 } from './scenario';
 import { draftChangeLines, inspectPanel } from './panels';
 import type { CacheLine, ChangeLine } from './panels';
-import { keyText, show } from './fields';
+import { displayPhase, keyText, show } from './fields';
 import { operationLabel } from './operations';
 import type { OperationId } from './operations';
 import type {
@@ -286,7 +284,7 @@ export type DemoModel = Readonly<{
   /** A separate key opened with `editable: false`. */
   readonlyQuery: QueryHandle<Profile>;
   /** A display that follows `liveSource` across query keys. */
-  liveView: LiveQueryViewHandle<Profile, Profile>;
+  liveView: QueryHandle<Profile, Profile>;
   mutation: MutationHandle<SaveAddressDto, SaveAddressResponse>;
   drafts: () => DraftPair;
   /** The second client's card, or null before it has ever been opened. */
@@ -302,7 +300,7 @@ export type DemoModel = Readonly<{
    * (DC5-05-03 / DC8-8-33). The probe card's arrangement would hide exactly
    * the thing under test.
    */
-  shareWatch: () => QueryViewWatch<QueryViewState<Profile>> | null;
+  shareWatch: () => QueryDisplayWatch<QueryDisplayState<Profile>> | null;
   /** The boundary card, or null before a boundary draft has been branched. */
   boundary: () => BoundaryPanel | null;
   /** The lifetime card. Always present: its zeros are a reading too. */
@@ -375,10 +373,10 @@ export function createDemoModel(): DemoModel {
     },
     ...RETRY_POLICY,
   });
-  const liveView = client.liveView<{ id: LiveId | null }, Profile, Profile>(
-    liveSource,
-    input => (input.id === null ? null : liveOptions(input.id))
-  );
+  const liveView = client.query<{ id: LiveId | null }, Profile, Profile>({
+    source: liveSource,
+    resolve: input => (input.id === null ? null : liveOptions(input.id)),
+  });
 
   const mutation = client.mutation<SaveAddressDto, SaveAddressResponse>({
     mutationFn: input => server.write(input),
@@ -699,7 +697,7 @@ export function createDemoModel(): DemoModel {
    * component's connector subscription and nothing else (DC5-05-03). Only
    * `둘째 표시의 view 해제` lets go, and only then does the key lose an owner.
    */
-  let shareView: QueryViewHandle<Profile, Profile> | null = null;
+  let shareView: QueryHandle<Profile, Profile> | null = null;
   /** Kept after a release so the card can say `해제됨` instead of vanishing. */
   let shareEverOpened = false;
 
@@ -713,10 +711,10 @@ export function createDemoModel(): DemoModel {
         phase: '(화면 닫힘)',
         city: '(화면 닫힘)',
       };
-    const view = shareView.ref.value;
+    const view = shareView.display.value;
     return {
       state: '열림',
-      phase: `${view.phase} / ${view.fetchStatus}`,
+      phase: `${displayPhase(view)} / ${view.fetchStatus}`,
       city: show(view.data?.city ?? '(없음)'),
     };
   };
@@ -1676,11 +1674,10 @@ export function createDemoModel(): DemoModel {
        */
       case 'live-edit-local': {
         if (!liveAlive) return bump(id, '표시를 이미 해제했다.');
-        const query = liveView.query;
-        if (!query)
+        if (!liveView.display.enabled.value)
           return bump(id, '활성 조회가 없다. 먼저 key를 활성화해야 한다.');
         try {
-          query.ref.city.value = LIVE_LOCAL_CITY;
+          liveView.ref.city.value = LIVE_LOCAL_CITY;
         } catch (error) {
           return bump(id, `거절: ${String(error)}`);
         }
@@ -1700,7 +1697,7 @@ export function createDemoModel(): DemoModel {
        */
       case 'live-share-open': {
         if (!shareView)
-          shareView = client.view<Profile, Profile>(liveOptions('a'));
+          shareView = client.query<Profile, Profile>(liveOptions('a'));
         shareEverOpened = true;
         ui.shareMounted.value = true;
         return bump(
@@ -1902,7 +1899,7 @@ export function createDemoModel(): DemoModel {
     drafts: () => drafts,
     probe: probeOf,
     share: shareOf,
-    shareWatch: () => shareView?.watch ?? null,
+    shareWatch: () => shareView?.watchDisplay ?? null,
     boundary: boundaryOf,
     lifetime: lifetimeOf,
     unsaved: unsavedNow,

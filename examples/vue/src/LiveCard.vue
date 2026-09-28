@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { connectVueView } from '@stateref/connect-vue';
-import { keyText } from 'stateref-example-shared';
+import { keyText, displayPhaseOf } from 'stateref-example-shared';
 import { model } from './demo-model';
 import Row from './Row.vue';
 
@@ -9,10 +9,10 @@ import Row from './Row.vue';
  * access, the same way `query.watch` refuses before a first load. The parent
  * decides which of the two halves to show.
  */
-const view = connectVueView(model.liveView.watch);
+const view = connectVueView(model.liveView.watchDisplay);
 const key = view(ref => ref.queryKey.value);
 const enabled = view(ref => ref.enabled.value);
-const phase = view(ref => ref.phase.value);
+const phase = view(ref => displayPhaseOf(ref));
 const fetchStatus = view(ref => ref.fetchStatus.value);
 const city = view(ref => ref.data.value?.city);
 </script>

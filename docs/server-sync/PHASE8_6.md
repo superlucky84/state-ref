@@ -24,8 +24,8 @@
 | ID | 기능군 | 상태 | 테스트 근거 |
 |---|---|---|---|
 | F2-01 | key·캐시 공유·freshness·GC·진행 조회 공유·무효화·재조회 | 지원 | `packages/sync/src/tests/query.test.ts`, `packages/sync/src/tests/cache-helpers.test.ts`, `packages/sync/src/tests/hardening-lifetime.test.ts` |
-| F2-02 | 취소·조회 retry/backoff·focus/reconnect·polling·enabled | 지원 | `packages/sync/src/tests/automatic-refetch.test.ts`, `packages/sync/src/tests/network.test.ts`, `packages/sync/src/tests/query.test.ts`, `packages/sync/src/tests/view.test.ts` |
-| F2-03 | query 상태·select·파생/의존/병렬 조회·초기/placeholder 데이터 | 지원 | `packages/sync/src/tests/view.test.ts`, `packages/sync/src/tests/cache-helpers.test.ts`, `packages/sync/src/tests/query.test.ts` |
+| F2-02 | 취소·조회 retry/backoff·focus/reconnect·polling·enabled | 지원 | `packages/sync/src/tests/automatic-refetch.test.ts`, `packages/sync/src/tests/network.test.ts`, `packages/sync/src/tests/query.test.ts`, `packages/sync/src/tests/display.test.ts` |
+| F2-03 | query 상태·select·파생/의존/병렬 조회·초기/placeholder 데이터 | 지원 | `packages/sync/src/tests/display.test.ts`, `packages/sync/src/tests/cache-helpers.test.ts`, `packages/sync/src/tests/query.test.ts` |
 | F2-04 | mutation 상태·콜백·명시적 retry·경합/순서·낙관적 반영 | 지원 | `packages/sync/src/tests/mutation.test.ts`, `packages/sync/src/tests/hardening-ordering.test.ts`, `packages/sync/src/tests/draft-resource.test.ts` |
 | F2-05 | pagination·infinite query·prefetch·조회 데이터 보장 | 부분 지원 | `packages/sync/src/tests/infinite.test.ts`, `packages/sync/src/tests/infinite-helpers.test.ts`, `packages/sync/src/tests/cache-helpers.test.ts` |
 | F2-06 | SSR 요청 격리·dehydrate/hydrate·프레임워크별 로딩/오류 경계 | 부분 지원 | `packages/sync/src/tests/hydration.test.ts`, `packages/sync/src/tests/local-hydration.test.ts`, `packages/connect-react/src/tests/react/ssr.tsx`, `packages/connect-vue/src/tests/ssr.test.ts`, `scripts/check-example-ssr.mjs` |

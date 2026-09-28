@@ -124,21 +124,22 @@ const prepared = {
 await preparedClient.prefetch(prepared);
 assert.deepEqual(await preparedClient.ensure(prepared), { count: 2 });
 assert.deepEqual(await preparedClient.fetch(prepared), { count: 2 });
-const display = preparedClient.view(
-  { queryKey: ['display'], queryFn: () => ({ city: 'Seoul' }) },
-  {
-    select: data => data.city,
-    placeholderData: { city: 'Waiting' },
-  }
-);
-assert.equal(display.ref.phase.value, 'placeholder');
-await display.query.load();
-assert.equal(display.ref.data.value, 'Seoul');
+const display = preparedClient.query({
+  queryKey: ['display'],
+  queryFn: () => ({ city: 'Seoul' }),
+  select: data => data.city,
+  placeholderData: { city: 'Waiting' },
+});
+assert.equal(display.display.isPlaceholder.value, true);
+assert.equal(display.display.status.value, 'pending');
+await display.load();
+assert.equal(display.display.data.value, 'Seoul');
+assert.equal(display.display.isPlaceholder.value, false);
 display.dispose();
 const input = create({ id: null, enabled: false });
-const live = preparedClient.liveView(
-  input.watch,
-  ({ id, enabled }) =>
+const live = preparedClient.query({
+  source: input.watch,
+  resolve: ({ id, enabled }) =>
     id === null
       ? null
       : {
@@ -146,16 +147,17 @@ const live = preparedClient.liveView(
           queryFn: () => ({ city: `City ${id}` }),
           enabled,
         },
-  { select: data => data.city }
-);
-assert.equal(live.query, null);
+  select: data => data.city,
+});
+assert.equal(live.display.enabled.value, false);
+assert.throws(() => live.status, /no active key/);
 input.updateRef.id.value = 1;
 input.updateRef.enabled.value = true;
-await live.query.load();
-assert.equal(live.ref.data.value, 'City 1');
+await live.load();
+assert.equal(live.display.data.value, 'City 1');
 input.updateRef.id.value = 2;
-await live.query.load();
-assert.equal(live.ref.data.value, 'City 2');
+await live.load();
+assert.equal(live.display.data.value, 'City 2');
 live.dispose();
 const automaticListeners = new Set();
 const automaticClient = createSyncClient({
@@ -223,12 +225,13 @@ assert.deepEqual(
 assert.deepEqual((await helperClient.fetchInfinite(helperOptions)).pageParams, [
   0,
 ]);
-const helperView = helperClient.infiniteView(helperOptions, {
+const helperView = helperClient.infiniteQuery({
+  ...helperOptions,
   select: data => data.pages.length,
 });
-assert.equal(helperView.ref.data.value, 1);
-await helperView.query.fetchNextPage();
-assert.equal(helperView.ref.data.value, 2);
+assert.equal(helperView.display.data.value, 1);
+await helperView.fetchNextPage();
+assert.equal(helperView.display.data.value, 2);
 helperView.dispose();
 const browserWindow = new EventTarget();
 const browserDocument = Object.assign(new EventTarget(), {

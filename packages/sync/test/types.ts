@@ -15,7 +15,6 @@ import type {
   BrowserSyncHost,
   InfiniteData,
   InfiniteQueryHandle,
-  InfiniteQueryViewHandle,
   InFlightDehydration,
   LocalSyncSnapshot,
   MutationResult,
@@ -192,42 +191,46 @@ async function prepareCache() {
 
 void prepareCache;
 
-async function displayView() {
+async function displayQuery() {
   const client = createSyncClient({ ssr: true });
-  const view = client.view(
-    {
-      queryKey: ['display'],
-      queryFn: () => ({ city: '서울', count: 1 }),
-    },
-    {
-      select: data => data.city,
-      placeholderData: { city: '대기', count: 0 },
-    }
-  );
-  const preview: string | undefined = view.ref.data.value;
-  const placeholder: boolean = view.ref.isPlaceholder.value;
-  // @ts-expect-error a view has no display-value setter
-  view.ref.data.value = '수정';
-  view.watch(ref => {
-    // @ts-expect-error a view callback has no display-value setter
-    ref.phase.value = 'success';
+  const query = client.query({
+    queryKey: ['display'],
+    queryFn: () => ({ city: '서울', count: 1 }),
+    select: data => data.city,
+    placeholderData: { city: '대기', count: 0 },
   });
-  await view.query.load();
-  const source: string = view.query.ref.city.value;
+  const preview: string | undefined = query.display.data.value;
+  const placeholder: boolean = query.display.isPlaceholder.value;
+  // The display carries the shared status under the same names (DC9-09).
+  const dirty: boolean = query.display.dirty.value;
+  const version: number = query.display.version.value;
+  // @ts-expect-error a display has no value setter
+  query.display.data.value = '수정';
+  query.watchDisplay(ref => {
+    // @ts-expect-error a display callback has no value setter
+    ref.status.value = 'success';
+  });
+  // @ts-expect-error `phase` is gone; `isPlaceholder` carries that fact
+  void query.display.phase;
+  await query.load();
+  // The resource is the same handle now: no `.query` hop.
+  const source: string = query.ref.city.value;
   void preview;
   void placeholder;
+  void dirty;
+  void version;
   void source;
-  view.dispose();
+  query.dispose();
 }
 
-void displayView;
+void displayQuery;
 
 async function liveDisplayView() {
   const client = createSyncClient({ ssr: true });
   const source = create({ id: null as number | null, enabled: false });
-  const live = client.liveView(
-    source.watch,
-    input =>
+  const live = client.query({
+    source: source.watch,
+    resolve: input =>
       input.id === null
         ? null
         : {
@@ -235,15 +238,16 @@ async function liveDisplayView() {
             queryFn: () => ({ city: '서울' }),
             enabled: input.enabled,
           },
-    { select: data => data.city }
-  );
-  const enabled: boolean = live.ref.enabled.value;
-  const selected: string | undefined = live.ref.data.value;
-  // @ts-expect-error a live view has no display-value setter
-  live.ref.data.value = '부산';
+    select: data => data.city,
+  });
+  const enabled: boolean = live.display.enabled.value;
+  const selected: string | undefined = live.display.data.value;
+  // @ts-expect-error a display has no value setter
+  live.display.data.value = '부산';
   source.updateRef.id.value = 1;
   source.updateRef.enabled.value = true;
-  if (live.query) await live.query.load();
+  // `enabled` is the guard now: there is no handle to test for null (DC9-10).
+  if (live.display.enabled.value) await live.load();
   void enabled;
   void selected;
   live.dispose();
@@ -333,15 +337,16 @@ async function prepareInfiniteDisplay() {
     await client.fetchInfinite(options);
   const ensured: InfiniteData<{ id: number }, number> =
     await client.ensureInfinite(options);
-  const view: InfiniteQueryViewHandle<{ id: number }, number, number> =
-    client.infiniteView(options, {
+  const view: InfiniteQueryHandle<{ id: number }, number, number> =
+    client.infiniteQuery({
+      ...options,
       placeholderData: { pages: [{ id: -1 }], pageParams: [-1] },
       select: data => data.pages.length,
     });
-  const count: number | undefined = view.ref.data.value;
-  await view.query.fetchNextPage();
-  // @ts-expect-error selected infinite view data is readonly
-  view.ref.data.value = 3;
+  const count: number | undefined = view.display.data.value;
+  await view.fetchNextPage();
+  // @ts-expect-error selected infinite display data is readonly
+  view.display.data.value = 3;
   void fetched;
   void ensured;
   void count;
@@ -498,9 +503,17 @@ async function persistedLinkedSubmission() {
 
 void persistedLinkedSubmission;
 
+/**
+ * The value is still rejected, but the report moved.
+ *
+ * `query` is overloaded now (DC9-04), so a bad property fails the whole call
+ * rather than that line: the marker has to sit on the call. Both overloads
+ * are printed, which is a real cost of folding the reactive key in - the
+ * diagnostic is worse even though the check is not.
+ */
+// @ts-expect-error automatic policy accepts only boolean or always
 createSyncClient().query({
   queryKey: ['bad-automatic-policy'],
   queryFn: () => 1,
-  // @ts-expect-error automatic policy accepts only boolean or always
   refetchOnFocus: 'stale',
 });

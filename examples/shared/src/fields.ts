@@ -14,6 +14,30 @@
  * scope is the card and not the page.
  */
 
+/**
+ * What the old `phase` field used to say, derived.
+ *
+ * Sync deleted `phase` when the display absorbed the query status (DC9-09):
+ * it was `status` plus a placeholder flag, and `isPlaceholder` already
+ * carried that fact. The screens keep printing the same four words, because
+ * a reader - and the browser runner - addresses them by text.
+ */
+export function displayPhase(state: {
+  status: 'pending' | 'success' | 'error';
+  isPlaceholder: boolean;
+}): 'pending' | 'placeholder' | 'success' | 'error' {
+  return state.isPlaceholder ? 'placeholder' : state.status;
+}
+
+/** The same derivation over a display ref, for screens that read paths. */
+export function displayPhaseOf(ref: {
+  status: { value: 'pending' | 'success' | 'error' };
+  isPlaceholder: { value: boolean };
+}): 'pending' | 'placeholder' | 'success' | 'error' {
+  // Both paths are read, so the subscription still covers both facts.
+  return ref.isPlaceholder.value ? 'placeholder' : ref.status.value;
+}
+
 /** The cards a reader addresses. Operation-group cards are not among them. */
 export const CARD_TITLE = {
   'resource-a': 'resource 패널 A (key: profile)',

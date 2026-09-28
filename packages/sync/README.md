@@ -163,46 +163,49 @@ exists; an unconfirmed WRITE requires a new READ. Invalid key, time, or initial
 data setup still rejects from `prefetch`. Editable results returned by
 `load/fetch/ensure` are frozen copies; edit through the query ref.
 
-Placeholder data and observer-specific selection live in a separate view
-instead of the shared cache:
+Placeholder data and observer-specific selection belong to one observer, not
+to the shared cache. They are options on the query, and what they produce is
+the handle's `display`:
 
 <!-- doc-example: skip - the query type comes from the reader's `api` module, and `StateRefStore<any>` has no property types -->
 ```ts
-const view = client.view(
-  {
-    queryKey: ['account', 1],
-    queryFn: ({ signal }: { signal: AbortSignal }) =>
-      api.readAccount(1, { signal }),
-  },
-  {
-    placeholderData: previewAccount,
-    select: account => account.address.city,
-  }
-);
-view.ref.data.value; // this view's placeholder or selected current value
-await view.query.load(); // explicit READ, as with client.query(...)
-view.query.ref.address.city.value = 'Busan'; // edit the shared resource
-view.dispose(); // releases the view and its owned query handle
+const account = client.query({
+  queryKey: ['account', 1],
+  queryFn: ({ signal }: { signal: AbortSignal }) =>
+    api.readAccount(1, { signal }),
+  placeholderData: previewAccount,
+  select: account => account.address.city,
+});
+account.display.data.value; // this observer's placeholder or selected value
+await account.load(); // explicit READ
+account.ref.address.city.value = 'Busan'; // edit the shared resource
+account.dispose();
 ```
 
-`view.ref` and `view.watch` are readonly display state with `phase`,
-`fetchStatus`, `isPlaceholder`, `error`, and `errorSource`. A placeholder is
-observer-local and never enters `dehydrate()` or the editable resource. After a
-first READ error it disappears; a refetch error retains previously loaded data.
-`select` sees current local edits, but its result never replaces the cached
-query shape. An optional `equals` compares selected values (default:
-`Object.is`); select/comparison errors affect that view, not the shared query.
-The fixed-key `view` does not start a READ automatically. For a reactive key or
-dependent query, bind a `state-ref` source to `liveView`:
+`display` and `watchDisplay` are readonly. The state is the query status plus
+`data`, `isPlaceholder`, `errorSource`, `queryKey`, and `enabled` — the status
+fields keep their names, so `display.dirty` and `display.version` read the same
+as `status.dirty` and `status.version`. There is no `phase`: it was `status`
+plus a placeholder flag, and `isPlaceholder` carries that fact.
+
+`display` is built on first access, so a consumer that only edits the resource
+pays nothing for it. A placeholder is observer-local and never enters
+`dehydrate()` or the editable resource. After a first READ error it disappears;
+a refetch error retains previously loaded data. `select` sees current local
+edits, but its result never replaces the cached query shape. An optional
+`equals` compares selected values (default: `Object.is`); select and comparison
+errors affect that observer, not the shared query. A fixed key does not start a
+READ automatically. For a reactive key or a dependent query, give `query` a
+`state-ref` source instead of a key:
 
 <!-- doc-example: continue -->
 ```ts
 import { create } from 'state-ref';
 
 const input = create({ accountId: null as number | null, enabled: false });
-const live = client.liveView(
-  input.watch,
-  ({ accountId, enabled }) =>
+const live = client.query({
+  source: input.watch,
+  resolve: ({ accountId, enabled }) =>
     accountId === null
       ? null
       : {
@@ -210,20 +213,23 @@ const live = client.liveView(
           queryFn: ({ signal }) => api.readAccount(accountId, { signal }),
           enabled,
         },
-  { select: account => account.address.city }
-);
+  select: account => account.address.city,
+});
 input.updateRef.accountId.value = 1;
 input.updateRef.enabled.value = true; // starts a READ automatically
-live.ref.data.value; // selected current key only
-live.ref.queryKey.value; // ['account', 1]
-// After the baseline loads: live.query?.ref.address.city.value = 'Busan';
+live.display.data.value; // selected current key only
+live.display.queryKey.value; // ['account', 1]
+// After the baseline loads: live.ref.address.city.value = 'Busan';
 live.dispose();
 ```
 
 `null` or `enabled: false` clears the display and releases the current query.
-The stable, readonly `live.ref` exposes `enabled` and `queryKey`; `live.query`
-is the current handle or `null`. Each source update reconnects with its new
-options, including when the key is unchanged. The old handle is disposed. An
+`display` is one stable observation point for the handle's whole life and
+reports `enabled` and `queryKey` even while there is no active key. In that
+state `ref`, `watch`, `status` and the operations throw
+`This query has no active key.`, so check `display.enabled` first. Each source
+update reconnects with its new options, including when the key is unchanged.
+A ref held from the previous key refuses every access afterwards. An
 unowned in-flight READ is aborted and cannot install a late result; another
 owner of the same key keeps its shared READ. Neither placeholder nor selected
 display data enters the shared cache. One-way lifecycle wiring is available
@@ -233,7 +239,7 @@ subscription on unmount; the owner of `live` calls `live.dispose()` when the
 view itself is no longer needed. Edit actual data through `live.query?.ref`
 after it loads.
 
-For numbered pagination, include the page in the key supplied to `liveView`.
+For numbered pagination, include the page in the key the source resolves to.
 Each page then has its own cache entry. A `placeholderData` value is only a
 display preview for the new key; it never becomes that page's server baseline.
 Use `client.prefetch`, `fetch`, or `ensure` with the same page key to prepare it.
@@ -274,7 +280,7 @@ For the same aggregate, `fetchInfinite`, `prefetchInfinite`, and
 `prefetchInfinite` swallows READ failures, while `ensureInfinite` can return a
 confirmed stale baseline. An unconfirmed baseline is checked by a READ.
 These calls do not replace an active infinite query's reader or automatic
-refetch policy. Use `infiniteView` for observer-local display state:
+refetch policy. `infiniteQuery` takes the same display options:
 
 <!-- doc-example: continue -->
 ```ts
@@ -288,21 +294,22 @@ const feedOptions = {
 };
 await client.prefetchInfinite(feedOptions);
 const cachedFeed = await client.ensureInfinite(feedOptions);
-const feedView = client.infiniteView(feedOptions, {
+const feedView = client.infiniteQuery({
+  ...feedOptions,
   select: data => data.pages.length,
 });
-await feedView.query.load();
-if (feedView.query.hasNextPage()) await feedView.query.fetchNextPage();
+await feedView.load();
+if (feedView.hasNextPage()) await feedView.fetchNextPage();
 feedView.dispose();
 ```
 
 The fixed-key infinite view uses the same readonly display state as `view`.
 Its placeholder, selection, and comparison belong to that observer and do not
-enter the shared cache. `view.query` exposes the infinite page methods. It
+enter the shared cache. The same handle exposes the infinite page methods. It
 does not start a READ until `load()` or another page method is called.
 
 Focus, reconnect, and polling policies become active after a handle's first
-`load()` or `refetch()`. An active `liveView` performs that first load
+`load()` or `refetch()`. An active reactive key performs that first load
 automatically. Provide a client-scoped environment when the host has focus and
 connectivity events. Call the browser adapter only where browser globals exist:
 
@@ -561,5 +568,5 @@ Editable data defaults to a plain, acyclic tree with dense arrays. Arrays are tr
 Defaults: `staleTime: 0`, inactive `gcTime: 5 minutes` (infinite for `createSyncClient({ ssr: true })`), three query retries in a client and zero in SSR. The client owns its cache; create a separate client for each SSR request. The `queryKey` must be an acyclic JSON-compatible array, with object key order ignored in its hash.
 
 Fixed-key queries require an explicit `load()` call unless a mutation response,
-`acceptServer`, or an active `liveView` populates the cache. A successful local
+`acceptServer`, or an active reactive key populates the cache. A successful local
 edit does not save to a server.

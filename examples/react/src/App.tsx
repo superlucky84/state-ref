@@ -15,6 +15,7 @@ import {
   requestPanel,
   resourcePanel,
   show,
+  displayPhaseOf,
 } from 'stateref-example-shared';
 import type {
   CardId,
@@ -43,7 +44,7 @@ const useUi = connectReact(model.watchUi);
 const useStatusA = connectReact(model.panelA.watchStatus);
 const useStatusB = connectReact(model.panelB.watchStatus);
 const useReadonlyStatus = connectReact(model.readonlyQuery.watchStatus);
-const useLiveView = connectReactView(model.liveView.watch);
+const useLiveView = connectReactView(model.liveView.watchDisplay);
 const useMutationStatus = connectReact(model.mutation.watchStatus);
 
 const lazyHooks = new Map<string, () => StateRefStore<Profile>>();
@@ -372,7 +373,7 @@ function LiveRows() {
       <Row field="liveEnabled" value={String(view.enabled.value)} />
       <Row
         field="livePhase"
-        value={`${view.phase.value} / ${view.fetchStatus.value}`}
+        value={`${displayPhaseOf(view)} / ${view.fetchStatus.value}`}
       />
       <Row field="liveCity" value={view.data.value?.city ?? '(없음)'} />
     </>
@@ -412,7 +413,7 @@ function ShareRows({
     <>
       <Row
         field="livePhase"
-        value={`${view.phase.value} / ${view.fetchStatus.value}`}
+        value={`${displayPhaseOf(view)} / ${view.fetchStatus.value}`}
       />
       <Row field="liveCity" value={view.data.value?.city ?? '(없음)'} />
     </>
