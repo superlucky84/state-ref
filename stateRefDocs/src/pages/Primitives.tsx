@@ -7,15 +7,16 @@ export const Primitives = mount(() => {
       <h1>Primitive Types</h1>
 
       <p>
-        StateRef works seamlessly with primitive types like numbers, strings, and booleans.
-        While object stores are more common, primitive stores are useful for simple counters,
-        toggles, or any single-value state.
+        StateRef works seamlessly with primitive types like numbers, strings,
+        and booleans. While object stores are more common, primitive stores are
+        useful for simple counters, toggles, or any single-value state.
       </p>
 
       <h2>Creating Primitive Stores</h2>
 
       <p>
-        Create a primitive store by passing a primitive value to <code>createStore()</code>:
+        Create a primitive store by passing a primitive value to{' '}
+        <code>createStore()</code>:
       </p>
 
       <CodeBlock
@@ -38,7 +39,8 @@ const nullableWatch = createStore<string | null>(null);`}
       <h2>Reading and Writing Values</h2>
 
       <p>
-        For primitive stores, access the value directly via <code>.value</code> on the store reference:
+        For primitive stores, access the value directly via <code>.value</code>{' '}
+        on the store reference:
       </p>
 
       <CodeBlock
@@ -60,9 +62,7 @@ console.log(count.value);  // 201`}
 
       <h2>Subscribing to Changes</h2>
 
-      <p>
-        Subscribe to primitive store changes just like object stores:
-      </p>
+      <p>Subscribe to primitive store changes just like object stores:</p>
 
       <CodeBlock
         language="typescript"
@@ -83,8 +83,8 @@ count.value = 20;  // Logs: Count: 20, Is first run? false`}
       <h2>TypeScript Type Inference</h2>
 
       <p>
-        TypeScript automatically infers the type from the initial value,
-        or you can explicitly specify the type:
+        TypeScript automatically infers the type from the initial value, or you
+        can explicitly specify the type:
       </p>
 
       <CodeBlock
@@ -108,7 +108,8 @@ const userIdWatch = createStore<number | null>(null);`}
       <h2>Comparison with Object Stores</h2>
 
       <p>
-        The key difference between primitive and object stores is the access pattern:
+        The key difference between primitive and object stores is the access
+        pattern:
       </p>
 
       <CodeBlock
@@ -211,7 +212,8 @@ const fetchData = async () => {
       <h2>Using with AbortController</h2>
 
       <p>
-        Cancel subscriptions to primitive stores using <code>AbortController</code>:
+        Cancel subscriptions to primitive stores using{' '}
+        <code>AbortController</code>:
       </p>
 
       <CodeBlock
@@ -235,7 +237,8 @@ count.value = 2;  // No log (subscription cancelled)`}
       <h2>Combining with createComputed</h2>
 
       <p>
-        Primitive stores work well with <code>createComputed</code> for derived values:
+        Primitive stores work well with <code>createComputed</code> for derived
+        values:
       </p>
 
       <CodeBlock
@@ -264,7 +267,8 @@ width.value = 15;  // Logs: Area: 300`}
       <h2>Framework Integration</h2>
 
       <p>
-        Primitive stores integrate with UI frameworks the same way as object stores:
+        Primitive stores integrate with UI frameworks the same way as object
+        stores:
       </p>
 
       <CodeBlock
@@ -292,16 +296,21 @@ function Counter() {
 
       <ul>
         <li>
-          <strong>Use primitive stores for simple state</strong> - Counters, toggles, single values
+          <strong>Use primitive stores for simple state</strong> - Counters,
+          toggles, single values
         </li>
         <li>
-          <strong>Use object stores for complex state</strong> - Multiple related values
+          <strong>Use object stores for complex state</strong> - Multiple
+          related values
         </li>
         <li>
-          <strong>Type your stores</strong> - Especially for union types and nullable values
+          <strong>Type your stores</strong> - Especially for union types and
+          nullable values
         </li>
         <li>
-          <strong>Consider combining stores</strong> - Use <code>createComputed</code> or <code>combineWatch</code> when primitive stores need to work together
+          <strong>Consider combining stores</strong> - Use{' '}
+          <code>createComputed</code> or <code>combineWatch</code> when
+          primitive stores need to work together
         </li>
       </ul>
 
@@ -312,13 +321,16 @@ function Counter() {
           <a href="#/guide/create-store">createStore</a> - Creating stores
         </li>
         <li>
-          <a href="#/guide/state-ref-store">StateRefStore</a> - Working with store references
+          <a href="#/guide/state-ref-store">StateRefStore</a> - Working with
+          store references
         </li>
         <li>
-          <a href="#/guide/computed">createComputed</a> - Deriving values from stores
+          <a href="#/guide/computed">createComputed</a> - Deriving values from
+          stores
         </li>
         <li>
-          <a href="#/guide/combine-watch">combineWatch</a> - Combining multiple stores
+          <a href="#/guide/combine-watch">combineWatch</a> - Combining multiple
+          stores
         </li>
       </ul>
     </div>

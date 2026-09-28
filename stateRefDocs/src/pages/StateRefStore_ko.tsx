@@ -7,16 +7,16 @@ export const StateRefStoreKo = mount(() => {
       <h1>StateRefStore</h1>
 
       <p>
-        <code>StateRefStore</code>는 <code>watch()</code> 함수가 반환하는 프록시 참조 타입입니다.
-        상태를 Proxy로 감싸서 반응형 추적을 가능하게 하며 <code>.value</code> 프로퍼티를 통해
-        값에 접근할 수 있도록 합니다.
+        <code>StateRefStore</code>는 <code>watch()</code> 함수가 반환하는 프록시
+        참조 타입입니다. 상태를 Proxy로 감싸서 반응형 추적을 가능하게 하며{' '}
+        <code>.value</code> 프로퍼티를 통해 값에 접근할 수 있도록 합니다.
       </p>
 
       <h2>.value 프로퍼티</h2>
 
       <p>
-        StateRef의 모든 상태 접근은 <code>.value</code> 프로퍼티를 통해 이루어집니다.
-        이것은 상태를 읽고 쓰는 기본 인터페이스입니다:
+        StateRef의 모든 상태 접근은 <code>.value</code> 프로퍼티를 통해
+        이루어집니다. 이것은 상태를 읽고 쓰는 기본 인터페이스입니다:
       </p>
 
       <CodeBlock
@@ -69,8 +69,8 @@ console.log(store.user.profile.name.value);  // 'John' (실제 문자열)`}
       <h2>깊은 중첩 접근</h2>
 
       <p>
-        StateRefStore는 임의로 깊은 중첩을 지원합니다. 각 레벨은 새 프록시를 반환하여
-        자연스러운 체인 프로퍼티 접근을 가능하게 합니다:
+        StateRefStore는 임의로 깊은 중첩을 지원합니다. 각 레벨은 새 프록시를
+        반환하여 자연스러운 체인 프로퍼티 접근을 가능하게 합니다:
       </p>
 
       <CodeBlock
@@ -104,7 +104,8 @@ store.company.departments.engineering.teams.frontend.members.value = [
       <h2>객체 다루기</h2>
 
       <p>
-        객체 프로퍼티로 작업할 때 개별 필드를 업데이트하거나 전체 객체를 교체할 수 있습니다:
+        객체 프로퍼티로 작업할 때 개별 필드를 업데이트하거나 전체 객체를 교체할
+        수 있습니다:
       </p>
 
       <CodeBlock
@@ -134,7 +135,8 @@ store.user.value = {
       <h2>배열 다루기</h2>
 
       <p>
-        배열은 StateRefStore와 원활하게 작동하며, 인덱스 접근과 배열 교체를 모두 지원합니다:
+        배열은 StateRefStore와 원활하게 작동하며, 인덱스 접근과 배열 교체를 모두
+        지원합니다:
       </p>
 
       <CodeBlock
@@ -171,8 +173,9 @@ store.todos.value = [...currentTodos];  // 업데이트 트리거`}
       <h2>Copy-on-Write 의미론</h2>
 
       <p>
-        StateRef는 불변성을 유지하기 위해 copy-on-write를 사용합니다. 중첩된 프로퍼티를 업데이트하면
-        해당 프로퍼티로의 경로만 복사되고 변경되지 않은 하위 트리는 공유됩니다:
+        StateRef는 불변성을 유지하기 위해 copy-on-write를 사용합니다. 중첩된
+        프로퍼티를 업데이트하면 해당 프로퍼티로의 경로만 복사되고 변경되지 않은
+        하위 트리는 공유됩니다:
       </p>
 
       <CodeBlock
@@ -203,8 +206,8 @@ console.log(store.e.value === originalE);      // true (같은 참조)`}
       <h2>원시 타입</h2>
 
       <p>
-        StateRefStore는 원시 타입(number, string, boolean)과도 작동합니다.
-        원시 타입의 경우 스토어 자체가 <code>.value</code> 프로퍼티를 가집니다:
+        StateRefStore는 원시 타입(number, string, boolean)과도 작동합니다. 원시
+        타입의 경우 스토어 자체가 <code>.value</code> 프로퍼티를 가집니다:
       </p>
 
       <CodeBlock
@@ -232,7 +235,8 @@ toggle.value = true;`}
       <h2>TypeScript 타입 안전성</h2>
 
       <p>
-        StateRefStore는 TypeScript와 완전히 타입이 지정되어 자동 완성과 타입 체크를 제공합니다:
+        StateRefStore는 TypeScript와 완전히 타입이 지정되어 자동 완성과 타입
+        체크를 제공합니다:
       </p>
 
       <CodeBlock
@@ -266,7 +270,8 @@ const userId: number = store.id.value;      // ✓ number로 올바르게 추론
       <h2>.value 없이 읽기</h2>
 
       <p>
-        <code>.value</code> 없이 프로퍼티에 접근하면 실제 값이 아닌 프록시 자체를 얻게 됩니다:
+        <code>.value</code> 없이 프로퍼티에 접근하면 실제 값이 아닌 프록시
+        자체를 얻게 됩니다:
       </p>
 
       <CodeBlock
@@ -296,8 +301,8 @@ if (store.count.value === 10) { // ✓ 올바름: 값을 숫자와 비교
       <h2>참조 동등성</h2>
 
       <p>
-        StateRefStore는 변경되지 않은 객체에 대해 참조 동등성을 유지하며,
-        이는 UI 프레임워크의 최적화에 중요합니다:
+        StateRefStore는 변경되지 않은 객체에 대해 참조 동등성을 유지하며, 이는
+        UI 프레임워크의 최적화에 중요합니다:
       </p>
 
       <CodeBlock
@@ -389,16 +394,20 @@ console.log(newArea);  // 300`}
 
       <ul>
         <li>
-          <strong>프록시 오버헤드는 최소</strong> - 최신 JavaScript 엔진은 프록시 접근을 잘 최적화함
+          <strong>프록시 오버헤드는 최소</strong> - 최신 JavaScript 엔진은
+          프록시 접근을 잘 최적화함
         </li>
         <li>
-          <strong>Copy-on-write는 효율적</strong> - 변경된 경로만 복사되고 변경되지 않은 데이터는 공유됨
+          <strong>Copy-on-write는 효율적</strong> - 변경된 경로만 복사되고
+          변경되지 않은 데이터는 공유됨
         </li>
         <li>
-          <strong>참조 동등성이 최적화를 가능하게 함</strong> - UI 프레임워크가 변경되지 않은 하위 트리의 렌더링을 건너뛸 수 있음
+          <strong>참조 동등성이 최적화를 가능하게 함</strong> - UI 프레임워크가
+          변경되지 않은 하위 트리의 렌더링을 건너뛸 수 있음
         </li>
         <li>
-          <strong>가능하면 배치 업데이트</strong> - 개별 프로퍼티 대신 전체 객체를 업데이트하여 구독 트리거 줄이기
+          <strong>가능하면 배치 업데이트</strong> - 개별 프로퍼티 대신 전체
+          객체를 업데이트하여 구독 트리거 줄이기
         </li>
       </ul>
 
@@ -406,19 +415,24 @@ console.log(newArea);  // 300`}
 
       <ul>
         <li>
-          <strong>실제 값에는 항상 .value 사용</strong> - .value 없는 프로퍼티 접근은 프록시를 반환한다는 것을 기억하기
+          <strong>실제 값에는 항상 .value 사용</strong> - .value 없는 프로퍼티
+          접근은 프록시를 반환한다는 것을 기억하기
         </li>
         <li>
-          <strong>불변 업데이트 선호</strong> - 가능하면 객체/배열을 변경하지 말고 교체하기
+          <strong>불변 업데이트 선호</strong> - 가능하면 객체/배열을 변경하지
+          말고 교체하기
         </li>
         <li>
-          <strong>참조 동등성 활용</strong> - 최적화를 위해 엄격한 동등성 체크 사용
+          <strong>참조 동등성 활용</strong> - 최적화를 위해 엄격한 동등성 체크
+          사용
         </li>
         <li>
-          <strong>스토어에 타입 지정</strong> - 더 나은 타입 안전성과 자동 완성을 위해 TypeScript 인터페이스 사용
+          <strong>스토어에 타입 지정</strong> - 더 나은 타입 안전성과 자동
+          완성을 위해 TypeScript 인터페이스 사용
         </li>
         <li>
-          <strong>관련 업데이트 배치</strong> - 구독 트리거를 최소화하기 위해 전체 객체 업데이트
+          <strong>관련 업데이트 배치</strong> - 구독 트리거를 최소화하기 위해
+          전체 객체 업데이트
         </li>
       </ul>
 
@@ -426,16 +440,20 @@ console.log(newArea);  // 300`}
 
       <ul>
         <li>
-          <a href="#/ko/guide/create-store">createStore</a> - StateRefStore 참조를 반환하는 스토어 생성
+          <a href="#/ko/guide/create-store">createStore</a> - StateRefStore
+          참조를 반환하는 스토어 생성
         </li>
         <li>
-          <a href="#/ko/guide/watch">Watch 함수</a> - watch를 통해 StateRefStore 참조 얻기
+          <a href="#/ko/guide/watch">Watch 함수</a> - watch를 통해 StateRefStore
+          참조 얻기
         </li>
         <li>
-          <a href="#/ko/guide/references">참조 이해하기</a> - StateRefStore 참조가 추적과 어떻게 작동하는지
+          <a href="#/ko/guide/references">참조 이해하기</a> - StateRefStore
+          참조가 추적과 어떻게 작동하는지
         </li>
         <li>
-          <a href="#/ko/guide/primitives">원시 타입</a> - 원시 타입 스토어 다루기
+          <a href="#/ko/guide/primitives">원시 타입</a> - 원시 타입 스토어
+          다루기
         </li>
       </ul>
     </div>

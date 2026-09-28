@@ -34,9 +34,8 @@ export const ApiSyncKo = mount(() => {
 
       <CodeBlock
         language="typescript"
-        code={`client.query<T>(options): QueryHandle<T>
-client.view<T, S>(options, viewOptions?): QueryViewHandle<T, S>
-client.liveView<I, T, S>(source, resolve, viewOptions?): LiveQueryViewHandle<T, S>
+        code={`client.query<T, S>(options): QueryHandle<T, S>          // fixed key
+client.query<I, T, S>({ source, resolve, ...display }): QueryHandle<T, S>  // reactive key
 
 client.fetch<T>(options): Promise<T>     // fresh cache or a READ; throws
 client.prefetch<T>(options): Promise<void> // caches success, swallows rejection
@@ -47,8 +46,7 @@ client.ensure<T>(options): Promise<T>    // confirmed cache, even if stale`}
 
       <CodeBlock
         language="typescript"
-        code={`client.infiniteQuery<Page, Param>(options): InfiniteQueryHandle<Page, Param>
-client.infiniteView<Page, Param, S>(options, viewOptions?)
+        code={`client.infiniteQuery<Page, Param, S>(options): InfiniteQueryHandle<Page, Param, S>
 
 client.fetchInfinite(options)
 client.prefetchInfinite(options)
@@ -56,8 +54,8 @@ client.ensureInfinite(options)`}
       />
 
       <p>
-        무한 페이지는 읽기 전용이고 <code>infiniteView</code>는 고정 key만
-        받습니다. <code>liveView</code>의 무한 조회판은 없습니다.
+        무한 페이지는 읽기 전용이고 <code>infiniteQuery</code>는 고정 key만
+        받습니다. 반응형 key의 무한 조회판은 없습니다.
       </p>
 
       <h3>mutation</h3>
@@ -164,25 +162,24 @@ handle.acceptServer(value)  // cache-only acceptance; sends no WRITE`}
 }`}
       />
 
-      <h2>view</h2>
+      <h2>표시(display)</h2>
 
       <CodeBlock
         language="typescript"
-        code={`// QueryViewOptions
+        code={`// display options, on the query itself
 { placeholderData?: T; select?: (data: T) => S; equals?: (a: S, b: S) => boolean }
 
-// view.ref / view.watch - readonly display state
-{ data, phase, fetchStatus, isPlaceholder, error, errorSource }
+// query.display / query.watchDisplay - readonly, built on first access
+QueryStatus & { data, isPlaceholder, errorSource, queryKey, enabled }
 
-// liveView adds
-{ queryKey, enabled }
-live.query   // the current QueryHandle, or null`}
+// no phase: derive it
+const phase = q.display.isPlaceholder.value ? 'placeholder' : q.display.status.value;
+
+// with a reactive key and no active key, ref / watch / status throw
+// 'This query has no active key.'; display.enabled stays readable.`}
       />
 
-      <p>
-        고정 key <code>view</code>는 READ를 시작하지 않습니다. 활성{' '}
-        <code>liveView</code>는 시작합니다.
-      </p>
+      <p>고정 key는 READ를 시작하지 않습니다. 활성 반응형 key는 시작합니다.</p>
 
       <h2>mutation</h2>
 

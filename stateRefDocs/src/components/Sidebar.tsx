@@ -114,7 +114,7 @@ const menuData: MenuSection[] = [
         link: '/guide/sync-mutation',
       },
       {
-        text: { en: 'view and liveView', ko: 'view와 liveView' },
+        text: { en: 'display and reactive keys', ko: '표시와 반응형 key' },
         link: '/guide/sync-view',
       },
       {

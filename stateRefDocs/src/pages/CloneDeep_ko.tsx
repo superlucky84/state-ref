@@ -7,8 +7,9 @@ export const CloneDeepKo = mount(() => {
       <h1>cloneDeep</h1>
 
       <p>
-        <code>cloneDeep</code>는 평범한 객체와 배열을 재귀적으로 깊은 복사합니다.
-        중첩된 데이터를 독립적으로 복제해야 할 때 사용하는 가벼운 유틸리티입니다.
+        <code>cloneDeep</code>는 평범한 객체와 배열을 재귀적으로 깊은
+        복사합니다. 중첩된 데이터를 독립적으로 복제해야 할 때 사용하는 가벼운
+        유틸리티입니다.
       </p>
 
       <h2>기본 사용법</h2>
@@ -59,8 +60,8 @@ console.log(list[0].id); // 1`}
       <h2>제한 사항</h2>
 
       <p>
-        <code>cloneDeep</code>는 단순함을 우선한 구현입니다. 특수 객체나
-        순환 참조는 지원하지 않습니다.
+        <code>cloneDeep</code>는 단순함을 우선한 구현입니다. 특수 객체나 순환
+        참조는 지원하지 않습니다.
       </p>
 
       <ul>

@@ -7,22 +7,20 @@ export const LithentKo = mount(() => {
       <h1>Lithent 연동</h1>
 
       <p>
-        Lithent는 경량 Virtual DOM 라이브러리입니다. StateRef는 별도의 커넥터 패키지 없이
-        Lithent와 직접 통합됩니다. 단순히 <code>renew</code> 함수를 <code>watch()</code>에
-        전달하면 됩니다.
+        Lithent는 경량 Virtual DOM 라이브러리입니다. StateRef는 별도의 커넥터
+        패키지 없이 Lithent와 직접 통합됩니다. 단순히 <code>renew</code> 함수를{' '}
+        <code>watch()</code>에 전달하면 됩니다.
       </p>
 
       <h2>설치</h2>
 
-      <CodeBlock
-        language="bash"
-        code={`pnpm add state-ref lithent`}
-      />
+      <CodeBlock language="bash" code={`pnpm add state-ref lithent`} />
 
       <h2>기본 사용법</h2>
 
       <p>
-        <code>mount()</code>에서 받은 <code>renew</code> 함수를 <code>watch()</code>에 직접 전달합니다:
+        <code>mount()</code>에서 받은 <code>renew</code> 함수를{' '}
+        <code>watch()</code>에 직접 전달합니다:
       </p>
 
       <CodeBlock
@@ -57,13 +55,12 @@ export const ProfileCard = mount(renew => {
 
       <h2>작동 방식</h2>
 
-      <p>
-        Lithent의 아키텍처는 StateRef 통합을 매끄럽게 만듭니다:
-      </p>
+      <p>Lithent의 아키텍처는 StateRef 통합을 매끄럽게 만듭니다:</p>
 
       <ul>
         <li>
-          <code>mount(renew =&gt; ...)</code>는 리렌더링을 트리거하는 <code>renew</code> 함수를 제공합니다
+          <code>mount(renew =&gt; ...)</code>는 리렌더링을 트리거하는{' '}
+          <code>renew</code> 함수를 제공합니다
         </li>
         <li>
           <code>watch(renew)</code>는 <code>renew</code>를 구독자로 등록합니다
@@ -77,16 +74,12 @@ export const ProfileCard = mount(renew => {
         <li>
           값이 변경되면 <code>renew</code>가 자동으로 호출됩니다
         </li>
-        <li>
-          컴포넌트가 업데이트된 값으로 리렌더링됩니다
-        </li>
+        <li>컴포넌트가 업데이트된 값으로 리렌더링됩니다</li>
       </ul>
 
       <h2>컴포넌트 구조</h2>
 
-      <p>
-        Lithent 컴포넌트는 설정과 렌더 두 단계로 구성됩니다:
-      </p>
+      <p>Lithent 컴포넌트는 설정과 렌더 두 단계로 구성됩니다:</p>
 
       <CodeBlock
         language="tsx"
@@ -117,9 +110,7 @@ export const MyComponent = mount(renew => {
 
       <h2>여러 스토어 사용</h2>
 
-      <p>
-        하나의 컴포넌트에서 여러 스토어를 구독합니다:
-      </p>
+      <p>하나의 컴포넌트에서 여러 스토어를 구독합니다:</p>
 
       <CodeBlock
         language="typescript"
@@ -156,9 +147,7 @@ export const Dashboard = mount(renew => {
 
       <h2>중첩된 프로퍼티</h2>
 
-      <p>
-        깊게 중첩된 값에 자연스럽게 접근합니다:
-      </p>
+      <p>깊게 중첩된 값에 자연스럽게 접근합니다:</p>
 
       <CodeBlock
         language="tsx"
@@ -202,7 +191,8 @@ export const UserProfile = mount(renew => {
       <h2>액션과 함께 수동 동기화</h2>
 
       <p>
-        Flux 스타일 상태 관리를 위해 <code>createStoreManualSync</code>를 사용합니다:
+        Flux 스타일 상태 관리를 위해 <code>createStoreManualSync</code>를
+        사용합니다:
       </p>
 
       <CodeBlock
@@ -245,9 +235,7 @@ export const Counter = mount(renew => {
 
       <h2>헬퍼 함수와 함께 사용</h2>
 
-      <p>
-        StateRef 헬퍼 함수와 결합합니다:
-      </p>
+      <p>StateRef 헬퍼 함수와 결합합니다:</p>
 
       <CodeBlock
         language="tsx"
@@ -286,9 +274,7 @@ export const NameDisplay = mount(renew => {
 
       <h2>폼 처리</h2>
 
-      <p>
-        직접 바인딩으로 폼 입력을 처리합니다:
-      </p>
+      <p>직접 바인딩으로 폼 입력을 처리합니다:</p>
 
       <CodeBlock
         language="tsx"
@@ -339,9 +325,7 @@ export const ContactForm = mount(renew => {
 
       <h2>TypeScript 팁</h2>
 
-      <p>
-        완전한 타입 추론이 자동으로 작동합니다:
-      </p>
+      <p>완전한 타입 추론이 자동으로 작동합니다:</p>
 
       <CodeBlock
         language="typescript"
@@ -359,23 +343,16 @@ const store = todoStore(renew);
 
       <h2>왜 커넥터가 필요 없나요?</h2>
 
-      <p>
-        다른 프레임워크와 달리 Lithent는 커넥터가 필요 없습니다:
-      </p>
+      <p>다른 프레임워크와 달리 Lithent는 커넥터가 필요 없습니다:</p>
 
       <ul>
         <li>
-          Lithent의 <code>renew</code> 함수는 StateRef가 기대하는 정확한 시그니처를 가집니다
+          Lithent의 <code>renew</code> 함수는 StateRef가 기대하는 정확한
+          시그니처를 가집니다
         </li>
-        <li>
-          설정/렌더 분리가 구독 패턴과 완벽하게 일치합니다
-        </li>
-        <li>
-          연결해야 할 프레임워크별 반응성 시스템이 없습니다
-        </li>
-        <li>
-          직접 통합은 오버헤드가 전혀 없습니다
-        </li>
+        <li>설정/렌더 분리가 구독 패턴과 완벽하게 일치합니다</li>
+        <li>연결해야 할 프레임워크별 반응성 시스템이 없습니다</li>
+        <li>직접 통합은 오버헤드가 전혀 없습니다</li>
       </ul>
 
       <h2>관련 문서</h2>
@@ -388,7 +365,8 @@ const store = todoStore(renew);
           <a href="#/ko/guide/watch">Watch 함수</a> - 구독 동작
         </li>
         <li>
-          <a href="#/ko/guide/manual-sync">수동 동기화 (Flux)</a> - 액션 기반 업데이트
+          <a href="#/ko/guide/manual-sync">수동 동기화 (Flux)</a> - 액션 기반
+          업데이트
         </li>
         <li>
           <a href="#/ko/guide/computed">createComputed</a> - 파생 값

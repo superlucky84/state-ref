@@ -7,28 +7,34 @@ export const CustomConnector = mount(() => {
       <h1>Custom Connector</h1>
 
       <p>
-        Learn how to create your own connector to integrate StateRef with any UI framework.
-        This guide walks through the patterns used by official connectors.
+        Learn how to create your own connector to integrate StateRef with any UI
+        framework. This guide walks through the patterns used by official
+        connectors.
       </p>
 
       <h2>Core Concepts</h2>
 
       <p>
-        A connector bridges StateRef's subscription system with a framework's reactivity:
+        A connector bridges StateRef's subscription system with a framework's
+        reactivity:
       </p>
 
       <ul>
         <li>
-          <strong>Subscribe</strong>: Call <code>watch(callback)</code> to receive updates
+          <strong>Subscribe</strong>: Call <code>watch(callback)</code> to
+          receive updates
         </li>
         <li>
-          <strong>Trigger re-render</strong>: When StateRef notifies, update the framework's state
+          <strong>Trigger re-render</strong>: When StateRef notifies, update the
+          framework's state
         </li>
         <li>
-          <strong>Cleanup</strong>: Use <code>AbortController</code> to unsubscribe on unmount
+          <strong>Cleanup</strong>: Use <code>AbortController</code> to
+          unsubscribe on unmount
         </li>
         <li>
-          <strong>Two-way sync</strong>: Optionally sync framework state back to StateRef
+          <strong>Two-way sync</strong>: Optionally sync framework state back to
+          StateRef
         </li>
       </ul>
 
@@ -51,7 +57,8 @@ export const CustomConnector = mount(() => {
           <code>store</code>: The StateRefStore for reading/writing values
         </li>
         <li>
-          <code>isFirst</code>: <code>true</code> on initial call, <code>false</code> on updates
+          <code>isFirst</code>: <code>true</code> on initial call,{' '}
+          <code>false</code> on updates
         </li>
         <li>
           Return an <code>AbortSignal</code> to enable unsubscription
@@ -100,9 +107,7 @@ export function connectReact<T>(watch: Watch<T>) {
 }`}
       />
 
-      <p>
-        Key points:
-      </p>
+      <p>Key points:</p>
 
       <ul>
         <li>
@@ -115,15 +120,16 @@ export function connectReact<T>(watch: Watch<T>) {
           <code>AbortController</code> handles cleanup when component unmounts
         </li>
         <li>
-          Returns the <code>StateRefStore</code> directly for <code>.value</code> access
+          Returns the <code>StateRefStore</code> directly for{' '}
+          <code>.value</code> access
         </li>
       </ul>
 
       <h2>Pattern 2: Selector Callback (Vue-style)</h2>
 
       <p>
-        For frameworks with their own reactivity, use a selector pattern that returns
-        framework-native reactive objects:
+        For frameworks with their own reactivity, use a selector pattern that
+        returns framework-native reactive objects:
       </p>
 
       <CodeBlock
@@ -188,14 +194,10 @@ export function connectVue<T>(refWatch: Watch<T>) {
 }`}
       />
 
-      <p>
-        Key points:
-      </p>
+      <p>Key points:</p>
 
       <ul>
-        <li>
-          Selector callback lets users pick specific properties to track
-        </li>
+        <li>Selector callback lets users pick specific properties to track</li>
         <li>
           Returns framework-native reactive object (Vue's <code>Reactive</code>)
         </li>
@@ -212,9 +214,7 @@ export function connectVue<T>(refWatch: Watch<T>) {
 
       <h2>Pattern 3: Signal Pair (Solid-style)</h2>
 
-      <p>
-        For frameworks with signal patterns, return getter/setter pairs:
-      </p>
+      <p>For frameworks with signal patterns, return getter/setter pairs:</p>
 
       <CodeBlock
         language="typescript"
@@ -277,15 +277,11 @@ export function connectSolid<T>(refWatch: Watch<T>) {
 
       <h2>Building Your Own Connector</h2>
 
-      <p>
-        Follow these steps to create a connector for any framework:
-      </p>
+      <p>Follow these steps to create a connector for any framework:</p>
 
       <h3>Step 1: Identify the Re-render Mechanism</h3>
 
-      <p>
-        Every UI framework has a way to trigger re-renders:
-      </p>
+      <p>Every UI framework has a way to trigger re-renders:</p>
 
       <CodeBlock
         language="typescript"
@@ -375,9 +371,7 @@ frameworkWatch(newValue => {
 
       <h2>Minimal Example</h2>
 
-      <p>
-        Here's a minimal connector for a hypothetical framework:
-      </p>
+      <p>Here's a minimal connector for a hypothetical framework:</p>
 
       <CodeBlock
         language="typescript"
@@ -412,19 +406,24 @@ export function connectMyFramework<T>(watch: Watch<T>) {
 
       <ul>
         <li>
-          <strong>isFirst check</strong>: Skip re-render on initial subscription to avoid double render
+          <strong>isFirst check</strong>: Skip re-render on initial subscription
+          to avoid double render
         </li>
         <li>
-          <strong>Sync loop prevention</strong>: Use a <code>changing</code> flag for two-way binding
+          <strong>Sync loop prevention</strong>: Use a <code>changing</code>{' '}
+          flag for two-way binding
         </li>
         <li>
-          <strong>Object cloning</strong>: Use <code>cloneDeep</code> when passing objects between systems
+          <strong>Object cloning</strong>: Use <code>cloneDeep</code> when
+          passing objects between systems
         </li>
         <li>
-          <strong>AbortController</strong>: Always return the signal and abort on cleanup
+          <strong>AbortController</strong>: Always return the signal and abort
+          on cleanup
         </li>
         <li>
-          <strong>queueMicrotask</strong>: Reset flags asynchronously to handle batched updates
+          <strong>queueMicrotask</strong>: Reset flags asynchronously to handle
+          batched updates
         </li>
       </ul>
 
@@ -432,10 +431,12 @@ export function connectMyFramework<T>(watch: Watch<T>) {
 
       <ul>
         <li>
-          <a href="#/guide/watch">Watch Function</a> - understanding watch behavior
+          <a href="#/guide/watch">Watch Function</a> - understanding watch
+          behavior
         </li>
         <li>
-          <a href="#/guide/subscription">Subscription</a> - subscription patterns
+          <a href="#/guide/subscription">Subscription</a> - subscription
+          patterns
         </li>
         <li>
           <a href="#/guide/react">React</a> - React connector usage
@@ -444,7 +445,8 @@ export function connectMyFramework<T>(watch: Watch<T>) {
           <a href="#/guide/vue">Vue</a> - Vue connector usage
         </li>
         <li>
-          <a href="#/guide/lithent">Lithent</a> - direct integration without connector
+          <a href="#/guide/lithent">Lithent</a> - direct integration without
+          connector
         </li>
       </ul>
     </div>

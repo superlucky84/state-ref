@@ -248,7 +248,7 @@ const done = useTodo(store => store.done);
       <CodeBlock
         language="html"
         code={`<script lang="ts">
-  const view = connectSvelteView(live.watch);
+  const view = connectSvelteView(live.watchDisplay);
   const city = view(ref => ref.data.value);
 </script>
 

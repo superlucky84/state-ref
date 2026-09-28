@@ -122,11 +122,11 @@ const useTodo = connectReact(watch);
 
       <CodeBlock
         language="tsx"
-        code={`const useLive = connectReactView(live.watch);
+        code={`const useLive = connectReactView(live.watchDisplay);
 
 function CityDisplay() {
   const state = useLive();
-  if (state.phase.value === 'pending') return <span>불러오는 중…</span>;
+  if (state.status.value === 'pending') return <span>불러오는 중…</span>;
   return <span>{state.data.value ?? '-'}</span>;
 }`}
       />

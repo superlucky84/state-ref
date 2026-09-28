@@ -7,22 +7,20 @@ export const Lithent = mount(() => {
       <h1>Lithent Integration</h1>
 
       <p>
-        Lithent is a lightweight Virtual DOM library. StateRef integrates directly with Lithent
-        without needing a separate connector package. Simply pass the <code>renew</code> function
-        to <code>watch()</code>.
+        Lithent is a lightweight Virtual DOM library. StateRef integrates
+        directly with Lithent without needing a separate connector package.
+        Simply pass the <code>renew</code> function to <code>watch()</code>.
       </p>
 
       <h2>Install</h2>
 
-      <CodeBlock
-        language="bash"
-        code={`pnpm add state-ref lithent`}
-      />
+      <CodeBlock language="bash" code={`pnpm add state-ref lithent`} />
 
       <h2>Basic Usage</h2>
 
       <p>
-        Pass the <code>renew</code> function from <code>mount()</code> directly to <code>watch()</code>:
+        Pass the <code>renew</code> function from <code>mount()</code> directly
+        to <code>watch()</code>:
       </p>
 
       <CodeBlock
@@ -57,13 +55,12 @@ export const ProfileCard = mount(renew => {
 
       <h2>How It Works</h2>
 
-      <p>
-        Lithent's architecture makes StateRef integration seamless:
-      </p>
+      <p>Lithent's architecture makes StateRef integration seamless:</p>
 
       <ul>
         <li>
-          <code>mount(renew =&gt; ...)</code> provides a <code>renew</code> function that triggers re-renders
+          <code>mount(renew =&gt; ...)</code> provides a <code>renew</code>{' '}
+          function that triggers re-renders
         </li>
         <li>
           <code>watch(renew)</code> registers <code>renew</code> as a subscriber
@@ -77,16 +74,12 @@ export const ProfileCard = mount(renew => {
         <li>
           When values change, <code>renew</code> is called automatically
         </li>
-        <li>
-          The component re-renders with updated values
-        </li>
+        <li>The component re-renders with updated values</li>
       </ul>
 
       <h2>Component Structure</h2>
 
-      <p>
-        Lithent components have two phases - setup and render:
-      </p>
+      <p>Lithent components have two phases - setup and render:</p>
 
       <CodeBlock
         language="tsx"
@@ -117,9 +110,7 @@ export const MyComponent = mount(renew => {
 
       <h2>Multiple Stores</h2>
 
-      <p>
-        Subscribe to multiple stores in a single component:
-      </p>
+      <p>Subscribe to multiple stores in a single component:</p>
 
       <CodeBlock
         language="typescript"
@@ -156,9 +147,7 @@ export const Dashboard = mount(renew => {
 
       <h2>Nested Properties</h2>
 
-      <p>
-        Access deeply nested values naturally:
-      </p>
+      <p>Access deeply nested values naturally:</p>
 
       <CodeBlock
         language="tsx"
@@ -245,9 +234,7 @@ export const Counter = mount(renew => {
 
       <h2>Using with Helper Functions</h2>
 
-      <p>
-        Combine with StateRef helper functions:
-      </p>
+      <p>Combine with StateRef helper functions:</p>
 
       <CodeBlock
         language="tsx"
@@ -286,9 +273,7 @@ export const NameDisplay = mount(renew => {
 
       <h2>Form Handling</h2>
 
-      <p>
-        Handle form inputs with direct binding:
-      </p>
+      <p>Handle form inputs with direct binding:</p>
 
       <CodeBlock
         language="tsx"
@@ -339,9 +324,7 @@ export const ContactForm = mount(renew => {
 
       <h2>TypeScript Tips</h2>
 
-      <p>
-        Full type inference works automatically:
-      </p>
+      <p>Full type inference works automatically:</p>
 
       <CodeBlock
         language="typescript"
@@ -359,23 +342,19 @@ const store = todoStore(renew);
 
       <h2>Why No Connector?</h2>
 
-      <p>
-        Unlike other frameworks, Lithent doesn't need a connector because:
-      </p>
+      <p>Unlike other frameworks, Lithent doesn't need a connector because:</p>
 
       <ul>
         <li>
-          Lithent's <code>renew</code> function has the exact signature StateRef expects
+          Lithent's <code>renew</code> function has the exact signature StateRef
+          expects
         </li>
         <li>
-          The setup/render separation aligns perfectly with subscription patterns
+          The setup/render separation aligns perfectly with subscription
+          patterns
         </li>
-        <li>
-          No framework-specific reactivity system to bridge
-        </li>
-        <li>
-          Direct integration means zero overhead
-        </li>
+        <li>No framework-specific reactivity system to bridge</li>
+        <li>Direct integration means zero overhead</li>
       </ul>
 
       <h2>Related</h2>
@@ -388,7 +367,8 @@ const store = todoStore(renew);
           <a href="#/guide/watch">Watch Function</a> - subscription behavior
         </li>
         <li>
-          <a href="#/guide/manual-sync">Manual Sync (Flux)</a> - action-based updates
+          <a href="#/guide/manual-sync">Manual Sync (Flux)</a> - action-based
+          updates
         </li>
         <li>
           <a href="#/guide/computed">createComputed</a> - derived values

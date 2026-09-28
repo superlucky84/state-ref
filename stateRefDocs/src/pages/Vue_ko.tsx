@@ -259,9 +259,9 @@ const done = useTodo(store => store.done);
       <CodeBlock
         language="vue"
         code={`<script setup lang="ts">
-const view = connectVueView(live.watch);
+const view = connectVueView(live.watchDisplay);
 const city = view(ref => ref.data.value);
-const phase = view(ref => ref.phase.value);
+const phase = view(ref => (ref.isPlaceholder.value ? 'placeholder' : ref.status.value));
 </script>
 
 <template>

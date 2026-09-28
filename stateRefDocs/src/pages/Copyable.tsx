@@ -7,8 +7,9 @@ export const Copyable = mount(() => {
       <h1>copyable</h1>
 
       <p>
-        <code>copyable</code> creates a proxy that builds a path through property
-        access and returns a new root object with copy-on-write updates via
+        <code>copyable</code> creates a proxy that builds a path through
+        property access and returns a new root object with copy-on-write updates
+        via
         <code>writeCopy</code>. It’s useful when you need immutable updates
         outside of StateRef stores.
       </p>
@@ -62,7 +63,8 @@ console.log(next.todos[1].done); // true`}
       <h2>Read-Only Proxy</h2>
 
       <p>
-        Direct assignment is not allowed. Use <code>writeCopy</code> for changes.
+        Direct assignment is not allowed. Use <code>writeCopy</code> for
+        changes.
       </p>
 
       <CodeBlock
@@ -103,7 +105,8 @@ console.log(next.settings === state.settings); // true`}
 
       <p>
         <code>copyable</code> writes against the root object you pass in. If you
-        create a new root, call <code>copyable</code> again with that new object.
+        create a new root, call <code>copyable</code> again with that new
+        object.
       </p>
 
       <CodeBlock
@@ -141,7 +144,8 @@ type Copyable<T, Root = T> = {
           <a href="#/guide/clone-deep">cloneDeep</a> - full deep copy utility
         </li>
         <li>
-          <a href="#/guide/state-ref-store">StateRefStore</a> - proxy updates in stores
+          <a href="#/guide/state-ref-store">StateRefStore</a> - proxy updates in
+          stores
         </li>
       </ul>
     </div>

@@ -227,7 +227,7 @@ const seeded = client.query({ ...options, initialData: knownAccount });`}
           같은 충돌 모델
         </li>
         <li>
-          <a href="#/ko/guide/sync-view">view와 liveView</a> - 관찰자별 표시
+          <a href="#/ko/guide/sync-view">표시와 반응형 key</a> - 관찰자별 표시
           상태
         </li>
       </ul>

@@ -231,8 +231,8 @@ const seeded = client.query({ ...options, initialData: knownAccount });`}
           model, on a local draft
         </li>
         <li>
-          <a href="#/guide/sync-view">view and liveView</a> - per-observer
-          display state
+          <a href="#/guide/sync-view">display and reactive keys</a> -
+          per-observer display state
         </li>
       </ul>
     </div>

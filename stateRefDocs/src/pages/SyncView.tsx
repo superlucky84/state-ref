@@ -4,55 +4,83 @@ import { CodeBlock } from '@/components/CodeBlock';
 export const SyncView = mount(() => {
   return () => (
     <div>
-      <h1>view and liveView</h1>
+      <h1>display and reactive keys</h1>
 
       <p>
-        A view is <strong>display state that belongs to one observer</strong>. A
+        A display is <strong>state that belongs to one observer</strong>. A
         placeholder, a selection, a comparison - none of them belong in the
         shared cache, because two screens looking at one key may want to show it
         differently.
       </p>
 
-      <h2>view</h2>
+      <p>
+        It is not a separate object you open. <code>select</code>,{' '}
+        <code>placeholderData</code> and <code>equals</code> are options on the
+        query, and what they produce is the handle's <code>display</code>.
+      </p>
+
+      <h2>display</h2>
 
       <CodeBlock
         language="typescript"
-        code={`const view = client.view(
-  {
-    queryKey: ['account', 1],
-    queryFn: ({ signal }) => api.readAccount(1, { signal }),
-  },
-  {
-    placeholderData: previewAccount,
-    select: account => account.address.city,
-  }
-);
+        code={`const account = client.query({
+  queryKey: ['account', 1],
+  queryFn: ({ signal }) => api.readAccount(1, { signal }),
+  placeholderData: previewAccount,
+  select: account => account.address.city,
+});
 
-view.ref.data.value;   // this view's placeholder, or its selected current value
-await view.query.load(); // an explicit READ, as with client.query(...)
-view.query.ref.address.city.value = 'Busan'; // edits the shared resource
-view.dispose();          // releases the view and the query handle it owns`}
+account.display.data.value;              // this observer's placeholder, or its selected value
+await account.load();                    // an explicit READ
+account.ref.address.city.value = 'Busan'; // edits the shared resource
+account.dispose();`}
       />
 
       <p>
-        <code>view.ref</code> and <code>view.watch</code> are{' '}
-        <strong>readonly</strong> display state:
+        One handle holds both: <code>ref</code> is the resource you edit, and{' '}
+        <code>display</code> is what you render. Editing never goes through the
+        display - a display can be a selected string, or a placeholder that was
+        never on the server, and neither is something you can write back.
+      </p>
+
+      <h3>One vocabulary</h3>
+
+      <p>
+        <code>display</code> and <code>watchDisplay</code> are{' '}
+        <strong>readonly</strong>, and the state is the query status plus five
+        fields. The status fields keep their names, so you do not learn them
+        twice:
       </p>
 
       <CodeBlock
         language="typescript"
-        code={`view.ref.phase.value;          // 'pending' | 'placeholder' | 'success' | 'error'
-view.ref.fetchStatus.value;
-view.ref.isPlaceholder.value;
-view.ref.error.value;
-view.ref.errorSource.value;`}
+        code={`account.display.data.value;          // the selected value, or undefined
+account.display.isPlaceholder.value; // showing placeholderData
+account.display.errorSource.value;   // 'query' | 'select' | 'source' | null
+account.display.queryKey.value;      // ['account', 1]
+account.display.enabled.value;       // false only while a reactive key resolves to nothing
+
+account.display.status.value;        // 'pending' | 'success' | 'error'
+account.display.fetchStatus.value;   // same field as account.status.fetchStatus
+account.display.dirty.value;         // ...and so on, for every status field`}
       />
 
       <p>
-        Editing goes through <code>view.query.ref</code>, never through the
-        display. That separation is deliberate: a display can be a selected
-        string or a placeholder that was never on the server, and neither of
-        those is something you can write back.
+        There is no <code>phase</code>. It used to be <code>status</code> with{' '}
+        <code>'placeholder'</code> added, and <code>isPlaceholder</code> already
+        carries that fact. If you want the old four words back, derive them:
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`const phase = account.display.isPlaceholder.value
+  ? 'placeholder'
+  : account.display.status.value;`}
+      />
+
+      <p>
+        <code>display</code> is built the first time you touch it. A consumer
+        that only edits the resource never pays for one.
       </p>
 
       <h3>Placeholder and select</h3>
@@ -74,20 +102,22 @@ view.ref.errorSource.value;`}
         <li>
           An optional <code>equals</code> compares selected values (default{' '}
           <code>Object.is</code>). A select or comparison error affects that
-          view alone, not the shared query.
+          observer alone, not the shared query. When <code>equals</code> answers
+          true the previous selected value is kept, so nothing watching{' '}
+          <code>data</code> is woken.
         </li>
       </ul>
 
       <p>
-        A fixed-key <code>view</code> does <strong>not</strong> start a READ on
-        its own.
+        A fixed key does <strong>not</strong> start a READ on its own.
       </p>
 
-      <h2>liveView</h2>
+      <h2>A reactive key</h2>
 
       <p>
         For a key that changes - a selected id, a page number, a dependent query
-        - bind a <code>state-ref</code> source instead of a fixed key.
+        - give <code>query</code> a <code>state-ref</code> source instead of a
+        key.
       </p>
 
       <CodeBlock
@@ -96,9 +126,9 @@ view.ref.errorSource.value;`}
 
 const input = create({ accountId: null as number | null, enabled: false });
 
-const live = client.liveView(
-  input.watch,
-  ({ accountId, enabled }) =>
+const live = client.query({
+  source: input.watch,
+  resolve: ({ accountId, enabled }) =>
     accountId === null
       ? null
       : {
@@ -106,34 +136,42 @@ const live = client.liveView(
           queryFn: ({ signal }) => api.readAccount(accountId, { signal }),
           enabled,
         },
-  { select: account => account.address.city }
-);
+  select: account => account.address.city,
+});
 
 input.updateRef.accountId.value = 1;
 input.updateRef.enabled.value = true; // starts a READ automatically
 
-live.ref.data.value;      // the selected current key only
-live.ref.queryKey.value;  // ['account', 1]
-live.ref.enabled.value;
+live.display.data.value;     // the selected current key only
+live.display.queryKey.value; // ['account', 1]
+live.display.enabled.value;
 
 // after the baseline loads
-live.query?.ref.address.city.value = 'Busan';
+live.ref.address.city.value = 'Busan';
 
 live.dispose();`}
       />
 
       <p>
         Returning <code>null</code>, or <code>enabled: false</code>, clears the
-        display and releases the current query. <code>live.ref</code> is stable
-        and readonly for the whole lifetime; <code>live.query</code> is the
-        current handle or <code>null</code>.
+        display and releases the current query. <code>display</code> is one
+        stable observation point for the handle's whole life, and it reports{' '}
+        <code>enabled</code> and <code>queryKey</code> even while there is no
+        active key.
+      </p>
+
+      <p>
+        In that state <code>ref</code>, <code>watch</code>, <code>status</code>{' '}
+        and the operations throw <code>This query has no active key.</code> - so
+        check <code>display.enabled</code> before reaching for the resource.
       </p>
 
       <h3>What happens on a key switch</h3>
 
       <ul>
         <li>
-          The old handle is disposed; a handle you captured earlier is gone.
+          The query underneath is disposed; a ref you captured from the previous
+          key refuses every access afterwards.
         </li>
         <li>
           An <strong>unowned</strong> in-flight READ is aborted and cannot
@@ -158,7 +196,7 @@ live.dispose();`}
       <h2>Connectors</h2>
 
       <p>
-        Every connector has a readonly view binding, so a display never hands
+        Every connector has a readonly display binding, so a display never hands
         out setters:
       </p>
 
@@ -166,7 +204,7 @@ live.dispose();`}
         language="typescript"
         code={`import { connectReactView } from '@stateref/connect-react';
 
-const useLive = connectReactView(live.watch);
+const useLive = connectReactView(live.watchDisplay);
 
 function CityDisplay() {
   const state = useLive();
@@ -185,27 +223,27 @@ function CityDisplay() {
           A connector unmount ends that component's subscription and nothing
           else.
         </strong>{' '}
-        The view itself is released by whoever owns it, by calling{' '}
-        <code>live.dispose()</code>. Two components can watch one view and
+        The handle is released by whoever owns it, by calling{' '}
+        <code>live.dispose()</code>. Two components can watch one display and
         closing one screen does not take the other's data away.
       </p>
 
       <h2>Pagination</h2>
 
       <p>
-        For numbered pages, put the page in the key you give{' '}
-        <code>liveView</code>. Each page then has its own cache entry. A{' '}
-        <code>placeholderData</code> value is only a preview for the new key; it
-        never becomes that page's server baseline. Prepare a page with{' '}
-        <code>prefetch</code>, <code>fetch</code> or <code>ensure</code> on the
-        same key.
+        For numbered pages, put the page in the key your source resolves to.
+        Each page then has its own cache entry. A <code>placeholderData</code>{' '}
+        value is only a preview for the new key; it never becomes that page's
+        server baseline. Prepare a page with <code>prefetch</code>,{' '}
+        <code>fetch</code> or <code>ensure</code> on the same key.
       </p>
 
       <p>
         For an accumulating list, use <code>client.infiniteQuery</code> - see
-        the <a href="#/api/sync">Sync API</a>. Infinite pages are readonly, and{' '}
-        <code>infiniteView</code> takes a fixed key only: there is no infinite
-        equivalent of <code>liveView</code>.
+        the <a href="#/api/sync">Sync API</a>. It takes the same display
+        options, its pages are readonly, and it takes a{' '}
+        <strong>fixed key only</strong>: a reactive key has no infinite
+        equivalent.
       </p>
 
       <h2>Related</h2>
@@ -213,15 +251,15 @@ function CityDisplay() {
       <ul>
         <li>
           <a href="#/guide/sync-query">query and resource</a> - the shared
-          baseline a view displays
+          baseline a display shows
         </li>
         <li>
-          <a href="#/guide/sync-refetch">Automatic refetch</a> - an active{' '}
-          <code>liveView</code> performs the first load
+          <a href="#/guide/sync-refetch">Automatic refetch</a> - an active
+          reactive key performs the first load
         </li>
         <li>
           <a href="#/guide/custom-connector">Custom Connector</a> - the{' '}
-          <code>Watch</code> shape a view binding needs
+          <code>Watch</code> shape a display binding needs
         </li>
       </ul>
     </div>

@@ -7,14 +7,15 @@ export const Computed = mount(() => {
       <h1>createComputed</h1>
 
       <p>
-        <code>createComputed</code> is a helper function that combines multiple watches
-        to produce a new computed (derived) value. It executes a callback function
-        whenever the computed value changes.
+        <code>createComputed</code> is a helper function that combines multiple
+        watches to produce a new computed (derived) value. It executes a
+        callback function whenever the computed value changes.
       </p>
 
       <p>
-        A watch created with <code>createComputed</code> can be used just like any other watch,
-        including integrations such as <code>connectReact</code> or <code>connectPreact</code>.
+        A watch created with <code>createComputed</code> can be used just like
+        any other watch, including integrations such as{' '}
+        <code>connectReact</code> or <code>connectPreact</code>.
       </p>
 
       <h2>Basic Usage</h2>
@@ -59,30 +60,32 @@ console.log(sumRef.value);  // 35`}
           <code>watches</code> - An array of watch functions to combine
         </li>
         <li>
-          <code>callback</code> - A function that receives the store references and returns the computed value
+          <code>callback</code> - A function that receives the store references
+          and returns the computed value
         </li>
       </ul>
 
       <h3>Returns</h3>
 
       <p>
-        Returns a watch-like function that can be called with or without a callback:
+        Returns a watch-like function that can be called with or without a
+        callback:
       </p>
 
       <ul>
         <li>
-          <strong>Without callback</strong>: Returns a read-only proxy with <code>.value</code>
+          <strong>Without callback</strong>: Returns a read-only proxy with{' '}
+          <code>.value</code>
         </li>
         <li>
-          <strong>With callback</strong>: Subscribes to changes and returns the same proxy
+          <strong>With callback</strong>: Subscribes to changes and returns the
+          same proxy
         </li>
       </ul>
 
       <h2>Subscribing to Computed Values</h2>
 
-      <p>
-        Pass a callback to subscribe to computed value changes:
-      </p>
+      <p>Pass a callback to subscribe to computed value changes:</p>
 
       <CodeBlock
         language="typescript"
@@ -110,10 +113,10 @@ num1.value = 200;
       <h2>Cancelling a Subscription</h2>
 
       <p>
-        A subscription made here is cancelled the same way as any other: return an{' '}
-        <code>AbortSignal</code> from the callback and abort it, or return{' '}
-        <code>false</code> to drop the subscription after that run. Both reach the
-        inner subscriptions this helper opens on your behalf.
+        A subscription made here is cancelled the same way as any other: return
+        an <code>AbortSignal</code> from the callback and abort it, or return{' '}
+        <code>false</code> to drop the subscription after that run. Both reach
+        the inner subscriptions this helper opens on your behalf.
       </p>
 
       <CodeBlock
@@ -137,7 +140,8 @@ computedWatch((refs, isFirst) => {
       <h2>Read-Only Values</h2>
 
       <p>
-        Computed values are read-only. Attempting to set the value will show a warning:
+        Computed values are read-only. Attempting to set the value will show a
+        warning:
       </p>
 
       <CodeBlock
@@ -162,9 +166,7 @@ console.log(sumRef.value);  // Still 30`}
 
       <h2>Complex Computed Values</h2>
 
-      <p>
-        The computed callback can return any type, including objects:
-      </p>
+      <p>The computed callback can return any type, including objects:</p>
 
       <CodeBlock
         language="typescript"
@@ -194,9 +196,7 @@ console.log(displayRef.value);
 
       <h2>Combining Multiple Stores</h2>
 
-      <p>
-        You can combine any number of stores in a single computed:
-      </p>
+      <p>You can combine any number of stores in a single computed:</p>
 
       <CodeBlock
         language="typescript"
@@ -227,9 +227,7 @@ console.log(total.value);
 
       <h2>Using with Framework Connectors</h2>
 
-      <p>
-        Computed watches work seamlessly with framework connectors:
-      </p>
+      <p>Computed watches work seamlessly with framework connectors:</p>
 
       <CodeBlock
         language="typescript"
@@ -258,9 +256,7 @@ function AreaDisplay() {
 
       <h2>Chaining Computed Values</h2>
 
-      <p>
-        Computed watches can be used as inputs to other computed watches:
-      </p>
+      <p>Computed watches can be used as inputs to other computed watches:</p>
 
       <CodeBlock
         language="typescript"
@@ -322,24 +318,28 @@ const result = computedWatch();
 
       <p>
         Calling <code>computedWatch()</code> without a callback creates no
-        subscriptions. After the initial calculation, reads reuse the same result
-        object until a ref value read by the calculation changes. The next read
-        then computes from current inputs, even before a manual <code>sync()</code>.
-        Subscriber notifications still wait for <code>sync()</code> in manual mode.
-        Keep calculations pure and read dependencies through the supplied refs.
+        subscriptions. After the initial calculation, reads reuse the same
+        result object until a ref value read by the calculation changes. The
+        next read then computes from current inputs, even before a manual{' '}
+        <code>sync()</code>. Subscriber notifications still wait for{' '}
+        <code>sync()</code> in manual mode. Keep calculations pure and read
+        dependencies through the supplied refs.
       </p>
 
       <h2>Performance Considerations</h2>
 
       <ul>
         <li>
-          <strong>Computed values are cached</strong> - The callback only runs when source values change
+          <strong>Computed values are cached</strong> - The callback only runs
+          when source values change
         </li>
         <li>
-          <strong>Fine-grained updates</strong> - Only accessed properties trigger recomputation
+          <strong>Fine-grained updates</strong> - Only accessed properties
+          trigger recomputation
         </li>
         <li>
-          <strong>Avoid heavy computations</strong> - Keep callback functions efficient
+          <strong>Avoid heavy computations</strong> - Keep callback functions
+          efficient
         </li>
       </ul>
 
@@ -366,15 +366,18 @@ const heavyComputed = createComputed(
       <h2>Comparison with combineWatch</h2>
 
       <p>
-        <code>createComputed</code> and <code>combineWatch</code> serve different purposes:
+        <code>createComputed</code> and <code>combineWatch</code> serve
+        different purposes:
       </p>
 
       <ul>
         <li>
-          <strong>createComputed</strong> - Derives a <em>new value</em> from multiple stores
+          <strong>createComputed</strong> - Derives a <em>new value</em> from
+          multiple stores
         </li>
         <li>
-          <strong>combineWatch</strong> - Groups multiple stores into a <em>tuple structure</em>
+          <strong>combineWatch</strong> - Groups multiple stores into a{' '}
+          <em>tuple structure</em>
         </li>
       </ul>
 
@@ -404,16 +407,20 @@ console.log(combined[1].value);  // 20`}
 
       <ul>
         <li>
-          <strong>Keep computations pure</strong> - No side effects in the callback
+          <strong>Keep computations pure</strong> - No side effects in the
+          callback
         </li>
         <li>
-          <strong>Access only needed values</strong> - Don't read properties you don't use
+          <strong>Access only needed values</strong> - Don't read properties you
+          don't use
         </li>
         <li>
-          <strong>Use for derived state</strong> - Perfect for values that depend on other state
+          <strong>Use for derived state</strong> - Perfect for values that
+          depend on other state
         </li>
         <li>
-          <strong>Prefer over manual subscriptions</strong> - Cleaner and more efficient
+          <strong>Prefer over manual subscriptions</strong> - Cleaner and more
+          efficient
         </li>
       </ul>
 
@@ -421,13 +428,16 @@ console.log(combined[1].value);  // 20`}
 
       <ul>
         <li>
-          <a href="#/guide/create-store">createStore</a> - Creating source stores
+          <a href="#/guide/create-store">createStore</a> - Creating source
+          stores
         </li>
         <li>
-          <a href="#/guide/combine-watch">combineWatch</a> - Grouping multiple watches
+          <a href="#/guide/combine-watch">combineWatch</a> - Grouping multiple
+          watches
         </li>
         <li>
-          <a href="#/guide/subscription">Subscription</a> - Understanding subscriptions
+          <a href="#/guide/subscription">Subscription</a> - Understanding
+          subscriptions
         </li>
         <li>
           <a href="#/guide/react">React Integration</a> - Using with React

@@ -277,7 +277,7 @@ const [done, setDone] = useTodo(store => store.done);
       <CodeBlock
         language="tsx"
         code={`function CityDisplay() {
-  const view = connectSolidView(live.watch);
+  const view = connectSolidView(live.watchDisplay);
   const city = view(ref => ref.data.value);
   return <span>{city() ?? '-'}</span>;
 }`}

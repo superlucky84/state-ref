@@ -7,14 +7,17 @@ export const CombineWatch = mount(() => {
       <h1>combineWatch</h1>
 
       <p>
-        <code>combineWatch</code> is a helper function that observes multiple <code>Watch</code> instances
-        together and produces a new <code>Watch</code> that delivers their combined values as a tuple-like structure.
+        <code>combineWatch</code> is a helper function that observes multiple{' '}
+        <code>Watch</code> instances together and produces a new{' '}
+        <code>Watch</code> that delivers their combined values as a tuple-like
+        structure.
       </p>
 
       <p>
-        Unlike <code>createComputed</code>, which produces a single derived value,
-        <code>combineWatch</code> focuses on grouping multiple watches so you can react to changes
-        from any of them in a single subscription.
+        Unlike <code>createComputed</code>, which produces a single derived
+        value,
+        <code>combineWatch</code> focuses on grouping multiple watches so you
+        can react to changes from any of them in a single subscription.
       </p>
 
       <h2>Basic Usage</h2>
@@ -62,15 +65,14 @@ count.value = 200;
       <h3>Returns</h3>
 
       <p>
-        Returns a new <code>Watch</code> function that provides access to all combined stores as a tuple.
-        The returned watch can be used like any other watch function.
+        Returns a new <code>Watch</code> function that provides access to all
+        combined stores as a tuple. The returned watch can be used like any
+        other watch function.
       </p>
 
       <h2>Accessing Combined Values</h2>
 
-      <p>
-        The combined store is accessed as a tuple (array) by index:
-      </p>
+      <p>The combined store is accessed as a tuple (array) by index:</p>
 
       <CodeBlock
         language="typescript"
@@ -96,7 +98,8 @@ combined[1].value = 'world';`}
       <h2>Subscribing to Changes</h2>
 
       <p>
-        Pass a callback to subscribe to changes from any of the combined watches:
+        Pass a callback to subscribe to changes from any of the combined
+        watches:
       </p>
 
       <CodeBlock
@@ -128,10 +131,10 @@ user.name.value = 'Jane';
       <h2>Cancelling a Subscription</h2>
 
       <p>
-        A subscription made here is cancelled the same way as any other: return an{' '}
-        <code>AbortSignal</code> from the callback and abort it, or return{' '}
-        <code>false</code> to drop the subscription after that run. Both reach the
-        inner subscriptions this helper opens on your behalf.
+        A subscription made here is cancelled the same way as any other: return
+        an <code>AbortSignal</code> from the callback and abort it, or return{' '}
+        <code>false</code> to drop the subscription after that run. Both reach
+        the inner subscriptions this helper opens on your behalf.
       </p>
 
       <CodeBlock
@@ -155,7 +158,8 @@ combinedWatch((refs, isFirst) => {
       <h2>Nested Combination</h2>
 
       <p>
-        You can nest <code>combineWatch</code> to observe more complex structures:
+        You can nest <code>combineWatch</code> to observe more complex
+        structures:
       </p>
 
       <CodeBlock
@@ -182,8 +186,8 @@ combinedAllWatch(([countTextRef, toggleRef], isFirst) => {
       <h2>Read-Only Root Value</h2>
 
       <p>
-        The combined store's root <code>.value</code> is read-only and shows a warning if accessed directly.
-        Always access individual stores by index:
+        The combined store's root <code>.value</code> is read-only and shows a
+        warning if accessed directly. Always access individual stores by index:
       </p>
 
       <CodeBlock
@@ -212,7 +216,8 @@ combined[1].value = 40;`}
       <h2>Using with as const</h2>
 
       <p>
-        For better TypeScript inference, use <code>as const</code> with the watches array:
+        For better TypeScript inference, use <code>as const</code> with the
+        watches array:
       </p>
 
       <CodeBlock
@@ -234,9 +239,7 @@ combinedWatch(([countRef, textRef]) => {
 
       <h2>Framework Integration</h2>
 
-      <p>
-        Combined watches work with framework connectors:
-      </p>
+      <p>Combined watches work with framework connectors:</p>
 
       <CodeBlock
         language="typescript"
@@ -265,16 +268,16 @@ function Dashboard() {
 
       <h2>Comparison with createComputed</h2>
 
-      <p>
-        Choose the right tool based on your needs:
-      </p>
+      <p>Choose the right tool based on your needs:</p>
 
       <ul>
         <li>
-          <strong>combineWatch</strong> - Groups stores, maintains individual access
+          <strong>combineWatch</strong> - Groups stores, maintains individual
+          access
         </li>
         <li>
-          <strong>createComputed</strong> - Derives a new single value from stores
+          <strong>createComputed</strong> - Derives a new single value from
+          stores
         </li>
       </ul>
 
@@ -354,7 +357,8 @@ formWatch(([name, email, age], isFirst) => {
       <h2>TypeScript Support</h2>
 
       <p>
-        <code>combineWatch</code> preserves type information for each store in the tuple:
+        <code>combineWatch</code> preserves type information for each store in
+        the tuple:
       </p>
 
       <CodeBlock
@@ -391,19 +395,26 @@ combinedWatch(([userRef, settingsRef]) => {
 
       <ul>
         <li>
-          <strong>Use for grouping related stores</strong> - When you need to react to multiple stores together
+          <strong>Use for grouping related stores</strong> - When you need to
+          react to multiple stores together
         </li>
         <li>
-          <strong>Access by index</strong> - Always use <code>combined[0]</code>, <code>combined[1]</code>, etc.
+          <strong>Access by index</strong> - Always use <code>combined[0]</code>
+          , <code>combined[1]</code>, etc.
         </li>
         <li>
-          <strong>Use <code>as const</code></strong> - For better TypeScript tuple inference
+          <strong>
+            Use <code>as const</code>
+          </strong>{' '}
+          - For better TypeScript tuple inference
         </li>
         <li>
-          <strong>Prefer createComputed for derived values</strong> - Use combineWatch only when you need individual store access
+          <strong>Prefer createComputed for derived values</strong> - Use
+          combineWatch only when you need individual store access
         </li>
         <li>
-          <strong>Access .value first in callbacks</strong> - Ensure subscription collection before conditionals
+          <strong>Access .value first in callbacks</strong> - Ensure
+          subscription collection before conditionals
         </li>
       </ul>
 
@@ -411,13 +422,16 @@ combinedWatch(([userRef, settingsRef]) => {
 
       <ul>
         <li>
-          <a href="#/guide/computed">createComputed</a> - Deriving single values from stores
+          <a href="#/guide/computed">createComputed</a> - Deriving single values
+          from stores
         </li>
         <li>
-          <a href="#/guide/create-store">createStore</a> - Creating individual stores
+          <a href="#/guide/create-store">createStore</a> - Creating individual
+          stores
         </li>
         <li>
-          <a href="#/guide/subscription">Subscription</a> - Understanding subscriptions
+          <a href="#/guide/subscription">Subscription</a> - Understanding
+          subscriptions
         </li>
         <li>
           <a href="#/guide/watch">Watch Function</a> - The watch function API

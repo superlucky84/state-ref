@@ -8,8 +8,8 @@ export const SubscriptionKo = mount(() => {
 
       <p>
         StateRef의 구독을 사용하면 상태 변경에 자동으로 반응할 수 있습니다.
-        <code>watch()</code> 함수에 콜백을 전달하면 추적된 프로퍼티가 변경될 때마다
-        실행되는 구독이 생성됩니다.
+        <code>watch()</code> 함수에 콜백을 전달하면 추적된 프로퍼티가 변경될
+        때마다 실행되는 구독이 생성됩니다.
       </p>
 
       <h2>기본 구독</h2>
@@ -40,7 +40,8 @@ ref.count.value = 10;  // 위의 모든 값 로그`}
       <h2>구독 콜백 시그니처</h2>
 
       <p>
-        구독 콜백은 두 개의 파라미터를 받으며 선택적으로 <code>AbortSignal</code>을 반환할 수 있습니다:
+        구독 콜백은 두 개의 파라미터를 받으며 선택적으로{' '}
+        <code>AbortSignal</code>을 반환할 수 있습니다:
       </p>
 
       <CodeBlock
@@ -65,8 +66,8 @@ watch((store, isFirst) => {
       <h2>isFirst 파라미터</h2>
 
       <p>
-        <code>isFirst</code> 파라미터는 초기 실행인지 이후 업데이트인지를 나타냅니다.
-        설정 로직에 유용합니다:
+        <code>isFirst</code> 파라미터는 초기 실행인지 이후 업데이트인지를
+        나타냅니다. 설정 로직에 유용합니다:
       </p>
 
       <CodeBlock
@@ -125,7 +126,8 @@ watch((store, isFirst) => {
       <h2>AbortController로 구독 취소하기</h2>
 
       <p>
-        <code>AbortController</code>를 사용하여 더 이상 필요하지 않은 구독을 취소합니다:
+        <code>AbortController</code>를 사용하여 더 이상 필요하지 않은 구독을
+        취소합니다:
       </p>
 
       <CodeBlock
@@ -173,8 +175,8 @@ ref.count.value = 2;  // ✗ 트리거 안 함 (구독 취소됨)`}
       <h2>여러 구독</h2>
 
       <p>
-        동일한 스토어에 여러 독립적인 구독을 만들 수 있습니다.
-        각 구독은 접근하는 프로퍼티만 추적합니다:
+        동일한 스토어에 여러 독립적인 구독을 만들 수 있습니다. 각 구독은
+        접근하는 프로퍼티만 추적합니다:
       </p>
 
       <CodeBlock
@@ -216,7 +218,8 @@ ref.theme.value = 'light'; // 구독 3만 트리거`}
       <h2>구독 생명주기</h2>
 
       <p>
-        구독 생명주기를 이해하면 메모리 누수와 예상치 못한 동작을 방지할 수 있습니다:
+        구독 생명주기를 이해하면 메모리 누수와 예상치 못한 동작을 방지할 수
+        있습니다:
       </p>
 
       <CodeBlock
@@ -248,7 +251,8 @@ trackedRef.count.value = 20;  // 콜백 트리거 안 됨`}
       <h2>선택적 프로퍼티 추적</h2>
 
       <p>
-        구독은 콜백 중에 추적되는 참조(innerRef/outerRef)를 통해 읽은 프로퍼티에만 반응합니다:
+        구독은 콜백 중에 추적되는 참조(innerRef/outerRef)를 통해 읽은
+        프로퍼티에만 반응합니다:
       </p>
 
       <CodeBlock
@@ -306,9 +310,7 @@ ref.firstName.value = 'Jane';
 
       <h2>사이드 이펙트 패턴</h2>
 
-      <p>
-        구독은 API 호출, 로깅, 분석과 같은 사이드 이펙트에 완벽합니다:
-      </p>
+      <p>구독은 API 호출, 로깅, 분석과 같은 사이드 이펙트에 완벽합니다:</p>
 
       <CodeBlock
         language="typescript"
@@ -359,9 +361,7 @@ watch((store, isFirst) => {
 
       <h2>조건부 구독</h2>
 
-      <p>
-        애플리케이션 상태에 따라 조건부로 구독을 생성할 수 있습니다:
-      </p>
+      <p>애플리케이션 상태에 따라 조건부로 구독을 생성할 수 있습니다:</p>
 
       <CodeBlock
         language="typescript"
@@ -397,9 +397,7 @@ watch((store, isFirst) => {
 
       <h2>구독 성능</h2>
 
-      <p>
-        다음 가이드라인을 따라 구독을 효율적으로 유지하세요:
-      </p>
+      <p>다음 가이드라인을 따라 구독을 효율적으로 유지하세요:</p>
 
       <CodeBlock
         language="typescript"
@@ -429,25 +427,31 @@ const filteredWatch = createComputed([watch], ([store]) => {
 
       <ul>
         <li>
-          <strong>항상 구독 정리</strong> - 메모리 누수를 방지하기 위해 AbortController 사용
+          <strong>항상 구독 정리</strong> - 메모리 누수를 방지하기 위해
+          AbortController 사용
         </li>
         <li>
           <strong>초기화에 isFirst 사용</strong> - 설정과 업데이트 구분
         </li>
         <li>
-          <strong>콜백을 집중되게 유지</strong> - 각 구독은 단일 책임을 가져야 함
+          <strong>콜백을 집중되게 유지</strong> - 각 구독은 단일 책임을 가져야
+          함
         </li>
         <li>
-          <strong>무한 루프 방지</strong> - 값이 변경되었는지 확인하지 않고 추적된 프로퍼티를 업데이트하지 말기
+          <strong>무한 루프 방지</strong> - 값이 변경되었는지 확인하지 않고
+          추적된 프로퍼티를 업데이트하지 말기
         </li>
         <li>
-          <strong>추적하는 것에 주의</strong> - 실제로 반응해야 하는 프로퍼티만 읽기
+          <strong>추적하는 것에 주의</strong> - 실제로 반응해야 하는 프로퍼티만
+          읽기
         </li>
         <li>
-          <strong>파생 상태에 createComputed 사용</strong> - 수동 구독보다 효율적
+          <strong>파생 상태에 createComputed 사용</strong> - 수동 구독보다
+          효율적
         </li>
         <li>
-          <strong>비용이 많이 드는 작업 디바운싱</strong> - 모든 업데이트마다 무거운 작업 수행하지 말기
+          <strong>비용이 많이 드는 작업 디바운싱</strong> - 모든 업데이트마다
+          무거운 작업 수행하지 말기
         </li>
       </ul>
 

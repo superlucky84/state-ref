@@ -11,8 +11,8 @@ export const SyncRefetch = mount(() => {
         <strong>
           after a handle's first <code>load()</code> or <code>refetch()</code>
         </strong>
-        . An active <a href="#/guide/sync-view">liveView</a> performs that first
-        load itself. Nothing polls a query you never read.
+        . An active <a href="#/guide/sync-view">reactive key</a> performs that
+        first load itself. Nothing polls a query you never read.
       </p>
 
       <h2>The Environment</h2>

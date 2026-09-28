@@ -7,22 +7,26 @@ export const WatchKo = mount(() => {
       <h1>Watch 함수</h1>
 
       <p>
-        <code>watch</code> 함수는 <code>createStore()</code>가 반환하는 핵심 인터페이스입니다.
-        상태 참조 접근과 상태 변경 구독이라는 두 가지 목적으로 사용됩니다.
+        <code>watch</code> 함수는 <code>createStore()</code>가 반환하는 핵심
+        인터페이스입니다. 상태 참조 접근과 상태 변경 구독이라는 두 가지 목적으로
+        사용됩니다.
       </p>
 
       <h2>개요</h2>
 
       <p>
-        <code>createStore()</code>를 호출하면 두 가지 방식으로 사용할 수 있는 <code>watch</code> 함수를 반환합니다:
+        <code>createStore()</code>를 호출하면 두 가지 방식으로 사용할 수 있는{' '}
+        <code>watch</code> 함수를 반환합니다:
       </p>
 
       <ul>
         <li>
-          <strong>인자 없이 호출</strong>: 값을 읽고 쓰기 위한 <code>StateRefStore</code> 참조 반환
+          <strong>인자 없이 호출</strong>: 값을 읽고 쓰기 위한{' '}
+          <code>StateRefStore</code> 참조 반환
         </li>
         <li>
-          <strong>콜백과 함께 호출</strong>: 변경 사항을 구독하고 추적되는 <code>StateRefStore</code> 참조 반환
+          <strong>콜백과 함께 호출</strong>: 변경 사항을 구독하고 추적되는{' '}
+          <code>StateRefStore</code> 참조 반환
         </li>
       </ul>
 
@@ -31,7 +35,8 @@ export const WatchKo = mount(() => {
       <h3>참조 얻기 (구독 없음)</h3>
 
       <p>
-        인자 없이 <code>watch()</code>를 호출하여 상태를 읽고 쓰기 위한 참조를 얻습니다:
+        인자 없이 <code>watch()</code>를 호출하여 상태를 읽고 쓰기 위한 참조를
+        얻습니다:
       </p>
 
       <CodeBlock
@@ -75,9 +80,7 @@ store.count.value = 1; // 로그: "Count: 1" 및 "첫 실행? false"`}
 
       <h2>콜백 시그니처</h2>
 
-      <p>
-        구독 콜백은 두 개의 파라미터를 받습니다:
-      </p>
+      <p>구독 콜백은 두 개의 파라미터를 받습니다:</p>
 
       <CodeBlock
         language="typescript"
@@ -91,7 +94,8 @@ store.count.value = 1; // 로그: "Count: 1" 및 "첫 실행? false"`}
 
       <ul>
         <li>
-          <code>store</code> - 자동으로 추적되는 <code>StateRefStore</code> 참조 (innerRef)
+          <code>store</code> - 자동으로 추적되는 <code>StateRefStore</code> 참조
+          (innerRef)
         </li>
         <li>
           <code>isFirst</code> - 콜백의 첫 실행인지 나타내는 불리언 값
@@ -101,13 +105,15 @@ store.count.value = 1; // 로그: "Count: 1" 및 "첫 실행? false"`}
       <h3>반환값</h3>
 
       <p>
-        콜백은 선택적으로 <code>AbortSignal</code>을 반환하여 시그널이 중단되면 구독을 취소할 수 있습니다.
+        콜백은 선택적으로 <code>AbortSignal</code>을 반환하여 시그널이 중단되면
+        구독을 취소할 수 있습니다.
       </p>
 
       <h2>isFirst 파라미터 이해하기</h2>
 
       <p>
-        <code>isFirst</code> 파라미터는 초기 콜백 실행과 이후 업데이트를 구분하는 데 도움이 됩니다:
+        <code>isFirst</code> 파라미터는 초기 콜백 실행과 이후 업데이트를
+        구분하는 데 도움이 됩니다:
       </p>
 
       <CodeBlock
@@ -132,8 +138,10 @@ store.count.value = 5;
       <h2>InnerRef vs OuterRef</h2>
 
       <p>
-        innerRef와 outerRef를 이해하는 것이 중요합니다: 둘은 <strong>동일한 참조</strong>이며,
-        둘 다 구독에 바인딩되어 있습니다. 중요한 것은 콜백 중에 <strong>어떤 참조로 프로퍼티를 읽는가(READ)</strong>입니다.
+        innerRef와 outerRef를 이해하는 것이 중요합니다: 둘은{' '}
+        <strong>동일한 참조</strong>이며, 둘 다 구독에 바인딩되어 있습니다.
+        중요한 것은 콜백 중에{' '}
+        <strong>어떤 참조로 프로퍼티를 읽는가(READ)</strong>입니다.
       </p>
 
       <CodeBlock
@@ -164,8 +172,9 @@ anotherRef.y.value = 20;  // ✗ 트리거 안 함`}
       />
 
       <p>
-        <strong>핵심 원칙</strong>: 추적은 구독 중에 어떤 참조로 프로퍼티를 읽었는가(READ)에 기반하며,
-        나중에 어떤 참조로 쓰는가(WRITE)는 상관없습니다.
+        <strong>핵심 원칙</strong>: 추적은 구독 중에 어떤 참조로 프로퍼티를
+        읽었는가(READ)에 기반하며, 나중에 어떤 참조로 쓰는가(WRITE)는
+        상관없습니다.
       </p>
 
       <h2>AbortController로 구독 취소하기</h2>
@@ -196,9 +205,7 @@ store.count.value = 2; // ✗ 콜백 트리거하지 않음 (구독 취소됨)`}
 
       <h2>여러 구독</h2>
 
-      <p>
-        동일한 스토어에 여러 독립적인 구독을 만들 수 있습니다:
-      </p>
+      <p>동일한 스토어에 여러 독립적인 구독을 만들 수 있습니다:</p>
 
       <CodeBlock
         language="typescript"
@@ -226,9 +233,7 @@ ref2.count.value = 20;
 
       <h2>참조 접근과 구독 결합하기</h2>
 
-      <p>
-        구독 콜백은 추적되는 참조를 반환하며, 즉시 사용할 수 있습니다:
-      </p>
+      <p>구독 콜백은 추적되는 참조를 반환하며, 즉시 사용할 수 있습니다:</p>
 
       <CodeBlock
         language="typescript"
@@ -253,9 +258,7 @@ untrackedStore.count.value = 10;
 
       <h2>선택적 프로퍼티 추적</h2>
 
-      <p>
-        구독은 콜백 내에서 접근된 프로퍼티만 추적합니다:
-      </p>
+      <p>구독은 콜백 내에서 접근된 프로퍼티만 추적합니다:</p>
 
       <CodeBlock
         language="typescript"
@@ -327,27 +330,29 @@ watch((store, isFirst) => {
 
       <ul>
         <li>
-          <strong>초기화에 isFirst 사용</strong> - 설정 로직과 업데이트 로직 구분
+          <strong>초기화에 isFirst 사용</strong> - 설정 로직과 업데이트 로직
+          구분
         </li>
         <li>
-          <strong>정리를 위해 AbortSignal 반환</strong> - 컴포넌트에서 항상 구독 정리
+          <strong>정리를 위해 AbortSignal 반환</strong> - 컴포넌트에서 항상 구독
+          정리
         </li>
         <li>
           <strong>추적에 주의</strong> - outerRef(구독이 반환한 참조)만 추적됨
         </li>
         <li>
-          <strong>필요한 프로퍼티만 접근</strong> - 구독은 접근된 프로퍼티만 추적
+          <strong>필요한 프로퍼티만 접근</strong> - 구독은 접근된 프로퍼티만
+          추적
         </li>
         <li>
-          <strong>루프에서 참조 생성 금지</strong> - 모듈 또는 컴포넌트 레벨에서 watch 참조 생성
+          <strong>루프에서 참조 생성 금지</strong> - 모듈 또는 컴포넌트 레벨에서
+          watch 참조 생성
         </li>
       </ul>
 
       <h2>타입 안전성</h2>
 
-      <p>
-        watch 함수는 TypeScript와 완전히 타입이 지정됩니다:
-      </p>
+      <p>watch 함수는 TypeScript와 완전히 타입이 지정됩니다:</p>
 
       <CodeBlock
         language="typescript"
@@ -379,16 +384,19 @@ watch((innerRef) => {
 
       <ul>
         <li>
-          <a href="#/ko/guide/create-store">createStore</a> - watch 함수를 반환하는 스토어 생성
+          <a href="#/ko/guide/create-store">createStore</a> - watch 함수를
+          반환하는 스토어 생성
         </li>
         <li>
-          <a href="#/ko/guide/references">참조 이해하기</a> - innerRef, outerRef, 언바운드 참조 심층 분석
+          <a href="#/ko/guide/references">참조 이해하기</a> - innerRef,
+          outerRef, 언바운드 참조 심층 분석
         </li>
         <li>
           <a href="#/ko/guide/subscription">구독</a> - 고급 구독 패턴
         </li>
         <li>
-          <a href="#/ko/guide/state-ref-store">StateRefStore</a> - 스토어 참조 다루기
+          <a href="#/ko/guide/state-ref-store">StateRefStore</a> - 스토어 참조
+          다루기
         </li>
       </ul>
     </div>

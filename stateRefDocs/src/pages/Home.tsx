@@ -27,7 +27,8 @@ const categories: Category[] = [
     description: 'Learn the basics of StateRef',
     icon: '🚀',
     theme: {
-      gradient: 'from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20',
+      gradient:
+        'from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20',
       borderColor: 'border-blue-200 dark:border-blue-800',
       hoverBorder: 'hover:border-blue-400 dark:hover:border-blue-600',
       tagBg: 'bg-blue-100 dark:bg-blue-900/40',
@@ -44,7 +45,8 @@ const categories: Category[] = [
     description: 'Understand the fundamental concepts',
     icon: '⚡',
     theme: {
-      gradient: 'from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20',
+      gradient:
+        'from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20',
       borderColor: 'border-green-200 dark:border-green-800',
       hoverBorder: 'hover:border-green-400 dark:hover:border-green-600',
       tagBg: 'bg-green-100 dark:bg-green-900/40',
@@ -62,7 +64,8 @@ const categories: Category[] = [
     description: 'Powerful utilities for state management',
     icon: '🔧',
     theme: {
-      gradient: 'from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20',
+      gradient:
+        'from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20',
       borderColor: 'border-purple-200 dark:border-purple-800',
       hoverBorder: 'hover:border-purple-400 dark:hover:border-purple-600',
       tagBg: 'bg-purple-100 dark:bg-purple-900/40',
@@ -80,7 +83,8 @@ const categories: Category[] = [
     description: 'Connect with your favorite UI framework',
     icon: '🔗',
     theme: {
-      gradient: 'from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20',
+      gradient:
+        'from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20',
       borderColor: 'border-orange-200 dark:border-orange-800',
       hoverBorder: 'hover:border-orange-400 dark:hover:border-orange-600',
       tagBg: 'bg-orange-100 dark:bg-orange-900/40',
@@ -112,7 +116,8 @@ export const Home = mount(_renew => {
           Universal state management library focused on data immutability
         </p>
         <p class="text-base text-gray-600 dark:text-gray-400">
-          StateRef combines proxies and the functional programming lens pattern to efficiently and safely access and modify deeply structured data.
+          StateRef combines proxies and the functional programming lens pattern
+          to efficiently and safely access and modify deeply structured data.
         </p>
       </div>
 
@@ -123,7 +128,8 @@ export const Home = mount(_renew => {
             🎯 Fine-grained Reactivity
           </h3>
           <p class="text-sm text-gray-600 dark:text-gray-400">
-            Proxy-based tracking ensures only the components that need to update will re-render
+            Proxy-based tracking ensures only the components that need to update
+            will re-render
           </p>
         </div>
         <div class="p-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10">
@@ -162,7 +168,9 @@ export const Home = mount(_renew => {
             <div class="flex items-start gap-4 mb-4">
               <span class="text-4xl flex-shrink-0">{category.icon}</span>
               <div class="flex-1">
-                <h2 class={`text-2xl font-bold ${category.theme.textColor} mb-2`}>
+                <h2
+                  class={`text-2xl font-bold ${category.theme.textColor} mb-2`}
+                >
                   {category.title}
                 </h2>
                 <p class="text-sm text-gray-700 dark:text-gray-300">

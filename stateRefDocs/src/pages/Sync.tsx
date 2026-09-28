@@ -104,7 +104,7 @@ other.query(options).ref.address.city.value; // unaffected`}
       <p>
         A fixed-key query needs an explicit <code>load()</code>. The exceptions
         are a mutation response, <code>acceptServer</code>, and an active{' '}
-        <a href="#/guide/sync-view">liveView</a>, which loads on its own.
+        <a href="#/guide/sync-view">reactive key</a>, which loads on its own.
       </p>
 
       <p>
@@ -124,7 +124,7 @@ other.query(options).ref.address.city.value; // unaffected`}
       <ul>
         <li>
           <strong>pagination / infinite</strong> - no reactive key switching for
-          infinite queries; <code>infiniteView</code> takes a fixed key only
+          infinite queries; <code>infiniteQuery</code> takes a fixed key only
         </li>
         <li>
           <strong>SSR</strong> - cache transfer is supported; framework-specific
@@ -136,7 +136,7 @@ other.query(options).ref.address.city.value; // unaffected`}
         </li>
         <li>
           <strong>reactive options across connectors</strong> - supported
-          through <code>liveView</code>, with per-connector differences
+          through a reactive key, with per-connector differences
         </li>
       </ul>
 
@@ -158,8 +158,8 @@ other.query(options).ref.address.city.value; // unaffected`}
           edit and accepting the result
         </li>
         <li>
-          <a href="#/guide/sync-view">view and liveView</a> - placeholders,
-          selection, and reactive keys
+          <a href="#/guide/sync-view">display and reactive keys</a> -
+          placeholders, selection, and reactive keys
         </li>
         <li>
           <a href="#/guide/sync-refetch">Automatic refetch</a> - focus,

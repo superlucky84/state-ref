@@ -8,8 +8,8 @@ export const LensKo = mount(() => {
 
       <p>
         <code>lens</code> 헬퍼는 데이터 경로를 설명해 불변 업데이트를
-        수행합니다. StateRef 내부도 동일한 렌즈 패턴을 사용하며, 직접
-        사용하면 커스텀 불변 업데이트를 만들 수 있습니다.
+        수행합니다. StateRef 내부도 동일한 렌즈 패턴을 사용하며, 직접 사용하면
+        커스텀 불변 업데이트를 만들 수 있습니다.
       </p>
 
       <h2>기본 사용법</h2>
@@ -65,9 +65,7 @@ console.log(next.todos[0].title); // 'Review docs'`}
 
       <h2>재사용 가능한 렌즈</h2>
 
-      <p>
-        기본 렌즈에서 파생하여 여러 경로를 쉽게 구성할 수 있습니다.
-      </p>
+      <p>기본 렌즈에서 파생하여 여러 경로를 쉽게 구성할 수 있습니다.</p>
 
       <CodeBlock
         language="typescript"
@@ -81,8 +79,8 @@ const userEmailLens = userLens.chain('email');`}
       <h2>불변성 (Copy-On-Write)</h2>
 
       <p>
-        <code>set()</code>은 경로에 해당하는 부분만 얕은 복사를 수행하며,
-        나머지 경로는 동일한 참조를 유지합니다.
+        <code>set()</code>은 경로에 해당하는 부분만 얕은 복사를 수행하며, 나머지
+        경로는 동일한 참조를 유지합니다.
       </p>
 
       <CodeBlock

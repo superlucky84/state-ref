@@ -11,7 +11,7 @@ export const SyncRefetchKo = mount(() => {
         <strong>
           핸들의 첫 <code>load()</code> 또는 <code>refetch()</code> 이후에
         </strong>{' '}
-        활성화됩니다. 활성 <a href="#/ko/guide/sync-view">liveView</a>는 그 첫
+        활성화됩니다. 활성 <a href="#/ko/guide/sync-view">반응형 key</a>는 그 첫
         로드를 스스로 합니다. 한 번도 읽지 않은 조회를 polling하는 일은
         없습니다.
       </p>

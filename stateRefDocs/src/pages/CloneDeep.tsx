@@ -7,9 +7,9 @@ export const CloneDeep = mount(() => {
       <h1>cloneDeep</h1>
 
       <p>
-        <code>cloneDeep</code> creates a recursive deep copy of plain objects and
-        arrays. It’s a small utility for cases where you need an independent copy
-        of nested data.
+        <code>cloneDeep</code> creates a recursive deep copy of plain objects
+        and arrays. It’s a small utility for cases where you need an independent
+        copy of nested data.
       </p>
 
       <h2>Basic Usage</h2>

@@ -103,7 +103,7 @@ other.query(options).ref.address.city.value; // 영향 없음`}
       <p>
         고정 key 조회는 명시적인 <code>load()</code>가 필요합니다. 예외는
         mutation 응답, <code>acceptServer</code>, 그리고 스스로 로드하는 활성{' '}
-        <a href="#/ko/guide/sync-view">liveView</a>입니다.
+        <a href="#/ko/guide/sync-view">반응형 key</a>입니다.
       </p>
 
       <p>
@@ -123,7 +123,7 @@ other.query(options).ref.address.city.value; // 영향 없음`}
       <ul>
         <li>
           <strong>pagination / infinite</strong> — 무한 조회의 반응형 key 전환이
-          없다. <code>infiniteView</code>는 고정 key만 받는다
+          없다. <code>infiniteQuery</code>는 고정 key만 받는다
         </li>
         <li>
           <strong>SSR</strong> — 캐시 전송은 지원한다. 프레임워크별 로딩·오류
@@ -134,8 +134,8 @@ other.query(options).ref.address.city.value; // 영향 없음`}
           devtools나 플러그인 호환 API가 아니다
         </li>
         <li>
-          <strong>커넥터 전반의 반응형 옵션</strong> — <code>liveView</code>로
-          지원하며 커넥터별 차이가 있다
+          <strong>커넥터 전반의 반응형 옵션</strong> — 반응형 key로 지원하며
+          커넥터별 차이가 있다
         </li>
       </ul>
 
@@ -157,7 +157,7 @@ other.query(options).ref.address.city.value; // 영향 없음`}
           결과를 수용하기
         </li>
         <li>
-          <a href="#/ko/guide/sync-view">view와 liveView</a> -
+          <a href="#/ko/guide/sync-view">표시와 반응형 key</a> -
           placeholder·선택·반응형 key
         </li>
         <li>

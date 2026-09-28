@@ -7,16 +7,18 @@ export const StateRefStore = mount(() => {
       <h1>StateRefStore</h1>
 
       <p>
-        <code>StateRefStore</code> is the proxied reference type returned by the <code>watch()</code> function.
-        It wraps your state with a Proxy that enables reactive tracking and provides access to values
-        through the <code>.value</code> property.
+        <code>StateRefStore</code> is the proxied reference type returned by the{' '}
+        <code>watch()</code> function. It wraps your state with a Proxy that
+        enables reactive tracking and provides access to values through the{' '}
+        <code>.value</code> property.
       </p>
 
       <h2>The .value Property</h2>
 
       <p>
-        All state access in StateRef happens through the <code>.value</code> property.
-        This is the fundamental interface for both reading and writing state:
+        All state access in StateRef happens through the <code>.value</code>{' '}
+        property. This is the fundamental interface for both reading and writing
+        state:
       </p>
 
       <CodeBlock
@@ -40,8 +42,8 @@ console.log(store.count.value);  // 10`}
       <h2>Proxy-Based Reactivity</h2>
 
       <p>
-        StateRefStore uses JavaScript Proxies to intercept property access.
-        When you access a property, you get another proxy wrapping that nested value:
+        StateRefStore uses JavaScript Proxies to intercept property access. When
+        you access a property, you get another proxy wrapping that nested value:
       </p>
 
       <CodeBlock
@@ -69,8 +71,8 @@ console.log(store.user.profile.name.value);  // 'John' (actual string)`}
       <h2>Deep Nested Access</h2>
 
       <p>
-        StateRefStore supports arbitrarily deep nesting. Each level returns a new proxy,
-        allowing natural chained property access:
+        StateRefStore supports arbitrarily deep nesting. Each level returns a
+        new proxy, allowing natural chained property access:
       </p>
 
       <CodeBlock
@@ -104,7 +106,8 @@ store.company.departments.engineering.teams.frontend.members.value = [
       <h2>Working with Objects</h2>
 
       <p>
-        When working with object properties, you can update individual fields or replace entire objects:
+        When working with object properties, you can update individual fields or
+        replace entire objects:
       </p>
 
       <CodeBlock
@@ -134,7 +137,8 @@ store.user.value = {
       <h2>Working with Arrays</h2>
 
       <p>
-        Arrays work seamlessly with StateRefStore, supporting both index access and array replacement:
+        Arrays work seamlessly with StateRefStore, supporting both index access
+        and array replacement:
       </p>
 
       <CodeBlock
@@ -171,8 +175,9 @@ store.todos.value = [...currentTodos];  // Trigger update`}
       <h2>Copy-on-Write Semantics</h2>
 
       <p>
-        StateRef uses copy-on-write to maintain immutability. When you update a nested property,
-        only the path to that property is copied, sharing unchanged subtrees:
+        StateRef uses copy-on-write to maintain immutability. When you update a
+        nested property, only the path to that property is copied, sharing
+        unchanged subtrees:
       </p>
 
       <CodeBlock
@@ -232,7 +237,8 @@ toggle.value = true;`}
       <h2>Type Safety with TypeScript</h2>
 
       <p>
-        StateRefStore is fully typed with TypeScript, providing autocomplete and type checking:
+        StateRefStore is fully typed with TypeScript, providing autocomplete and
+        type checking:
       </p>
 
       <CodeBlock
@@ -266,7 +272,8 @@ const userId: number = store.id.value;      // ✓ Correctly inferred as number`
       <h2>Reading Without .value</h2>
 
       <p>
-        If you access a property without <code>.value</code>, you get the proxy itself, not the actual value:
+        If you access a property without <code>.value</code>, you get the proxy
+        itself, not the actual value:
       </p>
 
       <CodeBlock
@@ -296,8 +303,8 @@ if (store.count.value === 10) { // ✓ Correct: comparing value to number
       <h2>Reference Equality</h2>
 
       <p>
-        StateRefStore maintains reference equality for unchanged objects,
-        which is crucial for optimization in UI frameworks:
+        StateRefStore maintains reference equality for unchanged objects, which
+        is crucial for optimization in UI frameworks:
       </p>
 
       <CodeBlock
@@ -389,16 +396,20 @@ console.log(newArea);  // 300`}
 
       <ul>
         <li>
-          <strong>Proxy overhead is minimal</strong> - Modern JavaScript engines optimize proxy access well
+          <strong>Proxy overhead is minimal</strong> - Modern JavaScript engines
+          optimize proxy access well
         </li>
         <li>
-          <strong>Copy-on-write is efficient</strong> - Only changed paths are copied, unchanged data is shared
+          <strong>Copy-on-write is efficient</strong> - Only changed paths are
+          copied, unchanged data is shared
         </li>
         <li>
-          <strong>Reference equality enables optimization</strong> - UI frameworks can skip rendering unchanged subtrees
+          <strong>Reference equality enables optimization</strong> - UI
+          frameworks can skip rendering unchanged subtrees
         </li>
         <li>
-          <strong>Batch updates when possible</strong> - Update entire objects instead of individual properties to reduce subscription triggers
+          <strong>Batch updates when possible</strong> - Update entire objects
+          instead of individual properties to reduce subscription triggers
         </li>
       </ul>
 
@@ -406,19 +417,24 @@ console.log(newArea);  // 300`}
 
       <ul>
         <li>
-          <strong>Always use .value for actual values</strong> - Remember that property access without .value returns a proxy
+          <strong>Always use .value for actual values</strong> - Remember that
+          property access without .value returns a proxy
         </li>
         <li>
-          <strong>Prefer immutable updates</strong> - Replace objects/arrays rather than mutating them when possible
+          <strong>Prefer immutable updates</strong> - Replace objects/arrays
+          rather than mutating them when possible
         </li>
         <li>
-          <strong>Leverage reference equality</strong> - Use strict equality checks for optimization
+          <strong>Leverage reference equality</strong> - Use strict equality
+          checks for optimization
         </li>
         <li>
-          <strong>Type your stores</strong> - Use TypeScript interfaces for better type safety and autocomplete
+          <strong>Type your stores</strong> - Use TypeScript interfaces for
+          better type safety and autocomplete
         </li>
         <li>
-          <strong>Batch related updates</strong> - Update entire objects to minimize subscription triggers
+          <strong>Batch related updates</strong> - Update entire objects to
+          minimize subscription triggers
         </li>
       </ul>
 
@@ -426,16 +442,20 @@ console.log(newArea);  // 300`}
 
       <ul>
         <li>
-          <a href="#/guide/create-store">createStore</a> - Creating stores that return StateRefStore references
+          <a href="#/guide/create-store">createStore</a> - Creating stores that
+          return StateRefStore references
         </li>
         <li>
-          <a href="#/guide/watch">Watch Function</a> - Getting StateRefStore references via watch
+          <a href="#/guide/watch">Watch Function</a> - Getting StateRefStore
+          references via watch
         </li>
         <li>
-          <a href="#/guide/references">Understanding References</a> - How StateRefStore references work with tracking
+          <a href="#/guide/references">Understanding References</a> - How
+          StateRefStore references work with tracking
         </li>
         <li>
-          <a href="#/guide/primitives">Primitive Types</a> - Working with primitive type stores
+          <a href="#/guide/primitives">Primitive Types</a> - Working with
+          primitive type stores
         </li>
       </ul>
     </div>

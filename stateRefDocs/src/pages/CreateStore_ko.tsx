@@ -7,8 +7,9 @@ export const CreateStoreKo = mount(() => {
       <h1>createStore</h1>
 
       <p>
-        <code>createStore</code> 함수는 StateRef에서 반응형 상태 스토어를 생성하는 주요 방법입니다.
-        초기값을 받아서 상태에 접근하고 구독할 수 있는 <code>watch</code> 함수를 반환합니다.
+        <code>createStore</code> 함수는 StateRef에서 반응형 상태 스토어를
+        생성하는 주요 방법입니다. 초기값을 받아서 상태에 접근하고 구독할 수 있는{' '}
+        <code>watch</code> 함수를 반환합니다.
       </p>
 
       <h2>기본 사용법</h2>
@@ -32,7 +33,8 @@ const watch = createStore({ count: 0, name: 'StateRef' });`}
 
       <ul>
         <li>
-          <code>initialValue</code> - 초기 상태 값. 객체, 배열, 원시 타입 등 모든 타입 가능
+          <code>initialValue</code> - 초기 상태 값. 객체, 배열, 원시 타입 등
+          모든 타입 가능
         </li>
       </ul>
 
@@ -44,17 +46,20 @@ const watch = createStore({ count: 0, name: 'StateRef' });`}
 
       <ul>
         <li>
-          <strong>인자 없이 호출</strong>: 값을 읽고 쓰기 위한 <code>StateRefStore</code> 참조 반환
+          <strong>인자 없이 호출</strong>: 값을 읽고 쓰기 위한{' '}
+          <code>StateRefStore</code> 참조 반환
         </li>
         <li>
-          <strong>콜백과 함께 호출</strong>: 변경 사항을 구독하고 추적되는 <code>StateRefStore</code> 참조 반환
+          <strong>콜백과 함께 호출</strong>: 변경 사항을 구독하고 추적되는{' '}
+          <code>StateRefStore</code> 참조 반환
         </li>
       </ul>
 
       <h2>객체 스토어 생성</h2>
 
       <p>
-        객체 스토어가 가장 일반적인 사용 사례입니다. 복잡한 중첩 상태를 관리할 수 있습니다:
+        객체 스토어가 가장 일반적인 사용 사례입니다. 복잡한 중첩 상태를 관리할
+        수 있습니다:
       </p>
 
       <CodeBlock
@@ -140,7 +145,8 @@ const userWatch = createStore<User>({
       <h2>반환된 Watch 함수 사용하기</h2>
 
       <p>
-        <code>createStore</code>가 반환하는 <code>watch</code> 함수가 스토어의 핵심 인터페이스입니다:
+        <code>createStore</code>가 반환하는 <code>watch</code> 함수가 스토어의
+        핵심 인터페이스입니다:
       </p>
 
       <CodeBlock
@@ -169,8 +175,8 @@ trackedStore.count.value = 20;`}
       <h2>자동 동기화 모드</h2>
 
       <p>
-        기본적으로 <code>createStore</code>는 <strong>자동 동기화</strong> 모드로 동작하며,
-        변경 사항이 즉시 구독을 트리거합니다:
+        기본적으로 <code>createStore</code>는 <strong>자동 동기화</strong>{' '}
+        모드로 동작하며, 변경 사항이 즉시 구독을 트리거합니다:
       </p>
 
       <CodeBlock
@@ -187,14 +193,13 @@ store.count.value = 2; // ✓ 즉시 구독 트리거`}
       />
 
       <p>
-        업데이트 전파 시점을 수동으로 제어하려면 <a href="#/ko/guide/manual-sync">수동 동기화 (Flux)</a>를 참고하세요.
+        업데이트 전파 시점을 수동으로 제어하려면{' '}
+        <a href="#/ko/guide/manual-sync">수동 동기화 (Flux)</a>를 참고하세요.
       </p>
 
       <h2>배열 다루기</h2>
 
-      <p>
-        배열은 copy-on-write 의미론과 함께 완전히 지원됩니다:
-      </p>
+      <p>배열은 copy-on-write 의미론과 함께 완전히 지원됩니다:</p>
 
       <CodeBlock
         language="typescript"
@@ -222,16 +227,20 @@ store.items.value = [...store.items.value]; // 업데이트 트리거`}
 
       <ul>
         <li>
-          <strong>스토어를 집중되게 유지</strong> - 애플리케이션의 다른 도메인에 대해 별도의 스토어 생성
+          <strong>스토어를 집중되게 유지</strong> - 애플리케이션의 다른 도메인에
+          대해 별도의 스토어 생성
         </li>
         <li>
-          <strong>TypeScript 사용</strong> - 더 나은 IDE 지원과 타입 안전성을 위해 스토어에 타입 지정
+          <strong>TypeScript 사용</strong> - 더 나은 IDE 지원과 타입 안전성을
+          위해 스토어에 타입 지정
         </li>
         <li>
-          <strong>완전한 상태로 초기화</strong> - 적절한 타입 추론을 위해 초기값에 모든 속성 제공
+          <strong>완전한 상태로 초기화</strong> - 적절한 타입 추론을 위해
+          초기값에 모든 속성 제공
         </li>
         <li>
-          <strong>렌더 함수에서 스토어 생성 금지</strong> - 모듈 레벨이나 훅에서 스토어 생성
+          <strong>렌더 함수에서 스토어 생성 금지</strong> - 모듈 레벨이나 훅에서
+          스토어 생성
         </li>
       </ul>
 
@@ -275,10 +284,12 @@ export const todosWatch = createStore<Todo[]>([]);`}
           <a href="#/ko/guide/watch">Watch 함수</a> - watch 함수 이해하기
         </li>
         <li>
-          <a href="#/ko/guide/state-ref-store">StateRefStore</a> - 스토어 참조 다루기
+          <a href="#/ko/guide/state-ref-store">StateRefStore</a> - 스토어 참조
+          다루기
         </li>
         <li>
-          <a href="#/ko/guide/manual-sync">수동 동기화</a> - Flux 패턴을 위한 createStoreManualSync
+          <a href="#/ko/guide/manual-sync">수동 동기화</a> - Flux 패턴을 위한
+          createStoreManualSync
         </li>
       </ul>
     </div>

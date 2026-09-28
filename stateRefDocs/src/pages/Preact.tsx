@@ -143,7 +143,7 @@ const useTodo = connectPreact(watch);
 
       <CodeBlock
         language="tsx"
-        code={`const useLive = connectPreactView(live.watch);
+        code={`const useLive = connectPreactView(live.watchDisplay);
 
 function CityDisplay() {
   const state = useLive();

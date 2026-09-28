@@ -8,9 +8,9 @@ export const CopyableKo = mount(() => {
 
       <p>
         <code>copyable</code>는 프로퍼티 접근으로 경로를 구성하고,
-        <code>writeCopy</code>로 copy-on-write 업데이트를 수행해 새로운
-        루트 객체를 반환합니다. StateRef 스토어 밖에서 불변 업데이트가
-        필요할 때 유용합니다.
+        <code>writeCopy</code>로 copy-on-write 업데이트를 수행해 새로운 루트
+        객체를 반환합니다. StateRef 스토어 밖에서 불변 업데이트가 필요할 때
+        유용합니다.
       </p>
 
       <h2>기본 사용법</h2>
@@ -81,8 +81,8 @@ const next = c.count.writeCopy(1);`}
       <h2>Copy-On-Write 동작</h2>
 
       <p>
-        업데이트 경로만 얕은 복사가 일어나며, 나머지 브랜치는 동일한
-        참조를 유지합니다.
+        업데이트 경로만 얕은 복사가 일어나며, 나머지 브랜치는 동일한 참조를
+        유지합니다.
       </p>
 
       <CodeBlock
@@ -103,8 +103,8 @@ console.log(next.settings === state.settings); // true`}
       <h2>중요: 최신 루트 사용</h2>
 
       <p>
-        <code>copyable</code>은 전달한 루트 객체를 기준으로 업데이트합니다.
-        새 루트가 만들어졌다면 다시 <code>copyable</code>을 호출하세요.
+        <code>copyable</code>은 전달한 루트 객체를 기준으로 업데이트합니다. 새
+        루트가 만들어졌다면 다시 <code>copyable</code>을 호출하세요.
       </p>
 
       <CodeBlock
@@ -142,7 +142,8 @@ type Copyable<T, Root = T> = {
           <a href="#/ko/guide/clone-deep">cloneDeep</a> - 전체 깊은 복사
         </li>
         <li>
-          <a href="#/ko/guide/state-ref-store">StateRefStore</a> - 스토어 프록시 업데이트
+          <a href="#/ko/guide/state-ref-store">StateRefStore</a> - 스토어 프록시
+          업데이트
         </li>
       </ul>
     </div>
