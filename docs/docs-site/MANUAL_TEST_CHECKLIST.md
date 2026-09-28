@@ -2,6 +2,8 @@
 
 상태: 2026-09-28. **전부 미수행.** 자동으로 확인한 것(빌드·링크 해소·시그니처 대조)은 [IMPLEMENT](./IMPLEMENT.md)에 있고, 이 문서는 **사람이 브라우저에서 봐야 하는 것**만 담는다.
 
+**[Phase 9](../server-sync/PHASE9.md) 재동기화 뒤에 수행한다.** `/guide/sync-view`(en+ko)는 제목과 본문이 통째로 바뀌었고, `API Reference > Sync`·`Sync` 개요·`자동 재조회`·`query와 resource`·커넥터 5장도 손댔다. 사이드바 항목 이름도 `view와 liveView` → `표시와 반응형 key`로 바뀌었다. **수행할 때 그 장들을 먼저 본다** — 가장 최근에 바뀌었고 아무도 보지 않았다.
+
 ```bash
 pnpm dev:docs        # 개발 서버
 pnpm --filter state-ref-docs build   # 빌드만 확인

@@ -22,6 +22,7 @@
 - [x] **DC-DS-06 / 루트 README와 패키지 README는 역할이 다르다.** 둘은 이미 드리프트해 있었다(패키지 쪽에만 batch·draft·sync 절이 있었다). 합치는 대신 나눈다: **루트는 진입점**(장점 + 목차 + 링크), **`packages/state-ref/README.md`는 npm 독자용 전체 예제**다. 후자를 유지하는 실질적 이유가 하나 더 있다 — gate의 `doc-examples`가 그 예제들을 계속 컴파일한다. 루트에서 예제를 걷어내도 그 검증이 사라지지 않는 이유다.
 - [x] **DC-DS-07 / 링크는 해시 형식이고 ko는 접두로 구별한다.** 사이트가 해시 라우터를 쓰므로 외부 링크는 `https://superlucky84.github.io/state-ref/#/guide/computed` 형식이다. 페이지 안의 내부 링크는 `#/guide/...`, 한국어 페이지에서는 `#/ko/guide/...`를 쓴다. **사이드바의 `link`만 예외로** ko 접두를 쓰지 않는다 — `resolveRouteForLanguage`가 현재 언어로 옮긴다.
 - [x] **DC-DS-08 / 페이지는 셋을 함께 넣어야 존재한다.** 파일(en+ko)·라우트(en+ko)·사이드바 항목. 하나라도 빠지면 빌드는 통과하는데 도달할 수 없거나, 라우터가 조용히 `Introduction`으로 떨어뜨린다. 그래서 작업 단위를 "페이지 하나"가 아니라 **"섹션 하나 + 배선"**으로 잡고, 단계마다 사이트 빌드와 링크 해소를 확인한다.
+- [x] **DC-DS-10 / 라이브러리 표면이 바뀌면 라우트는 두고 장을 다시 쓴다.** [Phase 9](../server-sync/PHASE9.md)가 사이트를 쓴 **뒤에** sync의 조회 표면을 통합했다 — `client.view`·`infiniteView`·`liveView`가 사라지고 표시가 조회 핸들의 `display`/`watchDisplay`가 됐으며 `phase`는 삭제됐다. `/guide/sync-view` 라우트와 사이드바 항목은 **그대로 두고** 장 제목과 본문만 바꿨다(`view와 liveView` → `표시와 반응형 key`). 라우트를 바꾸면 이미 나간 링크가 깨지고 DC-DS-08이 말한 배선 셋을 다시 맞춰야 한다 — 이름이 바뀌었다는 이유만으로 치를 비용이 아니다. **문서를 먼저 쓰고 구현이 뒤따르면 이 일은 반드시 생기므로, 순서를 뒤집는 것이 더 싸다는 것이 [DC2-23](../server-sync/DESIGN.md)의 근거다.**
 - [x] **DC-DS-09 / 기존 페이지는 계약이 바뀐 곳만 손댄다.** 이 브랜치는 `Watch` 타입의 계약을 날카롭게 했다 — 콜백 없는 호출이 "참조를 돌려준다"에서 "**구독하지 않는** 살아 있는 참조를 돌려주며, 읽기·쓰기는 최신이지만 알림 경로를 등록하지 않는다"로. 사이트 세 장을 확인해 `References`(en·ko)는 **이미 맞게** 적혀 있었고 `ApiTypes`(en·ko)에만 그 문장을 더했다. 맞는 문서를 다시 쓰지 않는다.
 
 ## 새 정보 구조
@@ -41,7 +42,7 @@ Advanced Usage
   createSyncClient              /guide/sync
   query와 resource               /guide/sync-query
   mutation과 link                /guide/sync-mutation
-  view와 liveView                /guide/sync-view
+  표시와 반응형 key               /guide/sync-view
   자동 재조회                    /guide/sync-refetch
   영속화와 SSR                   /guide/sync-persistence
   관측                          /guide/sync-observation
