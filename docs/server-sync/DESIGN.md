@@ -2,7 +2,7 @@
 
 - 개정일: 2026-09-23. 기준: [REQUIREMENTS](./REQUIREMENTS.md).
 - 기준 commit: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
-- **미결 결정 DC2-19~23(표시와 자원의 통합)이 열려 있다.** 계약 초안·측정·후보는 [Phase 9](./PHASE9.md)와 아래 §5.4에 있으며, 결정 전까지 sync 공개 표면을 바꾸지 않는다.
+- **DC2-19~23(표시와 자원의 통합)은 2026-09-28에 후보 A로 닫혔다.** 계약은 아래 §5.4, 구현 계획은 [IMPLEMENT Phase 9](./IMPLEMENT.md), 설계 근거와 DC9는 [Phase 9](./PHASE9.md)에 있다. **구현 진행 중이며 완료 전까지 §5.4를 현재 동작의 서술로 읽지 않는다.**
 - 상태: Phase 8.4까지 자동 검증했다. 5종 커넥터는 실제 서버 렌더 뒤 UI 구독을 남기지 않는다([Phase 8.4](./PHASE8_4.md)). 브라우저 hydration·loading/error 화면, M2 수동 검증과 전체 서버 기능 동등성은 미완료다. `[x]` 결정 행은 전체 서버 기능 동등성의 구현·테스트 통과가 아니다.
 - 최신 구현 SHA와 현재 재개 지점은 [HANDOFF](./HANDOFF.md)를 따른다. 아래 날짜별 인계는 당시의 기록이다.
 - draft 공개 API는 [Phase 2 기록](./PHASE2.md)에, query/resource 기본 API는 [Phase 3 기록](./PHASE3.md)에 고정했다. mutation과 UI 투영의 현재 검증 범위는 [IMPLEMENT](./IMPLEMENT.md)와 [HANDOFF](./HANDOFF.md)를 따른다.
@@ -29,11 +29,11 @@
 | DC2-16 | [x] draft의 ref/Watch와 반응형 status를 payload 밖에서 제공 | 기존 5종 커넥터 입력 형식을 재사용하고 metadata 필드 충돌을 피함 | R2-20/24/25, T2-20/24/25 |
 | DC2-17 | [x] 원본 알림은 재검사 신호, 편집 경로와 과거 기준은 draft가 소유 | 부모 객체 참조 변화만으로 충돌을 판정하지 않고 무관한 원본 갱신을 병합 | R2-16/17, T2-16/17 |
 | DC2-18 | [x] 선택적 `state-ref/batch`에서 명시적 동기 `batch(fn)` | `watch` 콜백 ref와 보관 ref 모두 같은 setter를 사용하며, 비동기 스케줄러 없이 알림 횟수를 줄임. [Phase 3.5](./PHASE3_5.md) 자동 검증 | R2-27, T2-27 |
-| DC2-19 | [ ] **미결.** 표시(display)와 자원(resource)의 공개 표면을 통합한다 | `view`는 `query`의 대안이 아니라 `query`를 소유한 래퍼인데 API가 대안처럼 생겼다. 후보와 권고는 [Phase 9](./PHASE9.md) | R2-28, T2-28, M2-21 |
-| DC2-20 | [ ] **미결.** 조회 상태 어휘를 하나로 줄인다 | 같은 조회의 같은 사실을 `QueryStatus`·`QueryViewState`·`LiveQueryViewState` 세 어휘로 말하고 있다 | R2-28, T2-28 |
-| DC2-21 | [ ] **미결.** 표시 ref는 남기고 표시 *팩토리*만 없앤다 | select 격리·placeholder 비캐시·읽기 전용은 별도 ref로 충족되며 별도 팩토리를 요구하지 않는다 | R2-28, T2-28 |
-| DC2-22 | [ ] **미결.** `connectXView`는 유지한다 | React·Preact는 본문이 같지만 Vue·Svelte·Solid의 단방향/양방향은 실제로 다른 물건이다 | R2-28, T2-24/28 |
-| DC2-23 | [ ] **미결.** 이 통합을 문서 사이트 확장보다 먼저 수행한다 | 나중에 하면 같은 21개 페이지를 두 번 쓴다. `@stateref/sync` 미발행이라 breaking 비용이 지금 가장 싸다 | R2-28 |
+| DC2-19 | [x] **후보 A 확정 (2026-09-28, 사용자).** 표시를 조회 handle의 `display` 속성으로 옮기고 `view`·`infiniteView`·`liveView` 팩토리를 없앤다 | `view`는 `query`를 소유한 래퍼였고, 관찰자별 의미는 이미 `query`에 있었다. 팩토리 5→2, `view.query` 홉 제거. [Phase 9](./PHASE9.md) | R2-28, T2-28, M2-21 |
+| DC2-20 | [x] **확정.** `display` 상태는 `QueryStatus`의 **엄격한 상위집합**이고 필드 이름이 같다. `phase`는 **삭제한다** | `phase`는 `status`에 placeholder 사실을 더한 것이고 그 사실은 `isPlaceholder`가 이미 든다. 합치면서 단어를 더하는 게 아니라 **중복 단어 하나를 뺀다**. [DC9-09](./PHASE9.md) | R2-28, T2-28 |
+| DC2-21 | [x] **확정.** 표시 ref는 남기고 표시 *팩토리*만 없앤다. `display`는 첫 접근 때 만든다 | select 격리·placeholder 비캐시·읽기 전용은 별도 ref로 충족된다. 상시 생성은 모든 query에 store와 구독을 하나씩 더 지운다([view.ts:177](../../packages/sync/src/view.ts)) | R2-28, T2-28, IC2-08 |
+| DC2-22 | [x] **확정.** `connectXView`는 유지한다 | React·Preact는 본문이 같지만 Vue·Svelte·Solid의 단방향/양방향은 실제로 다른 구현이다. 입력 타입만 새 표시 타입으로 맞춘다 | R2-28, T2-24/28 |
+| DC2-23 | [x] **확정 (사용자).** 이 통합을 문서 사이트 확장보다 먼저 수행한다 | 나중에 하면 같은 21개 페이지를 두 번 쓴다. `@stateref/sync` 미발행(`npm view` 404)이라 breaking 비용이 지금 0이다 | R2-28 |
 
 이전 DC-01~21의 의미는 기준 commit의 Git 이력에 보존된다. 이번 문서의 DC2와 혼용하지 않는다.
 
@@ -231,7 +231,7 @@ Phase 0에서 서버 엔진의 참조 버전과 key/epoch/기본 타이밍 계�
 
 ### 5.4 표시와 자원의 통합 (DC2-19~23, 미결)
 
-**이 절은 현재 구현의 서술이 아니라 열린 설계다.** 측정·후보·마이그레이션 범위는 [Phase 9](./PHASE9.md)에 있고, 여기에는 계약으로 굳어야 할 것만 적는다. 결정 전까지 [Phase 5.3](./PHASE5_3.md)·[5.4](./PHASE5_4.md)·[5.5](./PHASE5_5.md)의 현재 계약이 유효하다.
+**결정은 2026-09-28에 후보 A로 닫혔고 구현은 진행 중이다.** 이 절은 **목표 계약**이며, 구현이 끝날 때까지 현재 동작의 서술로 읽지 않는다. 그때까지 [Phase 5.3](./PHASE5_3.md)·[5.4](./PHASE5_4.md)·[5.5](./PHASE5_5.md)의 계약이 실제 동작이다. 측정·근거·DC9는 [Phase 9](./PHASE9.md).
 
 **문제.** `client.view()`는 `client.query()`를 호출해 소유한다([index.ts:1320](../../packages/sync/src/index.ts), dispose는 [view.ts:221](../../packages/sync/src/view.ts)). 합성인데 API가 선택처럼 생겼고, `view`를 골라도 편집·`load`·`capture`·`version` 때문에 `view.query.*`로 되돌아온다. 여기에 같은 조회의 같은 사실을 말하는 상태 어휘가 셋이다 — `QueryStatus`(11필드) / `QueryViewState`(6) / `LiveQueryViewState`(8). `phase`는 `status.status`에 `'placeholder'`를 더한 것이고 `isPlaceholder`는 `loaded`의 반대말이며 `fetchStatus`·`error`는 양쪽에 동일하다.
 
@@ -247,6 +247,26 @@ Phase 0에서 서버 엔진의 참조 버전과 key/epoch/기본 타이밍 계�
 **커넥터는 합치지 않는다(DC2-22).** React·Preact의 `connectX`/`connectXView`는 같은 `connectWatch`를 부르므로 타입만 다르지만([connect-react/src/index.ts:9, 32, 37](../../packages/connect-react/src/index.ts)), Vue·Svelte·Solid는 `Ref`/`Writable`/`Signal` 쌍과 `readonly`/`Readable`/읽기 전용이 실제로 다른 구현이다. 읽기 전용 구분은 유지하고, 갈라야 할 자리가 *팩토리*가 아닐 뿐이다.
 
 **비용이 지금 가장 싸다(DC2-23).** `@stateref/sync`는 미발행이고(`npm view @stateref/sync` → 404, `version 0.1.0`) 이 브랜치에는 upstream이 없다. 외부 소비자가 0이므로 breaking change의 외부 비용도 0이며 시간이 갈수록만 커진다. 내부 비용은 측정했다 — `stateRefDocs/src` **21개 파일**, 전체 **249회 출현**([Phase 9 §6](./PHASE9.md)).
+
+**확정된 계약 (후보 A).**
+
+```ts
+const account = client.query({
+  queryKey: ['account', 1],
+  queryFn,
+  select: d => d.address.city,   // 선택, 관찰자별
+  placeholderData: { ... },      // 선택, 관찰자별, 캐시에 안 들어감
+});
+
+account.ref.address.city.value = '부산';   // 자원(편집)
+account.display.data.value                 // 표시(읽기 전용, 투영됨)
+account.display.isPlaceholder.value        // phase는 없다 - DC2-20
+account.load(); account.capture();         // 홉 없음
+```
+
+- 조회 팩토리는 `query`와 `infiniteQuery` **둘**이다. 반응형 key는 `client.query({ source, resolve, ... })` 오버로드가 흡수한다([DC9-04](./PHASE9.md)).
+- `display` 상태는 `QueryStatus`의 상위집합이며 **필드 이름이 같다.** 더한 것은 `data`·`isPlaceholder`·`errorSource`·`queryKey`·`enabled`뿐이고 `phase`는 삭제한다([DC9-09](./PHASE9.md)). `status`/`watchStatus`는 같은 어휘의 투영되지 않은 부분집합으로 남는다.
+- 반응형 key가 비활성일 때 `ref`/`watch`는 **던진다.** `display.enabled`·`display.queryKey`로 먼저 확인한다. 이전 `liveView.query === null`을 대체한다([DC9-10](./PHASE9.md)).
 
 `DC2-19`가 닫히기 전까지 sync의 공개 표면과 문서 사이트의 조회 관련 페이지를 **바꾸지 않는다.** 과거 Phase 기록(5.3·5.4·5.5·5.13)은 당시의 기록이므로 고치지 않으며, 통합이 확정되면 이 절이 그것들을 대체한다.
 

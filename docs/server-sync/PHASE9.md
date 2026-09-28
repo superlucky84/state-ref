@@ -2,7 +2,7 @@
 
 - 개정일: 2026-09-28. 기준: [REQUIREMENTS](./REQUIREMENTS.md) R2-28, [DESIGN](./DESIGN.md) §5.4.
 - 기준 commit: `32b87df`.
-- **상태: 설계 단계이며 구현은 없다.** 이 문서의 `DC9-*`는 **전부 열려 있다.** `[ ]` 행을 계약으로 인용하지 않는다.
+- **상태: 2026-09-28 후보 A 확정(사용자), 구현 진행 중.** `DC9-01~10`은 아래에서 닫혔다. 구현이 끝날 때까지 이 문서의 계약을 현재 동작의 서술로 읽지 않는다.
 - 이 단계는 기능을 더하지 않는다. **이미 있는 기능의 공개 표면을 줄이는 것이 전부다.**
 
 ## 1. 왜 지금인가
@@ -106,16 +106,38 @@ account.display.phase.value
 
 B는 A가 너무 크다고 판단될 때의 대안이지 병행 대상이 아니다. **A를 하면 B는 그 안에 포함된다.**
 
-## 5. 열린 결정 — 전부 미결
+## 5. 결정 — 닫힘 (2026-09-28)
 
-- **DC9-01 [ ]** 후보 A / B / C 중 하나를 고른다. **권고: A.** 근거는 §4. → 검증: T2-28, [M2-21](./MANUAL_TEST_CHECKLIST.md#m2-21)
-- **DC9-02 [ ]** 표시 속성의 이름. 후보: `display` / `view` / `ui`. `view`는 기존 팩토리 이름이라 같은 단어가 두 뜻을 갖게 된다(전환기 혼란). **권고: `display`.** → 검증: 공개 타입 fixture
-- **DC9-03 [ ]** `display`를 **지연 생성**할 것인가. 상시 생성하면 모든 query가 view store와 `watchStatus` 구독 하나를 더 진다([view.ts:177](../../packages/sync/src/view.ts)의 구독). **권고: 첫 접근 때만 만드는 getter.** → 검증: 번들·구독 수 계측, NFR2-01/06
-- **DC9-04 [ ]** 반응형 key를 `queryKey: Watch<...>`로 흡수할지, `liveView`를 남길지. 흡수하면 `queryKey` 타입이 union이 되어 추론이 복잡해질 수 있다. → 검증: T2-28의 타입 negative case
-- **DC9-05 [ ]** `errorSource: 'source'`(resolve 실패)를 통합 어휘에 어떻게 싣는가. 고정 key 조회에는 발생할 수 없는 값이다. → 검증: [Phase 5.4 DC5-04-04](./PHASE5_4.md) 회귀
-- **DC9-06 [ ]** 커넥터를 `connectX` 하나로 합칠지, `connectXView`를 남길지. **React/Preact는 본문이 같아 합칠 수 있으나 Vue/Svelte/Solid는 실제로 다르다(§2.2).** 합치려면 readonly 여부를 런타임/타입으로 전달해야 한다. **권고: 남긴다.** → 검증: [DC5-05-02](./PHASE5_5.md) 회귀
-- **DC9-07 [ ]** 전환 경로. (a) 한 번에 교체, (b) 새 표면 추가 후 구 표면 deprecated 1버전 유지. 미발행이므로 (a)가 가능하다. **권고: (a).** → 검증: `pnpm gate`
-- **DC9-08 [ ]** 이 단계를 **문서 사이트 작업 전에** 할지 후에 할지. §6의 측정을 보면 후에 하면 같은 페이지를 두 번 쓴다. **권고: 전에.** → 검증: 없음(일정 결정)
+- **DC9-01 [x]** **후보 A**(사용자 확정). 근거는 §4 — 기능을 잃지 않고(§2.3), 어휘 문제를 B와 똑같이 해결하며 홉까지 없애고, 미발행이라 비용이 지금 0이다. → 검증: T2-28, [M2-21](./MANUAL_TEST_CHECKLIST.md#m2-21)
+- **DC9-02 [x]** 표시 속성 이름은 **`display`**(사용자 확정). `view`는 없어질 팩토리 이름이라 전환기에 같은 단어가 두 뜻을 갖는다. → 검증: 공개 타입 fixture
+- **DC9-03 [x]** `display`는 **첫 접근 때 만든다.** 상시 생성하면 모든 query가 view store와 `watchStatus` 구독 하나를 더 진다([view.ts:177](../../packages/sync/src/view.ts)). `openQuery`가 이미 `watch`를 같은 방식으로 지연 생성하므로([index.ts:1050](../../packages/sync/src/index.ts)) 새 패턴이 아니다. → 검증: 번들·구독 수 계측(`IC2-08`), NFR2-01/06
+- **DC9-04 [x]** 반응형 key는 **`client.query({ source, resolve, ... })` 오버로드로 흡수**한다. `liveView`는 없앤다. 두 오버로드는 `source`의 존재로 갈리고 `T`는 `queryFn`/`resolve`의 반환에서 추론한다. → 검증: T2-28의 타입 negative case
+- **DC9-05 [x]** `errorSource`는 `'query' | 'select' | 'source' | null` 하나로 둔다. `'source'`는 고정 key 조회에서 발생할 수 없지만 타입을 갈라 두 종류의 handle을 만드는 비용이 더 크다. → 검증: [DC5-04-04](./PHASE5_4.md) 회귀
+- **DC9-06 [x]** `connectXView`는 **남긴다.** React·Preact는 본문이 같지만 Vue·Svelte·Solid는 실제로 다른 구현이다(§2.2). → 검증: [DC5-05-02](./PHASE5_5.md) 회귀
+- **DC9-07 [x]** 전환은 **한 번에 교체**한다. 미발행이므로 deprecated 단계를 둘 이유가 없다. → 검증: `pnpm gate`
+- **DC9-08 [x]** 문서 사이트 **전에** 수행한다(= `DC2-23`). → 검증: 없음(일정)
+
+### 구현 중 확정한 것
+
+- **DC9-09 [x] `display` 상태는 `QueryStatus`의 엄격한 상위집합이고 필드 이름이 같다. `phase`는 삭제한다.**
+
+  `phase`는 `status`에 `'placeholder'` 하나를 더한 값이고, **그 사실은 `isPlaceholder`가 이미 들고 있었다.** 따라서 `phase === 'placeholder'` ⟺ `isPlaceholder === true`이고 select 실패는 그 관찰자의 `status: 'error'` + `errorSource: 'select'`로 그대로 표현된다. 합치면서 새 단어를 더하는 게 아니라 **중복 단어 하나를 뺀다.**
+
+  ```ts
+  QueryDisplayState<S> = QueryStatus & {
+    data: S | undefined;
+    isPlaceholder: boolean;
+    errorSource: 'query' | 'select' | 'source' | null;
+    queryKey: QueryKey | null;
+    enabled: boolean;
+  }
+  ```
+
+  **`status`/`watchStatus`는 남긴다.** 같은 어휘의 투영되지 않은 부분집합이므로 새 단어를 만들지 않고, `data`가 필요 없는 코드의 입구로 유용하다. 없애면 `.status`/`watchStatus` **329곳**(sync 157·예제 130·커넥터 43 제외한 사이트 42 포함)이 이유 없이 깨진다. → 검증: T2-28, `pnpm gate`
+
+- **DC9-10 [x] 반응형 key가 비활성일 때 `ref`/`watch`는 던진다.**
+
+  통합 handle에는 "자원이 없는 상태"가 생긴다(이전 `liveView.query === null`). 기존 `assertActive`가 이미 같은 모양으로 던지므로(`This query handle has been disposed.`) 새 문장 하나를 더한다 — `This query has no active key.` **`display.enabled`와 `display.queryKey`는 그 상태에서도 항상 읽을 수 있다**, 그렇지 않으면 확인할 방법이 없다. → 검증: T2-28 런타임 반례, [M2-21](./MANUAL_TEST_CHECKLIST.md#m2-21)
 
 ## 6. 마이그레이션 범위 (측정)
 
@@ -141,7 +163,8 @@ B는 A가 너무 크다고 판단될 때의 대안이지 병행 대상이 아니
 
 ## 8. 인계
 
-- done: 현재 표면 측정(§2), 후보와 권고(§3·§4), 열린 결정 8건(§5), 마이그레이션 범위 측정(§6). **구현·테스트는 없다.**
-- next: **DC9-01과 DC9-08을 사용자가 결정해야 다음 행동이 정해진다.** A로 확정되면 [IMPLEMENT Phase 9](./IMPLEMENT.md)의 단계 1(계약 고정)부터.
-- blockers: DC9-01 미결. 그 전에는 코드·문서 사이트 어느 쪽도 손대지 않는다.
-- 기준 commit: `32b87df`. 이 문서는 그 다음 커밋이다.
+- done: 현재 표면 측정(§2), 후보와 권고(§3·§4), **결정 10건 전부 닫힘**(§5), 마이그레이션 범위 측정(§6). 사용자가 후보 **A**와 이름 **`display`**를 골랐다.
+- 기준선(`IC2-08`, `32b87df` 시점): sync ESM **87,460 B raw / 21,290 B gzip**. core는 이번 단계에서 건드리지 않으므로 **바이트 동일**해야 한다.
+- next: [IMPLEMENT Phase 9](./IMPLEMENT.md)의 단계 3(sync 구현)부터. 단계 1·2는 이 문서와 [DESIGN §5.4](./DESIGN.md)가 닫았다.
+- blockers: 없다.
+- 기준 commit: `0c57d21`.
