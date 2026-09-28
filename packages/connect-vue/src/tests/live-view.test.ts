@@ -23,9 +23,9 @@ describe('Vue readonly live query view', () => {
     const oldRead = deferred<{ name: string }>();
     const newRead = deferred<{ name: string }>();
     let oldSignal!: AbortSignal;
-    const live = client.liveView(
-      input.watch,
-      ({ id, enabled }) => ({
+    const live = client.query({
+      source: input.watch,
+      resolve: ({ id, enabled }) => ({
         queryKey: ['vue-live', id],
         enabled,
         queryFn: ({ signal }) => {
@@ -37,9 +37,10 @@ describe('Vue readonly live query view', () => {
         },
         retry: 0,
       }),
-      { select: data => data.name, placeholderData: { name: 'waiting' } }
-    );
-    const checkReadonly = (watch: typeof live.watch) => {
+      select: data => data.name,
+      placeholderData: { name: 'waiting' },
+    });
+    const checkReadonly = (watch: typeof live.watchDisplay) => {
       const selected = connectVueView(watch)(ref => ref.data.value);
       // @ts-expect-error Vue display refs are readonly
       selected.value = 'changed';
@@ -47,7 +48,10 @@ describe('Vue readonly live query view', () => {
     void checkReadonly;
     let selections = 0;
     const screen = render(LiveView, {
-      props: { viewWatch: live.watch, onSelect: () => (selections += 1) },
+      props: {
+        viewWatch: live.watchDisplay,
+        onSelect: () => (selections += 1),
+      },
     });
     expect(screen.getByTestId('live-view').textContent).toBe('1:undefined');
     input.updateRef.enabled.value = true;
@@ -63,11 +67,11 @@ describe('Vue readonly live query view', () => {
     await nextTick();
     expect(screen.getByTestId('live-view').textContent).toBe('2:waiting');
     newRead.resolve({ name: 'new' });
-    await live.query!.load();
+    await live.load();
     await waitFor(() =>
       expect(screen.getByTestId('live-view').textContent).toBe('2:new')
     );
-    live.query!.ref.name.value = 'edited';
+    live.ref.name.value = 'edited';
     await waitFor(() =>
       expect(screen.getByTestId('live-view').textContent).toBe('2:edited')
     );
@@ -75,7 +79,7 @@ describe('Vue readonly live query view', () => {
     screen.unmount();
     const afterUnmount = selections;
     input.updateRef.id.value = 3;
-    await live.query!.load();
+    await live.load();
     await nextTick();
     expect(selections).toBe(afterUnmount);
     live.dispose();

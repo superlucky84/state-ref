@@ -3,7 +3,6 @@ import { useCombindRef } from '../store/store';
 
 const ageRef = useCombindRef(store => store[0].age);
 const numRef = useCombindRef(store => store[1]);
-
 </script>
 
 <template>

@@ -18,7 +18,7 @@ import {
 import { renderToString } from '@vue/server-renderer';
 import { createStore, combineWatch, createComputed } from 'state-ref';
 import { createSyncClient } from '@stateref/sync';
-import type { QueryViewState } from '@stateref/sync';
+import type { QueryDisplayState } from '@stateref/sync';
 import type { StateRefStore, Watch } from 'state-ref';
 import { connectVue, connectVueView } from '@/index';
 
@@ -74,17 +74,18 @@ describe('Vue server rendering', () => {
 
   it('reads query data loaded in server prefetch through a readonly view', async () => {
     const client = createSyncClient({ ssr: true });
-    const view = client.view<Counter, number>(
-      { queryKey: ['ssr-prefetch'], queryFn: async () => ({ n: 7 }) },
-      { select: data => data.n }
-    );
+    const view = client.query<Counter, number>({
+      queryKey: ['ssr-prefetch'],
+      queryFn: async () => ({ n: 7 }),
+      select: data => data.n,
+    });
     try {
       const View = defineComponent({
         setup() {
-          const data = connectVueView(view.watch)(ref => ref.data.value);
+          const data = connectVueView(view.watchDisplay)(ref => ref.data.value);
           expect(data.value).toBeUndefined();
           onServerPrefetch(async () => {
-            await view.query.load();
+            await view.load();
           });
           return () => h('div', String(data.value));
         },
@@ -151,15 +152,16 @@ describe('Vue server rendering', () => {
 
   it('renders a readonly view without subscribing either', async () => {
     const client = createSyncClient({ ssr: true });
-    const view = client.view<Counter, number>(
-      { queryKey: ['ssr-view'], queryFn: () => ({ n: 3 }) },
-      { select: data => data.n }
-    );
-    await view.query.load();
+    const view = client.query<Counter, number>({
+      queryKey: ['ssr-view'],
+      queryFn: () => ({ n: 3 }),
+      select: data => data.n,
+    });
+    await view.load();
     let renews = 0;
     type ViewRef = { data: { value: number | undefined } };
     const counting = countingWatch(
-      view.watch as unknown as Watch<QueryViewState<number>>,
+      view.watchDisplay as unknown as Watch<QueryDisplayState<number>>,
       () => (renews += 1)
     ) as unknown as (renew?: unknown, option?: unknown) => ViewRef;
     const useView = connectVueView(counting);
@@ -176,7 +178,7 @@ describe('Vue server rendering', () => {
     }
 
     const before = renews;
-    view.query.ref.n.value = 4; // a change every live view would be told about
+    view.ref.n.value = 4; // a change every live view would be told about
     expect(renews - before).toBe(0);
     view.dispose();
   });

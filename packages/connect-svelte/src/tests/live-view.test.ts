@@ -22,9 +22,9 @@ describe('Svelte readonly live query view', () => {
     const oldRead = deferred<{ name: string }>();
     const newRead = deferred<{ name: string }>();
     let oldSignal!: AbortSignal;
-    const live = client.liveView(
-      input.watch,
-      ({ id, enabled }) => ({
+    const live = client.query({
+      source: input.watch,
+      resolve: ({ id, enabled }) => ({
         queryKey: ['svelte-live', id],
         enabled,
         queryFn: ({ signal }) => {
@@ -36,9 +36,10 @@ describe('Svelte readonly live query view', () => {
         },
         retry: 0,
       }),
-      { select: data => data.name, placeholderData: { name: 'waiting' } }
-    );
-    const checkReadonly = (watch: typeof live.watch) => {
+      select: data => data.name,
+      placeholderData: { name: 'waiting' },
+    });
+    const checkReadonly = (watch: typeof live.watchDisplay) => {
       const selected = connectSvelteView(watch)(ref => ref.data.value);
       // @ts-expect-error Svelte view stores do not expose set
       selected.set('changed');
@@ -64,11 +65,11 @@ describe('Svelte readonly live query view', () => {
     await Promise.resolve();
     expect(screen.getByTestId('live-view').textContent).toBe('2:waiting');
     newRead.resolve({ name: 'new' });
-    await live.query!.load();
+    await live.load();
     await waitFor(() =>
       expect(screen.getByTestId('live-view').textContent).toBe('2:new')
     );
-    live.query!.ref.name.value = 'edited';
+    live.ref.name.value = 'edited';
     await waitFor(() =>
       expect(screen.getByTestId('live-view').textContent).toBe('2:edited')
     );
@@ -76,7 +77,7 @@ describe('Svelte readonly live query view', () => {
     screen.unmount();
     const afterUnmount = selections;
     input.updateRef.id.value = 3;
-    await live.query!.load();
+    await live.load();
     expect(selections).toBe(afterUnmount);
     live.dispose();
   });

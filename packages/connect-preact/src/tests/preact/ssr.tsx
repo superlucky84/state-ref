@@ -58,14 +58,15 @@ if (import.meta.vitest) {
 
     it('renders a readonly view without subscribing either', async () => {
       const client = createSyncClient({ ssr: true });
-      const view = client.view<Counter, number>(
-        { queryKey: ['ssr-view'], queryFn: () => ({ n: 3 }) },
-        { select: data => data.n }
-      );
-      await view.query.load();
+      const view = client.query<Counter, number>({
+        queryKey: ['ssr-view'],
+        queryFn: () => ({ n: 3 }),
+        select: data => data.n,
+      });
+      await view.load();
       let renews = 0;
       const useView = connectPreactView(
-        countingWatch(view.watch as never, () => (renews += 1)) as never
+        countingWatch(view.watchDisplay as never, () => (renews += 1)) as never
       );
       function View() {
         const ref = useView() as unknown as { data: { value: number } };
@@ -76,7 +77,7 @@ if (import.meta.vitest) {
       for (let index = 0; index < 10; index += 1) renderToString(<View />);
 
       const before = renews;
-      view.query.ref.n.value = 4; // a change every live view would be told about
+      view.ref.n.value = 4; // a change every live view would be told about
       expect(renews - before).toBe(0);
       view.dispose();
     });

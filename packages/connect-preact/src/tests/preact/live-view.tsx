@@ -23,9 +23,9 @@ if (import.meta.vitest) {
       const oldRead = deferred<{ name: string }>();
       const newRead = deferred<{ name: string }>();
       let oldSignal!: AbortSignal;
-      const live = client.liveView(
-        input.watch,
-        ({ id, enabled }) => ({
+      const live = client.query({
+        source: input.watch,
+        resolve: ({ id, enabled }) => ({
           queryKey: ['preact-live', id],
           enabled,
           queryFn: ({ signal }) => {
@@ -37,9 +37,10 @@ if (import.meta.vitest) {
           },
           retry: 0,
         }),
-        { select: data => data.name, placeholderData: { name: 'waiting' } }
-      );
-      const useView = connectPreactView(live.watch);
+        select: data => data.name,
+        placeholderData: { name: 'waiting' },
+      });
+      const useView = connectPreactView(live.watchDisplay);
       const checkReadonly = (ref: ReturnType<typeof useView>) => {
         // @ts-expect-error display refs do not expose a setter
         ref.data.value = 'changed';
@@ -70,11 +71,11 @@ if (import.meta.vitest) {
       expect(screen.container.textContent).toBe('2:waiting');
       await act(async () => {
         newRead.resolve({ name: 'new' });
-        await live.query!.load();
+        await live.load();
       });
       expect(screen.container.textContent).toBe('2:new');
       act(() => {
-        live.query!.ref.name.value = 'edited';
+        live.ref.name.value = 'edited';
       });
       expect(screen.container.textContent).toBe('2:edited');
 
@@ -83,7 +84,7 @@ if (import.meta.vitest) {
       act(() => {
         input.updateRef.id.value = 3;
       });
-      await live.query!.load();
+      await live.load();
       expect(renders).toBe(afterUnmount);
       live.dispose();
     });

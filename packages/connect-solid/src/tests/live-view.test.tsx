@@ -22,9 +22,9 @@ if (import.meta.vitest) {
       const oldRead = deferred<{ name: string }>();
       const newRead = deferred<{ name: string }>();
       let oldSignal!: AbortSignal;
-      const live = client.liveView(
-        input.watch,
-        ({ id, enabled }) => ({
+      const live = client.query({
+        source: input.watch,
+        resolve: ({ id, enabled }) => ({
           queryKey: ['solid-live', id],
           enabled,
           queryFn: ({ signal }) => {
@@ -36,9 +36,10 @@ if (import.meta.vitest) {
           },
           retry: 0,
         }),
-        { select: data => data.name, placeholderData: { name: 'waiting' } }
-      );
-      const checkReadonly = (watch: typeof live.watch) => {
+        select: data => data.name,
+        placeholderData: { name: 'waiting' },
+      });
+      const checkReadonly = (watch: typeof live.watchDisplay) => {
         const selected = connectSolidView(watch)(ref => ref.data.value);
         // @ts-expect-error Solid view accessors do not expose a setter
         selected[1]('changed');
@@ -46,7 +47,7 @@ if (import.meta.vitest) {
       void checkReadonly;
       let selections = 0;
       function View() {
-        const display = connectSolidView(live.watch)(ref => {
+        const display = connectSolidView(live.watchDisplay)(ref => {
           selections += 1;
           return `${ref.queryKey.value?.[1]}:${ref.data.value}`;
         });
@@ -67,17 +68,17 @@ if (import.meta.vitest) {
       await Promise.resolve();
       expect(shown()).toBe('2:waiting');
       newRead.resolve({ name: 'new' });
-      await live.query!.load();
+      await live.load();
       await Promise.resolve();
       expect(shown()).toBe('2:new');
-      live.query!.ref.name.value = 'edited';
+      live.ref.name.value = 'edited';
       await Promise.resolve();
       expect(shown()).toBe('2:edited');
 
       screen.unmount();
       const afterDispose = selections;
       input.updateRef.id.value = 3;
-      await live.query!.load();
+      await live.load();
       expect(selections).toBe(afterDispose);
       live.dispose();
     });

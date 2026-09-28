@@ -10,7 +10,7 @@ import { describe, it, expect } from 'vitest';
 import { renderToString } from 'solid-js/web';
 import { createStore } from 'state-ref';
 import { createSyncClient } from '@stateref/sync';
-import type { QueryViewState } from '@stateref/sync';
+import type { QueryDisplayState } from '@stateref/sync';
 import type { StateRefStore, Watch } from 'state-ref';
 import { connectSolid, connectSolidView } from '@/index';
 
@@ -46,15 +46,16 @@ describe('Solid server rendering', () => {
 
   it('renders a readonly view without subscribing either', async () => {
     const client = createSyncClient({ ssr: true });
-    const view = client.view<Counter, number>(
-      { queryKey: ['ssr-view'], queryFn: () => ({ n: 3 }) },
-      { select: data => data.n }
-    );
-    await view.query.load();
+    const view = client.query<Counter, number>({
+      queryKey: ['ssr-view'],
+      queryFn: () => ({ n: 3 }),
+      select: data => data.n,
+    });
+    await view.load();
     let renews = 0;
     const display = connectSolidView(
       countingWatch(
-        view.watch as unknown as Watch<QueryViewState<number>>,
+        view.watchDisplay as unknown as Watch<QueryDisplayState<number>>,
         () => (renews += 1)
       )
     );
@@ -69,7 +70,7 @@ describe('Solid server rendering', () => {
     }
 
     const before = renews;
-    view.query.ref.n.value = 4;
+    view.ref.n.value = 4;
     expect(renews - before).toBe(0);
     view.dispose();
   });

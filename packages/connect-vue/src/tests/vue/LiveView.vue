@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { LiveQueryViewState, QueryViewWatch } from '@stateref/sync';
+import type { QueryDisplayState, QueryDisplayWatch } from '@stateref/sync';
 import { connectVueView } from '@/index';
 
 const props = defineProps<{
-  viewWatch: QueryViewWatch<LiveQueryViewState<string>>;
+  viewWatch: QueryDisplayWatch<QueryDisplayState<string>>;
   onSelect: () => void;
 }>();
 const display = connectVueView(props.viewWatch)(ref => {
