@@ -17,6 +17,7 @@
   import LiveCard from './LiveCard.svelte';
   import ShareCard from './ShareCard.svelte';
   import ResourceCard from './ResourceCard.svelte';
+  import WriteRuleCard from './WriteRuleCard.svelte';
   import Row from './Row.svelte';
   import 'stateref-example-shared/demo.css';
 
@@ -391,5 +392,7 @@
         </p>
       </section>
     {/if}
+
+    <WriteRuleCard />
   </div>
 </main>

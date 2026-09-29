@@ -2,7 +2,9 @@
 
 상태: 2026-09-29. 구현(단계 1~7)과 자동 검증(단계 8)은 끝났다. 이 문서는 **사람이 브라우저에서 봐야 하는 것**만 담고, 자동으로 대신 확인한 것은 항목 옆에 적는다. 미수행을 통과로 바꾸지 않는다.
 
-2026-09-29 추가: 아래 항목 전부를 Playwright + Chromium 141(컨테이너의 `/opt/pw-browsers/chromium`)으로 대신 확인했다. 방법과 수치는 [IMPLEMENT 단계 8.1](./IMPLEMENT.md#단계-81--확인-목록을-브라우저로-자동-확인)에 있다. 자동 확인은 **값·로그·렌더 횟수**를 판정한다. 화면이 보기 좋은지는 판정하지 않는다. 그래서 체크박스는 사람 몫으로 남겨 둔다.
+2026-09-29 추가 (단계 9): 개발 모드 항목은 이제 상시 e2e `examples/e2e/src/dev.spec.ts`가 확인한다(`pnpm test:e2e`). 확인하는 것은 React StrictMode 입력, 렌더 횟수, Vue·Svelte 쓰기 규칙이다. Vue·Svelte 예제에는 이 규칙을 화면으로 보여 주는 "쓰기 규칙" 카드가 생겼다. 사람은 그 카드에서 버튼을 누르거나 입력해 보면 된다.
+
+그전에는 아래 항목 전부를 Playwright + Chromium 141(컨테이너의 `/opt/pw-browsers/chromium`)으로 대신 확인했다. 방법과 수치는 [IMPLEMENT 단계 8.1](./IMPLEMENT.md#단계-81--확인-목록을-브라우저로-자동-확인)에 있다. 자동 확인은 **값·로그·렌더 횟수**를 판정한다. 화면이 보기 좋은지는 판정하지 않는다. 그래서 체크박스는 사람 몫으로 남겨 둔다.
 
 ```bash
 pnpm dev:react     # 개발 모드 — StrictMode 이중 실행은 개발 모드에서만 일어난다
@@ -26,7 +28,7 @@ pnpm --filter stateref-example-react dev:ssr   # React SSR 데모
 
 ## M-CN-04 — 쓰기 규칙이 화면에서 보이는 모습
 
-- [ ] Vue: 선택한 객체의 중첩 필드를 바꾸는 코드를 콘솔에서 실행하면 readonly 경고가 뜨고 화면·스토어가 바뀌지 않는다. (자동, 2026-09-29: 개발 서버에서 `ui.value.lastOperation = 'HACKED'`를 실행했다. `[Vue warn] Set operation on key "lastOperation" failed: target is readonly`가 한 번 떴고, 값과 화면은 `(없음)` 그대로였다. 이어서 `ui.value = {...}`로 쓰자 값과 화면이 함께 바뀌었다.)
-- [ ] Svelte 5: `$store.field = x` 관용구가 입력한 대로 스토어에 반영된다. (자동, 2026-09-29: Svelte 5.57.1 개발 서버에서, 같은 스토어를 쓰는 컴포넌트 둘 중 하나가 `$address.city = 'Daegu'`를 실행했다. 스토어·두 화면이 모두 `Daegu`가 됐고, 쓰기 기록은 1건 `{city:'Seoul'} → {city:'Daegu'}`, 콘솔 기록은 0이었다. 예제 화면에는 이 관용구가 없어서 커넥터의 테스트 컴포넌트 `NestedWrite.svelte`를 임시 페이지에 올려 확인했다.)
+- [ ] Vue: "쓰기 규칙" 카드의 `address.value.city = '대구'` 버튼을 누르면(또는 콘솔에서 같은 코드를 실행하면) readonly 경고가 뜨고 화면·스토어가 바뀌지 않는다. (자동, 2026-09-29: 개발 서버에서 `ui.value.lastOperation = 'HACKED'`를 실행했다. `[Vue warn] Set operation on key "lastOperation" failed: target is readonly`가 한 번 떴고, 값과 화면은 `(없음)` 그대로였다. 이어서 `ui.value = {...}`로 쓰자 값과 화면이 함께 바뀌었다.)
+- [ ] Svelte 5: "쓰기 규칙" 카드의 입력 칸(`$address.city = 입력값`)에 쓴 대로 스토어와 따로 구독한 줄에 반영된다. (자동, 2026-09-29: Svelte 5.57.1 개발 서버에서, 같은 스토어를 쓰는 컴포넌트 둘 중 하나가 `$address.city = 'Daegu'`를 실행했다. 스토어·두 화면이 모두 `Daegu`가 됐고, 쓰기 기록은 1건 `{city:'Seoul'} → {city:'Daegu'}`, 콘솔 기록은 0이었다. 예제 화면에는 이 관용구가 없어서 커넥터의 테스트 컴포넌트 `NestedWrite.svelte`를 임시 페이지에 올려 확인했다.)
 
 **합격:** 위 항목이 전부 통과하거나, 실패에 재현 절차·브라우저·커밋 SHA가 적혀 있음.

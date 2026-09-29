@@ -26,3 +26,16 @@ export const DEMOS: readonly Demo[] = [
 ];
 
 export const urlOf = (demo: Demo) => `http://localhost:${demo.port}/`;
+
+/**
+ * The demos this harness also opens on their development server (DC-CN-10).
+ *
+ * Some behaviour exists only there: React's StrictMode double run, Vue's
+ * readonly warning, component names a render count can report. `dev.spec.ts`
+ * checks those; everything else stays on the built `dist`.
+ */
+export const DEV_DEMOS = {
+  react: { name: 'react-dev', pkg: 'stateref-example-react', port: 4281 },
+  vue: { name: 'vue-dev', pkg: 'stateref-example-vue', port: 4283 },
+  svelte: { name: 'svelte-dev', pkg: 'stateref-example-svelte', port: 4284 },
+} as const satisfies Record<string, Demo>;

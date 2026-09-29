@@ -219,8 +219,33 @@ REQUIREMENTS C-CN-03의 "Vue 33 · Svelte 35 파일"은 컴포넌트 파일까�
 - Svelte 커넥터 개발 서버에서 `import { VERSION } from 'svelte'`는 실패한다. `VERSION`은 `svelte/compiler`에 있다.
 - `timeout`으로 끊은 Playwright 실행은 webServer 자식들을 남긴다. 다음 실행이 "port already used"로 멈추므로 PID로 정리한다.
 
+## 단계 9 — 개발 모드 확인을 상시 e2e로 (DC-CN-10)
+
+- [x] Vue·Svelte 예제에 `write-rule` 카드: `examples/vue/src/WriteRuleCard.vue`, `examples/svelte/src/WriteRuleCard.svelte`.
+- [x] `examples/e2e/src/dev.spec.ts`와 config의 개발 서버 3개(React 4281, Vue 4283, Svelte 4284). 테스트는 4개다.
+  - React F-R1: 패널 A에 `부산`·`대구`·`광주`를 입력하면 패널 B가 매번 같은 값을 보인다.
+  - React DC-CN-03: 입력 한 번에 두 패널이 1회씩 렌더되고, 읽지 않는 카드 다섯은 0회다.
+  - Vue: 중첩 쓰기는 readonly 경고 1건만 남기고 아무것도 바꾸지 않는다. `.value` 쓰기는 반영되고 쓰기 1건이다.
+  - Svelte: `$address.city = 입력값`이 두 번 모두 따로 구독한 줄에 반영되고 쓰기 2건이다.
+- [x] 결함 주입: 네 가지 모두 spec이 떨어졌다. 되돌린 뒤 4/4 통과.
+- [x] e2e typecheck, `pnpm check:examples`, `pnpm gate` 19단계 PASS. `dev.spec` + `contract.spec` 16/16 통과. 카드를 더한 빌드에서도 다섯 화면 비교가 그대로 통과했다.
+
+### 단계 9 기록
+
+| 주입 | 떨어진 테스트 | 메시지 |
+|---|---|---|
+| React: `AbortController`를 링크마다 하나로 (StrictMode 재구독이 죽은 신호를 받는다) | F-R1, DC-CN-03 | 패널 B가 입력을 따라오지 않음 |
+| React: 첫 실행에 루트 `.value`를 읽어 구독을 스토어 전체로 넓힘 | DC-CN-03 | `StateCard` 0 기대, 1 |
+| Vue: `shown()`에서 `readonly` 제거 | Vue | "readonly 경고가 뜨지 않았다" 1 기대, 0 |
+| Svelte: `copied()`가 원본을 그대로 넘김 | Svelte | 따로 구독한 줄 "대구" 기대, "서울" |
+
+- 주입한 빌드는 lint 검사(prettier) 때문에 종료 코드가 실패로 나왔다. 그래도 vite는 검사 전에 `dist`를 쓴다. 파일 시각과, 위 메시지가 주입한 결함과 정확히 맞는 것으로 주입된 코드가 실제로 서빙됐음을 확인했다.
+- 컨테이너 보정은 단계 8과 같다: `executablePath` 임시 설정, 빈 favicon. 개발 서버용 favicon은 예제 루트에 두었다. 모두 지웠다.
+- `ui.tick`을 읽는 카드(`ServerCard` 등)는 입력마다 다시 렌더된다. 예제가 스냅숏을 구독하려고 일부러 읽는 것이라 단언 대상에서 뺐다.
+
 ## 인계
 
+- 2026-09-29: **단계 9 완료 — 개발 모드 확인이 상시 e2e(`dev.spec.ts`)가 됐다.** 결함 주입 네 가지 모두 잡힘. `pnpm test:e2e`는 이제 개발 서버 3개를 더 띄운다. 확인 목록에 사람이 볼 것은 화면 모양뿐이다.
 - 2026-09-29: **단계 8.1 — 확인 목록 네 항목을 브라우저로 자동 확인, 전부 기대대로.** 사람 몫은 이제 "보기에 이상하지 않은가"뿐이다. 개발 모드 렌더 횟수와 쓰기 규칙을 상시 spec으로 만들지는 결정이 필요하다. 만든다면 dev 서버 기반 spec과 Svelte 확인용 예제 화면이 필요하다.
 
 - 2026-09-29: **단계 8 완료 — 커넥터 현대화 종료.** e2e 84 통과(컨테이너 브라우저 차이 두 가지를 임시 보정), 매트릭스·gate·check:examples PASS, React 예제 StrictMode + 개발 모드 확인. 결정 DC-CN-01~07 닫힘, DC-CN-08(프리릴리스)·09(`ViewWatch` 공통화)는 범위 밖으로 남김. **다음(사람):** MANUAL_TEST_CHECKLIST, 그리고 배포(버전: react 19.0.0, preact 10.4.0, vue 3.4.0, svelte 5.0.0, solid 1.4.0 — CHANGELOG 미배포 절).

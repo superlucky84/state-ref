@@ -1,5 +1,5 @@
 import { defineConfig } from '@playwright/test';
-import { DEMOS, urlOf } from './src/demos';
+import { DEMOS, DEV_DEMOS, urlOf } from './src/demos';
 import { BUNDLE_PORT, bundleUrl } from './src/bundles';
 import { SSR_DEMOS, ssrUrlOf } from './src/ssr';
 
@@ -48,6 +48,13 @@ export default defineConfig({
       reuseExistingServer: false,
       timeout: 60_000,
     },
+    ...Object.values(DEV_DEMOS).map(demo => ({
+      // Development mode is the point here (DC-CN-10), so no `dist`.
+      command: `pnpm --filter ${demo.pkg} exec vite --port ${demo.port} --strictPort`,
+      url: urlOf(demo),
+      reuseExistingServer: false,
+      timeout: 60_000,
+    })),
     ...SSR_DEMOS.map(demo => ({
       // These render per request through Vite's middleware, so there is no
       // `dist` to preview - the demo's own `dev:ssr` server is the page.

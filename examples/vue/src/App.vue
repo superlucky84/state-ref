@@ -17,6 +17,7 @@ import Flag from './Flag.vue';
 import LiveCard from './LiveCard.vue';
 import ShareCard from './ShareCard.vue';
 import ResourceCard from './ResourceCard.vue';
+import WriteRuleCard from './WriteRuleCard.vue';
 import Row from './Row.vue';
 import 'stateref-example-shared/demo.css';
 
@@ -404,6 +405,8 @@ const time = (at: number | null) =>
           입력도 남는다.
         </p>
       </section>
+
+      <WriteRuleCard />
     </div>
   </main>
 </template>

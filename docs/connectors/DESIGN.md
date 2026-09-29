@@ -91,6 +91,13 @@
 - [x] **DC-CN-07 / SSR 판정 — 프레임워크마다 공식 경로로 (2026-09-29, 단계 1~5).** React: `useSyncExternalStore`의 `getServerSnapshot`(구독은 서버에서 `subscribe`가 불리지 않아 생기지 않는다). Preact: 구독이 `useEffect` 안이라 서버 렌더는 구독하지 않는다. Solid: `solid-js/web`의 `isServer`. Svelte: `onDestroy`가 서버에서도 돌아 분기가 필요 없다, runes는 `createSubscriber`가 반응형 문맥 밖(서버)에서 구독하지 않는다. **Vue만 `typeof window`를 유지한다** — 라이브러리가 쓸 공개 서버 판정이 없고, 서버 렌더에서 스코프가 해제되지 않아 구독을 만들면 안 되기 때문이다.
 - [ ] **DC-CN-08 / 프리릴리스(Preact 11 rc, Vue 3.6 rc, Solid 2.0 rc)는 이번 범위 밖이다** — 권장. 정식 출시 뒤 따로 본다. 다만 Solid의 effect 되쓰기 제거(DC-CN-06)는 2.0 이행을 가볍게 한다.
 - [ ] **DC-CN-09 / 공통 타입 `ViewWatch` 한 곳에 두기.** `state-ref`에서 export할지, 복붙을 유지할지. TBD(낮은 우선순위).
+- [x] **DC-CN-10 / 개발 모드 확인을 상시 e2e로 만든다 (사용자, 2026-09-29, 단계 9).** 단계 8.1에서 스크립트로 한 번 잰 세 가지를 `examples/e2e/src/dev.spec.ts`로 옮긴다: React 렌더 횟수, Vue 중첩 쓰기 거절, Svelte `$store.field = x`. 개발 서버(`vite`)로 도는 이유는 셋 다 개발 모드에서만 보이기 때문이다. StrictMode 이중 실행, Vue readonly 경고, 이름이 남은 컴포넌트가 그렇다.
+  - **Vue·Svelte 예제에 "쓰기 규칙" 카드(`data-card="write-rule"`)를 더한다.** e2e는 화면(DOM)만 읽고 예제가 내놓은 `window` 전역을 읽지 않는다는 원칙(DC8-8-01)을 지키고, 사람도 같은 화면에서 규칙을 보게 하기 위해서다.
+    - 카드는 자기 전용 작은 스토어(`{ address: { city, zip } }`)를 만든다. 공유 모델·시나리오·다섯 화면 비교에는 닿지 않는다. 읽는 쪽은 공유 카드 목록(`CARD_TITLE`)만 읽는다.
+    - 보이는 것: 선택한 객체가 보이는 도시, 같은 스토어를 따로 구독한 다른 선택이 보이는 도시, 스토어 쓰기 횟수(`onWrite`).
+    - Vue 카드는 버튼 둘이다: 중첩 필드에 직접 쓰기(거절), `.value` 통째 교체(반영). Svelte 카드는 입력 칸이 `$address.city = 값`으로 쓴다.
+    - React·Preact·Solid에는 두지 않는다. 쓰기 규칙이 프레임워크 문법과 부딪치는 곳은 이 둘뿐이다.
+  - **React 렌더 횟수는 예제를 고치지 않고 잰다.** `addInitScript`로 DevTools가 쓰는 전역 훅 `__REACT_DEVTOOLS_GLOBAL_HOOK__`을 먼저 심고, DevTools와 같은 규칙으로 커밋마다 렌더된 컴포넌트를 센다. 예제가 내놓는 전역이 아니라 React가 스스로 부르는 공개 확장점이다.
 
 ## 검증 원칙
 
