@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@stateref/connect-preact",
-  "version": "10.3.0",
+  "version": "10.4.0",
   "private": false,
   "description": "Preact connector for state-ref",
   "packageManager": "pnpm@7.6.0",

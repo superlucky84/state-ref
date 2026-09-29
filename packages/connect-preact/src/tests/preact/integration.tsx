@@ -110,12 +110,15 @@ if (import.meta.vitest) {
       }
 
       trender(<Count />);
+      // A mount renders twice: once to paint, once through the subscribed ref
+      // so it collects what it reads (DC-CN-03, docs/connectors/DESIGN.md).
+      expect(seen).toEqual([3, 3]);
 
       act(() => {
         ref.items[3].value = 4;
       });
 
-      expect(seen).toEqual([3, 4]);
+      expect(seen).toEqual([3, 3, 4]);
     });
 
     it('renders array items through .value and ignores unrelated writes (CI-10)', () => {

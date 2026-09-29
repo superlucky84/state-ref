@@ -1,5 +1,28 @@
 # Changelog
 
+## @stateref/connect-preact 10.4.0 (unreleased)
+
+The major follows Preact, so a behavior change that would otherwise be a
+major lands in a minor here - read the Changed entry before upgrading.
+
+### Fixed
+
+- **A render that suspends no longer leaks its subscription** (F-P3,
+  docs/connectors/DESIGN.md). The connector subscribed during render and
+  released in an effect cleanup; a suspended render never commits, so nothing
+  released it, and the next store write after unmount reached a dead setState
+  and threw `TypeError: Cannot read properties of undefined (reading '__c')`.
+
+### Changed
+
+- **The subscription is made in an effect, after commit** - the same design
+  as `@stateref/connect-react` 19.0.0, written with `preact/hooks` (no
+  `preact/compat` dependency). A server render runs no effects and subscribes
+  to nothing, without a `typeof window` check.
+- **A mount renders twice**, for the same reason as the React connector: the
+  second render collects the paths the component reads. Tests that counted
+  renders exactly now count one more on mount.
+
 ## @stateref/connect-react 19.0.0 (unreleased)
 
 The major follows the newest React it supports; it still supports React 18
