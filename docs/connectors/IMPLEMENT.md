@@ -104,9 +104,29 @@ REQUIREMENTS C-CN-03의 "Vue 33 · Svelte 35 파일"은 컴포넌트 파일까�
 
 ## 단계 4 — Svelte
 
-- [ ] DC-CN-05에 따라 peer 확장 + Svelte 5에서 기존 API 동작 확인.
-- [ ] (A라면) runes용 API 추가.
-- **기준 테스트:** 기존 Svelte 테스트 35파일을 Svelte 4·5 양쪽에서.
+- [x] 워크스페이스 개발 버전을 Svelte 5.57 + `vite-plugin-svelte` 4로 올리고(runes API를 타입 검사·시험하려면 필요), Svelte 4는 매트릭스 min 칸이 맡는다. 매트릭스도 칸마다 맞는 플러그인(4 → v3, 5 → v4)을 쓴다(`edc96ff`).
+- [x] SSR 테스트를 메이저별 API로(4: `Component.render`, 5: `svelte/server`의 `render`, 버전은 `svelte/compiler`의 `VERSION`).
+- [x] F-S5를 찾아 실패하는 테스트로 고정(`nested-write.test.ts` 3개, 고치기 전 1개 실패 — 옛 객체가 제자리 변형) → 복사본 전달 + 값 비교 되쓰기로 고침.
+- [x] runes API `@stateref/connect-svelte/runes` 추가(`runes.test.ts` 6개 + runes 모드 컴포넌트, Svelte 4에서는 스스로 건너뛴다), ESM 전용 빌드 설정 `vite.runes.config.js`, 패키징 검사에 import 성공·require 거절 추가.
+- [x] peer `^4.0.0 || ^5.0.0`, 버전 5.0.0. 커밋 `07bea7b`.
+- **기준 테스트:** 기존 Svelte 테스트 4파일 + SSR 1을 Svelte 4·5 양쪽에서 — **충족.** 매트릭스 Svelte 4.2.19: 29 pass + runes 6 skip + SSR 1, Svelte 5.57.1: 35 pass + SSR 1. `pnpm gate` PASS.
+
+### 단계 4 기록
+
+- **결함 주입:**
+
+| 주입 | 잡힌 테스트 |
+| --- | --- |
+| runes: 선택 객체를 얼리지 않음 | **1** |
+| runes: 해제 때 abort 안 함 | **1** |
+| runes: `track()` 제거 | 2 |
+| runes: 구독 안 된 ref로 읽음 | 2 |
+| store: 복사본 대신 내부 객체 전달 | **1** |
+| store: 값 비교 없이 되쓰기 | 무한 루프(타임아웃)로 잡힘 |
+
+  얇은 셋(**1**)은 단계 7에서 보강한다.
+- runes API는 컴포넌트에 묶이지 않는다(모듈 수준 선택도 동작, 쓰기는 늘 스토어에 닿는다). store API는 컴포넌트가 사라지면 되쓰기를 끊는다. 이 차이는 단계 6에서 문서에 적는다.
+- 예제 `examples/svelte`는 아직 Svelte 4다(단계 6).
 
 ## 단계 5 — Solid
 
@@ -131,6 +151,7 @@ REQUIREMENTS C-CN-03의 "Vue 33 · Svelte 35 파일"은 컴포넌트 파일까�
 
 ## 인계
 
+- 2026-09-29: **단계 4 완료** (`07bea7b`, `edc96ff`). Svelte 4·5 지원, runes 진입점, F-S5 수정. 쓰기 규칙을 원칙 하나로 정리했다(DC-CN-04). 다음은 단계 5(Solid).
 - 2026-09-29: **단계 3 완료** (`5ff7638`, `3bf3e52`). Vue는 복사·깊은 watch·가드를 걷어 내고 `customRef`로 스토어에 바로 읽고 쓴다. 선택값은 읽기 전용(DC-CN-04). 다음은 단계 4(Svelte).
 - 2026-09-29: **단계 2 완료** (`576893c`). Preact도 커밋 뒤 구독으로 옮겼고, 렌더 중 구독의 실제 결함(F-P3, Suspense 누수와 예외)을 고쳤다. 다음은 단계 3(Vue) — DC-CN-04의 중첩 변형 측정부터.
 - 2026-09-29: **단계 1 완료** (`53bf750`). React 커넥터가 `useSyncExternalStore` 위로 옮겨졌고 React 18·19 모두 StrictMode에서 갱신된다. 다음은 단계 2(Preact).

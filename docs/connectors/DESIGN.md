@@ -52,6 +52,7 @@
 - **F-S1 [측정] peer가 `^4.0.0`이라 Svelte 5를 받지 않는다.** 단계 0: Svelte 5.57.1에서 DOM 테스트 4파일·26개 **전부 통과**. SSR 테스트 1개는 실패하는데 **원인은 테스트 코드**다 — Svelte 4의 `Component.render()`를 부르고, Svelte 5에서는 `svelte/server`의 `render()`다. 매트릭스 사본에서만 그렇게 바꿔 돌리면 통과한다(HTML `<!--[--><div>7</div><!--]-->`, 쓰기 뒤 남은 구독 0).
 - **F-S4 [측정] Svelte 5 테스트 환경의 빈틈 둘.** (1) `@sveltejs/vite-plugin-svelte@3`은 Svelte 5에서 "지원이 v4로 옮겨 갔다"고 경고한다 — Svelte 5 칸은 v4 이상이 필요하다(v4는 Vite 5를 받는다, [추론]). (2) 테스트 컴포넌트는 Svelte 4 문법이라 Svelte 5에서 **legacy 모드로 컴파일된다.** runes 모드 컴포넌트에서 `$store`로 쓰는 경우는 아직 시험되지 않는다.
 - **F-S2 [소스] Svelte 5가 권장하는 모델은 runes다.** 외부 이벤트 소스를 반응형으로 잇는 공식 도구는 `createSubscriber`(`svelte/reactivity`, 5.7+)이고, store와 runes 사이는 `fromStore`/`toStore`로 잇는다.
+- **F-S5 [측정] — 고침(`07bea7b`). `$addr.city = 'x'`가 스토어 내부 객체를 제자리에서 바꾸고 쓰기도 알림도 없다.** 커넥터가 스토어의 내부 객체를 그대로 넘겼기 때문에, Svelte가 컴파일한 "변형 후 `set`"에서 변형은 스토어 안에서 일어나고 `set`은 같은 값으로 보였다. 측정: 스토어 `Daegu`, 알림 0, 쓰기 0건. 복사본을 넘기도록 고치다가 **되쓰기 루프**를 만났다 — Svelte `writable`은 알림 중에 들어온 `set`을 큐에 넣어 나중에 처리하므로, 커넥터 자신의 전달을 표시하던 플래그가 이미 내려간 뒤에 그 전달이 되쓰기에 도착했다. 플래그 대신 값 비교(스토어 값과 구조적으로 같으면 쓰지 않음)로 풀었다.
 - **SSR은 결함이 아니다 [소스].** 다른 커넥터와 달리 `typeof window` 분기가 없는데, Svelte의 `onDestroy`는 서버 렌더에서도 실행되는 유일한 생명주기라 구독이 정리된다.
 
 ### Solid (`connectSolid`, `connectSolidView`)
@@ -81,7 +82,8 @@
   - 구현 `53bf750`.
 - [x] **DC-CN-04 / Vue 양방향 구현 — 선택한 값은 읽기 전용, 쓰기는 `.value`로만 (사용자, 2026-09-29).** 측정해 보니 중첩 직접 변경은 **스토어를 제자리에서 바꾸는 결함**이었다(F-V4). 사용자가 짚은 대로 코어에서도 `ref.x.value`로 받은 객체를 바꾸면 알림 0회로 조용히 바뀐다 — 지원하는 방식이 아니다. 그래서 Vue도 다른 커넥터·코어와 같은 규칙으로 맞췄다: 선택한 객체·배열은 Vue `readonly`(개발 모드 경고, 스토어 불변), 쓰기는 리프 선택의 `.value` 또는 통째 교체, 스토어에 **동기** 반영. 구현은 `customRef` 다리 + `reactive({ value })` 반환(Vue `watch()`가 계속 받는다) + `onScopeDispose`. 커밋 `5ff7638`.
   - 대안 "쓰기 전달 프록시로 중첩 변경 유지"는 Vue만 다른 규칙을 갖게 되고 구현이 커서 고르지 않았다.
-- [x] **DC-CN-05 / Svelte 5 — A(store API 유지 + runes API 추가)로 결정 (사용자, 2026-09-29).**
+  - **원칙으로 정리 (단계 4, 사용자와 합의): "커넥터를 지나가는 쓰기만 스토어에 반영하고, 지나가지 않는 변경은 막는다."** Svelte의 `$addr.city = x`는 컴파일러가 `addr.set(...)`으로 바꾸므로 커넥터를 지나간다 → **지원**(복사본을 넘겨 `set`이 올바른 쓰기가 되게). Vue의 `addr.value.city = x`와 runes의 `x.value.city = y`는 커넥터를 지나가지 않는다 → **막음**(Vue `readonly`, runes는 얼린 복사본). 사용자가 "Vue는 `.value`로 ref에 접근하는 게 일반적이라 둘은 성격이 다르지 않나"라고 짚었고 그 차이가 이 원칙이다.
+- [x] **DC-CN-05 / Svelte 5 — A(store API 유지 + runes API 추가)로 결정 (사용자, 2026-09-29). 구현 `07bea7b`:** store API는 Svelte 4·5 공통, runes API는 ESM 전용 하위 경로 `@stateref/connect-svelte/runes`(`svelte/reactivity`가 Svelte 4에 없어서). `createSubscriber`로 읽는 쪽이 있는 동안만 구독한다.
   - A (권장): 지금의 store API를 유지하고 peer만 `^4 || ^5`로 넓힌다. 두 버전에서 테스트를 돌린다. runes용 API(`createSubscriber` 기반)는 **추가**로 제공한다.
   - B: Svelte 5 전용으로 runes API로 갈아탄다.
 - [ ] **DC-CN-06 / Solid 되쓰기.** `createEffect` 되쓰기를 없애고 setter가 스토어에 직접 쓰게 하는 것을 권장한다. 반환 모양 `Signal<V>`는 유지한다.
