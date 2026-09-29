@@ -41,10 +41,25 @@ REQUIREMENTS C-CN-03의 "Vue 33 · Svelte 35 파일"은 컴포넌트 파일까�
 
 ## 단계 1 — React
 
-- [ ] F-R1(StrictMode 지연)을 실패하는 회귀 테스트로 먼저 고정한다.
-- [ ] DC-CN-03 프로토타입: `useSyncExternalStore`로 옮기고, 마운트당 렌더 횟수·의존성 수집·구독 해제를 잰다.
-- [ ] `connectReact`·`connectReactView` 구현, peer 범위 갱신.
-- **기준 테스트:** 기존 React 테스트 7파일 + F-R1 회귀 + StrictMode에서의 구독 해제 + SSR(`getServerSnapshot`), React 18·19 양쪽.
+- [x] F-R1(StrictMode 지연)을 실패하는 회귀 테스트로 먼저 고정한다 — `src/tests/react/strict-mode.tsx` 4개. 고치기 전 **3개 실패**(18에서 `['0','2','3']`, view 커넥터 `0`, StrictMode 언마운트 뒤 알림 1회 — 누수가 새로 드러났다).
+- [x] DC-CN-03 프로토타입 A·B를 재고 사용자가 A를 골랐다(DESIGN DC-CN-03).
+- [x] `connectReact`·`connectReactView` 구현, peer `^18.0.0 || ^19.0.0`, 버전 19.0.0(DC-CN-02), CHANGELOG 미배포 절. 커밋 `53bf750`.
+- **기준 테스트:** 기존 React 테스트 7파일 + F-R1 회귀 + StrictMode에서의 구독 해제 + SSR(`getServerSnapshot`), React 18·19 양쪽 — **충족.** 매트릭스 React 18.3.1·19.3.0 모두 8파일·40개 pass, `pnpm gate` 19단계 PASS.
+
+### 단계 1 기록
+
+- **기존 테스트를 고친 자리와 이유.** 약화는 없다.
+  - `unmount-leak.tsx`·`sync-ui.tsx`의 `countingWatch`가 콜백 없는 `watch()`를 처리하지 못했다(`renew is not a function`). `Watch` 계약상 콜백 없는 호출은 구독하지 않는 ref를 돌려준다. `ssr.tsx`의 같은 도우미는 이미 그렇게 하고 있어서 그 방식으로 맞췄다.
+  - 렌더 횟수를 정확히 세는 3개(CI-21, "구독한 값에만 반응", "언마운트 뒤 반응 안 함")는 마운트 렌더가 2회가 된 것을 **명시적으로 단언**하도록 고쳤다: `[3, 4]` → 마운트 직후 `[3, 3]` 단언 + `[3, 3, 4]`, 호출 수 1 → 2, 2 → 3. 마운트 뒤의 증가분은 전과 같다.
+- **결함 주입** (원본을 두고 주입한 뒤 복원, `diff`로 확인):
+
+| 주입 | 잡힌 테스트 |
+| --- | --- |
+| 해제할 때 abort하지 않음 | 5 |
+| `subscribe` 뒤 재렌더(버전 증가) 없음 | 26 |
+| 변경 알림에서 버전을 올리지 않음 | 29 |
+
+- **남은 것 (단계 6):** 예제 `examples/react`는 아직 React 18이다. 사이트 React 장·패키지 README에 버전 범위와 "마운트 2회 렌더"를 적는 일도 남았다.
 
 ## 단계 2 — Preact
 
@@ -86,5 +101,6 @@ REQUIREMENTS C-CN-03의 "Vue 33 · Svelte 35 파일"은 컴포넌트 파일까�
 
 ## 인계
 
+- 2026-09-29: **단계 1 완료** (`53bf750`). React 커넥터가 `useSyncExternalStore` 위로 옮겨졌고 React 18·19 모두 StrictMode에서 갱신된다. 다음은 단계 2(Preact).
 - 2026-09-29: **단계 0 완료.** 결과는 위 "단계 0 결과". 우선순위가 분명해졌다 — React 19 + StrictMode에서 갱신이 전혀 안 되는 F-R1이 가장 급하다. 다음은 단계 1(React).
 - 2026-09-29: 검토 문서 작성. 코드 변경 없음. F-R1은 일회용 테스트로 재현하고 지웠다(재현 절차는 DESIGN F-R1). **다음:** 사용자가 DC-CN-01(최신+직전 메이저)·02(최신 메이저를 따르는 번호)·05(store 유지 + runes 추가)를 골랐다. 남은 결정 DC-CN-03·04·06·07은 각 단계의 측정·프로토타입 뒤에 닫는다. 다음은 단계 0.
