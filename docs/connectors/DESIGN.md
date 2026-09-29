@@ -59,8 +59,9 @@
 
 지금: `createSignal` + **`createEffect`로 되쓰기** + `onCleanup` + `typeof window` SSR 분기.
 
-- **F-SO1 [소스] 신호 → 스토어 방향을 `createEffect`로 복사한다.** effect는 렌더 뒤에 돌므로 setter 호출과 스토어 쓰기 사이에 틈이 있고, Solid 문서는 effect로 신호끼리 동기화하는 것을 피하라고 한다. setter를 감싸 바로 스토어에 쓰면 복사도 `changing` 가드도 필요 없다.
-- **F-SO2 [소스] SSR 판정이 `typeof window`다.** Solid의 공식 판정은 `solid-js/web`의 `isServer`다.
+- **F-SO1 [소스] — 고침(`3d72925`). 신호 → 스토어 방향을 `createEffect`로 복사한다.** effect는 렌더 뒤에 돌므로 setter 호출과 스토어 쓰기 사이에 틈이 있고, Solid 문서는 effect로 신호끼리 동기화하는 것을 피하라고 한다. setter를 감싸 바로 스토어에 쓰면 복사도 `changing` 가드도 필요 없다.
+- **F-SO3 [측정] — 고침(`3d72925`). accessor가 스토어 내부 객체를 돌려준다.** `addr().city = 'Daegu'`와, `prev`를 바꿔 돌려주는 함수형 setter가 스토어를 제자리에서 바꾸고 쓰기 기록이 없었다(Vue F-V4·Svelte F-S5와 같은 부류).
+- **F-SO2 [소스] — 고침(`3d72925`). SSR 판정이 `typeof window`다.** Solid의 공식 판정은 `solid-js/web`의 `isServer`다.
 - 외부 소스를 신호로 잇는 공식 도구는 `from(producer)`다.
 - Solid 2.0은 rc이고 effect 모델이 바뀐다([DC-CN-08](#결정)). effect 되쓰기를 없애 두면 2.0 이행도 가벼워진다.
 
@@ -86,8 +87,8 @@
 - [x] **DC-CN-05 / Svelte 5 — A(store API 유지 + runes API 추가)로 결정 (사용자, 2026-09-29). 구현 `07bea7b`:** store API는 Svelte 4·5 공통, runes API는 ESM 전용 하위 경로 `@stateref/connect-svelte/runes`(`svelte/reactivity`가 Svelte 4에 없어서). `createSubscriber`로 읽는 쪽이 있는 동안만 구독한다.
   - A (권장): 지금의 store API를 유지하고 peer만 `^4 || ^5`로 넓힌다. 두 버전에서 테스트를 돌린다. runes용 API(`createSubscriber` 기반)는 **추가**로 제공한다.
   - B: Svelte 5 전용으로 runes API로 갈아탄다.
-- [ ] **DC-CN-06 / Solid 되쓰기.** `createEffect` 되쓰기를 없애고 setter가 스토어에 직접 쓰게 하는 것을 권장한다. 반환 모양 `Signal<V>`는 유지한다.
-- [ ] **DC-CN-07 / SSR 판정.** TBD. React는 `getServerSnapshot`, Solid는 `isServer`로 공식 경로가 있다. Vue·Preact는 라이브러리가 쓸 공개 판정이 마땅치 않아 `typeof window`를 유지하는 안과 비교해 정한다.
+- [x] **DC-CN-06 / Solid 되쓰기 — 제거 (2026-09-29, 구현 `3d72925`).** setter가 스토어에 직접·동기로 쓰고, accessor는 스토어 구독이 채우는 신호다. 반환 모양 `Signal<V>`는 유지. 함수형 갱신(`set(prev => ...)`)도 지원한다.
+- [x] **DC-CN-07 / SSR 판정 — 프레임워크마다 공식 경로로 (2026-09-29, 단계 1~5).** React: `useSyncExternalStore`의 `getServerSnapshot`(구독은 서버에서 `subscribe`가 불리지 않아 생기지 않는다). Preact: 구독이 `useEffect` 안이라 서버 렌더는 구독하지 않는다. Solid: `solid-js/web`의 `isServer`. Svelte: `onDestroy`가 서버에서도 돌아 분기가 필요 없다, runes는 `createSubscriber`가 반응형 문맥 밖(서버)에서 구독하지 않는다. **Vue만 `typeof window`를 유지한다** — 라이브러리가 쓸 공개 서버 판정이 없고, 서버 렌더에서 스코프가 해제되지 않아 구독을 만들면 안 되기 때문이다.
 - [ ] **DC-CN-08 / 프리릴리스(Preact 11 rc, Vue 3.6 rc, Solid 2.0 rc)는 이번 범위 밖이다** — 권장. 정식 출시 뒤 따로 본다. 다만 Solid의 effect 되쓰기 제거(DC-CN-06)는 2.0 이행을 가볍게 한다.
 - [ ] **DC-CN-09 / 공통 타입 `ViewWatch` 한 곳에 두기.** `state-ref`에서 export할지, 복붙을 유지할지. TBD(낮은 우선순위).
 
