@@ -10,7 +10,7 @@
 > - **사실 오류를 고쳤다:** `run`의 `accept`는 **객체**(`{ kind: 'submitted' }`)이고 문자열은 `linked.stage`에서만 맞다(DC-DS-14). 생략 시 `{ kind: 'none' }` = 편집 유지 + `unconfirmed`.
 > - **라이브러리 결정 후보 둘을 찾았다**(문서는 현 상태를 적었다): 조회 핸들에 `resolve()`가 없다, 루트 draft가 `[]` 한 줄로 적용된다. [IMPLEMENT 남은 항목](./IMPLEMENT.md#남은-항목) 8·9.
 > - **아직 사람이 화면을 본 적이 없다.** [M-DS-07](./MANUAL_TEST_CHECKLIST.md)의 핵심 판정은 "편집의 생애만 읽고 capture를 설명할 수 있는가"이고, 사용자 몫이다.
-> - 이 세션은 원격 컨테이너였다. **push는 GitHub 권한 오류(403)로 실패했다** — 단계 8 커밋은 이 컨테이너의 로컬 브랜치에만 있다. `origin/feat/server-sync-draft`는 존재한다(이전 줄의 "upstream 없음"은 낡았다).
+> - 이 세션은 원격 컨테이너였다. 처음 push는 GitHub 권한 오류(403)로 실패했고, 사용자가 GitHub를 다시 연결한 뒤 **push했다**(`7513d4e..544f532`). `origin/feat/server-sync-draft`는 존재한다(이전 줄의 "upstream 없음"은 낡았다).
 
 > **보류 해제 (2026-09-28): 조회 표면 통합을 마쳤고 사이트도 옮겼다.**
 >
