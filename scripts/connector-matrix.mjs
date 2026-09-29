@@ -150,7 +150,7 @@ function run(cmd, args, cwd, logFile) {
   const result = spawnSync(cmd, args, {
     cwd,
     encoding: 'utf8',
-    env: { ...process.env, CI: '1', FORCE_COLOR: '0' },
+    env: { ...process.env, CI: '1', FORCE_COLOR: '0', NO_COLOR: '1' },
     maxBuffer: 64 * 1024 * 1024,
   });
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
@@ -158,7 +158,10 @@ function run(cmd, args, cwd, logFile) {
   return { status: result.status, output };
 }
 
-function summary(output) {
+function summary(raw) {
+  // Some tools color their output regardless of NO_COLOR.
+  // eslint-disable-next-line no-control-regex
+  const output = raw.replace(/\x1b\[[0-9;]*m/g, '');
   const files = output.match(/Test Files\s+(.+)/)?.[1]?.trim();
   const tests = output.match(/\n\s+Tests\s+(.+)/)?.[1]?.trim();
   return [files && `files: ${files}`, tests && `tests: ${tests}`]
