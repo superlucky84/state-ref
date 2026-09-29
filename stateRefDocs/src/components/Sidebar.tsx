@@ -122,6 +122,10 @@ const menuData: MenuSection[] = [
         link: '/guide/sync-view',
       },
       {
+        text: { en: 'Infinite Queries', ko: '무한 조회' },
+        link: '/guide/sync-infinite',
+      },
+      {
         text: { en: 'Automatic Refetch', ko: '자동 재조회' },
         link: '/guide/sync-refetch',
       },

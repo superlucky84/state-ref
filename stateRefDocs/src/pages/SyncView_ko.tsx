@@ -229,9 +229,9 @@ function CityDisplay() {
 
       <p>
         쌓이는 목록은 <code>client.infiniteQuery</code>를 씁니다 —{' '}
-        <a href="#/ko/api/sync">Sync API</a>를 보세요. 같은 표시 옵션을 받고,
-        페이지는 읽기 전용이며, <strong>고정 key만</strong> 받습니다. 반응형
-        key의 무한 조회 대응물은 없습니다.
+        <a href="#/ko/guide/sync-infinite">무한 조회</a>를 보세요. 같은 표시
+        옵션을 받고, 페이지는 읽기 전용이며, <strong>고정 key만</strong>{' '}
+        받습니다. 반응형 key의 무한 조회 대응물은 없습니다.
       </p>
 
       <h2>관련 문서</h2>

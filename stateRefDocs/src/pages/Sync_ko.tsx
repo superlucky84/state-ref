@@ -157,8 +157,16 @@ other.query(options).ref.address.city.value; // 영향 없음`}
           결과를 수용하기
         </li>
         <li>
+          <a href="#/ko/guide/sync-lifecycle">편집의 생애</a> -{' '}
+          <code>capture()</code>가 얼리는 것과 결과마다 편집에 일어나는 일
+        </li>
+        <li>
           <a href="#/ko/guide/sync-view">표시와 반응형 key</a> -
           placeholder·선택·반응형 key
+        </li>
+        <li>
+          <a href="#/ko/guide/sync-infinite">무한 조회</a> - 페이지가 쌓이는
+          목록
         </li>
         <li>
           <a href="#/ko/guide/sync-refetch">자동 재조회</a> -

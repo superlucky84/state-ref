@@ -43,6 +43,8 @@ import { SyncMutationKo } from '@/pages/SyncMutation_ko';
 import { SyncLifecycle } from '@/pages/SyncLifecycle';
 import { SyncLifecycleKo } from '@/pages/SyncLifecycle_ko';
 import { SyncView } from '@/pages/SyncView';
+import { SyncInfinite } from '@/pages/SyncInfinite';
+import { SyncInfiniteKo } from '@/pages/SyncInfinite_ko';
 import { SyncViewKo } from '@/pages/SyncView_ko';
 import { SyncRefetch } from '@/pages/SyncRefetch';
 import { SyncRefetchKo } from '@/pages/SyncRefetch_ko';
@@ -142,6 +144,8 @@ const routes: Record<string, PageComponent> = {
   '/ko/guide/sync-lifecycle': SyncLifecycleKo,
   '/guide/sync-view': SyncView,
   '/ko/guide/sync-view': SyncViewKo,
+  '/guide/sync-infinite': SyncInfinite,
+  '/ko/guide/sync-infinite': SyncInfiniteKo,
   '/guide/sync-refetch': SyncRefetch,
   '/ko/guide/sync-refetch': SyncRefetchKo,
   '/guide/sync-persistence': SyncPersistence,

@@ -158,8 +158,16 @@ other.query(options).ref.address.city.value; // unaffected`}
           edit and accepting the result
         </li>
         <li>
+          <a href="#/guide/sync-lifecycle">Edit Lifecycle</a> - what{' '}
+          <code>capture()</code> freezes and what each result does to your edits
+        </li>
+        <li>
           <a href="#/guide/sync-view">display and reactive keys</a> -
           placeholders, selection, and reactive keys
+        </li>
+        <li>
+          <a href="#/guide/sync-infinite">Infinite Queries</a> - lists that grow
+          page by page
         </li>
         <li>
           <a href="#/guide/sync-refetch">Automatic refetch</a> - focus,

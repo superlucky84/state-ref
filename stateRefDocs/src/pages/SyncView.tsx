@@ -239,9 +239,9 @@ function CityDisplay() {
       </p>
 
       <p>
-        For an accumulating list, use <code>client.infiniteQuery</code> - see
-        the <a href="#/api/sync">Sync API</a>. It takes the same display
-        options, its pages are readonly, and it takes a{' '}
+        For an accumulating list, use <code>client.infiniteQuery</code> - see{' '}
+        <a href="#/guide/sync-infinite">Infinite Queries</a>. It takes the same
+        display options, its pages are readonly, and it takes a{' '}
         <strong>fixed key only</strong>: a reactive key has no infinite
         equivalent.
       </p>
