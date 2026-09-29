@@ -152,9 +152,10 @@ REQUIREMENTS C-CN-03의 "Vue 33 · Svelte 35 파일"은 컴포넌트 파일까�
 
 ## 단계 6 — 문서와 예제
 
-- [ ] 사이트 Framework Integration 6장(en+ko)과 패키지 README의 버전 범위·동작 서술 갱신.
-- [ ] 예제 5종을 최신 버전으로 올린다.
-- **기준 테스트:** 사이트 빌드, `doc-examples`, `examples-types`.
+- [x] 사이트 Framework Integration 5장(en+ko)에 "지원 버전"과 동작 절(React·Preact: 구독 방식·마운트 2회, Vue·Solid: 쓰기 규칙, Svelte: 쓰기 규칙 + Svelte 5 runes 절)을 넣고, 패키지 README 5개에 같은 내용을 넣었다. 커밋 `4bfe72e`.
+- [x] **Phase 9 이전 표현을 함께 고쳤다.** README 5개의 조회 표시 절이 `connectXView(live.watch)`·`live.query?.ref`, 사이트 10장이 `live.query?.ref`를 쓰고 있었다 → `query.watchDisplay`·`query.ref`. (문서 사이트 단계 7이 사이트 장의 `watchDisplay`만 옮기고 편집 경로 문장과 README를 놓쳤다.)
+- [x] 예제를 최신 메이저로 — React 19(`examples/react`), Svelte 5(`examples/svelte`, `new App` → `mount(App, ...)`, `svelte-check` 4). Preact·Vue·Solid 예제는 이미 같은 메이저. 커밋 `336cd9f`. 이때 모노레포 안에 React가 두 벌(예제 19, 커넥터 개발 의존성 18) 로드되어 예제 SSR 검사가 `Invalid hook call`로 실패 → `connect-react` 개발 의존성도 19로(`f55435e`, React 18은 매트릭스가 맡는다).
+- **기준 테스트:** 사이트 빌드, `doc-examples`, `examples-types` — **충족.** 사이트 빌드, `pnpm check:examples`(동작·번들·SSR), `pnpm gate` 19단계 PASS, 사이트 라우트·href 전수 해소.
 
 ## 단계 7 — 테스트 하드닝
 
@@ -168,6 +169,7 @@ REQUIREMENTS C-CN-03의 "Vue 33 · Svelte 35 파일"은 컴포넌트 파일까�
 
 ## 인계
 
+- 2026-09-29: **단계 6 완료** (`f55435e`, `336cd9f`, `4bfe72e`). 예제는 React 19·Svelte 5, 문서는 새 버전 범위·동작 규칙·runes. 다음은 단계 7(하드닝): 결함 주입에서 테스트 1개로만 잡힌 9곳 보강.
 - 2026-09-29: **단계 5 완료** (`3d72925`). 커넥터 5종 코드 작업이 끝났다. DC-CN-03~07 전부 닫힘. 다음은 단계 6(문서와 예제): 사이트 Framework Integration 장·패키지 README에 버전 범위·마운트 2회 렌더·쓰기 원칙·runes 진입점을 적고, 예제를 최신 버전(React 19, Svelte 5)으로 올린다.
 - 2026-09-29: **단계 4 완료** (`07bea7b`, `edc96ff`). Svelte 4·5 지원, runes 진입점, F-S5 수정. 쓰기 규칙을 원칙 하나로 정리했다(DC-CN-04). 다음은 단계 5(Solid).
 - 2026-09-29: **단계 3 완료** (`5ff7638`, `3bf3e52`). Vue는 복사·깊은 watch·가드를 걷어 내고 `customRef`로 스토어에 바로 읽고 쓴다. 선택값은 읽기 전용(DC-CN-04). 다음은 단계 4(Svelte).
