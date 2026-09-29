@@ -192,7 +192,36 @@ REQUIREMENTS C-CN-03의 "Vue 33 · Svelte 35 파일"은 컴포넌트 파일까�
 - **개발 모드 StrictMode 확인:** 개발 서버(`vite`)에서 load → settle-all 뒤 패널 A 입력에 `부산`·`대구`·`광주` → 패널 B가 매번 같은 값, 콘솔 오류 0. StrictMode를 뺀 채로도 같은 결과. 처음에는 load만 누르고 기다려 "pending / fetching"에서 멈춘 것으로 보였는데, 예제의 가짜 서버는 `settle-all`로 응답한다(StrictMode 유무와 무관했다).
 - 도중에 `pkill -f` 패턴이 자기 셸 명령줄에도 맞아 셸이 끝나는 일이 두 번 있었다. 남은 서버는 `pgrep -af`로 PID를 보고 PID로 끝낸다.
 
+## 단계 8.1 — 확인 목록을 브라우저로 자동 확인
+
+[MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md)의 네 항목을 Playwright 1.63 + Chromium 141(`/opt/pw-browsers/chromium`)로 대신 확인했다. 새 spec은 저장소에 넣지 않았다. 개발 서버에서 한 번 재는 스크립트는 세션 scratchpad에 두었다. 이유는 두 가지다. 기존 e2e는 프로덕션 빌드를 전제로 짜여 있고, Svelte 확인에는 예제에 없는 테스트 컴포넌트가 필요했다.
+
+- [x] **M-CN-01 다섯 화면 비교**: 기존 `scenarios.spec.ts`와 `contract.spec.ts`가 이미 한다. 시나리오마다 다섯 데모를 같은 순서로 조작하고, 기대값과 다섯 화면끼리의 일치를 따로 단언한다. 재실행: `scenarios.spec.ts` + `ssr.spec.ts` **64개 통과**(시나리오 62 + SSR 2, 15.0분).
+- [x] **M-CN-02 렌더 횟수**:
+  - 방법: 개발 서버(`vite`, StrictMode)에 `addInitScript`로 `__REACT_DEVTOOLS_GLOBAL_HOOK__`을 심었다. `onCommitFiberRoot`에서 DevTools와 같은 규칙으로 컴포넌트별 렌더를 셌다. 규칙은 `PerformedWork` 플래그를 보고, 자식 포인터가 같은 하위 트리는 건너뛰는 것이다.
+  - 조작: load → settle-all → 패널 A 도시 `fill('부산')` 한 번.
+  - 다시 렌더된 것: 도시를 읽는 `ResourceValues(a)` 1, `ResourceValues(b)` 1. `ui.tick.value`로 스냅숏을 구독하는 카드들(`ServerCard`·`InspectCard`·`ProbeCard`·`ShareCard`·`LifetimeCard`·`BoundaryCard`)과 `ResourceCard(a)`·`(b)`가 각 1.
+  - 다시 렌더되지 않은 것: 도시도 tick도 읽지 않는 `StateCard`·`ComputedCard`·`LiveCard`·`LiveRows`·`ReadonlyCard`·`DraftSection`은 0.
+  - 패널 B 입력값 `부산`, 콘솔 오류는 favicon 404(위 단계 8 기록)뿐.
+- [x] **M-CN-03 hydration**: 기존 `ssr.spec.ts`가 한다. React·Vue `dev:ssr` 서버를 띄우고 세 가지를 확인한다: 서버 HTML의 값, hydration 뒤 같은 값, console error·warning 0. 결과는 위 재실행.
+- [x] **M-CN-04 Vue**:
+  - 개발 서버에서 `#app.__vue_app__._instance.setupState.ui`를 잡아 `ui.value.lastOperation = 'HACKED'`를 실행했다.
+  - `[Vue warn] Set operation on key "lastOperation" failed: target is readonly`가 한 번 떴다. 값과 화면은 `(없음)` 그대로였다.
+  - 이어서 `ui.value = { ...ui.value, lastOperation: 'via-value' }`를 실행하자 값과 화면이 함께 `via-value`로 바뀌었다.
+- [x] **M-CN-04 Svelte 5**:
+  - 커넥터 패키지 개발 서버(Svelte 5.57.1)에 임시 페이지를 두었다. `NestedWrite.svelte`를 같은 스토어로 두 번 `mount`한 페이지다(커밋하지 않음, 지움).
+  - 한쪽에서 `$address.city = 'Daegu'`를 실행했다. 스토어와 두 화면이 모두 `Daegu`가 됐다.
+  - `onWrite`는 1건 `{city:'Seoul',zip:'1'} → {city:'Daegu',zip:'1'}`, 콘솔 기록 0.
+
+환경 메모:
+
+- e2e 재실행에는 단계 8과 같은 임시 보정 두 가지를 썼다: `executablePath` 설정과 `dist`의 빈 favicon.
+- Svelte 커넥터 개발 서버에서 `import { VERSION } from 'svelte'`는 실패한다. `VERSION`은 `svelte/compiler`에 있다.
+- `timeout`으로 끊은 Playwright 실행은 webServer 자식들을 남긴다. 다음 실행이 "port already used"로 멈추므로 PID로 정리한다.
+
 ## 인계
+
+- 2026-09-29: **단계 8.1 — 확인 목록 네 항목을 브라우저로 자동 확인, 전부 기대대로.** 사람 몫은 이제 "보기에 이상하지 않은가"뿐이다. 개발 모드 렌더 횟수와 쓰기 규칙을 상시 spec으로 만들지는 결정이 필요하다. 만든다면 dev 서버 기반 spec과 Svelte 확인용 예제 화면이 필요하다.
 
 - 2026-09-29: **단계 8 완료 — 커넥터 현대화 종료.** e2e 84 통과(컨테이너 브라우저 차이 두 가지를 임시 보정), 매트릭스·gate·check:examples PASS, React 예제 StrictMode + 개발 모드 확인. 결정 DC-CN-01~07 닫힘, DC-CN-08(프리릴리스)·09(`ViewWatch` 공통화)는 범위 밖으로 남김. **다음(사람):** MANUAL_TEST_CHECKLIST, 그리고 배포(버전: react 19.0.0, preact 10.4.0, vue 3.4.0, svelte 5.0.0, solid 1.4.0 — CHANGELOG 미배포 절).
 - 2026-09-29: **단계 7 완료.** 얇은 결함 주입 9곳 보강, 전부 ≥ 2. 다음은 단계 8(통합): e2e 84개, 매트릭스 전체, gate, 사람 몫 확인 목록.
