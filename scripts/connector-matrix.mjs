@@ -47,7 +47,8 @@ const common = {
 
 /**
  * `min` is the newest release of the lower supported major (what the
- * workspace tests today), `latest` is npm's `latest` tag as of 2026-09-29.
+ * workspace tests today), `latest` is npm's `latest` tag as of 2026-09-29,
+ * and `floor`, where present, is the oldest release the peer range admits.
  * See docs/connectors/DESIGN.md, DC-CN-01.
  */
 const matrix = {
@@ -73,6 +74,18 @@ const matrix = {
   vue: {
     deps: { '@testing-library/vue': '^8.1.0', '@vitejs/plugin-vue': '^5.1.4' },
     cells: {
+      // The oldest release with every Vue API the connector uses
+      // (onScopeDispose arrived in 3.2), so the peer range is measured.
+      floor: {
+        vue: '3.2.47',
+        '@vue/compiler-sfc': '3.2.47',
+        '@vue/server-renderer': '3.2.47',
+        // Recent @vue/test-utils calls app.onUnmount, which Vue only has
+        // from 3.5; the test tooling, not the connector, needs pinning here.
+        '@testing-library/vue': '8.0.3',
+        '@vue/test-utils': '2.4.1',
+        '@vue/compiler-dom': '3.2.47',
+      },
       min: {
         vue: '3.5.10',
         '@vue/compiler-sfc': '3.5.10',
