@@ -40,9 +40,10 @@
 지금: `connectVue`는 `reactive({ value })` + **깊은 `watch`로 되쓰기** + `cloneDeep` + 마이크로태스크 echo 가드. `connectVueView`는 `shallowRef` + `readonly`. 해제는 `onUnmounted`.
 
 - **F-V1 [소스] 양방향 동기화가 "두 상태를 서로 복사"하는 구조다.** 스토어 → reactive, reactive → (깊은 watch) → 스토어. 되돌아오는 복사를 막는 가드가 필요하고, 이 가드에서 결함이 셋 나왔다(`CI-25` 같은 턴의 쓰기 유실, `CI-26` falsy 값에서 객체 교체, `CI-29` 두 번째 쓰기 유실 — 소스 주석). Vue가 외부 상태에 권장하는 `customRef`(get에서 track, set에서 바로 스토어에 쓰기)나 `shallowRef` + `triggerRef`는 복사본이 없어 가드 자체가 필요 없다.
-- **F-V2 [소스] `onUnmounted`는 컴포넌트 setup 안에서만 동작한다.** `effectScope`나 컴포저블 안에서 부르면 해제가 걸리지 않는다. `onScopeDispose`(3.2+)는 둘 다 덮는다.
+- **F-V2 [측정] — 고침(`5ff7638`). `onUnmounted`는 컴포넌트 setup 안에서만 동작한다.** `effectScope`를 멈춘 뒤에도 알림이 온다(측정: 1 → 2). `effectScope`나 컴포저블 안에서 부르면 해제가 걸리지 않는다. `onScopeDispose`(3.2+)는 둘 다 덮는다.
 - **F-V3 [추론] 사용처마다 깊은 `watch`가 하나씩 생긴다.** 큰 객체를 연결하면 변경마다 트리 전체를 순회한다.
-- **열린 질문:** 지금은 `x.value.city = '부산'`처럼 **중첩 필드를 직접 바꾸면** 깊은 watch가 잡아 스토어에 쓴다. `customRef`로 바꾸면 이것이 잡히지 않는다. 이 동작을 계약으로 볼지 먼저 재야 한다([DC-CN-04](#결정)).
+- **F-V4 [측정] — 고침(`5ff7638`). 중첩 쓰기가 스토어 내부 객체를 제자리에서 바꾼다.** `toRaw(addr.value)`가 스토어 내부 객체와 같았고, `addr.value.city = 'Daegu'` 직후 스토어 값은 바뀌었는데 알림 0회·쓰기 기록 없음, 다음 tick의 깊은 watch 되쓰기는 `before`가 이미 바뀐 값(`Daegu → Daegu`)이었다. 일반 쓰기(`city.value = 'Busan'`)도 다음 tick에야 스토어에 닿았다.
+- **(닫힘, DC-CN-04)** 지금은 `x.value.city = '부산'`처럼 **중첩 필드를 직접 바꾸면** 깊은 watch가 잡아 스토어에 쓴다. `customRef`로 바꾸면 이것이 잡히지 않는다. 이 동작을 계약으로 볼지 먼저 재야 한다([DC-CN-04](#결정)).
 
 ### Svelte (`connectSvelte`, `connectSvelteView`)
 
@@ -78,7 +79,8 @@
 - [x] **DC-CN-03 / React 구현 — A(순수 `useSyncExternalStore`)로 결정 (사용자, 2026-09-29, 프로토타입 비교 뒤).** 스냅숏은 구독이 알린 횟수(버전 번호)이고, 구독은 `subscribe`에서(커밋 뒤) 호출마다 새 AbortSignal로 만든다. 첫 렌더는 구독하지 않는 ref로 그리고, `subscribe`가 버전을 올려 **구독된 ref로 한 번 더 렌더해 의존성을 모은다 — 마운트마다 렌더 1회 증가.** SSR은 `getServerSnapshot`.
   - 비교한 B(첫 렌더에 임시 구독, `subscribe`에서 넘겨받기, 못 넘겨받은 구독은 첫 알림에 `false`로 스스로 해제): 마운트 렌더 수는 그대로지만 렌더 중 부수효과가 남고 `typeof window` 판정이 필요하며, StrictMode 언마운트 뒤 알림 1회를 더 받았다(측정). 사용자가 A를 골랐다.
   - 구현 `53bf750`.
-- [ ] **DC-CN-04 / Vue 양방향 구현.** `customRef` 기반으로 바꾸되 반환 모양 `Reactive<{ value }>`는 유지하는 것을 권장한다. **먼저 중첩 필드 직접 변형이 지금 스토어에 반영되는지 측정하고**, 반영된다면 그것을 지킬지 정한다(지키면 깊은 추적이 남고, 버리면 breaking).
+- [x] **DC-CN-04 / Vue 양방향 구현 — 선택한 값은 읽기 전용, 쓰기는 `.value`로만 (사용자, 2026-09-29).** 측정해 보니 중첩 직접 변경은 **스토어를 제자리에서 바꾸는 결함**이었다(F-V4). 사용자가 짚은 대로 코어에서도 `ref.x.value`로 받은 객체를 바꾸면 알림 0회로 조용히 바뀐다 — 지원하는 방식이 아니다. 그래서 Vue도 다른 커넥터·코어와 같은 규칙으로 맞췄다: 선택한 객체·배열은 Vue `readonly`(개발 모드 경고, 스토어 불변), 쓰기는 리프 선택의 `.value` 또는 통째 교체, 스토어에 **동기** 반영. 구현은 `customRef` 다리 + `reactive({ value })` 반환(Vue `watch()`가 계속 받는다) + `onScopeDispose`. 커밋 `5ff7638`.
+  - 대안 "쓰기 전달 프록시로 중첩 변경 유지"는 Vue만 다른 규칙을 갖게 되고 구현이 커서 고르지 않았다.
 - [x] **DC-CN-05 / Svelte 5 — A(store API 유지 + runes API 추가)로 결정 (사용자, 2026-09-29).**
   - A (권장): 지금의 store API를 유지하고 peer만 `^4 || ^5`로 넓힌다. 두 버전에서 테스트를 돌린다. runes용 API(`createSubscriber` 기반)는 **추가**로 제공한다.
   - B: Svelte 5 전용으로 runes API로 갈아탄다.

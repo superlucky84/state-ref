@@ -82,9 +82,25 @@ REQUIREMENTS C-CN-03의 "Vue 33 · Svelte 35 파일"은 컴포넌트 파일까�
 
 ## 단계 3 — Vue
 
-- [ ] DC-CN-04 측정: 중첩 필드 직접 변형이 지금 스토어에 반영되는가.
-- [ ] `customRef`(또는 `shallowRef` + `triggerRef`) 구현, `onScopeDispose`로 해제.
-- **기준 테스트:** 기존 Vue 테스트 33파일(`CI-25`·`CI-26`·`CI-29` 회귀 포함) + `effectScope` 안 해제.
+- [x] DC-CN-04 측정 → F-V4(중첩 쓰기가 스토어를 제자리 변형) 발견 → 사용자가 "읽기 전용으로 맞춤"을 골랐다.
+- [x] 새 계약을 실패하는 테스트로 먼저 고정 — `src/tests/write-path.test.ts` 5개, 고치기 전 **4개 실패**(쓰기 비동기, 중첩 쓰기가 스토어 변경, 통째 교체 비동기, `effectScope` 해제 안 됨).
+- [x] `customRef` 구현, `onScopeDispose`로 해제, 해제 뒤 쓰기 무시, 반환은 `reactive({ value })`. peer `^3.2.0`, 버전 3.4.0. 커밋 `5ff7638`.
+- [x] 매트릭스에 Vue 3.2 floor 칸 추가(`3bf3e52`) — peer 하한을 실제로 잰다. 최신 `@vue/test-utils`가 Vue 3.5 API(`app.onUnmount`)를 불러 floor 칸만 테스트 도구를 고정했다(`@testing-library/vue` 8.0.3, `@vue/test-utils` 2.4.1, `@vue/compiler-dom` 3.2.47). 커넥터는 그대로다.
+- **기준 테스트:** 기존 Vue 테스트 5파일(`CI-25`·`CI-26`·`CI-29` 회귀 포함) + 새 계약 5 + `effectScope` 안 해제 — **충족.** 매트릭스 Vue 3.2.47·3.5.10·3.5.43 모두 6파일·41개 pass, `pnpm gate` PASS. **기존 테스트는 한 줄도 고치지 않았다.**
+
+### 단계 3 기록
+
+- 중간에 반환값을 getter 객체로 했더니 테스트 컴포넌트의 `vueWatch(titleRef, ...)`가 반응형 소스로 받지 않아 2개가 실패했다 → `reactive({ value: customRef })`로 돌려 해결(reactive가 ref를 풀어 준다).
+- 사이트 Vue 장은 이미 "중첩은 읽기, 쓰기는 통째 교체"로 적혀 있어 새 계약과 맞다. 예제 `examples/vue`에도 중첩 쓰기는 없다.
+- **결함 주입:**
+
+| 주입 | 잡힌 테스트 |
+| --- | --- |
+| 해제 뒤 쓰기 허용 | **1** (얇다 — 단계 7) |
+| 스토어 변경 때 trigger 안 함 | 21 |
+| 선택한 객체를 쓰기 가능하게 | **1** (얇다 — 단계 7) |
+| 스코프 해제 때 abort 안 함 | 4 |
+| `track()` 제거 | 21 |
 
 ## 단계 4 — Svelte
 
@@ -115,6 +131,7 @@ REQUIREMENTS C-CN-03의 "Vue 33 · Svelte 35 파일"은 컴포넌트 파일까�
 
 ## 인계
 
+- 2026-09-29: **단계 3 완료** (`5ff7638`, `3bf3e52`). Vue는 복사·깊은 watch·가드를 걷어 내고 `customRef`로 스토어에 바로 읽고 쓴다. 선택값은 읽기 전용(DC-CN-04). 다음은 단계 4(Svelte).
 - 2026-09-29: **단계 2 완료** (`576893c`). Preact도 커밋 뒤 구독으로 옮겼고, 렌더 중 구독의 실제 결함(F-P3, Suspense 누수와 예외)을 고쳤다. 다음은 단계 3(Vue) — DC-CN-04의 중첩 변형 측정부터.
 - 2026-09-29: **단계 1 완료** (`53bf750`). React 커넥터가 `useSyncExternalStore` 위로 옮겨졌고 React 18·19 모두 StrictMode에서 갱신된다. 다음은 단계 2(Preact).
 - 2026-09-29: **단계 0 완료.** 결과는 위 "단계 0 결과". 우선순위가 분명해졌다 — React 19 + StrictMode에서 갱신이 전혀 안 되는 F-R1이 가장 급하다. 다음은 단계 1(React).
