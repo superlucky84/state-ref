@@ -146,6 +146,12 @@ account.changes()[0].conflict;       // true
 account.ref.address.city.value;      // 여전히 'Busan' — 편집이 지켜졌다`}
       />
 
+      <p>
+        조회 핸들에는 <code>resolve()</code>가 없습니다. 서버 값을 받거나, 내
+        값을 저장해서 지키거나, 사람이 고르게 하는 방법은{' '}
+        <a href="#/ko/guide/sync-lifecycle">편집의 생애</a>에 있습니다.
+      </p>
+
       <h2>알려진 서버 값 수용</h2>
 
       <p>
@@ -187,6 +193,13 @@ settings.ref.theme.value = 'dark'; // throws: This query is readonly.`}
         <strong>있습니다.</strong> 영원히 비어 있고 0일 뿐입니다. 거절하는 것은{' '}
         <code>capture()</code>입니다. 비어 있는 검토 표면과 존재하지 않는 표면은
         다른 사실이고, 그 빈 목록이 둘을 가릅니다.
+      </p>
+
+      <p>
+        편집 가능한 조회에서 <code>capture()</code>가 무엇을 얼리고 저장 뒤
+        편집이 어떻게 되는지는{' '}
+        <a href="#/ko/guide/sync-lifecycle">편집의 생애</a>를 보세요. 조회에서
+        난 충돌을 푸는 방법도 거기 있습니다.
       </p>
 
       <h2>resource가 받는 것</h2>

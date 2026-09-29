@@ -168,6 +168,16 @@ const outcome = await linked.send(client, [account, preferences], save);`}
       />
 
       <p>
+        <code>ids</code> are change-row IDs - the same ones{' '}
+        <code>capture(ids)</code> takes. <code>stage</code> captures them for
+        you, and a link without <code>ids</code> submits every current row. Note
+        the string acceptance names (<code>'submitted'</code>): this API
+        serializes them, while <code>mutation.run</code> takes{' '}
+        <code>{"{ kind: 'submitted' }"}</code>. What a submission is and when it
+        goes stale: <a href="#/guide/sync-lifecycle">Edit Lifecycle</a>.
+      </p>
+
+      <p>
         <code>send</code> rechecks every link first and starts no WRITE if any
         one of them changed. It writes an <code>inFlight</code> marker and an
         unconfirmed recovery snapshot <em>before</em> calling{' '}

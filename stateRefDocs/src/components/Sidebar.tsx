@@ -114,6 +114,10 @@ const menuData: MenuSection[] = [
         link: '/guide/sync-mutation',
       },
       {
+        text: { en: 'Edit Lifecycle', ko: '편집의 생애' },
+        link: '/guide/sync-lifecycle',
+      },
+      {
         text: { en: 'display and reactive keys', ko: '표시와 반응형 key' },
         link: '/guide/sync-view',
       },

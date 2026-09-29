@@ -167,6 +167,16 @@ const outcome = await linked.send(client, [account, preferences], save);`}
       />
 
       <p>
+        <code>ids</code>는 변경 줄 ID입니다 — <code>capture(ids)</code>가 받는
+        것과 같습니다. <code>stage</code>가 대신 capture하고, <code>ids</code>가
+        없는 link는 현재의 모든 줄을 제출합니다. 수용 이름이 문자열(
+        <code>'submitted'</code>)인 것에 주의하세요. 이 API는 그것을 직렬화하고,{' '}
+        <code>mutation.run</code>은 <code>{"{ kind: 'submitted' }"}</code>를
+        받습니다. 제출이 무엇이고 언제 낡는지는{' '}
+        <a href="#/ko/guide/sync-lifecycle">편집의 생애</a>를 보세요.
+      </p>
+
+      <p>
         <code>send</code>는 모든 link를 먼저 다시 확인하고, 하나라도 바뀌었으면
         WRITE를 시작하지 않습니다. <code>mutationFn</code>을 부르기{' '}
         <em>전에</em> <code>inFlight</code> 표시와 확인되지 않은 복구 스냅숏을

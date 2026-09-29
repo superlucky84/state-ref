@@ -148,6 +148,12 @@ account.changes()[0].conflict;       // true
 account.ref.address.city.value;      // still 'Busan' - your edit was kept`}
       />
 
+      <p>
+        A query handle has no <code>resolve()</code>. Taking the server value,
+        keeping yours by saving it, or letting a person choose is covered in{' '}
+        <a href="#/guide/sync-lifecycle">Edit Lifecycle</a>.
+      </p>
+
       <h2>Accepting a Known Server Value</h2>
 
       <p>
@@ -190,6 +196,13 @@ settings.ref.theme.value = 'dark'; // throws: This query is readonly.`}
         <code>version</code>; they are permanently empty and zero. What it
         refuses is <code>capture()</code>. An empty review surface and an absent
         one are different facts, and the empty list is how you tell them apart.
+      </p>
+
+      <p>
+        What <code>capture()</code> freezes on an editable query, and what
+        happens to your edits after a save, is in{' '}
+        <a href="#/guide/sync-lifecycle">Edit Lifecycle</a> - along with how to
+        settle a conflict on a query.
       </p>
 
       <h2>What the Resource Accepts</h2>
