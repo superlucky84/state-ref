@@ -27,11 +27,15 @@ if (import.meta.vitest) {
    * connector's renew, before and after unmount.
    */
   const countingWatch = <T,>(source: Watch<T>, onRenew: () => void): Watch<T> =>
-    ((renew: any, opt: any) =>
-      (source as any)((store: StateRefStore<T>, isFirst: boolean) => {
+    ((renew?: any, opt?: any) => {
+      // A callbackless read subscribes to nothing; the wrapper must not add
+      // the subscription it is measuring (same as ssr.tsx).
+      if (!renew) return (source as any)(undefined, opt);
+      return (source as any)((store: StateRefStore<T>, isFirst: boolean) => {
         onRenew();
         return renew(store, isFirst);
-      }, opt)) as Watch<T>;
+      }, opt);
+    }) as Watch<T>;
 
   describe('IC-01 unmount unsubscribes', () => {
     it('plain watch: the subscription stops on unmount', () => {

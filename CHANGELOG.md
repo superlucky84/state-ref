@@ -1,5 +1,32 @@
 # Changelog
 
+## @stateref/connect-react 19.0.0 (unreleased)
+
+The major follows the newest React it supports; it still supports React 18
+(`peerDependencies`: `react ^18.0.0 || ^19.0.0`).
+
+### Fixed
+
+- **Components update under `<StrictMode>` again** (F-R1,
+  docs/connectors/DESIGN.md). The connector subscribed during render and
+  aborted in an effect cleanup. StrictMode's simulated unmount ended that
+  subscription and the remount never made a new one: React 18.3 dropped the
+  first write, React 19.3 never updated at all. A subscription also survived
+  a StrictMode unmount.
+
+### Changed
+
+- **Built on `useSyncExternalStore`**, React's contract for external stores.
+  The subscription is made after commit and ended by React, and the server
+  render uses `getServerSnapshot` instead of a `typeof window` check.
+- **A mount renders twice.** state-ref collects what a component reads while
+  it renders through a subscribed reference, and there is none before the
+  first commit - so the first render paints through a reference that
+  subscribes to nothing, and the connector renders once more through the
+  subscribed one. What is shown is correct from the first render; the second
+  only collects paths (DC-CN-03). Tests that counted renders exactly now count
+  one more on mount.
+
 ## 3.0.2
 
 ### Fixed
