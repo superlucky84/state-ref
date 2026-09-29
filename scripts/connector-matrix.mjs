@@ -103,13 +103,11 @@ const matrix = {
     },
   },
   svelte: {
-    deps: {
-      '@sveltejs/vite-plugin-svelte': '^3.1.2',
-      '@testing-library/svelte': '^5.2.3',
-    },
+    deps: { '@testing-library/svelte': '^5.2.3' },
     cells: {
-      min: { svelte: '4.2.19' },
-      latest: { svelte: '5.57.1' },
+      // vite-plugin-svelte 4 is the line for Svelte 5 and does not take 4.
+      min: { svelte: '4.2.19', '@sveltejs/vite-plugin-svelte': '^3.1.2' },
+      latest: { svelte: '5.57.1', '@sveltejs/vite-plugin-svelte': '^4.0.4' },
     },
     plugins: {
       imports:
