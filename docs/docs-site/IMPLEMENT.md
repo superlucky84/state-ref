@@ -78,6 +78,7 @@
 | G6 | 용어(기준·로컬 편집·제출·수용)와 한 편집의 흐름이 네 장에 흩어져 있다 | 새 장 `편집의 생애` |
 | G7 | draft + sync를 함께 쓰는 폼 저장 예시 | 새 장 `폼 저장 레시피` |
 | G8 | `ResourceSubmission`·`ResourceChange`·`SyncEnvironment`·`SyncStorage`·`InfiniteQueryOptions` 모양 | `ApiSync` |
+| G9 | 저장 중 표시: 조회 `status.pending`(데이터 쪽)과 mutation `status`(명령 쪽)의 구별, link 없는 명령은 mutation status로만 보인다, 결과 종류·`error`는 mutation status에만 있다, 핸들 `pending`과 작업 하나의 status, 화면 예제. **1차 점검에서 놓쳤고 사용자 질문으로 드러났다(2026-09-29)** | `mutation과 link` 새 절 + `폼 저장 레시피` 예제 (8.9) |
 
 ### 하위 단계
 
@@ -129,7 +130,23 @@
 | 무한 — 끝 | `getNextPageParam`이 `null` → `hasNextPage() false`, `fetchNextPage()`는 요청 없이 현재 데이터 |
 | 무한 — 편집 | `ref` 쓰기 → `This query is readonly.`, `capture` 없음, 로드 전 `ref` → `Query data is not loaded. Call load() first.` |
 
-**단계 8 완료 조건:** 위 표의 11개 ID가 전부 채워졌고, 사이드바에서 새 장 셋에 en/ko 모두 도달하며, gate와 사이트 빌드가 통과한다.
+- [x] **8.9 저장 중 표시 (G9)** — 사용자가 "mutation 도중 pending을 화면에 표시할 수 있나"를 물었고, 답이 문서에 조각으로만 있었다. probe로 두 status의 값을 측정한 뒤 `mutation과 link`에 절을, `폼 저장 레시피`에 예제를 넣는다(en+ko).
+
+### 8.9 측정 결과
+
+| 주장 | 측정 |
+| --- | --- |
+| 연결 쓰기 중 | 두 조회를 link한 작업 → 두 조회 모두 `pending: 1`, 핸들 `{ phase: 'pending', pending: 1 }`. 쓰는 중 입력 → `dirty: true` |
+| link 없는 명령 | 무관한 조회의 `pending`은 0. 핸들 `pending: 2`(동시 2개), 각 `operation.status.pending`은 1 |
+| **phase는 최근 사건** | 2개 중 하나가 끝나면 핸들 `{ phase: 'success', pending: 1 }` — 저장 중 판정은 `pending > 0`이어야 한다. 채팅에서 사용자에게 보인 `phase === 'pending'` 예제가 이것 때문에 틀렸다 |
+| 거절 | 핸들 `phase: 'rejected'`, `error`는 `MutationRejectedError`. 조회 status에는 흔적 없음(`error: null`, `unconfirmed: false`, `dirty: true`) |
+| unknown | 조회 `unconfirmed: true`, 핸들 `phase: 'unknown'` |
+| scope 대기 | 두 번째 작업은 `mutationFn` 호출 전에도 `operation.status.phase` `'pending'`, 핸들 `pending: 2` |
+| WRITE 전 거절 | 낡은 제출로 던진 `start`는 status를 `'idle'`로 둔다 |
+| 쓰기 금지 | 두 status 모두 쓰면 `With the current settings, direct modification is not allowed.` |
+| 알림 순서 | `watchStatus`로 본 phase: `idle → pending → success` |
+
+**단계 8 완료 조건:** 위 표의 12개 ID가 전부 채워졌고, 사이드바에서 새 장 셋에 en/ko 모두 도달하며, gate와 사이트 빌드가 통과한다.
 
 ## 남은 항목
 
