@@ -33,6 +33,15 @@ are what `@stateref/sync` and the draft helpers build on.
   read/write pair, with no way to end it again.
 - **`watch()` with no callback no longer registers a no-op subscription.** The
   reference it returns still reads and writes the live store.
+- **`require('state-ref')` works again, and `node16`/`nodenext` types resolve.**
+  `exports.require` pointed at the UMD file, which Node parses as ESM in a
+  `"type": "module"` package, so CommonJS got an empty namespace. It now points
+  at `dist/*.cjs` with its own `.d.cts` declarations, and the published
+  declarations import with `.js` extensions. The UMD file stays for
+  `<script>` use. `state-ref/draft` and `state-ref/batch` work under `require`
+  too, and the five connectors below ship the same fix. `state-ref/plugin`,
+  `@stateref/connect-svelte/runes` and `@stateref/sync` are ESM only and refuse
+  `require` with `ERR_PACKAGE_PATH_NOT_EXPORTED` rather than an empty object.
 
 ## @stateref/sync 0.1.0
 
