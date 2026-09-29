@@ -75,7 +75,8 @@ client.size(): number
 
 client.dehydrate()
 client.hydrate(snapshot)
-client.dehydrateLocal(options?: { inFlight?: 'reject' | 'unconfirmed' })`}
+client.dehydrateLocal(options?: { inFlight?: 'reject' | 'unconfirmed' })
+client.hydrateLocal(snapshot)   // into an empty client; starts no READ or WRITE`}
       />
 
       <h3>관측</h3>
@@ -185,22 +186,37 @@ const phase = q.display.isPlaceholder.value ? 'placeholder' : q.display.status.v
 
       <CodeBlock
         language="typescript"
-        code={`mutation.run(input, options?): Promise<MutationResult>
-mutation.start(input, options?)  // request id, status ref, promise, abort/dispose
+        code={`client.mutation({
+  mutationFn: (input, context: {
+    signal: AbortSignal;
+    operationId: number;
+    attempt: number;          // 0 on the first try
+    idempotencyKey?: string;
+  }) => T | Promise<T>;
+  onSuccess?: (data, input, operationId) => void | Promise<void>;
+  onError?: (error, input, operationId) => void | Promise<void>;
+  onSettled?: (result, input) => void | Promise<void>;
+})
+
+mutation.run(input, options?): Promise<MutationResult>
+mutation.start(input, options?): MutationOperation
+mutation.status / mutation.watchStatus   // the latest operation
+mutation.dispose()
 
 // options
 {
   scope?: string;          // same scope runs in start order
+  signal?: AbortSignal;    // aborting settles as 'unknown'
+  retry?: number;          // opt-in; requires idempotencyKey
+  retryDelay?: (attempt: number) => number;
   idempotencyKey?: string;
   links?: Array<{
     query: QueryHandle<any>;
     submission?: ResourceSubmission<any>;
-    accept:
-      | { kind: 'refetch' }
-      | { kind: 'response'; select: (response: any) => any }
-      | 'submitted'
-      | 'none';
-    onReject?: 'keep' | 'remove';
+    accept?:                          // default { kind: 'none' }
+      | { kind: 'none' | 'refetch' | 'submitted' }
+      | { kind: 'response'; select: (response: T) => any };
+    onReject?: 'keep' | 'remove';     // 'remove' requires a submission
   }>;
 }
 

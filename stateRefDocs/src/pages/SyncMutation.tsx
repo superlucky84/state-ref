@@ -45,9 +45,17 @@ const result = await save.run(
       />
 
       <p>
-        The capture holds an immutable value and change snapshot. It becomes{' '}
-        <strong>stale</strong> if the resource is edited again before{' '}
-        <code>run</code> starts - capture late, not early.
+        <code>capture()</code> freezes three things at this moment: the whole
+        current value, the change rows (all of them, or only the IDs you pass),
+        and the resource version. Any later edit - to any field - or a completed
+        READ moves the version, and the link then refuses the submission before
+        the WRITE is sent - capture late, not early.
+      </p>
+
+      <p>
+        Why it exists, what happens to each edit after the write, and how a
+        conflict is settled are all in{' '}
+        <a href="#/guide/sync-lifecycle">Edit Lifecycle</a>.
       </p>
 
       <p>
@@ -57,7 +65,10 @@ const result = await save.run(
 
       <h2>Accepting the Result</h2>
 
-      <p>Each link chooses how the new baseline is decided:</p>
+      <p>
+        Each link chooses, with an <code>accept</code> object, how the new
+        baseline is decided after a successful WRITE:
+      </p>
 
       <ul>
         <li>
@@ -69,13 +80,24 @@ const result = await save.run(
           response into the baseline
         </li>
         <li>
-          <code>'submitted'</code> - only when the server contract guarantees
-          the submitted values were accepted as sent
+          <code>{"{ kind: 'submitted' }"}</code> - take the submitted values as
+          the new baseline. Only when the server contract guarantees they were
+          accepted as sent. Requires a <code>submission</code>
         </li>
         <li>
-          <code>'none'</code> - accept nothing; the baseline stays where it was
+          <code>{"{ kind: 'none' }"}</code> - the default when{' '}
+          <code>accept</code> is omitted. The baseline does not move, the edits
+          stay dirty, and <code>status.unconfirmed</code> turns true until a
+          successful READ
         </li>
       </ul>
+
+      <p>
+        Only the persisted API (<code>linked.stage</code> in{' '}
+        <a href="#/guide/sync-persistence">Persistence and SSR</a>) takes these
+        as plain strings (<code>'submitted'</code>), because it has to serialize
+        them. <code>run</code> and <code>start</code> take the objects above.
+      </p>
 
       <h2>What a Linked Result Can Be</h2>
 
@@ -115,6 +137,77 @@ const result = await save.run(
         flight survives either way, including a return to the old baseline.
         Callback failures are reported as <code>callbackError</code> without
         changing the write result.
+      </p>
+
+      <h2>How a Result Is Classified</h2>
+
+      <p>
+        The client cannot tell a refusal from a lost connection by itself.{' '}
+        <code>rejected</code> is reported <strong>only</strong> when{' '}
+        <code>mutationFn</code> throws <code>MutationRejectedError</code>. Any
+        other throw, and an abort, is <code>unknown</code>.
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`import { MutationRejectedError } from '@stateref/sync';
+
+const save = client.mutation({
+  mutationFn: async (input: { name: string }, { signal }) => {
+    const response = await fetch('/account', {
+      method: 'PUT',
+      body: JSON.stringify(input),
+      signal,
+    });
+    if (response.status === 422) {
+      // the server read the request and refused it
+      throw new MutationRejectedError('name taken', await response.json());
+    }
+    if (!response.ok) throw new Error('HTTP ' + response.status); // -> 'unknown'
+    return response.json();
+  },
+});
+
+const result = await save.run({ name: 'Lee' });
+if (result.kind === 'rejected') {
+  (result.error as MutationRejectedError).reason; // the second argument above
+}`}
+      />
+
+      <h2>Retry</h2>
+
+      <p>
+        A mutation is attempted once by default. <code>retry</code> is opt-in
+        per run and requires an <code>idempotencyKey</code> - without one,{' '}
+        <code>run</code> refuses with{' '}
+        <code>Mutation retry requires an idempotencyKey.</code> A{' '}
+        <code>MutationRejectedError</code> is never retried; the server already
+        answered.
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`await save.run(input, {
+  retry: 2,                        // up to 3 attempts
+  idempotencyKey: 'account-1-save-42',
+  retryDelay: attempt => 500 * attempt,
+});`}
+      />
+
+      <p>
+        Inside <code>mutationFn</code>, the second argument carries{' '}
+        <code>signal</code>, <code>operationId</code>, <code>attempt</code> and{' '}
+        <code>idempotencyKey</code>. Once an operation has settled as{' '}
+        <code>unknown</code>, nothing resends it.
+      </p>
+
+      <h2>Callbacks</h2>
+
+      <p>
+        <code>onSuccess</code>, <code>onError</code> and <code>onSettled</code>{' '}
+        go in the mutation options. A callback that throws does not change the
+        result: <code>kind</code> stays what it was and the error is reported as{' '}
+        <code>callbackError</code>.
       </p>
 
       <h2>dirty and pending Are Different Axes</h2>
@@ -174,10 +267,23 @@ await sendNote.run({ note: 'Hello' }); // no link, no resource involved`}
       <h2>start, for More Control</h2>
 
       <p>
-        <code>start</code> returns a request ID, a readonly status ref, the
-        result promise, and abort/dispose methods - useful when the UI needs to
-        show or cancel an individual operation.
+        <code>start</code> returns the operation instead of a promise - useful
+        when the UI needs to show or cancel an individual operation.
       </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`const operation = save.start(input, { links });
+operation.id;                  // operation ID
+operation.status.phase.value;  // 'pending', then the result kind
+operation.watchStatus;         // Watch shape for a connector
+operation.abort();             // settles as 'unknown'
+const result = await operation.result;
+operation.dispose();
+
+save.status.phase.value;       // the handle's latest operation
+// { phase: 'idle' | 'pending' | result kind, pending, operationId, error }`}
+      />
 
       <h2>Honest Mapping Is the Caller's Job</h2>
 
@@ -192,8 +298,12 @@ await sendNote.run({ note: 'Hello' }); // no link, no resource involved`}
 
       <ul>
         <li>
+          <a href="#/guide/sync-lifecycle">Edit Lifecycle</a> - what{' '}
+          <code>capture()</code> freezes and what each result does to your edits
+        </li>
+        <li>
           <a href="#/guide/sync-query">query and resource</a> -{' '}
-          <code>capture()</code> and <code>acceptServer()</code>
+          <code>acceptServer()</code>
         </li>
         <li>
           <a href="#/guide/sync-persistence">Persistence and SSR</a> - queued

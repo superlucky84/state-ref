@@ -45,9 +45,16 @@ const result = await save.run(
       />
 
       <p>
-        고정은 불변 값과 변경 스냅숏을 담습니다. <code>run</code>이 시작하기
-        전에 resource가 다시 편집되면 그 고정은 <strong>낡은 것</strong>이
-        됩니다 — 일찍 말고 늦게 고정하세요.
+        <code>capture()</code>는 이 순간의 세 가지를 얼립니다. 현재 값 전체,
+        변경 줄(전부, 또는 넘긴 ID만), 그리고 resource 버전입니다. 그 뒤에{' '}
+        <strong>어느 필드든</strong> 한 번 편집하거나 READ가 끝나면 버전이
+        움직이고, link는 WRITE를 보내기 전에 그 제출을 거절합니다 — 일찍 말고
+        늦게 고정하세요.
+      </p>
+
+      <p>
+        왜 필요한지, 쓰기 뒤에 각 편집이 어떻게 되는지, 충돌은 어떻게 푸는지는{' '}
+        <a href="#/ko/guide/sync-lifecycle">편집의 생애</a>에 모았습니다.
       </p>
 
       <p>
@@ -58,7 +65,10 @@ const result = await save.run(
 
       <h2>결과 수용 방식</h2>
 
-      <p>link마다 새 기준을 어떻게 정할지 고릅니다.</p>
+      <p>
+        link마다 <code>accept</code> 객체로, WRITE가 성공한 뒤 새 기준을 어떻게
+        정할지 고릅니다.
+      </p>
 
       <ul>
         <li>
@@ -69,13 +79,23 @@ const result = await save.run(
           기준으로 매핑한다
         </li>
         <li>
-          <code>'submitted'</code> - 보낸 값이 그대로 수용됐음을 서버 계약이
-          보장할 때만
+          <code>{"{ kind: 'submitted' }"}</code> - 보낸 값을 새 기준으로 삼는다.
+          보낸 값이 그대로 수용됐음을 서버 계약이 보장할 때만.{' '}
+          <code>submission</code>이 필요하다
         </li>
         <li>
-          <code>'none'</code> - 아무것도 수용하지 않는다. 기준은 그 자리에 있다
+          <code>{"{ kind: 'none' }"}</code> - <code>accept</code>를 생략하면
+          이것이다. 기준은 움직이지 않고, 편집은 dirty로 남고,{' '}
+          <code>status.unconfirmed</code>가 성공한 READ가 올 때까지 true가 된다
         </li>
       </ul>
+
+      <p>
+        문자열(<code>'submitted'</code>)로 받는 것은 직렬화해야 하는 영속 API(
+        <a href="#/ko/guide/sync-persistence">영속화와 SSR</a>의{' '}
+        <code>linked.stage</code>)뿐입니다. <code>run</code>과{' '}
+        <code>start</code>는 위의 객체를 받습니다.
+      </p>
 
       <h2>연결된 결과가 될 수 있는 것</h2>
 
@@ -114,6 +134,77 @@ const result = await save.run(
         떠 있는 동안 입력한 것은 어느 쪽이든 살아남고, 옛 기준으로 되돌린 것까지
         포함합니다. 콜백 실패는 쓰기 결과를 바꾸지 않고{' '}
         <code>callbackError</code>로 보고됩니다.
+      </p>
+
+      <h2>결과가 갈리는 기준</h2>
+
+      <p>
+        client는 거절과 끊긴 연결을 스스로 구별할 수 없습니다.{' '}
+        <code>rejected</code>는 <code>mutationFn</code>이{' '}
+        <code>MutationRejectedError</code>를 던질 때<strong>만</strong>{' '}
+        보고됩니다. 그 밖의 모든 예외와 abort는 <code>unknown</code>입니다.
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`import { MutationRejectedError } from '@stateref/sync';
+
+const save = client.mutation({
+  mutationFn: async (input: { name: string }, { signal }) => {
+    const response = await fetch('/account', {
+      method: 'PUT',
+      body: JSON.stringify(input),
+      signal,
+    });
+    if (response.status === 422) {
+      // 서버가 요청을 읽고 거절했다
+      throw new MutationRejectedError('name taken', await response.json());
+    }
+    if (!response.ok) throw new Error('HTTP ' + response.status); // -> 'unknown'
+    return response.json();
+  },
+});
+
+const result = await save.run({ name: 'Lee' });
+if (result.kind === 'rejected') {
+  (result.error as MutationRejectedError).reason; // 위의 두 번째 인자
+}`}
+      />
+
+      <h2>재시도</h2>
+
+      <p>
+        mutation은 기본적으로 한 번만 시도합니다. <code>retry</code>는 실행마다
+        켜는 opt-in이고 <code>idempotencyKey</code>가 필요합니다 — 없으면{' '}
+        <code>run</code>이{' '}
+        <code>Mutation retry requires an idempotencyKey.</code>로 거절합니다.{' '}
+        <code>MutationRejectedError</code>는 재시도하지 않습니다. 서버가 이미
+        답했기 때문입니다.
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`await save.run(input, {
+  retry: 2,                        // 최대 3번 시도
+  idempotencyKey: 'account-1-save-42',
+  retryDelay: attempt => 500 * attempt,
+});`}
+      />
+
+      <p>
+        <code>mutationFn</code>의 두 번째 인자에는 <code>signal</code>,{' '}
+        <code>operationId</code>, <code>attempt</code>,{' '}
+        <code>idempotencyKey</code>가 들어 있습니다. 작업이 <code>unknown</code>
+        으로 끝난 뒤에는 아무것도 그것을 다시 보내지 않습니다.
+      </p>
+
+      <h2>콜백</h2>
+
+      <p>
+        <code>onSuccess</code>, <code>onError</code>, <code>onSettled</code>는
+        mutation 옵션에 둡니다. 콜백이 던져도 결과는 바뀌지 않습니다.{' '}
+        <code>kind</code>는 그대로이고 그 오류는 <code>callbackError</code>로
+        보고됩니다.
       </p>
 
       <h2>dirty와 pending은 다른 축이다</h2>
@@ -172,10 +263,23 @@ await sendNote.run({ note: 'Hello' }); // link 없음, resource와 무관`}
       <h2>더 세밀한 제어가 필요하면 start</h2>
 
       <p>
-        <code>start</code>는 요청 ID, 읽기 전용 상태 ref, 결과 Promise,
-        abort·dispose 메서드를 돌려줍니다. UI가 개별 작업을 보여 주거나 취소해야
-        할 때 씁니다.
+        <code>start</code>는 Promise 대신 작업 자체를 돌려줍니다. UI가 개별
+        작업을 보여 주거나 취소해야 할 때 씁니다.
       </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`const operation = save.start(input, { links });
+operation.id;                  // 작업 ID
+operation.status.phase.value;  // 'pending', 끝나면 결과 kind
+operation.watchStatus;         // 커넥터가 받는 Watch 모양
+operation.abort();             // 'unknown'으로 끝난다
+const result = await operation.result;
+operation.dispose();
+
+save.status.phase.value;       // 핸들의 가장 최근 작업
+// { phase: 'idle' | 'pending' | 결과 kind, pending, operationId, error }`}
+      />
 
       <h2>정직한 매핑은 호출자의 몫이다</h2>
 
@@ -189,8 +293,12 @@ await sendNote.run({ note: 'Hello' }); // link 없음, resource와 무관`}
 
       <ul>
         <li>
+          <a href="#/ko/guide/sync-lifecycle">편집의 생애</a> -{' '}
+          <code>capture()</code>가 얼리는 것과 결과마다 편집에 일어나는 일
+        </li>
+        <li>
           <a href="#/ko/guide/sync-query">query와 resource</a> -{' '}
-          <code>capture()</code>와 <code>acceptServer()</code>
+          <code>acceptServer()</code>
         </li>
         <li>
           <a href="#/ko/guide/sync-persistence">영속화와 SSR</a> - 큐에 넣은
