@@ -25,6 +25,11 @@
 - [x] **DC-DS-10 / 라이브러리 표면이 바뀌면 라우트는 두고 장을 다시 쓴다.** [Phase 9](../server-sync/PHASE9.md)가 사이트를 쓴 **뒤에** sync의 조회 표면을 통합했다 — `client.view`·`infiniteView`·`liveView`가 사라지고 표시가 조회 핸들의 `display`/`watchDisplay`가 됐으며 `phase`는 삭제됐다. `/guide/sync-view` 라우트와 사이드바 항목은 **그대로 두고** 장 제목과 본문만 바꿨다(`view와 liveView` → `표시와 반응형 key`). 라우트를 바꾸면 이미 나간 링크가 깨지고 DC-DS-08이 말한 배선 셋을 다시 맞춰야 한다 — 이름이 바뀌었다는 이유만으로 치를 비용이 아니다. **문서를 먼저 쓰고 구현이 뒤따르면 이 일은 반드시 생기므로, 순서를 뒤집는 것이 더 싸다는 것이 [DC2-23](../server-sync/DESIGN.md)의 근거다.**
 - [x] **DC-DS-09 / 기존 페이지는 계약이 바뀐 곳만 손댄다.** 이 브랜치는 `Watch` 타입의 계약을 날카롭게 했다 — 콜백 없는 호출이 "참조를 돌려준다"에서 "**구독하지 않는** 살아 있는 참조를 돌려주며, 읽기·쓰기는 최신이지만 알림 경로를 등록하지 않는다"로. 사이트 세 장을 확인해 `References`(en·ko)는 **이미 맞게** 적혀 있었고 `ApiTypes`(en·ko)에만 그 문장을 더했다. 맞는 문서를 다시 쓰지 않는다.
 
+- [x] **DC-DS-11 / 여러 장에 걸친 개념은 한 장에 모으고, 나머지 장은 요약 + 링크로 둔다 (R-DS-06, 사용자 선택).** `capture`는 query(만든다)·mutation(넘긴다)·영속화(`ids`로 다시 만든다) 세 장에 걸쳐 있었고, 어느 장도 그것을 주어로 삼지 않아 한 줄 설명만 남았다. 새 장 **편집의 생애**(`/guide/sync-lifecycle`)가 용어(기준·로컬 편집·제출·수용)와 한 편집이 지나는 길(편집 → capture → run → 결과 4종 → 수용/거절/미확인)을 한 흐름으로 설명한다. mutation 장은 API 모양을 유지하고 의미는 이 장으로 보낸다. 대안(mutation 장 확장)은 라우트가 늘지 않지만, 조회 충돌 해소처럼 mutation이 아닌 내용이 mutation 장에 들어가게 된다.
+- [x] **DC-DS-12 / 조회 충돌 해소는 새 API를 약속하지 않고, 지금 있는 수단을 측정해서 적는다.** 조회 핸들에는 draft의 `resolve`가 없다. 문서가 "충돌이 난다"만 말하고 멈추면 독자는 막힌다. 현재 소스로 가능한 경로(서버 값을 받는다 / 내 값을 제출한다 / draft를 얹어 사람이 고른다)를 probe로 측정해 그대로 적고, `resolve`가 없다는 사실도 숨기지 않는다. 조회 핸들에 `resolve`를 더할지는 **라이브러리 결정**이며 이 작업의 범위가 아니다.
+- [x] **DC-DS-13 / 새 장의 위치.** `편집의 생애`는 Server Sync 섹션에서 `mutation과 link` 바로 뒤, `무한 조회`는 `표시와 반응형 key` 바로 뒤, `폼 저장 레시피`는 섹션 맨 끝(개념을 다 읽은 뒤 보는 조합 예시)이다. 라우트는 `/guide/sync-lifecycle`, `/guide/sync-infinite`, `/guide/sync-form`이다. DC-DS-08의 배선 셋을 장마다 함께 넣는다.
+- [x] **DC-DS-14 / 두 API의 같은 이름은 모양이 다르면 장마다 명시한다.** `mutation.run`의 `accept`는 객체(`{ kind: 'submitted' }`)이고 `linked.stage`의 `accept`는 문자열(`'submitted'`)이다. 직렬화 가능해야 하는 쪽이 문자열을 받는다. 1차 작업이 둘을 섞어 적었으므로(E1) 두 장 모두에 어느 쪽인지 적는다.
+
 ## 새 정보 구조
 
 ```
@@ -42,10 +47,13 @@ Advanced Usage
   createSyncClient              /guide/sync
   query와 resource               /guide/sync-query
   mutation과 link                /guide/sync-mutation
++ 편집의 생애                    /guide/sync-lifecycle   (단계 8)
   표시와 반응형 key               /guide/sync-view
++ 무한 조회                      /guide/sync-infinite    (단계 8)
   자동 재조회                    /guide/sync-refetch
   영속화와 SSR                   /guide/sync-persistence
   관측                          /guide/sync-observation
++ 폼 저장 레시피                  /guide/sync-form        (단계 8)
 
 Framework Integration
   각 장(React·Preact·Vue·Svelte·Solid)에 connectXView 절 추가

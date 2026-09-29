@@ -1,6 +1,6 @@
 # 문서 사이트 요구사항 (stateRefDocs)
 
-상태: 2026-09-28. 사용자 요구로 시작했고 1차 범위는 완료했다. 남은 항목은 [IMPLEMENT](./IMPLEMENT.md)와 [HANDOFF](./HANDOFF.md)에 있다.
+상태: 2026-09-29. 사용자 요구로 시작했고 1차 범위는 완료했다. 2차 요구 R-DS-06(설명 보강)을 진행 중이다. 남은 항목은 [IMPLEMENT](./IMPLEMENT.md)와 [HANDOFF](./HANDOFF.md)에 있다.
 
 **아래 배경 표는 사이트 작업을 시작한 시점의 `main` 대비 차이다.** 그 뒤 [Phase 9](../server-sync/PHASE9.md)가 `@stateref/sync` 안에서 조회 표면을 통합했고(`client.view`·`infiniteView`·`liveView` 제거, 표시는 핸들의 `display`), 사이트는 [IMPLEMENT](./IMPLEMENT.md) 단계 7에서 거기에 맞췄다. **표의 네 행은 층 단위라 그 변화에도 그대로 유효하다** — 진입점 셋도, `connectXView` 5개도, sync가 신규 패키지인 것도 바뀌지 않았다.
 
@@ -32,6 +32,12 @@
 - **R-DS-04 / 루트 `README.md`는 진입점으로 바꾼다.** 어떤 장점이 있는지만 간단히 내고, 자세한 것은 **목차만** 만들어 문서 사이트로 연결한다.
   - 링크는 해시 형식이다: 기본 `https://superlucky84.github.io/state-ref/#/`, 페이지는 `https://superlucky84.github.io/state-ref/#/guide/computed`처럼 쓴다.
 - **R-DS-05 / 다음에 이어서 할 수 있게 기록을 남긴다.** 요구사항·진행 상황·인계를 `docs/` 아래 문서로 둔다. (이 문서 세트가 그것이다.)
+- **R-DS-06 / 새 기능 설명의 빈자리를 메운다 (2026-09-29).** 사용자 보고: "`capture`가 뭘 하는지 문서 페이지만 봐서는 모르겠다. 이건 눈에 띈 것 하나고, 새 기능 전반에 설명이 미흡한 곳을 찾아 보강하고 싶다." 전수 점검 결과(사실 오류 3 · 설명 부족 8)는 [IMPLEMENT](./IMPLEMENT.md) 단계 8에 있다. 사용자가 고른 범위:
+  - 사실 오류 E1~E3 수정 (선택과 무관하게 포함)
+  - 새 장 **편집의 생애**(capture에서 수용까지) — `capture`는 이 장에 모으고 다른 장은 요약 + 링크
+  - 새 장 **무한 조회**
+  - 새 장 **폼 저장 레시피**(draft + sync)
+  - **Sync API 레퍼런스 보강**(빠진 타입과 옵션)
 
 ## 따라오는 제약
 

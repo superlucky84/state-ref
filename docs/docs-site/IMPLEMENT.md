@@ -14,6 +14,8 @@
 6. **기록 (완료 — 이 문서 세트).**
 7. **조회 표면 통합에 맞춰 재동기화 (완료).** [Phase 9](../server-sync/PHASE9.md)가 사이트를 쓴 뒤 sync의 조회 표면을 통합했다. `/guide/sync-view` 장을 `표시와 반응형 key`로 다시 쓰고(en+ko), `ApiSync`·`Sync`·`SyncRefetch`·`SyncQuery`·커넥터 5장(en+ko)과 사이드바 항목을 옮겼다. **라우트와 페이지 수는 바뀌지 않았다**([DC-DS-10](./DESIGN.md)). **기준 테스트:** 사이트 빌드 통과, 라우트 42개·페이지 href 전수 해소, 새 주장을 probe로 측정 — **통과**, 커밋 `6bf4663`.
 
+8. **새 기능 설명 보강 (진행 중, R-DS-06).** 사용자가 `capture`를 보고 "무엇을 하는지 모르겠다"고 했고, 같은 기준으로 새 기능 16장(en)을 소스와 대조해 전수 점검했다. 결과와 하위 단계는 아래 [단계 8 상세](#단계-8-상세)에 있다.
+
 ## 수치
 
 커밋 `df56173^..55e37e6` 기준. 단계 7(`6bf4663`)은 페이지·라우트 수를 바꾸지 않았으므로 아래 수치가 그대로 유효하다.
@@ -52,13 +54,53 @@
 
 `Layout.tsx`의 `routes` 키를 모아 모든 페이지의 `href="#..."`와 README의 절대 링크를 대조했다. 이 검사는 **아직 스크립트로 저장돼 있지 않다** — 남은 항목이다.
 
+## 단계 8 상세
+
+### 점검 결과 (2026-09-29)
+
+**사실 오류** — 소스와 다르게 적힌 것. 범위 선택과 무관하게 고친다.
+
+| ID | 자리 | 적힌 것 | 소스 |
+| --- | --- | --- | --- |
+| E1 | `SyncMutation`·`ApiSync` (en·ko) | `run`의 `accept`에 `'submitted'`·`'none'` 문자열 | `MutationLink.accept`는 `{ kind: 'none' \| 'refetch' \| 'submitted' }` 또는 `{ kind: 'response', select }` **객체**다. 문자열은 `linked.stage`(영속화)에서만 맞다 — [DC-DS-14](./DESIGN.md) |
+| E2 | 같은 두 장 | `'none'` = "기준은 그 자리에 있다", 기본값 미기재 | 생략하면 `{ kind: 'none' }`이고, 성공 뒤 `markUnconfirmed()`로 `status.unconfirmed`를 켠다 (`index.ts` link `success`) |
+| E3 | `ApiSync` (en·ko) | 목록 누락 | `hydrateLocal`, `run` 옵션의 `signal`·`retry`·`retryDelay`, `mutationFn` context의 `operationId`·`attempt`, `onSuccess`·`onError`·`onSettled` |
+
+**설명 부족** — 틀리지는 않았지만 독자가 거기서 막힌다.
+
+| ID | 무엇이 없나 | 채우는 곳 |
+| --- | --- | --- |
+| G1 | `capture`: 왜 필요한가(DTO로는 어떤 편집을 저장했는지 알 수 없다), `ids` 부분 제출, 낡음 규칙(capture 뒤 편집 1회 → WRITE 전 거절), 쓰기 중 입력 보존, 성공 시 제출분만 지움, 제출이 필수인 조합(`submitted`·`onReject: 'remove'`), 다른 조회의 제출 거절 | 새 장 `편집의 생애` |
+| G2 | 조회 충돌을 **푸는** 방법. draft에는 `resolve`가 있고 조회 핸들에는 없다 | 같은 장 ([DC-DS-12](./DESIGN.md)) |
+| G3 | 결과 분류: `mutationFn`이 `MutationRejectedError`를 던질 때만 `rejected`, 그 밖의 모든 throw·abort는 `unknown`. 재시도는 opt-in이고 `rejected`는 재시도하지 않는다 | 같은 장 + mutation 장 |
+| G4 | `start()`의 `MutationOperation`, `MutationStatus` 모양 | `ApiSync` |
+| G5 | 무한 조회 가이드 (이전 남은 항목 3) | 새 장 `무한 조회` |
+| G6 | 용어(기준·로컬 편집·제출·수용)와 한 편집의 흐름이 네 장에 흩어져 있다 | 새 장 `편집의 생애` |
+| G7 | draft + sync를 함께 쓰는 폼 저장 예시 | 새 장 `폼 저장 레시피` |
+| G8 | `ResourceSubmission`·`ResourceChange`·`SyncEnvironment`·`SyncStorage`·`InfiniteQueryOptions` 모양 | `ApiSync` |
+
+### 하위 단계
+
+각 하위 단계의 기준 테스트는 공통으로 **사이트 빌드 통과 + 새/바뀐 href 전수 해소**이고, 새 주장은 일회용 probe(`zz-doc-probe.test.ts`, 쓰고 지운다)로 측정한 문자열로 적는다([DC-DS-02](./DESIGN.md)).
+
+- [x] **8.1 계획 기록** — 이 절, R-DS-06, DC-DS-11~14, M-DS-07.
+- [ ] **8.2 probe 측정** — capture/낡음/`ids`, 조회 충돌 해소 경로, `accept` 생략·`none`, `MutationRejectedError`·재시도, 무한 조회, 조회 ref 위의 draft. **완료 조건:** 새 장에 적을 모든 동작 주장에 측정값이 있다.
+- [ ] **8.3 사실 오류 E1~E3** — `SyncMutation`·`ApiSync` en·ko.
+- [ ] **8.4 `편집의 생애`** (G1·G2·G3·G6) — 페이지 en+ko, 라우트, 사이드바. mutation·query·영속화 장의 capture 서술을 요약 + 링크로.
+- [ ] **8.5 `무한 조회`** (G5).
+- [ ] **8.6 `폼 저장 레시피`** (G7).
+- [ ] **8.7 `Sync API` 보강** (G4·G8).
+- [ ] **8.8 검증과 인계** — `pnpm gate`, 사이트 빌드, 라우트·href 대조, HANDOFF·ctxbin 갱신.
+
+**단계 8 완료 조건:** 위 표의 11개 ID가 전부 채워졌고, 사이드바에서 새 장 셋에 en/ko 모두 도달하며, gate와 사이트 빌드가 통과한다.
+
 ## 남은 항목
 
 우선순위 순. 각 항목이 왜 필요한지 함께 적는다.
 
 1. **첫 화면이 새 기능을 전혀 말하지 않는다.** `Home`·`Introduction`·`QuickStart` 세 장에 `draft`·`sync`·`batch`가 **한 번도 등장하지 않는다**(측정). 사이드바에는 섹션이 있지만, 처음 들어온 사람은 이 라이브러리에 그런 게 있는지 모른 채 지나간다. 소개에 한두 문장, Quick Start 끝에 "다음으로" 링크가 필요하다.
 2. **`packages/state-ref/README.md`의 "Optional server query package" 절이 낡았다.** "currently exposes no network write or mutation API", "its Phase 3 API"라고 적혀 있는데 mutation·link·영속화·관측이 모두 있다. 이 파일은 npm 독자가 보는 문서이고 gate가 그 예제를 컴파일하므로, 고칠 때 예제도 함께 본다.
-3. **무한 조회(infinite query)에 가이드 장이 없다.** 지금은 `Sync API`의 목록과 `표시와 반응형 key`의 한 문단뿐이다. 페이지네이션과 무한 목록은 흔한 요구라 자기 장을 가질 만하다. 부분 지원(반응형 key 전환 없음)을 같은 장에서 말할 수 있다는 이점도 있다.
+3. **(단계 8.5로 옮김)** **무한 조회(infinite query)에 가이드 장이 없다.** 지금은 `Sync API`의 목록과 `표시와 반응형 key`의 한 문단뿐이다. 페이지네이션과 무한 목록은 흔한 요구라 자기 장을 가질 만하다. 부분 지원(반응형 key 전환 없음)을 같은 장에서 말할 수 있다는 이점도 있다.
 4. **링크 해소 검사를 스크립트로 고정한다.** 지금은 손으로 돌린 일회성 파이썬이다. `scripts/`에 두면 라우트를 지우거나 오타가 났을 때 gate가 잡는다.
 5. **사람이 브라우저로 훑어본 적이 없다.** 빌드·링크·내용은 확인했지만 실제 화면(사이드바 펼침, 코드 하이라이트, 모바일 폭, 다크 모드)은 아직 아무도 보지 않았다. [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md)가 그 목록이다.
 6. **한국어판 문체 검토.** 내용은 영어판과 맞췄지만 사용자가 읽고 어색한 곳을 고르는 편이 빠르다.
