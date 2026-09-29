@@ -1,6 +1,7 @@
 import { onDestroy } from 'svelte';
 import { writable } from 'svelte/store';
 import type { Readable, Writable } from 'svelte/store';
+import { cloneDeep } from 'state-ref';
 import type { Renew, StateRefStore, Watch } from 'state-ref';
 
 export type ViewWatch<R> = (
@@ -59,20 +60,58 @@ function reportRefusal(error: unknown) {
 }
 
 /**
- * Svelte V4
+ * What Svelte is handed of a store value: a copy for objects and arrays.
+ *
+ * `$store.field = value` is Svelte's own syntax and compiles to a mutation of
+ * the store's current value followed by `store.set(value)`. Handing Svelte the
+ * store's internal object made that mutation land inside the store with no
+ * write and no notification, and the `set` then looked like "no change"
+ * (F-S5). A copy keeps the store untouched until the `set` arrives, which is
+ * then an ordinary write with a correct `before` (DC-CN-04: a write that
+ * passes through the connector reaches the store).
+ */
+function copied<V>(value: V): V {
+  return value !== null && typeof value === 'object' ? cloneDeep(value) : value;
+}
+
+/**
+ * Structural equality for the plain data a store holds. The write-back uses it
+ * to tell Svelte handing a value back unchanged from a real write: Svelte
+ * queues a `set` made while it is notifying, so a flag raised around the
+ * connector's own delivery is already down by the time that delivery reaches
+ * the write-back, and an identity test cannot work either - `$store.x = y`
+ * mutates the very copy the connector delivered.
+ */
+function sameData(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true;
+  if (
+    a === null ||
+    b === null ||
+    typeof a !== 'object' ||
+    typeof b !== 'object' ||
+    Array.isArray(a) !== Array.isArray(b)
+  )
+    return false;
+  const left = a as Record<string, unknown>;
+  const right = b as Record<string, unknown>;
+  const keys = Object.keys(left);
+  if (keys.length !== Object.keys(right).length) return false;
+  return keys.every(
+    key =>
+      Object.prototype.hasOwnProperty.call(right, key) &&
+      sameData(left[key], right[key])
+  );
+}
+
+/**
+ * Svelte 4 and 5 (the store API; `$store` works in both).
  */
 export function connectSvelte<T>(watch: Watch<T>) {
   return <V>(callback: (store: StateRefStore<T>) => StateRefStore<V>) => {
     const abortController = new AbortController();
     let signalValue!: Writable<V>;
     let stateRef!: StateRefStore<V>;
-    let changing = false;
     let release: (() => void) | null = null;
-    const change = (cb: () => void) => {
-      changing = true;
-      cb();
-      changing = false;
-    };
 
     onDestroy(() => {
       abortController.abort();
@@ -86,37 +125,28 @@ export function connectSvelte<T>(watch: Watch<T>) {
       release = null;
     });
 
+    const deliver = (value: V) => {
+      if (signalValue) signalValue.set(value);
+      else signalValue = writable(value);
+    };
+
     watch(stateInnerRef => {
       stateRef = callback(stateInnerRef);
-
-      if (!changing) {
-        if (signalValue) {
-          signalValue.set(stateRef.value as V);
-        } else {
-          signalValue = writable(stateRef.value as V);
-        }
-      }
-
+      deliver(copied(stateRef.value as V));
       return abortController.signal;
     });
 
     release = signalValue.subscribe(newValue => {
       /**
-       * Nothing in here may throw into Svelte's flush. A subscriber that throws
-       * leaves the global subscriber queue unflushed, and every store in the
-       * application then stops notifying - silently, including stores created
-       * afterwards. Both halves can legitimately be refused: reading the ref of
-       * a discarded draft or a disposed query throws just as writing one does,
-       * so the guard covers the comparison too, not only the assignment. The
-       * refusal still surfaces as an uncaught error, the way the other
-       * connectors report the same thing.
+       * Nothing in here may throw into Svelte's flush. A subscriber that
+       * throws leaves the global subscriber queue unflushed, and every store
+       * in the application then stops notifying - silently, including stores
+       * created afterwards. The write can legitimately be refused (a
+       * discarded draft, a disposed or readonly query), so it is reported the
+       * way an uncaught error would be instead.
        */
       try {
-        if (stateRef.value !== newValue && !changing) {
-          change(() => {
-            stateRef.value = newValue;
-          });
-        }
+        if (!sameData(stateRef.value, newValue)) stateRef.value = newValue;
       } catch (error) {
         reportRefusal(error);
       }

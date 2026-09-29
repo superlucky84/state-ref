@@ -90,7 +90,12 @@ try {
     '@stateref/connect-solid',
   ];
   // Deliberately ESM-only: a require must fail loudly, never resolve empty.
-  const ESM_ONLY = ['state-ref/plugin', '@stateref/sync'];
+  const ESM_ONLY = [
+    'state-ref/plugin',
+    '@stateref/sync',
+    // Svelte 5 only, and Svelte 5 is ESM only.
+    '@stateref/connect-svelte/runes',
+  ];
 
   const script = `
     const failures = [];
@@ -125,6 +130,9 @@ try {
     import { batch } from 'state-ref/batch';
     import { createSyncClient } from '@stateref/sync';
     const plugin = await import('state-ref/plugin');
+    const { connectSvelteRunes } = await import('@stateref/connect-svelte/runes');
+    if (typeof connectSvelteRunes !== 'function')
+      throw new Error('@stateref/connect-svelte/runes did not export connectSvelteRunes');
     if ([create, createDraft, batch, createSyncClient].some(value => typeof value !== 'function'))
       throw new Error('an ESM entry did not export its function');
     if (Object.keys(plugin).length === 0) throw new Error('state-ref/plugin exported nothing');

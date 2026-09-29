@@ -1,5 +1,36 @@
 # Changelog
 
+## @stateref/connect-svelte 5.0.0 (unreleased)
+
+The major follows the newest Svelte it supports; it still supports Svelte 4
+(`peerDependencies`: `svelte ^4.0.0 || ^5.0.0`). Measured on 4.2.19 and 5.57.1.
+
+### Added
+
+- **`@stateref/connect-svelte/runes`** - `connectSvelteRunes(watch)(select)`
+  returns `{ value }` for Svelte 5 runes components (DC-CN-05). It subscribes
+  through `createSubscriber` while a template, `$effect` or `$derived` reads
+  `.value`, and releases when the last reader goes. Assigning `.value` writes
+  the store synchronously; a selected object or array is a frozen copy, so a
+  nested mutation throws instead of changing the store behind its back. A
+  separate, ESM-only entry: `svelte/reactivity` does not exist in Svelte 4.
+
+### Fixed
+
+- **`$store.field = value` is a real store write** (F-S5). The connector
+  handed Svelte the store's internal object, so Svelte's own nested
+  assignment syntax mutated the store in place - no write, no subscriber
+  notified. Svelte now gets a copy, and the `set` Svelte compiles the
+  assignment into writes the store with a correct `before`.
+
+### Changed
+
+- The store API is unchanged in shape and works on Svelte 4 and 5 (on 5,
+  components written with `$store` compile in legacy mode).
+- The write-back compares by value instead of an echo flag: Svelte queues a
+  `set` made while it is notifying, so the flag was already down when the
+  connector's own delivery came back.
+
 ## @stateref/connect-vue 3.4.0 (unreleased)
 
 The major follows Vue, so the breaking change below lands in a minor here.
