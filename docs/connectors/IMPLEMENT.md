@@ -1,6 +1,6 @@
 # 커넥터 현대화 구현 계획
 
-[DESIGN](./DESIGN.md)의 결정이 닫힌 뒤 이 순서로 진행한다. **지금은 계획이며 어느 단계도 시작하지 않았다.**
+[DESIGN](./DESIGN.md)의 결정이 닫힌 뒤 이 순서로 진행했다. **2026-09-29 단계 0~8 완료** — 남은 것은 사람의 브라우저 확인([MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md))뿐이다.
 
 모든 단계의 공통 완료 조건: 해당 커넥터 테스트 통과, `pnpm gate` 19단계 통과. 커넥터 코드 변경은 문서·예제 변경과 커밋을 나눈다. 라이브러리 수정이 예제보다 앞선 자기 커밋을 갖는다.
 
@@ -180,12 +180,21 @@ REQUIREMENTS C-CN-03의 "Vue 33 · Svelte 35 파일"은 컴포넌트 파일까�
 
 ## 단계 8 — 통합 테스트
 
-- [ ] `pnpm test:e2e` 84개를 최신 프레임워크 버전의 예제로 돌린다.
-- [ ] 매트릭스 전체 통과, `pnpm gate` 통과.
+- [x] `pnpm test:e2e` 84개를 최신 프레임워크 버전의 예제로 — **84개 통과**(아래 기록의 환경 보정 두 가지를 거쳐서).
+- [x] 매트릭스 전체 통과(단계 7 뒤 전 칸 pass, 이후 커넥터 코드는 바뀌지 않았다), `pnpm gate` 19단계 PASS, `pnpm check:examples` PASS.
+- [x] React 예제를 `<StrictMode>`로 감쌌다(커밋 `90393f4`). StrictMode의 이중 실행은 개발 모드에서만 일어나 프로덕션 빌드로 도는 e2e가 F-R1을 볼 수 없으므로, 개발 서버에서 Chromium으로 따로 확인했다.
 - [ ] [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md) 수행(사람 몫).
+
+### 단계 8 기록
+
+- **e2e 첫 실행: 84개 전부 3~4ms 실패** — `browserType.launch: Executable doesn't exist at /opt/pw-browsers/chromium_headless_shell-1243/...`. 저장소는 Playwright 1.63을 쓰고 이 컨테이너에는 그 브라우저 빌드가 없다(1194만 있다). 코드와 무관하다. 브라우저를 새로 받지 않고, 저장소 설정을 불러와 `launchOptions.executablePath: '/opt/pw-browsers/chromium'`만 덮는 임시 설정으로 돌렸다(커밋하지 않음, 지움).
+- **둘째 실행: 66 통과, 18 실패** — 실패는 번들 8·contract 10, 모두 "콘솔 오류 0" 단언에 걸린 `404 favicon.ico` 한 줄. 이 컨테이너의 Chromium 141(전체 브라우저)은 `/favicon.ico`를 요청하고 Playwright 기본 headless shell은 요청하지 않는다. 확인: 커밋되지 않는 `dist` 폴더에만 빈 `favicon.ico`를 임시로 두고 두 spec을 다시 돌리자 **20개 모두 통과**. 따라서 84개 통과로 판정하고 임시 파일은 지웠다. **저장소의 원래 환경(Playwright가 받은 headless shell)에서는 이 보정이 필요 없다.**
+- **개발 모드 StrictMode 확인:** 개발 서버(`vite`)에서 load → settle-all 뒤 패널 A 입력에 `부산`·`대구`·`광주` → 패널 B가 매번 같은 값, 콘솔 오류 0. StrictMode를 뺀 채로도 같은 결과. 처음에는 load만 누르고 기다려 "pending / fetching"에서 멈춘 것으로 보였는데, 예제의 가짜 서버는 `settle-all`로 응답한다(StrictMode 유무와 무관했다).
+- 도중에 `pkill -f` 패턴이 자기 셸 명령줄에도 맞아 셸이 끝나는 일이 두 번 있었다. 남은 서버는 `pgrep -af`로 PID를 보고 PID로 끝낸다.
 
 ## 인계
 
+- 2026-09-29: **단계 8 완료 — 커넥터 현대화 종료.** e2e 84 통과(컨테이너 브라우저 차이 두 가지를 임시 보정), 매트릭스·gate·check:examples PASS, React 예제 StrictMode + 개발 모드 확인. 결정 DC-CN-01~07 닫힘, DC-CN-08(프리릴리스)·09(`ViewWatch` 공통화)는 범위 밖으로 남김. **다음(사람):** MANUAL_TEST_CHECKLIST, 그리고 배포(버전: react 19.0.0, preact 10.4.0, vue 3.4.0, svelte 5.0.0, solid 1.4.0 — CHANGELOG 미배포 절).
 - 2026-09-29: **단계 7 완료.** 얇은 결함 주입 9곳 보강, 전부 ≥ 2. 다음은 단계 8(통합): e2e 84개, 매트릭스 전체, gate, 사람 몫 확인 목록.
 - 2026-09-29: **단계 6 완료** (`f55435e`, `336cd9f`, `4bfe72e`). 예제는 React 19·Svelte 5, 문서는 새 버전 범위·동작 규칙·runes. 다음은 단계 7(하드닝): 결함 주입에서 테스트 1개로만 잡힌 9곳 보강.
 - 2026-09-29: **단계 5 완료** (`3d72925`). 커넥터 5종 코드 작업이 끝났다. DC-CN-03~07 전부 닫힘. 다음은 단계 6(문서와 예제): 사이트 Framework Integration 장·패키지 README에 버전 범위·마운트 2회 렌더·쓰기 원칙·runes 진입점을 적고, 예제를 최신 버전(React 19, Svelte 5)으로 올린다.
