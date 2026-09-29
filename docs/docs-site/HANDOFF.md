@@ -2,6 +2,16 @@
 
 **재개할 때 이 문서를 먼저 읽는다.**
 
+> **단계 8 완료 (2026-09-29): 새 기능 설명 보강 (R-DS-06).**
+>
+> 사용자가 "`capture`가 뭘 하는지 문서만 봐서는 모르겠다"고 했고, 새 기능 16장을 소스와 전수 대조해 사실 오류 3·설명 부족 8을 찾아 전부 채웠다. 목록·측정값·커밋은 [IMPLEMENT 단계 8 상세](./IMPLEMENT.md#단계-8-상세).
+>
+> - **새 장 3개(en+ko):** `편집의 생애`(`/guide/sync-lifecycle`), `무한 조회`(`/guide/sync-infinite`), `폼 저장 레시피`(`/guide/sync-form`). 사이드바 위치는 [DC-DS-13](./DESIGN.md).
+> - **사실 오류를 고쳤다:** `run`의 `accept`는 **객체**(`{ kind: 'submitted' }`)이고 문자열은 `linked.stage`에서만 맞다(DC-DS-14). 생략 시 `{ kind: 'none' }` = 편집 유지 + `unconfirmed`.
+> - **라이브러리 결정 후보 둘을 찾았다**(문서는 현 상태를 적었다): 조회 핸들에 `resolve()`가 없다, 루트 draft가 `[]` 한 줄로 적용된다. [IMPLEMENT 남은 항목](./IMPLEMENT.md#남은-항목) 8·9.
+> - **아직 사람이 화면을 본 적이 없다.** [M-DS-07](./MANUAL_TEST_CHECKLIST.md)의 핵심 판정은 "편집의 생애만 읽고 capture를 설명할 수 있는가"이고, 사용자 몫이다.
+> - 이 세션은 원격 컨테이너였고 **`origin/feat/server-sync-draft`로 push했다.** 이전 줄의 "upstream 없음"은 낡았다.
+
 > **보류 해제 (2026-09-28): 조회 표면 통합을 마쳤고 사이트도 옮겼다.**
 >
 > [Phase 9](../server-sync/PHASE9.md)가 끝났다. `client.view`·`infiniteView`·`liveView`가 사라지고 표시는 조회 핸들의 `display`/`watchDisplay`이며 `phase`는 없다. 사이트 쪽은 **이미 옮겼다** — `view와 liveView` 장을 `표시와 반응형 key`로 다시 썼고(en+ko), API Reference·Sync 개요·자동 재조회·query/resource·커넥터 5장과 사이드바를 갱신했다(커밋 `6bf4663`).

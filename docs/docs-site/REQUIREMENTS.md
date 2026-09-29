@@ -1,6 +1,6 @@
 # 문서 사이트 요구사항 (stateRefDocs)
 
-상태: 2026-09-29. 사용자 요구로 시작했고 1차 범위는 완료했다. 2차 요구 R-DS-06(설명 보강)을 진행 중이다. 남은 항목은 [IMPLEMENT](./IMPLEMENT.md)와 [HANDOFF](./HANDOFF.md)에 있다.
+상태: 2026-09-29. 사용자 요구로 시작했고 1차 범위는 완료했다. 2차 요구 R-DS-06(설명 보강)도 완료했다(사람의 화면 확인은 남음). 남은 항목은 [IMPLEMENT](./IMPLEMENT.md)와 [HANDOFF](./HANDOFF.md)에 있다.
 
 **아래 배경 표는 사이트 작업을 시작한 시점의 `main` 대비 차이다.** 그 뒤 [Phase 9](../server-sync/PHASE9.md)가 `@stateref/sync` 안에서 조회 표면을 통합했고(`client.view`·`infiniteView`·`liveView` 제거, 표시는 핸들의 `display`), 사이트는 [IMPLEMENT](./IMPLEMENT.md) 단계 7에서 거기에 맞췄다. **표의 네 행은 층 단위라 그 변화에도 그대로 유효하다** — 진입점 셋도, `connectXView` 5개도, sync가 신규 패키지인 것도 바뀌지 않았다.
 
