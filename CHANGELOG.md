@@ -1,5 +1,41 @@
 # Changelog
 
+## @stateref/connect-vue 3.4.0 (unreleased)
+
+The major follows Vue, so the breaking change below lands in a minor here.
+Peer range is now `vue ^3.2.0` (was `^3.0.0`): the connector uses
+`onScopeDispose`, which arrived in 3.2. Measured on 3.2.47, 3.5.10 and 3.5.43.
+
+### Breaking
+
+- **A selected object or array is readonly** (DC-CN-04). `addr.value.city = 'x'`
+  or `list.value.push(x)` is refused with Vue's readonly warning in
+  development and the store is untouched - the rule the core and the other
+  connectors already had. Write through `.value` of a selection instead: pick
+  the leaf (`use(s => s.address.city).value = 'x'`) or replace the whole value
+  (`addr.value = { ...addr.value, city: 'x' }`).
+
+### Fixed
+
+- **A nested write no longer changes the store behind its back** (F-V4). The
+  connector wrapped the store's own object in `reactive`, so a nested write
+  mutated the store in place with no subscriber notified, and the write the
+  store saw a tick later had `before` equal to `after` - invisible to draft
+  and sync change tracking.
+- **Writes reach the store synchronously.** `city.value = 'x'` used to land on
+  the next tick through a deep `watch`; reading the store in the same handler
+  saw the old value.
+- **Teardown follows the scope** (F-V2). `onScopeDispose` replaces
+  `onUnmounted`, so a connector used inside an `effectScope` or a composable
+  releases its subscription when that scope stops.
+
+### Changed
+
+- **No copy, no deep watch, no echo guard.** Reads go through the subscribed
+  state-ref reference inside a `customRef`; writes go straight to the store.
+  The guard that produced `CI-25`, `CI-26` and `CI-29` is gone; their
+  regression tests still pass.
+
 ## @stateref/connect-preact 10.4.0 (unreleased)
 
 The major follows Preact, so a behavior change that would otherwise be a
