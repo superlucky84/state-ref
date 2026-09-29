@@ -31,6 +31,7 @@
 
 - **F-P1 [소스] React와 같이 렌더 중에 구독한다.** 다만 Preact 10에는 concurrent 렌더와 StrictMode 이중 실행이 없어 **[추론]** F-R1·F-R3는 생기지 않는다.
 - **F-P2 [소스] F-R6와 같은 할당.**
+- **F-P3 [측정] — 고침(`576893c`). Suspense로 중단된 렌더의 구독이 새고, 언마운트 뒤 쓰기에서 예외가 난다.** 렌더 중 구독(F-P1)의 실제 결과다. 값을 읽고 promise를 던진 컴포넌트를 언마운트한 뒤 스토어에 쓰면 Preact 10.24.1에서 `TypeError: Cannot read properties of undefined (reading '__c')`. 처음 잰 probe는 읽기 전에 던져 의존성이 없었으므로 0을 보고했다 — 읽은 뒤 던지게 고쳐 재현했다.
 - `useSyncExternalStore`는 `preact/compat`에만 있다. 코어 `preact/hooks`만 쓰는 지금의 의존을 유지하려면 같은 원리(구독은 layout effect, 값은 버전 번호)를 직접 구현한다.
 - Preact 11은 rc다([DC-CN-08](#결정)).
 
