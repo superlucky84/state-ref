@@ -16,11 +16,11 @@
 
 지금: `useState` 강제 갱신 + **렌더 본문에서 `watch(renew)` 호출** + `useEffect` 정리에서 abort + `typeof window` 로 SSR 분기.
 
-- **F-R1 [측정] StrictMode에서 값이 한 박자 늦게 보인다.** React 18.3.1, `<StrictMode>` 안에서 `n`에 2를 쓰면 다시 렌더되는데도 화면은 `1`이고, 3을 쓰면 `3`이다. 일반 모드는 정상. 개발 모드의 마운트→해제→재마운트에서 해제가 구독을 abort하고, 재마운트는 렌더 없이 effect만 다시 돌기 때문으로 보인다.
+- **F-R1 [측정] StrictMode에서 값이 늦게 보이거나 아예 갱신되지 않는다. React 19에서 더 심하다.** 단계 0 매트릭스 사본에서 `<StrictMode>` 안의 컴포넌트에 1·2·3을 차례로 썼을 때 화면: **React 18.3.1 `1→0, 2→2, 3→3`(첫 쓰기 유실), React 19.3.0 `1→0, 2→0, 3→0`(한 번도 갱신 안 됨).** 기존 테스트 36개는 StrictMode를 쓰지 않아 두 버전 모두 통과한다. 처음 측정(아래)은 React 18.3.1, `<StrictMode>` 안에서 `n`에 2를 쓰면 다시 렌더되는데도 화면은 `1`이고, 3을 쓰면 `3`이다. 일반 모드는 정상. 개발 모드의 마운트→해제→재마운트에서 해제가 구독을 abort하고, 재마운트는 렌더 없이 effect만 다시 돌기 때문으로 보인다.
 - **F-R2 [소스] 구독을 렌더 중에 만든다.** 렌더가 버려지면(concurrent 렌더 중단, Suspense) effect가 등록되지 않아 abort할 주체가 없다. **[추론]** 그 구독과 setState 클로저가 남는다.
 - **F-R3 [추론] concurrent 렌더에서 tearing을 막는 장치가 없다.** `startTransition` 도중 스토어가 바뀌면 한 화면에 옛 값과 새 값이 섞일 수 있다. `useSyncExternalStore`가 이것을 막으려고 존재한다.
 - **F-R4 [소스] SSR을 `typeof window === 'undefined'`로 판정한다.** React의 공식 경로는 `useSyncExternalStore`의 `getServerSnapshot`이고, hydration 불일치도 그쪽이 다룬다.
-- **F-R5 [소스] peer가 `^18.0.0`이라 React 19를 받지 않는다.** **React 19에서 동작하는지는 아직 재지 않았다.**
+- **F-R5 [측정] peer가 `^18.0.0`이라 React 19를 받지 않는다.** 단계 0: React 19.3.0에서 기존 테스트 7파일·36개는 **전부 통과**한다. 그러나 F-R1이 19에서 치명적이므로 "19에서 동작한다"고 말할 수 없다.
 - **F-R6 [소스] `useRef(new AbortController())`가 렌더마다 컨트롤러를 만들고 버린다.** 초기값 인자는 매번 평가된다.
 
 **권장 API:** `useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)` (React 18+). 지원 범위를 18·19 둘 다로 해도 쓸 수 있다.
@@ -47,7 +47,8 @@
 
 지금: `svelte/store`의 `writable` + `onDestroy` + 스스로 부른 `subscribe` 해제.
 
-- **F-S1 [소스] peer가 `^4.0.0`이라 Svelte 5를 받지 않는다.** **Svelte 5에서 동작하는지는 아직 재지 않았다.** Svelte 5도 `svelte/store`와 `$store` 문법, `onDestroy`를 지원한다.
+- **F-S1 [측정] peer가 `^4.0.0`이라 Svelte 5를 받지 않는다.** 단계 0: Svelte 5.57.1에서 DOM 테스트 4파일·26개 **전부 통과**. SSR 테스트 1개는 실패하는데 **원인은 테스트 코드**다 — Svelte 4의 `Component.render()`를 부르고, Svelte 5에서는 `svelte/server`의 `render()`다. 매트릭스 사본에서만 그렇게 바꿔 돌리면 통과한다(HTML `<!--[--><div>7</div><!--]-->`, 쓰기 뒤 남은 구독 0).
+- **F-S4 [측정] Svelte 5 테스트 환경의 빈틈 둘.** (1) `@sveltejs/vite-plugin-svelte@3`은 Svelte 5에서 "지원이 v4로 옮겨 갔다"고 경고한다 — Svelte 5 칸은 v4 이상이 필요하다(v4는 Vite 5를 받는다, [추론]). (2) 테스트 컴포넌트는 Svelte 4 문법이라 Svelte 5에서 **legacy 모드로 컴파일된다.** runes 모드 컴포넌트에서 `$store`로 쓰는 경우는 아직 시험되지 않는다.
 - **F-S2 [소스] Svelte 5가 권장하는 모델은 runes다.** 외부 이벤트 소스를 반응형으로 잇는 공식 도구는 `createSubscriber`(`svelte/reactivity`, 5.7+)이고, store와 runes 사이는 `fromStore`/`toStore`로 잇는다.
 - **SSR은 결함이 아니다 [소스].** 다른 커넥터와 달리 `typeof window` 분기가 없는데, Svelte의 `onDestroy`는 서버 렌더에서도 실행되는 유일한 생명주기라 구독이 정리된다.
 

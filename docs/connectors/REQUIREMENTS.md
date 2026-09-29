@@ -24,7 +24,7 @@
 
 - **C-CN-01 / 공개 API 모양은 가능한 한 지킨다.** `connectX(watch)`와 `connectXView(watch)`의 호출 모양, 반환 모양(React·Preact: 훅, Vue: `Reactive<{ value }>`, Svelte: store, Solid: `Signal`)은 이 저장소의 예제 5종·문서 사이트·패키지 README가 인용한다. 바꾸면 breaking이고, 버전·문서·예제를 함께 옮겨야 한다([DC-CN-02](./DESIGN.md)).
 - **C-CN-02 / 의존성 추적 모델을 바꾸지 않는다.** 코어는 "`watch(renew)`가 돌려준 ref로 `.value`를 읽는 순간 그 경로가 구독에 들어간다"는 모델이다(`packages/state-ref/src/connectors/collector.ts`). 컴포넌트가 렌더에서 읽은 필드만 다시 그리게 하는 것이 이 라이브러리의 장점이고, 커넥터는 이 모델 위에서 프레임워크 규칙을 지켜야 한다.
-- **C-CN-03 / 기존 커넥터 테스트(React 7 · Preact 5 · Vue 33 · Svelte 35 · Solid 13 파일)와 e2e 84개를 기준선으로 둔다.** 버그 기록 `CI-25`·`CI-26`·`CI-29`(Vue), 구독 해제(IC-01), SSR 누수 방지가 그 테스트에 있다. 새 구현은 이것들을 모두 통과해야 한다.
+- **C-CN-03 / 기존 커넥터 테스트(테스트 파일 React 7 · Preact 5 · Vue 5 · Svelte 4+SSR 1 · Solid 4+SSR 1, 테스트 합계 150+3 — [IMPLEMENT 단계 0 결과](./IMPLEMENT.md))와 e2e 84개를 기준선으로 둔다.** 버그 기록 `CI-25`·`CI-26`·`CI-29`(Vue), 구독 해제(IC-01), SSR 누수 방지가 그 테스트에 있다. 새 구현은 이것들을 모두 통과해야 한다.
 - **C-CN-04 / 동등성·무부작용을 주장하지 않는다.** 상시 결정.
 
 ## 합격 기준
