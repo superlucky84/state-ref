@@ -181,6 +181,10 @@ other.query(options).ref.address.city.value; // 영향 없음`}
           있는가
         </li>
         <li>
+          <a href="#/ko/guide/sync-form">폼 저장 레시피</a> - draft 폼을
+          mutation으로 저장하기, 처음부터 끝까지
+        </li>
+        <li>
           <a href="#/ko/api/sync">Sync API</a> - 전체 표면
         </li>
       </ul>

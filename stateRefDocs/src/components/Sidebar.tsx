@@ -137,6 +137,10 @@ const menuData: MenuSection[] = [
         text: { en: 'Observation', ko: '관측' },
         link: '/guide/sync-observation',
       },
+      {
+        text: { en: 'Form Save Recipe', ko: '폼 저장 레시피' },
+        link: '/guide/sync-form',
+      },
     ],
   },
   {

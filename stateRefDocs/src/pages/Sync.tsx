@@ -182,6 +182,10 @@ other.query(options).ref.address.city.value; // unaffected`}
           is holding
         </li>
         <li>
+          <a href="#/guide/sync-form">Form Save Recipe</a> - a draft form saved
+          through a mutation, end to end
+        </li>
+        <li>
           <a href="#/api/sync">Sync API</a> - the full surface
         </li>
       </ul>
