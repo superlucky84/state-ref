@@ -58,6 +58,35 @@ client.ensureInfinite(options)`}
         fixed key only - a reactive key has no infinite equivalent.
       </p>
 
+      <p>
+        Guide: <a href="#/guide/sync-infinite">Infinite Queries</a>.
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`// InfiniteQueryOptions<Page, Param> — QueryOptions without queryFn / editable / initialData, plus:
+{
+  queryFn: (context: { signal: AbortSignal; pageParam: Param }) => Page | Promise<Page>;
+  initialPageParam: Param;   // JSON-compatible
+  getNextPageParam: (lastPage, pages, lastPageParam, pageParams) => Param | null | undefined;
+  getPreviousPageParam?: (firstPage, pages, firstPageParam, pageParams) => Param | null | undefined;
+  maxPages?: number;
+  initialData?: { pages: Page[]; pageParams: Param[] };
+}
+
+// InfiniteQueryHandle — data is { pages, pageParams }
+handle.ref / handle.watch          // readonly
+handle.status / handle.watchStatus
+handle.display / handle.watchDisplay
+handle.load()                      // the first page only
+handle.refetch()                   // re-reads held pages from the first
+handle.fetchNextPage() / handle.fetchPreviousPage()
+handle.hasNextPage() / handle.hasPreviousPage()
+handle.invalidate()
+handle.dispose()
+// no changes(), no capture()`}
+      />
+
       <h3>Mutations</h3>
 
       <CodeBlock
@@ -138,7 +167,7 @@ handle.dispose()    // releases this handle's subscriptions
 handle.isDirty()
 handle.changes()
 handle.version()
-handle.capture(ids?)        // an immutable value + change snapshot for a mutation
+handle.capture(ids?)        // ResourceSubmission: frozen value + rows + version
 handle.acceptServer(value)  // cache-only acceptance; sends no WRITE`}
       />
 
@@ -161,6 +190,36 @@ handle.acceptServer(value)  // cache-only acceptance; sends no WRITE`}
   pending: number;
   unconfirmed: boolean;
 }`}
+      />
+
+      <h3>ResourceChange and ResourceSubmission</h3>
+
+      <p>
+        What <code>changes()</code> and <code>capture()</code> return. See{' '}
+        <a href="#/guide/sync-lifecycle">Edit Lifecycle</a> for how they are
+        used.
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`type ResourceValue = Readonly<{ exists: boolean; value: unknown }>;
+
+type ResourceChange = Readonly<{
+  owner: object;           // the resource it belongs to
+  id: number;              // what capture(ids) takes
+  version: number;         // resource version when read
+  path: readonly (string | number)[];
+  before: ResourceValue;   // the baseline
+  after: ResourceValue;    // the local value
+  conflict: boolean;       // a READ brought a different value here
+}>;
+
+type ResourceSubmission<T> = Readonly<{
+  owner: object;
+  version: number;         // stale once the resource version moves
+  value: T;                // the whole current value, frozen
+  changes: readonly ResourceChange[]; // all rows, or the ids passed
+}>;`}
       />
 
       <h2>Display</h2>
@@ -230,6 +289,43 @@ mutation.dispose()
         value, not by resending.
       </p>
 
+      <h3>MutationOperation, MutationStatus, MutationResult</h3>
+
+      <CodeBlock
+        language="typescript"
+        code={`type MutationOperation<T> = Readonly<{
+  id: number;
+  status: StateRefStore<MutationStatus>;
+  watchStatus: Watch<MutationStatus>;
+  result: Promise<MutationResult<T>>;
+  abort: () => void;       // settles as 'unknown'
+  dispose: () => void;
+}>;
+
+type MutationStatus = Readonly<{
+  phase: 'idle' | 'pending' | 'success' | 'sync-error' | 'rejected' | 'unknown';
+  pending: number;
+  operationId: number | null;
+  error: unknown | null;
+}>;
+
+type MutationResult<T> =
+  | { kind: 'success'; operationId: number; data: T; callbackError?: unknown }
+  | { kind: 'sync-error'; operationId: number; data: T; error: unknown; callbackError?: unknown }
+  | {
+      kind: 'rejected' | 'unknown';
+      operationId: number;
+      error: unknown;          // a MutationRejectedError for 'rejected'
+      recoveryError?: unknown; // onReject: 'remove' failed to revert
+      callbackError?: unknown;
+    };
+
+class MutationRejectedError extends Error {
+  constructor(message: string, reason?: unknown);
+  readonly reason?: unknown;
+}`}
+      />
+
       <h2>Environment</h2>
 
       <CodeBlock
@@ -238,6 +334,20 @@ mutation.dispose()
 
 const environment = createBrowserSyncEnvironment(); // browser globals only`}
       />
+
+      <CodeBlock
+        language="typescript"
+        code={`type SyncEnvironment = Readonly<{
+  subscribe: (listener: (event: 'focus' | 'reconnect') => void) => () => void;
+  isFocused: () => boolean;
+  isOnline: () => boolean;
+}>;`}
+      />
+
+      <p>
+        Implement this yourself when the host knows better than browser globals
+        - a native shell, a test, or a custom connectivity probe.
+      </p>
 
       <h2>Persistence</h2>
 
@@ -256,6 +366,23 @@ openPersistedMutationQueue({ storage, key, buster, maxAge?, commands, isOnline? 
       <p>
         Each wants its own storage key with exactly one writer. See{' '}
         <a href="#/guide/sync-persistence">Persistence and SSR</a>.
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`type SyncStorage = Readonly<{
+  getItem: (key: string) => string | null | Promise<string | null>;
+  setItem: (key: string, value: string) => void | Promise<void>;
+  removeItem: (key: string) => void | Promise<void>;
+}>;
+
+// options for save/restore(Local)SyncSnapshot
+{ key: string; buster: string; maxAge?: number /* default Infinity */ }`}
+      />
+
+      <p>
+        <code>localStorage</code> fits as is; the async signatures let an
+        IndexedDB or native store fit too.
       </p>
 
       <h2>Scope</h2>

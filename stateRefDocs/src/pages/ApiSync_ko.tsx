@@ -58,6 +58,35 @@ client.ensureInfinite(options)`}
         받습니다. 반응형 key의 무한 조회판은 없습니다.
       </p>
 
+      <p>
+        가이드: <a href="#/ko/guide/sync-infinite">무한 조회</a>.
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`// InfiniteQueryOptions<Page, Param> — QueryOptions without queryFn / editable / initialData, plus:
+{
+  queryFn: (context: { signal: AbortSignal; pageParam: Param }) => Page | Promise<Page>;
+  initialPageParam: Param;   // JSON-compatible
+  getNextPageParam: (lastPage, pages, lastPageParam, pageParams) => Param | null | undefined;
+  getPreviousPageParam?: (firstPage, pages, firstPageParam, pageParams) => Param | null | undefined;
+  maxPages?: number;
+  initialData?: { pages: Page[]; pageParams: Param[] };
+}
+
+// InfiniteQueryHandle — data is { pages, pageParams }
+handle.ref / handle.watch          // readonly
+handle.status / handle.watchStatus
+handle.display / handle.watchDisplay
+handle.load()                      // the first page only
+handle.refetch()                   // re-reads held pages from the first
+handle.fetchNextPage() / handle.fetchPreviousPage()
+handle.hasNextPage() / handle.hasPreviousPage()
+handle.invalidate()
+handle.dispose()
+// no changes(), no capture()`}
+      />
+
       <h3>mutation</h3>
 
       <CodeBlock
@@ -138,7 +167,7 @@ handle.dispose()    // releases this handle's subscriptions
 handle.isDirty()
 handle.changes()
 handle.version()
-handle.capture(ids?)        // an immutable value + change snapshot for a mutation
+handle.capture(ids?)        // ResourceSubmission: frozen value + rows + version
 handle.acceptServer(value)  // cache-only acceptance; sends no WRITE`}
       />
 
@@ -161,6 +190,36 @@ handle.acceptServer(value)  // cache-only acceptance; sends no WRITE`}
   pending: number;
   unconfirmed: boolean;
 }`}
+      />
+
+      <h3>ResourceChange와 ResourceSubmission</h3>
+
+      <p>
+        <code>changes()</code>와 <code>capture()</code>가 돌려주는 것입니다.
+        어떻게 쓰이는지는 <a href="#/ko/guide/sync-lifecycle">편집의 생애</a>를
+        보세요.
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`type ResourceValue = Readonly<{ exists: boolean; value: unknown }>;
+
+type ResourceChange = Readonly<{
+  owner: object;           // the resource it belongs to
+  id: number;              // what capture(ids) takes
+  version: number;         // resource version when read
+  path: readonly (string | number)[];
+  before: ResourceValue;   // the baseline
+  after: ResourceValue;    // the local value
+  conflict: boolean;       // a READ brought a different value here
+}>;
+
+type ResourceSubmission<T> = Readonly<{
+  owner: object;
+  version: number;         // stale once the resource version moves
+  value: T;                // the whole current value, frozen
+  changes: readonly ResourceChange[]; // all rows, or the ids passed
+}>;`}
       />
 
       <h2>표시(display)</h2>
@@ -230,6 +289,43 @@ mutation.dispose()
         화해합니다.
       </p>
 
+      <h3>MutationOperation, MutationStatus, MutationResult</h3>
+
+      <CodeBlock
+        language="typescript"
+        code={`type MutationOperation<T> = Readonly<{
+  id: number;
+  status: StateRefStore<MutationStatus>;
+  watchStatus: Watch<MutationStatus>;
+  result: Promise<MutationResult<T>>;
+  abort: () => void;       // settles as 'unknown'
+  dispose: () => void;
+}>;
+
+type MutationStatus = Readonly<{
+  phase: 'idle' | 'pending' | 'success' | 'sync-error' | 'rejected' | 'unknown';
+  pending: number;
+  operationId: number | null;
+  error: unknown | null;
+}>;
+
+type MutationResult<T> =
+  | { kind: 'success'; operationId: number; data: T; callbackError?: unknown }
+  | { kind: 'sync-error'; operationId: number; data: T; error: unknown; callbackError?: unknown }
+  | {
+      kind: 'rejected' | 'unknown';
+      operationId: number;
+      error: unknown;          // a MutationRejectedError for 'rejected'
+      recoveryError?: unknown; // onReject: 'remove' failed to revert
+      callbackError?: unknown;
+    };
+
+class MutationRejectedError extends Error {
+  constructor(message: string, reason?: unknown);
+  readonly reason?: unknown;
+}`}
+      />
+
       <h2>environment</h2>
 
       <CodeBlock
@@ -238,6 +334,20 @@ mutation.dispose()
 
 const environment = createBrowserSyncEnvironment(); // browser globals only`}
       />
+
+      <CodeBlock
+        language="typescript"
+        code={`type SyncEnvironment = Readonly<{
+  subscribe: (listener: (event: 'focus' | 'reconnect') => void) => () => void;
+  isFocused: () => boolean;
+  isOnline: () => boolean;
+}>;`}
+      />
+
+      <p>
+        호스트가 브라우저 전역보다 잘 아는 경우 — 네이티브 셸, 테스트, 자체 연결
+        검사 — 에는 이것을 직접 구현해 주입합니다.
+      </p>
 
       <h2>영속화</h2>
 
@@ -256,6 +366,23 @@ openPersistedMutationQueue({ storage, key, buster, maxAge?, commands, isOnline? 
       <p>
         각각 자기 저장 키와 정확히 하나의 작성자를 원합니다.{' '}
         <a href="#/ko/guide/sync-persistence">영속화와 SSR</a>을 보세요.
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`type SyncStorage = Readonly<{
+  getItem: (key: string) => string | null | Promise<string | null>;
+  setItem: (key: string, value: string) => void | Promise<void>;
+  removeItem: (key: string) => void | Promise<void>;
+}>;
+
+// options for save/restore(Local)SyncSnapshot
+{ key: string; buster: string; maxAge?: number /* default Infinity */ }`}
+      />
+
+      <p>
+        <code>localStorage</code>가 그대로 맞고, 비동기 시그니처라 IndexedDB나
+        네이티브 저장소도 맞출 수 있습니다.
       </p>
 
       <h2>범위</h2>
