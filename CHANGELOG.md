@@ -1,5 +1,31 @@
 # Changelog
 
+## @stateref/connect-solid 1.4.0 (unreleased)
+
+The major follows Solid, so the breaking change below lands in a minor here.
+Peer range unchanged (`solid-js ^1.9.1`); measured on 1.9.1 and 1.9.15.
+
+### Breaking
+
+- **The accessor returns a frozen copy of an object or array** (DC-CN-04).
+  `value().city = 'x'`, or a functional update that mutates `prev` and returns
+  it, now throws a TypeError instead of changing the store. Write through the
+  setter with a new value: `setAddress(prev => ({ ...prev, city: 'x' }))`.
+
+### Fixed
+
+- **A nested mutation no longer changes the store behind its back** (F-SO3).
+  The accessor handed out the store's internal object, so both forms above
+  changed the store in place and no write was recorded.
+
+### Changed
+
+- **The setter writes the store directly and synchronously** (DC-CN-06). The
+  signal used to be copied back into the store from a `createEffect`, which
+  Solid advises against for syncing state and whose model Solid 2 changes.
+- **Server rendering is detected with `isServer`** from `solid-js/web`
+  instead of `typeof window` (DC-CN-07).
+
 ## @stateref/connect-svelte 5.0.0 (unreleased)
 
 The major follows the newest Svelte it supports; it still supports Svelte 4
