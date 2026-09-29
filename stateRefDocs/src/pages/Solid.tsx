@@ -19,6 +19,12 @@ export const Solid = mount(() => {
         code={`pnpm add state-ref @stateref/connect-solid`}
       />
 
+      <h2>Supported Versions</h2>
+
+      <p>
+        Solid 1.9 (<code>solid-js ^1.9.1</code>).
+      </p>
+
       <h2>Basic Usage</h2>
 
       <p>
@@ -284,12 +290,35 @@ const [done, setDone] = useTodo(store => store.done);
       />
 
       <p>
-        Edit the actual data through <code>live.query?.ref</code> once it has
-        loaded, not through the display. Unmounting this component ends{' '}
+        Edit the actual data through <code>live.ref</code> once it has loaded,
+        not through the display. Unmounting this component ends{' '}
         <strong>its own subscription only</strong> - the view itself is released
         by whoever owns it, with <code>live.dispose()</code>, so a second screen
         watching the same view keeps working.
       </p>
+
+      <h2>Writing Rules</h2>
+
+      <ul>
+        <li>
+          The setter writes the store directly and{' '}
+          <strong>synchronously</strong>, including a functional update:{' '}
+          <code>setUser(prev =&gt; ({"{ ...prev, name: 'Jane' }"}))</code>.
+        </li>
+        <li>
+          <strong>
+            The accessor returns a frozen copy of an object or array.
+          </strong>{' '}
+          <code>user().name = 'x'</code>, or a functional update that mutates{' '}
+          <code>prev</code> and returns it, throws a TypeError and the store is
+          untouched - neither passes through the connector. Return a new value
+          from the setter instead.
+        </li>
+        <li>
+          A server render is detected with <code>isServer</code> and subscribes
+          to nothing.
+        </li>
+      </ul>
 
       <h2>Related</h2>
 

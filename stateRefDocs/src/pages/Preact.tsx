@@ -18,6 +18,13 @@ export const Preact = mount(() => {
         code={`pnpm add state-ref @stateref/connect-preact`}
       />
 
+      <h2>Supported Versions</h2>
+
+      <p>
+        Preact 10 (<code>preact ^10.0.0</code>). It uses{' '}
+        <code>preact/hooks</code> only - no <code>preact/compat</code>.
+      </p>
+
       <h2>Basic Usage</h2>
 
       <CodeBlock
@@ -152,12 +159,28 @@ function CityDisplay() {
       />
 
       <p>
-        Edit the actual data through <code>live.query?.ref</code> once it has
-        loaded, not through the display. Unmounting this component ends{' '}
+        Edit the actual data through <code>live.ref</code> once it has loaded,
+        not through the display. Unmounting this component ends{' '}
         <strong>its own subscription only</strong> - the view itself is released
         by whoever owns it, with <code>live.dispose()</code>, so a second screen
         watching the same view keeps working.
       </p>
+
+      <h2>How the Hook Subscribes</h2>
+
+      <ul>
+        <li>
+          The subscription is made in an effect, after commit, and released by
+          its cleanup. A render that suspends never commits, so it leaves
+          nothing behind.
+        </li>
+        <li>
+          <strong>A mount renders twice</strong>, for the same reason as the
+          React connector: the first render paints with the correct values, the
+          second collects the paths the component reads.
+        </li>
+        <li>A server render runs no effects and subscribes to nothing.</li>
+      </ul>
 
       <h2>Related</h2>
 

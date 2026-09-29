@@ -18,6 +18,13 @@ export const VueKo = mount(() => {
         code={`pnpm add state-ref @stateref/connect-vue`}
       />
 
+      <h2>지원 버전</h2>
+
+      <p>
+        Vue 3.2 이상(<code>vue ^3.2.0</code>). 해제에 3.2에서 생긴{' '}
+        <code>onScopeDispose</code>를 씁니다.
+      </p>
+
       <h2>기본 사용법</h2>
 
       <p>
@@ -270,12 +277,34 @@ const phase = view(ref => (ref.isPlaceholder.value ? 'placeholder' : ref.status.
       />
 
       <p>
-        실제 데이터는 로드된 뒤 <code>live.query?.ref</code>로 편집하세요.
-        표시로 하지 않습니다. 이 컴포넌트의 언마운트는{' '}
-        <strong>자기 구독만</strong> 끝냅니다 — view 자체는 소유자가{' '}
-        <code>live.dispose()</code>로 놓으므로, 같은 view를 보는 둘째 화면은
-        계속 동작합니다.
+        실제 데이터는 로드된 뒤 <code>live.ref</code>로 편집하세요. 표시로 하지
+        않습니다. 이 컴포넌트의 언마운트는 <strong>자기 구독만</strong> 끝냅니다
+        — view 자체는 소유자가 <code>live.dispose()</code>로 놓으므로, 같은
+        view를 보는 둘째 화면은 계속 동작합니다.
       </p>
+
+      <h2>쓰기 규칙</h2>
+
+      <ul>
+        <li>
+          <code>.value</code>에 대입하면 스토어에 <strong>즉시</strong> 씁니다.
+          바로 뒤에 스토어를 읽으면 새 값이 보입니다.
+        </li>
+        <li>
+          <strong>선택한 객체와 배열은 읽기 전용입니다.</strong>{' '}
+          <code>user.value.name = 'x'</code>는 개발 모드에서 Vue의 readonly
+          경고와 함께 거절되고 스토어는 바뀌지 않습니다. 리프를 선택하거나(
+          <code>useStore(s =&gt; s.user.name).value = 'x'</code>) 값을 통째로
+          바꾸세요(<code>user.value = {'{ ...user.value, name }'}</code>).
+          원칙은 하나입니다. 커넥터를 지나가는 쓰기는 스토어에 닿고, 지나가지
+          않는 변경은 막습니다.
+        </li>
+        <li>
+          구독은 커넥터를 부른 스코프 — 컴포넌트의 setup, 또는 컴포저블이 도는{' '}
+          <code>effectScope</code> — 를 따르고, 그 스코프가 끝난 뒤의 쓰기는
+          어디에도 닿지 않습니다.
+        </li>
+      </ul>
 
       <h2>관련 문서</h2>
 

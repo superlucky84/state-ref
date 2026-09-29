@@ -18,6 +18,14 @@ export const React = mount(() => {
         code={`pnpm add state-ref @stateref/connect-react`}
       />
 
+      <h2>Supported Versions</h2>
+
+      <p>
+        React 18 and 19 (<code>react ^18.0.0 || ^19.0.0</code>). The package
+        major follows the newest React it supports, so{' '}
+        <code>@stateref/connect-react</code> 19.x still works with React 18.
+      </p>
+
       <h2>Basic Usage</h2>
 
       <CodeBlock
@@ -133,12 +141,35 @@ function CityDisplay() {
       />
 
       <p>
-        Edit the actual data through <code>live.query?.ref</code> once it has
-        loaded, not through the display. Unmounting this component ends{' '}
+        Edit the actual data through <code>live.ref</code> once it has loaded,
+        not through the display. Unmounting this component ends{' '}
         <strong>its own subscription only</strong> - the view itself is released
         by whoever owns it, with <code>live.dispose()</code>, so a second screen
         watching the same view keeps working.
       </p>
+
+      <h2>How the Hook Subscribes</h2>
+
+      <ul>
+        <li>
+          It is built on <code>useSyncExternalStore</code>, React&apos;s
+          contract for external stores. The subscription is made after commit
+          and ended by React, so <code>&lt;StrictMode&gt;</code> and renders
+          React throws away leave nothing behind.
+        </li>
+        <li>
+          <strong>A mount renders twice.</strong> state-ref learns what a
+          component reads while it renders through a subscribed reference, and
+          there is none before the first commit. The first render paints with
+          the correct values; the second, through the subscribed reference,
+          collects the paths. After that, only a change to a path the component
+          read re-renders it.
+        </li>
+        <li>
+          A server render uses <code>getServerSnapshot</code> and subscribes to
+          nothing.
+        </li>
+      </ul>
 
       <h2>Related</h2>
 

@@ -19,6 +19,13 @@ export const PreactKo = mount(() => {
         code={`pnpm add state-ref @stateref/connect-preact`}
       />
 
+      <h2>지원 버전</h2>
+
+      <p>
+        Preact 10(<code>preact ^10.0.0</code>). <code>preact/hooks</code>만 쓰고{' '}
+        <code>preact/compat</code>은 필요 없습니다.
+      </p>
+
       <h2>기본 사용법</h2>
 
       <CodeBlock
@@ -150,12 +157,28 @@ function CityDisplay() {
       />
 
       <p>
-        실제 데이터는 로드된 뒤 <code>live.query?.ref</code>로 편집하세요.
-        표시로 하지 않습니다. 이 컴포넌트의 언마운트는{' '}
-        <strong>자기 구독만</strong> 끝냅니다 — view 자체는 소유자가{' '}
-        <code>live.dispose()</code>로 놓으므로, 같은 view를 보는 둘째 화면은
-        계속 동작합니다.
+        실제 데이터는 로드된 뒤 <code>live.ref</code>로 편집하세요. 표시로 하지
+        않습니다. 이 컴포넌트의 언마운트는 <strong>자기 구독만</strong> 끝냅니다
+        — view 자체는 소유자가 <code>live.dispose()</code>로 놓으므로, 같은
+        view를 보는 둘째 화면은 계속 동작합니다.
       </p>
+
+      <h2>훅이 구독하는 방식</h2>
+
+      <ul>
+        <li>
+          구독은 커밋 뒤 effect에서 만들어지고 그 정리 함수가 놓습니다.
+          suspend된 렌더는 커밋되지 않으므로 아무것도 남기지 않습니다.
+        </li>
+        <li>
+          <strong>마운트는 두 번 렌더됩니다.</strong> React 커넥터와 같은
+          이유입니다. 첫 렌더는 올바른 값으로 그리고, 두 번째 렌더가 컴포넌트가
+          읽는 경로를 모읍니다.
+        </li>
+        <li>
+          서버 렌더는 effect를 돌리지 않으므로 아무것도 구독하지 않습니다.
+        </li>
+      </ul>
 
       <h2>관련 문서</h2>
 

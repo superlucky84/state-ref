@@ -19,6 +19,14 @@ export const ReactKo = mount(() => {
         code={`pnpm add state-ref @stateref/connect-react`}
       />
 
+      <h2>지원 버전</h2>
+
+      <p>
+        React 18과 19(<code>react ^18.0.0 || ^19.0.0</code>). 패키지 메이저는
+        지원하는 가장 새 React를 따르므로 <code>@stateref/connect-react</code>{' '}
+        19.x는 React 18에서도 동작합니다.
+      </p>
+
       <h2>기본 사용법</h2>
 
       <CodeBlock
@@ -132,12 +140,32 @@ function CityDisplay() {
       />
 
       <p>
-        실제 데이터는 로드된 뒤 <code>live.query?.ref</code>로 편집하세요.
-        표시로 하지 않습니다. 이 컴포넌트의 언마운트는{' '}
-        <strong>자기 구독만</strong> 끝냅니다 — view 자체는 소유자가{' '}
-        <code>live.dispose()</code>로 놓으므로, 같은 view를 보는 둘째 화면은
-        계속 동작합니다.
+        실제 데이터는 로드된 뒤 <code>live.ref</code>로 편집하세요. 표시로 하지
+        않습니다. 이 컴포넌트의 언마운트는 <strong>자기 구독만</strong> 끝냅니다
+        — view 자체는 소유자가 <code>live.dispose()</code>로 놓으므로, 같은
+        view를 보는 둘째 화면은 계속 동작합니다.
       </p>
+
+      <h2>훅이 구독하는 방식</h2>
+
+      <ul>
+        <li>
+          React가 외부 스토어에 정한 계약인 <code>useSyncExternalStore</code>{' '}
+          위에 있습니다. 구독은 커밋 뒤에 만들어지고 React가 끝내므로,{' '}
+          <code>&lt;StrictMode&gt;</code>나 React가 버린 렌더가 아무것도 남기지
+          않습니다.
+        </li>
+        <li>
+          <strong>마운트는 두 번 렌더됩니다.</strong> state-ref는 구독된 참조로
+          렌더하는 동안 무엇을 읽는지 알아내는데, 첫 커밋 전에는 그런 참조가
+          없습니다. 첫 렌더는 올바른 값으로 그리고, 두 번째 렌더가 구독된 참조로
+          읽어 경로를 모읍니다. 그 뒤로는 읽은 경로가 바뀔 때만 다시 렌더됩니다.
+        </li>
+        <li>
+          서버 렌더는 <code>getServerSnapshot</code>을 쓰고 아무것도 구독하지
+          않습니다.
+        </li>
+      </ul>
 
       <h2>관련 문서</h2>
 

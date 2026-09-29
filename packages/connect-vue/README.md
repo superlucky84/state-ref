@@ -35,12 +35,27 @@ const incrementFromProfile = () => {
 </template>
 ```
 
+## Supported versions
+
+Vue 3.2 and later (`vue ^3.2.0`); teardown uses `onScopeDispose`, which arrived in 3.2.
+
+## Writing rules
+
+- Assigning `.value` writes the store synchronously.
+- **A selected object or array is readonly.** `user.value.name = 'x'` is refused with Vue's readonly warning in development and the store is untouched. Select the leaf (`useStore(s => s.user.name).value = 'x'`) or replace the whole value (`user.value = { ...user.value, name }`). The rule: a write that passes through the connector reaches the store; a change that does not is refused.
+- The subscription follows the scope the connector was called in - a component's setup, or an `effectScope` a composable runs in - and a write after that scope stops goes nowhere.
+
 ## Readonly query views
 
-`connectVueView(live.watch)(select)` returns a readonly Vue ref for a `@stateref/sync` view. It follows key changes and stops its subscription on component unmount. The owner of `live` calls `live.dispose()` when the view is no longer needed. Edit actual data through `live.query?.ref` after it loads.
+`connectVueView(query.watchDisplay)(select)` returns a readonly Vue ref for the display of a `@stateref/sync` query. It stops its subscription when its scope ends; whoever opened the query calls `query.dispose()`. Edit actual data through `query.ref` after it loads.
 
 ```ts
-const city = connectVueView(live.watch)(view => view.data.value);
+const account = client.query({
+  queryKey: ['account', 1],
+  queryFn: ({ signal }) => api.readAccount(1, { signal }),
+  select: account => account.address.city,
+});
+const city = connectVueView(account.watchDisplay)(display => display.data.value);
 ```
 
 ## npm

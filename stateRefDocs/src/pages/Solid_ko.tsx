@@ -19,6 +19,12 @@ export const SolidKo = mount(() => {
         code={`pnpm add state-ref @stateref/connect-solid`}
       />
 
+      <h2>지원 버전</h2>
+
+      <p>
+        Solid 1.9(<code>solid-js ^1.9.1</code>).
+      </p>
+
       <h2>기본 사용법</h2>
 
       <p>
@@ -286,12 +292,31 @@ const [done, setDone] = useTodo(store => store.done);
       />
 
       <p>
-        실제 데이터는 로드된 뒤 <code>live.query?.ref</code>로 편집하세요.
-        표시로 하지 않습니다. 이 컴포넌트의 언마운트는{' '}
-        <strong>자기 구독만</strong> 끝냅니다 — view 자체는 소유자가{' '}
-        <code>live.dispose()</code>로 놓으므로, 같은 view를 보는 둘째 화면은
-        계속 동작합니다.
+        실제 데이터는 로드된 뒤 <code>live.ref</code>로 편집하세요. 표시로 하지
+        않습니다. 이 컴포넌트의 언마운트는 <strong>자기 구독만</strong> 끝냅니다
+        — view 자체는 소유자가 <code>live.dispose()</code>로 놓으므로, 같은
+        view를 보는 둘째 화면은 계속 동작합니다.
       </p>
+
+      <h2>쓰기 규칙</h2>
+
+      <ul>
+        <li>
+          setter는 스토어에 직접, <strong>즉시</strong> 씁니다. 함수형 갱신도
+          됩니다:{' '}
+          <code>setUser(prev =&gt; ({"{ ...prev, name: 'Jane' }"}))</code>.
+        </li>
+        <li>
+          <strong>accessor는 객체·배열의 얼린 복사본을 돌려줍니다.</strong>{' '}
+          <code>user().name = 'x'</code>나 <code>prev</code>를 바꿔 그대로
+          돌려주는 함수형 갱신은 TypeError를 내고 스토어는 바뀌지 않습니다 — 둘
+          다 커넥터를 지나가지 않기 때문입니다. setter에 새 값을 돌려주세요.
+        </li>
+        <li>
+          서버 렌더는 <code>isServer</code>로 판정하고 아무것도 구독하지
+          않습니다.
+        </li>
+      </ul>
 
       <h2>관련 문서</h2>
 

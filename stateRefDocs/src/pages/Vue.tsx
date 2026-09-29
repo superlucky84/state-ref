@@ -18,6 +18,13 @@ export const Vue = mount(() => {
         code={`pnpm add state-ref @stateref/connect-vue`}
       />
 
+      <h2>Supported Versions</h2>
+
+      <p>
+        Vue 3.2 and later (<code>vue ^3.2.0</code>); the connector releases with{' '}
+        <code>onScopeDispose</code>, which arrived in 3.2.
+      </p>
+
       <h2>Basic Usage</h2>
 
       <p>
@@ -274,12 +281,36 @@ const phase = view(ref => (ref.isPlaceholder.value ? 'placeholder' : ref.status.
       />
 
       <p>
-        Edit the actual data through <code>live.query?.ref</code> once it has
-        loaded, not through the display. Unmounting this component ends{' '}
+        Edit the actual data through <code>live.ref</code> once it has loaded,
+        not through the display. Unmounting this component ends{' '}
         <strong>its own subscription only</strong> - the view itself is released
         by whoever owns it, with <code>live.dispose()</code>, so a second screen
         watching the same view keeps working.
       </p>
+
+      <h2>Writing Rules</h2>
+
+      <ul>
+        <li>
+          Assigning <code>.value</code> writes the store{' '}
+          <strong>synchronously</strong>; reading the store right after sees the
+          new value.
+        </li>
+        <li>
+          <strong>A selected object or array is readonly.</strong>{' '}
+          <code>user.value.name = 'x'</code> is refused with Vue&apos;s readonly
+          warning in development and the store is untouched. Select the leaf (
+          <code>useStore(s =&gt; s.user.name).value = 'x'</code>) or replace the
+          whole value (<code>user.value = {'{ ...user.value, name }'}</code>).
+          The rule behind it: a write that passes through the connector reaches
+          the store, a change that does not is refused.
+        </li>
+        <li>
+          The subscription follows the scope the connector was called in - a
+          component&apos;s setup, or an <code>effectScope</code> a composable
+          runs in - and a write after that scope stops goes nowhere.
+        </li>
+      </ul>
 
       <h2>Related</h2>
 

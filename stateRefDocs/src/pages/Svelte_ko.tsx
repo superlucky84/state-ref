@@ -19,6 +19,16 @@ export const SvelteKo = mount(() => {
         code={`pnpm add state-ref @stateref/connect-svelte`}
       />
 
+      <h2>지원 버전</h2>
+
+      <p>
+        Svelte 4와 5(<code>svelte ^4.0.0 || ^5.0.0</code>). 패키지 메이저는
+        지원하는 가장 새 Svelte를 따르므로 <code>@stateref/connect-svelte</code>{' '}
+        5.x는 Svelte 4에서도 동작합니다. 아래의 store API는 두 버전 모두에서
+        쓰고, Svelte 5에는 runes 진입점도 있습니다(아래 &quot;Svelte 5
+        runes&quot;).
+      </p>
+
       <h2>기본 사용법</h2>
 
       <p>
@@ -256,12 +266,73 @@ const done = useTodo(store => store.done);
       />
 
       <p>
-        실제 데이터는 로드된 뒤 <code>live.query?.ref</code>로 편집하세요.
-        표시로 하지 않습니다. 이 컴포넌트의 언마운트는{' '}
-        <strong>자기 구독만</strong> 끝냅니다 — view 자체는 소유자가{' '}
-        <code>live.dispose()</code>로 놓으므로, 같은 view를 보는 둘째 화면은
-        계속 동작합니다.
+        실제 데이터는 로드된 뒤 <code>live.ref</code>로 편집하세요. 표시로 하지
+        않습니다. 이 컴포넌트의 언마운트는 <strong>자기 구독만</strong> 끝냅니다
+        — view 자체는 소유자가 <code>live.dispose()</code>로 놓으므로, 같은
+        view를 보는 둘째 화면은 계속 동작합니다.
       </p>
+
+      <h2>쓰기 규칙</h2>
+
+      <ul>
+        <li>
+          <code>$user.name = 'Jane'</code>은 실제 스토어 쓰기입니다. Svelte가
+          이것을 <code>user.set(...)</code>으로 컴파일해 커넥터를 지나가게 하고,
+          커넥터는 Svelte에 복사본을 주므로 스토어는 그 <code>set</code>이
+          도착할 때 올바른 <code>before</code>와 함께 바뀝니다.
+        </li>
+        <li>컴포넌트가 사라지면 스토어로의 되쓰기도 멈춥니다.</li>
+      </ul>
+
+      <h2>Svelte 5 runes</h2>
+
+      <p>
+        <code>@stateref/connect-svelte/runes</code>는 Svelte 5용 별도 진입점이고
+        ESM 전용입니다(Svelte 4에는 <code>svelte/reactivity</code>가 없습니다).
+        선택은 <code>.value</code>를 가진 객체입니다.
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`// store.ts
+import { createStore } from 'state-ref';
+import { connectSvelteRunes } from '@stateref/connect-svelte/runes';
+
+export const watch = createStore({ user: { name: 'John', age: 30 } });
+export const useStore = connectSvelteRunes(watch);`}
+      />
+
+      <CodeBlock
+        language="html"
+        code={`<script lang="ts">
+  import { useStore } from './store';
+
+  const name = useStore(s => s.user.name);
+  const user = useStore(s => s.user);
+</script>
+
+<p>{name.value} ({user.value.age})</p>
+<button onclick={() => (name.value = 'Jane')}>Rename</button>
+<button onclick={() => (user.value = { ...user.value, age: 31 })}>Age</button>`}
+      />
+
+      <ul>
+        <li>
+          템플릿, <code>$effect</code>, <code>$derived</code>가{' '}
+          <code>.value</code>를 읽는 동안 구독하고, 마지막 읽는 쪽이 사라지면
+          놓습니다.
+        </li>
+        <li>
+          <code>.value</code>에 대입하면 스토어에 즉시 씁니다. 선택한
+          객체·배열은 얼린 복사본이라 <code>user.value.age = 31</code>은 오류가
+          납니다 — 커넥터를 지나가지 않기 때문입니다.
+        </li>
+        <li>
+          <strong>컴포넌트에 묶이지 않습니다.</strong> 모듈 수준에서 만든 선택도
+          동작하고, 그것을 통한 쓰기는 언제나 스토어에 닿습니다. 컴포넌트가
+          사라지면 되쓰기를 멈추는 store API와 다른 점입니다.
+        </li>
+      </ul>
 
       <h2>관련 문서</h2>
 

@@ -19,6 +19,16 @@ export const Svelte = mount(() => {
         code={`pnpm add state-ref @stateref/connect-svelte`}
       />
 
+      <h2>Supported Versions</h2>
+
+      <p>
+        Svelte 4 and 5 (<code>svelte ^4.0.0 || ^5.0.0</code>). The package major
+        follows the newest Svelte it supports, so{' '}
+        <code>@stateref/connect-svelte</code> 5.x still works with Svelte 4. The
+        store API below works in both; Svelte 5 also has a runes entry (see
+        &quot;Svelte 5 Runes&quot; below).
+      </p>
+
       <h2>Basic Usage</h2>
 
       <p>
@@ -254,12 +264,77 @@ const done = useTodo(store => store.done);
       />
 
       <p>
-        Edit the actual data through <code>live.query?.ref</code> once it has
-        loaded, not through the display. Unmounting this component ends{' '}
+        Edit the actual data through <code>live.ref</code> once it has loaded,
+        not through the display. Unmounting this component ends{' '}
         <strong>its own subscription only</strong> - the view itself is released
         by whoever owns it, with <code>live.dispose()</code>, so a second screen
         watching the same view keeps working.
       </p>
+
+      <h2>Writing Rules</h2>
+
+      <ul>
+        <li>
+          <code>$user.name = 'Jane'</code> is a real store write. Svelte
+          compiles it into <code>user.set(...)</code>, which passes through the
+          connector; the connector hands Svelte a copy, so the store changes
+          only when that <code>set</code> arrives, with a correct{' '}
+          <code>before</code>.
+        </li>
+        <li>When the component is destroyed, the store stops writing back.</li>
+      </ul>
+
+      <h2>Svelte 5 Runes</h2>
+
+      <p>
+        <code>@stateref/connect-svelte/runes</code> is a separate, ESM-only
+        entry for Svelte 5 (<code>svelte/reactivity</code> does not exist in
+        Svelte 4). A selection is an object with <code>.value</code>:
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`// store.ts
+import { createStore } from 'state-ref';
+import { connectSvelteRunes } from '@stateref/connect-svelte/runes';
+
+export const watch = createStore({ user: { name: 'John', age: 30 } });
+export const useStore = connectSvelteRunes(watch);`}
+      />
+
+      <CodeBlock
+        language="html"
+        code={`<script lang="ts">
+  import { useStore } from './store';
+
+  const name = useStore(s => s.user.name);
+  const user = useStore(s => s.user);
+</script>
+
+<p>{name.value} ({user.value.age})</p>
+<button onclick={() => (name.value = 'Jane')}>Rename</button>
+<button onclick={() => (user.value = { ...user.value, age: 31 })}>Age</button>`}
+      />
+
+      <ul>
+        <li>
+          It subscribes while a template, <code>$effect</code> or{' '}
+          <code>$derived</code> reads <code>.value</code>, and releases when the
+          last reader goes away.
+        </li>
+        <li>
+          Assigning <code>.value</code> writes the store synchronously. A
+          selected object or array is a frozen copy, so{' '}
+          <code>user.value.age = 31</code> throws - it does not pass through the
+          connector.
+        </li>
+        <li>
+          <strong>It is not tied to a component.</strong> A selection made at
+          module level works, and a write through it always reaches the store -
+          unlike the store API, which stops writing back when its component is
+          destroyed.
+        </li>
+      </ul>
 
       <h2>Related</h2>
 

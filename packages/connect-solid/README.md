@@ -46,12 +46,22 @@ function handleClick() {
 }
 ```
 
+## Supported versions
+
+Solid 1.9 (`solid-js ^1.9.1`).
+
+## Writing rules
+
+- The setter writes the store directly and synchronously, including a functional update: `setUser(prev => ({ ...prev, name: 'Jane' }))`.
+- **The accessor returns a frozen copy of an object or array.** `user().name = 'x'`, or a functional update that mutates `prev` and returns it, throws a TypeError and the store is untouched - neither passes through the connector.
+- A server render is detected with `isServer` and subscribes to nothing.
+
 ## Readonly query views
 
-`connectSolidView(live.watch)(select)` returns a Solid accessor for a `@stateref/sync` view. Dispose the owning root to end its subscription; the owner of `live` calls `live.dispose()` when the view is no longer needed. Edit actual data through `live.query?.ref` after it loads.
+`connectSolidView(query.watchDisplay)(select)` returns a Solid accessor for the display of a `@stateref/sync` query. Dispose the owning root to end its subscription; whoever opened the query calls `query.dispose()`. Edit actual data through `query.ref` after it loads.
 
 ```tsx
-const city = connectSolidView(live.watch)(view => view.data.value);
+const city = connectSolidView(account.watchDisplay)(display => display.data.value);
 const label = () => city() ?? 'Loading';
 ```
 
