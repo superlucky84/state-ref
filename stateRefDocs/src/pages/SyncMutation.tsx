@@ -218,6 +218,144 @@ if (result.kind === 'rejected') {
         while a write is in flight, and dirty while nothing is being sent.
       </p>
 
+      <h2>Showing That a Save Is in Progress</h2>
+
+      <p>
+        Progress lives in two places, and they watch different things. Both are
+        readonly refs, and <code>watchStatus</code> plugs into a connector as
+        is.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th />
+            <th>
+              The query&apos;s <code>account.status</code>
+            </th>
+            <th>
+              The mutation&apos;s <code>save.status</code>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>What it watches</td>
+            <td>The data: is a linked write in flight for this query</td>
+            <td>The command: the operations sent through this handle</td>
+          </tr>
+          <tr>
+            <td>In progress</td>
+            <td>
+              <code>pending</code> is 0 or 1 (one linked write at a time)
+            </td>
+            <td>
+              <code>pending</code> = unsettled operations on this handle,
+              including ones waiting for their scope
+            </td>
+          </tr>
+          <tr>
+            <td>Unlinked commands</td>
+            <td>Do not show up</td>
+            <td>Show up - the only place they do</td>
+          </tr>
+          <tr>
+            <td>The result</td>
+            <td>
+              No kind. After <code>unknown</code> or <code>sync-error</code>,{' '}
+              <code>unconfirmed</code> turns true; <code>rejected</code> leaves
+              no trace
+            </td>
+            <td>
+              <code>phase</code> is <code>'success'</code>,{' '}
+              <code>'rejected'</code>, <code>'unknown'</code> or{' '}
+              <code>'sync-error'</code>; <code>error</code> holds what was
+              thrown
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        An operation linked to several queries sets each query&apos;s{' '}
+        <code>pending</code> to 1. Input keeps working during the write, so{' '}
+        <code>pending</code> and <code>dirty</code> being true together is
+        normal.
+      </p>
+
+      <h3>Saving Is pending, Not phase</h3>
+
+      <p>
+        A handle&apos;s <code>phase</code> follows{' '}
+        <strong>the most recent event</strong>. With two operations in flight,
+        when one finishes <code>phase</code> becomes <code>'success'</code>{' '}
+        while the other is still running.
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`const a = send.start(inputA);
+const b = send.start(inputB);
+send.status.value; // { phase: 'pending', pending: 2, operationId: 3, ... }
+
+// a finished first
+send.status.value; // { phase: 'success', pending: 1, operationId: 2, ... } — b is still running`}
+      />
+
+      <p>
+        So decide &quot;saving&quot; with <code>pending.value &gt; 0</code>, and
+        use <code>phase</code> and <code>error</code> to show a finished result.
+        To show each operation separately, use the <code>operation.status</code>{' '}
+        that <code>start()</code> returns - its <code>pending</code> is 0 or 1,
+        and an operation still waiting for its scope is already{' '}
+        <code>'pending'</code>.
+      </p>
+
+      <h3>On the Screen</h3>
+
+      <CodeBlock
+        language="typescript"
+        code={`const useAccountStatus = connectReact(account.watchStatus);
+const useSaveStatus = connectReact(save.watchStatus);
+
+function SaveBar() {
+  const status = useAccountStatus(); // the data side
+  const saving = useSaveStatus();    // the command side — only for the result
+  return (
+    <>
+      {status.pending.value > 0 && <span>Saving…</span>}
+      {status.dirty.value && <span>Unsaved changes</span>}
+      {status.unconfirmed.value && <span>Save not confirmed</span>}
+      {saving.phase.value === 'rejected' && <span>Save refused</span>}
+      <button disabled={status.pending.value > 0} onClick={onSave}>
+        Save
+      </button>
+    </>
+  );
+}`}
+      />
+
+      <p>
+        For a form saved through one link, the query&apos;s <code>status</code>{' '}
+        alone covers the saving indicator and the disabled button. Add the
+        mutation&apos;s <code>status</code> when you need the result kind or{' '}
+        <code>error</code> - a refusal message, say - or to show progress for an
+        unlinked command.
+      </p>
+
+      <ul>
+        <li>
+          Seen through <code>watchStatus</code>, <code>phase</code> goes{' '}
+          <code>'idle'</code> → <code>'pending'</code> → the result within one
+          run.
+        </li>
+        <li>
+          A run that throws before the WRITE, such as a stale submission, leaves
+          the status untouched (still <code>'idle'</code>).
+        </li>
+        <li>Neither status can be written to; a write throws.</li>
+      </ul>
+
       <h2>Unlinked Mutations</h2>
 
       <p>

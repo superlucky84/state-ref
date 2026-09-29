@@ -129,22 +129,34 @@ account.ref.name.value; // 'Kim' — 새 이름이 보이지 않는다`}
 
 const useForm = connectReact(form.watch);
 const useFormStatus = connectReact(form.watchStatus);
+const useAccountStatus = connectReact(account.watchStatus);
 
 function AddressForm() {
   const address = useForm();
   const status = useFormStatus();
+  const saving = useAccountStatus().pending.value > 0;
   return (
     <>
       <input
         value={address.city.value}
         onChange={event => (address.city.value = event.target.value)}
       />
-      <button disabled={!status.dirty.value} onClick={save}>저장</button>
+      <button disabled={!status.dirty.value || saving} onClick={save}>
+        저장
+      </button>
       <button onClick={() => form.reset()}>취소</button>
+      {saving && <span>저장 중…</span>}
     </>
   );
 }`}
       />
+
+      <p>
+        저장 버튼은 draft가 dirty이고 저장이 진행 중이 아닐 때만 켭니다. 저장
+        중인지는 draft가 아니라 <strong>조회</strong>의{' '}
+        <code>status.pending</code>에 있습니다 — 쓰기는 조회에 연결되기
+        때문입니다(<a href="#/ko/guide/sync-mutation">저장 중 표시하기</a>).
+      </p>
 
       <p>
         입력은 draft에만 쓰이므로 같은 계정을 보여 주는 다른 화면은 저장 전까지

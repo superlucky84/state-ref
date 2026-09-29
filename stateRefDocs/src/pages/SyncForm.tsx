@@ -130,22 +130,35 @@ account.ref.name.value; // 'Kim' — the new name does not show`}
 
 const useForm = connectReact(form.watch);
 const useFormStatus = connectReact(form.watchStatus);
+const useAccountStatus = connectReact(account.watchStatus);
 
 function AddressForm() {
   const address = useForm();
   const status = useFormStatus();
+  const saving = useAccountStatus().pending.value > 0;
   return (
     <>
       <input
         value={address.city.value}
         onChange={event => (address.city.value = event.target.value)}
       />
-      <button disabled={!status.dirty.value} onClick={save}>Save</button>
+      <button disabled={!status.dirty.value || saving} onClick={save}>
+        Save
+      </button>
       <button onClick={() => form.reset()}>Cancel</button>
+      {saving && <span>Saving…</span>}
     </>
   );
 }`}
       />
+
+      <p>
+        The Save button is on only while the draft is dirty and no save is in
+        flight. Whether a save is in flight lives on the <strong>query</strong>
+        &apos;s <code>status.pending</code>, not on the draft - the write is
+        linked to the query (
+        <a href="#/guide/sync-mutation">Showing That a Save Is in Progress</a>).
+      </p>
 
       <p>
         Input goes only to the draft, so other screens showing the same account

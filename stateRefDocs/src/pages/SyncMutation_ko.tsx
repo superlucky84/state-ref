@@ -216,6 +216,138 @@ if (result.kind === 'rejected') {
         있습니다.
       </p>
 
+      <h2>저장 중 표시하기</h2>
+
+      <p>
+        진행 상태는 두 곳에 있고, 보는 대상이 다릅니다. 둘 다 읽기 전용 ref이고{' '}
+        <code>watchStatus</code>가 커넥터에 그대로 연결됩니다.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th />
+            <th>
+              조회의 <code>account.status</code>
+            </th>
+            <th>
+              mutation의 <code>save.status</code>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>무엇을 보나</td>
+            <td>데이터: 이 조회에 연결된 쓰기가 진행 중인가</td>
+            <td>명령: 이 핸들로 보낸 작업들</td>
+          </tr>
+          <tr>
+            <td>진행 중</td>
+            <td>
+              <code>pending</code> 0 또는 1 (연결 쓰기는 한 번에 하나)
+            </td>
+            <td>
+              <code>pending</code> = 이 핸들에서 끝나지 않은 작업 수. scope를
+              기다리는 작업도 센다
+            </td>
+          </tr>
+          <tr>
+            <td>link 없는 명령</td>
+            <td>나타나지 않는다</td>
+            <td>보인다 — 유일한 창구</td>
+          </tr>
+          <tr>
+            <td>결과</td>
+            <td>
+              종류가 없다. <code>unknown</code>·<code>sync-error</code> 뒤에{' '}
+              <code>unconfirmed</code>가 true가 될 뿐, <code>rejected</code>는
+              흔적이 없다
+            </td>
+            <td>
+              <code>phase</code>가 <code>'success'</code>·
+              <code>'rejected'</code>·<code>'unknown'</code>·
+              <code>'sync-error'</code>, <code>error</code>에 던져진 오류
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        여러 조회를 link한 작업은 각 조회의 <code>pending</code>을 따로 1로
+        만듭니다. 쓰는 동안에도 입력은 계속되므로 <code>pending</code>과{' '}
+        <code>dirty</code>가 함께 true인 것이 정상입니다.
+      </p>
+
+      <h3>저장 중인지는 phase가 아니라 pending으로</h3>
+
+      <p>
+        핸들의 <code>phase</code>는 <strong>가장 최근에 일어난 사건</strong>을
+        따라갑니다. 작업 둘이 떠 있다가 하나가 끝나면 다른 하나가 아직 도는데도{' '}
+        <code>phase</code>는 <code>'success'</code>가 됩니다.
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`const a = send.start(inputA);
+const b = send.start(inputB);
+send.status.value; // { phase: 'pending', pending: 2, operationId: 3, ... }
+
+// a가 먼저 끝났다
+send.status.value; // { phase: 'success', pending: 1, operationId: 2, ... } — b는 아직 돈다`}
+      />
+
+      <p>
+        그래서 &quot;저장 중&quot;은 <code>pending.value &gt; 0</code>으로
+        판정하고, <code>phase</code>와 <code>error</code>는 끝난 결과를 보여 줄
+        때 씁니다. 작업 하나하나를 따로 보여야 하면 <code>start()</code>가
+        돌려주는 <code>operation.status</code>를 씁니다 — 그{' '}
+        <code>pending</code>은 0 또는 1이고, scope 때문에 아직 시작하지 못한
+        작업도 <code>'pending'</code>입니다.
+      </p>
+
+      <h3>화면에 붙이기</h3>
+
+      <CodeBlock
+        language="typescript"
+        code={`const useAccountStatus = connectReact(account.watchStatus);
+const useSaveStatus = connectReact(save.watchStatus);
+
+function SaveBar() {
+  const status = useAccountStatus(); // 데이터 쪽
+  const saving = useSaveStatus();    // 명령 쪽 — 결과 표시에만
+  return (
+    <>
+      {status.pending.value > 0 && <span>저장 중…</span>}
+      {status.dirty.value && <span>저장하지 않은 변경 있음</span>}
+      {status.unconfirmed.value && <span>저장 여부 확인 필요</span>}
+      {saving.phase.value === 'rejected' && <span>저장 거절됨</span>}
+      <button disabled={status.pending.value > 0} onClick={onSave}>
+        저장
+      </button>
+    </>
+  );
+}`}
+      />
+
+      <p>
+        link가 하나뿐인 폼 저장이라면 저장 중 표시와 버튼 비활성화는 조회의{' '}
+        <code>status</code>만으로 충분합니다. mutation의 <code>status</code>는
+        거절 메시지처럼 결과 종류나 <code>error</code>가 필요할 때, 그리고 link
+        없는 명령의 진행을 보일 때 더합니다.
+      </p>
+
+      <ul>
+        <li>
+          <code>watchStatus</code>로 본 <code>phase</code>는 한 번의 실행에서{' '}
+          <code>'idle'</code> → <code>'pending'</code> → 결과 순서로 바뀝니다.
+        </li>
+        <li>
+          낡은 제출처럼 WRITE 전에 던지는 실행은 status를 바꾸지 않습니다(
+          <code>'idle'</code> 그대로).
+        </li>
+        <li>두 status 모두 쓸 수 없습니다. 쓰면 던집니다.</li>
+      </ul>
+
       <h2>연결하지 않은 mutation</h2>
 
       <p>
