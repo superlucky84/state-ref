@@ -35,6 +35,7 @@
   "types": "./dist/index.d.ts",
   "files": [
     "src",
+    "!src/tests",
     "dist"
   ],
   "author": "superlucky84",
@@ -48,7 +49,7 @@
     "state-ref"
   ],
   "peerDependencies": {
-    "state-ref": "^3.0.0",
+    "state-ref": "^3.1.0",
     "svelte": "^4.0.0 || ^5.0.0"
   },
   "devDependencies": {

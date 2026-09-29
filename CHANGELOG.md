@@ -1,9 +1,67 @@
 # Changelog
 
-## @stateref/connect-solid 1.4.0 (unreleased)
+## state-ref 3.1.0
+
+Additive: nothing that worked on 3.0.x changes meaning. The new entry points
+are what `@stateref/sync` and the draft helpers build on.
+
+### Added
+
+- **`state-ref/draft`** - `createDraft(ref)` opens a local edit session over
+  any ref, including a child ref: edit through `draft.ref`, inspect
+  `changes()`, then `apply()`, `reset()` or `discard()`. Each edit remembers
+  the source value it started from, so a source changed underneath is
+  reported as a conflict (settled with `resolve()`) rather than overwritten.
+- **`state-ref/batch`** - `batch(fn)` coalesces notifications inside a
+  synchronous scope. Values and write observers still update at each setter;
+  subscribers run once when the outer scope returns.
+- **`state-ref/plugin`** (ESM only) - the integration surface `@stateref/sync`
+  and draft use: `connectRef`, `observeRef`, `createWriteJournal` and
+  `guardWriteObserver`.
+- **`onWrite` option on `createStore` / `create`** - `create(initial, { onWrite })`
+  receives `{ parent, segment, before, after }` for every successful setter,
+  before subscribers run.
+- **An unbound computed ref memoizes.** Reading a computed with no subscriber
+  reuses the result until a value the calculation read changes, without
+  subscribing to its sources.
+
+### Fixed
+
+- **An ended subscription stays ended when its ref is read again** (`CI-30`).
+  Reading through a ref whose subscription had been aborted re-registered it,
+  so the next write woke a callback the caller had ended - once more for every
+  read/write pair, with no way to end it again.
+- **`watch()` with no callback no longer registers a no-op subscription.** The
+  reference it returns still reads and writes the live store.
+
+## @stateref/sync 0.1.0
+
+First release. An optional query cache, editable resource and mutation
+package for `state-ref`; importing `state-ref` alone does not load it.
+ESM only. Requires `state-ref ^3.1.0`.
+
+- `createSyncClient()` - one client per app or SSR request.
+- Queries: `client.query({ queryKey, queryFn })` with `load()`, a live `ref`
+  you can edit, `isDirty()` and `changes()` against the server baseline;
+  cache observation (`subscribeCache`), automatic refetch on focus,
+  reconnect and interval, pagination and infinite queries.
+- Mutations: `query.capture()` fixes what a save submits;
+  `client.mutation().run(..., { links })` declares which queries it affects
+  and how the response is accepted (`none`, `submitted`, `response`,
+  `refetch`). Edits made while saving are kept. `MutationRejectedError` marks a
+  server refusal; retries need an `idempotencyKey`.
+- SSR hydration, persistence of linked mutations, and a browser environment
+  adapter (`createBrowserSyncEnvironment`).
+
+See the docs site's Server Sync chapters for the full contract.
+
+## @stateref/connect-solid 1.4.0
 
 The major follows Solid, so the breaking change below lands in a minor here.
 Peer range unchanged (`solid-js ^1.9.1`); measured on 1.9.1 and 1.9.15.
+
+Requires `state-ref ^3.1.0` (was `^3.0.0`): tested only against 3.1.0, whose
+`CI-30` fix keeps a subscription the connector ended from coming back.
 
 ### Breaking
 
@@ -26,10 +84,13 @@ Peer range unchanged (`solid-js ^1.9.1`); measured on 1.9.1 and 1.9.15.
 - **Server rendering is detected with `isServer`** from `solid-js/web`
   instead of `typeof window` (DC-CN-07).
 
-## @stateref/connect-svelte 5.0.0 (unreleased)
+## @stateref/connect-svelte 5.0.0
 
 The major follows the newest Svelte it supports; it still supports Svelte 4
 (`peerDependencies`: `svelte ^4.0.0 || ^5.0.0`). Measured on 4.2.19 and 5.57.1.
+
+Requires `state-ref ^3.1.0` (was `^3.0.0`): tested only against 3.1.0, whose
+`CI-30` fix keeps a subscription the connector ended from coming back.
 
 ### Added
 
@@ -57,11 +118,14 @@ The major follows the newest Svelte it supports; it still supports Svelte 4
   `set` made while it is notifying, so the flag was already down when the
   connector's own delivery came back.
 
-## @stateref/connect-vue 3.4.0 (unreleased)
+## @stateref/connect-vue 3.4.0
 
 The major follows Vue, so the breaking change below lands in a minor here.
 Peer range is now `vue ^3.2.0` (was `^3.0.0`): the connector uses
 `onScopeDispose`, which arrived in 3.2. Measured on 3.2.47, 3.5.10 and 3.5.43.
+
+Requires `state-ref ^3.1.0` (was `^3.0.0`): tested only against 3.1.0, whose
+`CI-30` fix keeps a subscription the connector ended from coming back.
 
 ### Breaking
 
@@ -93,10 +157,13 @@ Peer range is now `vue ^3.2.0` (was `^3.0.0`): the connector uses
   The guard that produced `CI-25`, `CI-26` and `CI-29` is gone; their
   regression tests still pass.
 
-## @stateref/connect-preact 10.4.0 (unreleased)
+## @stateref/connect-preact 10.4.0
 
 The major follows Preact, so a behavior change that would otherwise be a
 major lands in a minor here - read the Changed entry before upgrading.
+
+Requires `state-ref ^3.1.0` (was `^3.0.0`): tested only against 3.1.0, whose
+`CI-30` fix keeps a subscription the connector ended from coming back.
 
 ### Fixed
 
@@ -116,10 +183,13 @@ major lands in a minor here - read the Changed entry before upgrading.
   second render collects the paths the component reads. Tests that counted
   renders exactly now count one more on mount.
 
-## @stateref/connect-react 19.0.0 (unreleased)
+## @stateref/connect-react 19.0.0
 
 The major follows the newest React it supports; it still supports React 18
 (`peerDependencies`: `react ^18.0.0 || ^19.0.0`).
+
+Requires `state-ref ^3.1.0` (was `^3.0.0`): tested only against 3.1.0, whose
+`CI-30` fix keeps a subscription the connector ended from coming back.
 
 ### Fixed
 

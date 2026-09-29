@@ -22,7 +22,7 @@
     "test": "vitest run --reporter verbose"
   },
   "peerDependencies": {
-    "state-ref": "^3.0.2"
+    "state-ref": "^3.1.0"
   },
   "devDependencies": {
     "state-ref": "workspace:*"
