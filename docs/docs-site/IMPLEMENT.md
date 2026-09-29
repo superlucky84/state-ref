@@ -84,13 +84,50 @@
 각 하위 단계의 기준 테스트는 공통으로 **사이트 빌드 통과 + 새/바뀐 href 전수 해소**이고, 새 주장은 일회용 probe(`zz-doc-probe.test.ts`, 쓰고 지운다)로 측정한 문자열로 적는다([DC-DS-02](./DESIGN.md)).
 
 - [x] **8.1 계획 기록** — 이 절, R-DS-06, DC-DS-11~14, M-DS-07.
-- [ ] **8.2 probe 측정** — capture/낡음/`ids`, 조회 충돌 해소 경로, `accept` 생략·`none`, `MutationRejectedError`·재시도, 무한 조회, 조회 ref 위의 draft. **완료 조건:** 새 장에 적을 모든 동작 주장에 측정값이 있다.
+- [x] **8.2 probe 측정** — capture/낡음/`ids`, 조회 충돌 해소 경로, `accept` 생략·`none`, `MutationRejectedError`·재시도, 무한 조회, 조회 ref 위의 draft. **완료 조건:** 새 장에 적을 모든 동작 주장에 측정값이 있다.
 - [ ] **8.3 사실 오류 E1~E3** — `SyncMutation`·`ApiSync` en·ko.
 - [ ] **8.4 `편집의 생애`** (G1·G2·G3·G6) — 페이지 en+ko, 라우트, 사이드바. mutation·query·영속화 장의 capture 서술을 요약 + 링크로.
 - [ ] **8.5 `무한 조회`** (G5).
 - [ ] **8.6 `폼 저장 레시피`** (G7).
 - [ ] **8.7 `Sync API` 보강** (G4·G8).
 - [ ] **8.8 검증과 인계** — `pnpm gate`, 사이트 빌드, 라우트·href 대조, HANDOFF·ctxbin 갱신.
+
+### 8.2 측정 결과
+
+일회용 `packages/sync/src/tests/zz-doc-probe.test.ts`(8 시나리오)로 측정하고 지웠다. 서버 `{ address: { city: '서울', zip: '100' }, name: 'Kim' }`, `createSyncClient({ ssr: true })`.
+
+| 주장 | 측정 |
+| --- | --- |
+| capture 내용 | `{ version, value, changes }`, `value`는 얼린 **전체** 현재 값(`ids`로 골라도 `value`는 전체다), `changes`는 고른 줄만 |
+| `ids` 오류 | 없는 ID·중복 ID → `TypeError: Unknown or repeated resource change ID.` |
+| 편집이 없을 때 | `capture()`는 빈 `changes`로 성공한다 |
+| 낡음 | capture 뒤 **다른 필드**를 편집해도 낡는다. `start`는 동기로 던지고 `run`은 reject한다: `Submission is stale. Capture the current edits again.` `mutationFn` 호출 0회 |
+| 낡음 — 같은 값 쓰기 | 같은 값 재대입은 version을 올리지 않는다(낡지 않음) |
+| 낡음 — READ | `refetch()`가 끝나면 version이 오른다(capture 4 → 5) → 낡음 |
+| 제출 필수 조합 | `{ kind: 'submitted' }` 없이 → `Submitted acceptance requires a submission.` / `onReject: 'remove'` 없이 → `Removing rejected edits requires a submission.` / 다른 조회의 제출 → `Submission belongs to another resource.` / readonly → `This query is readonly.` |
+| 쓰기 중 | `status.pending` 1, 두 번째 연결 쓰기 → `A linked operation is already pending for this query.`, `acceptServer` → `A linked operation is pending for this query.` |
+| 쓰기 중 입력 | city 제출 중 zip 편집 → 성공 뒤 값 `{city:'부산', zip:'999'}`, 남은 변경은 `zip`(before `100`) 하나 |
+| `accept` 생략 | 성공, 그러나 `dirty: true`·`unconfirmed: true`·변경 1줄 유지. 링크 없이 제출도 없으면 `unconfirmed: true`, 다음 성공한 READ에서 `false` |
+| `refetch`·`response` 수용 | 서버가 저장했으면 `dirty: false`. `response`가 값을 고쳐 오면(`lee`→`LEE`) 그 값이 기준·화면 |
+| 거절 | `MutationRejectedError('name taken', { field: 'name' })` → `rejected`, `retry: 2`여도 **1회** 호출, `error.reason`에 두 번째 인자. `keep` → 편집 유지, `unconfirmed: false`. `remove` → `Kim`으로 되돌림 |
+| unknown | 일반 `Error` → `unknown`, `retry: 2`면 3회 호출, 편집 유지, `unconfirmed: true`. 기본 재시도 0(1회). abort도 `unknown` |
+| 재시도 조건 | `retry` 에 `idempotencyKey`가 없으면 → `Mutation retry requires an idempotencyKey.` |
+| `start()` | 키 `id, status, watchStatus, result, abort, dispose`. status `{ phase: 'pending', pending: 1, operationId, error: null }` → 끝나면 `phase: 'unknown'` 등 |
+| 콜백 오류 | `onSuccess`가 던져도 `kind: 'success'`, `callbackError`에 담김 |
+| 조회 충돌 | 로컬 `부산`, READ가 `광주` → 줄 `{ before: 광주, after: 부산, conflict: true }`, 화면은 `부산` |
+| 해소 — 서버 값 | 그 경로에 `change.before.value`(`광주`)를 쓰면 편집 삭제, `dirty: false`, `conflicts: 0` |
+| 해소 — 내 값 다시 쓰기 | 같은 값·다른 값 모두 **충돌 유지** — 쓰기로는 "내 값 유지"를 표현할 수 없다 |
+| 해소 — 제출 | capture + `{ kind: 'submitted' }` 성공 → `dirty: false`, `conflicts: 0`, 값 `부산`. `refetch` 수용도 충돌 해소(서버 답이 기준) |
+| 해소 — acceptServer | 로컬과 같은 값을 받으면 편집 삭제 |
+| 조회 위 draft | `createDraft(q.ref.address)` → `apply()` → 조회 변경 **`['address']` 한 줄**(before/after 객체). 루트 draft는 **`[]` 한 줄** |
+| 루트 draft의 함정 | 루트 편집이 있는 동안 서버가 **무관한** `name`을 바꾸면 `[]` 줄이 `conflict: true`가 되고 화면의 `name`은 `Kim`으로 남는다. `address` draft일 때는 충돌 없고 `name`이 `Choi`로 갱신 |
+| draft 충돌 | 열린 draft 밑에서 READ가 city를 바꾸면 draft 줄 `source: 광주, conflict: true`, `apply` → `conflict`, `resolve(..., 'draft')` 뒤 `apply` 성공 |
+| readonly 조회 위 draft | `apply()` → `{ ok: false, reason: 'readonly' }` |
+| 무한 — 첫 로드 | `load()`는 첫 페이지만(`pageParams [0]`) |
+| 무한 — maxPages 2 | 세 번째 페이지를 붙이면 앞이 빠진다 `[1,2]`, `fetchPreviousPage` → `[0,1]` |
+| 무한 — refetch | 가진 페이지를 **첫 페이지부터 다시** 읽는다(`calls [0,1]`) |
+| 무한 — 끝 | `getNextPageParam`이 `null` → `hasNextPage() false`, `fetchNextPage()`는 요청 없이 현재 데이터 |
+| 무한 — 편집 | `ref` 쓰기 → `This query is readonly.`, `capture` 없음, 로드 전 `ref` → `Query data is not loaded. Call load() first.` |
 
 **단계 8 완료 조건:** 위 표의 11개 ID가 전부 채워졌고, 사이드바에서 새 장 셋에 en/ko 모두 도달하며, gate와 사이트 빌드가 통과한다.
 
