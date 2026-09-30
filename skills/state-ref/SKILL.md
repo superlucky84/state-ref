@@ -13,6 +13,8 @@ Document Version: {{version}}
 Additional materials (optional):
 - constraints/ (rules, mistakes, troubleshooting)
 - reference/ (watch, store creation, framework connectors)
+- reference/draft-and-batch.md - local edit sessions and batched writes
+- reference/server-sync.md - `@stateref/sync` queries and saves (only if installed)
 - examples/ (quick examples)
 
 ## Activation Condition (Read First)
@@ -37,7 +39,11 @@ If `state-ref` is **not** installed, use the project's existing conventions. Do 
 - Only tracked `.value` reads inside callbacks trigger re-runs on change.
 - Use `AbortController.signal` returned from callback to unsubscribe.
 - Use `createStoreManualSync()` for Flux-like patterns with `updateRef` and `sync()`.
-- Framework connectors: `connectReact`, `connectPreact`, `connectVue`, `connectSvelte`, `connectSolid`.
+- Framework connectors: `connectReact`, `connectPreact`, `connectVue`, `connectSvelte`, `connectSolid`. Vue, Svelte and Solid take a selector: `connectVue(watch)(s => s.user)`.
+- Write rule: only a write that passes through the connector reaches the store. Assign `.value` of a selection or replace the whole object; never mutate an object read from a selection.
+- Local edit session (form, dialog): `createDraft(ref)` from `state-ref/draft`, then `apply()` / `discard()`.
+- Several writes, one notification: `batch(() => { ... })` from `state-ref/batch`.
+- Server data: if `@stateref/sync` is installed, use `client.query` / `capture()` / `client.mutation().run` - see reference/server-sync.md.
 - Combine watches with `combineWatch([watch1, watch2] as const)`.
 - Derive values with `createComputed([watches], callback)`.
 - Use `copyable()` for manual copy-on-write updates.
@@ -147,14 +153,19 @@ export const increment = () => {
 
 - Core: `import { createStore, createStoreManualSync, combineWatch, createComputed } from 'state-ref'`
 - Helpers: `import { lens, copyable, cloneDeep } from 'state-ref'`
-- React: `import { connectReact } from '@stateref/connect-react'`
-- Preact: `import { connectPreact } from '@stateref/connect-preact'`
-- Vue: `import { connectVue } from '@stateref/connect-vue'`
-- Svelte: `import { connectSvelte } from '@stateref/connect-svelte'`
-- Solid: `import { connectSolid } from '@stateref/connect-solid'`
+- Drafts: `import { createDraft } from 'state-ref/draft'`
+- Batch: `import { batch } from 'state-ref/batch'`
+- React: `import { connectReact, connectReactView } from '@stateref/connect-react'`
+- Preact: `import { connectPreact, connectPreactView } from '@stateref/connect-preact'`
+- Vue: `import { connectVue, connectVueView } from '@stateref/connect-vue'`
+- Svelte: `import { connectSvelte, connectSvelteView } from '@stateref/connect-svelte'`
+- Svelte 5 runes: `import { connectSvelteRunes } from '@stateref/connect-svelte/runes'`
+- Solid: `import { connectSolid, connectSolidView } from '@stateref/connect-solid'`
+- Server sync (separate package): `import { createSyncClient, MutationRejectedError } from '@stateref/sync'`
+- `state-ref/plugin` is the integration surface for sync/draft; application code does not import it.
 
 ---
 
 ## Summary
 
-Use `createStore` for reactive state, access via `.value`, subscribe with `watch(callback)`. Dependencies are tracked automatically inside callbacks. Use framework connectors for UI integration. For Flux patterns, use `createStoreManualSync`. Combine watches with `combineWatch` or derive computed values with `createComputed`.
+Use `createStore` for reactive state, access via `.value`, subscribe with `watch(callback)`. Dependencies are tracked automatically inside callbacks. Use framework connectors for UI integration and write only through them. For Flux patterns, use `createStoreManualSync`. Combine watches with `combineWatch` or derive computed values with `createComputed`. For edit-then-commit UIs use `createDraft`; for server data use `@stateref/sync` when it is installed.

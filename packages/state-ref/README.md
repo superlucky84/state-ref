@@ -84,7 +84,7 @@ Draft editing supports acyclic plain data and dense arrays. Arrays are merged as
 
 ### Optional server query package
 
-`@stateref/sync` is a separate ESM package for shared query caching and editable resource refs. It is installed and imported only by apps that need it. Direct resource edits are local; the package currently exposes no network write or mutation API. See [the sync package guide](../sync/README.md) for its Phase 3 API and supported scope.
+`@stateref/sync` is a separate ESM package for shared query caching, editable resource refs and mutations. It is installed and imported only by apps that need it. Direct resource edits are local; saving is explicit - capture the edits and run a mutation linked to the query. See [the sync package guide](../sync/README.md) for its API and supported scope.
 
 ### Understanding References: Inner vs Outer
 

@@ -60,6 +60,19 @@ export const AIAgentSkills = () => (
         Apply <code class="text-sm">createStoreManualSync</code> for Flux-like
         patterns
       </li>
+      <li>
+        Write only through the connector (<code class="text-sm">.value</code> of
+        a selection or the setter), never by mutating a selected object
+      </li>
+      <li>
+        Use <code class="text-sm">createDraft</code> for edit-then-commit UIs
+        and <code class="text-sm">batch</code> for grouped writes
+      </li>
+      <li>
+        With <code class="text-sm">@stateref/sync</code> installed, load queries
+        and save with <code class="text-sm">capture()</code> and{' '}
+        <code class="text-sm">mutation.run</code> correctly
+      </li>
     </ul>
 
     <hr class="border-t border-gray-200 dark:border-gray-700 my-10" />

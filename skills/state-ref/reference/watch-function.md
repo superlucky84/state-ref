@@ -24,8 +24,9 @@ const outerRef = watch((innerRef, isFirst) => {
 
 ```ts
 const ref = watch();
-// ref is NOT bound to any subscription
-// Useful for reading/writing from outside callbacks
+// A live reference: reads and writes always see the current store,
+// but it is NOT bound to any subscription and registers nothing when read.
+// Useful for reading/writing from outside callbacks (event handlers, actions).
 ```
 
 ## Callback Signature
@@ -40,6 +41,8 @@ type Renew<T> = (
 - `stateRef`: Proxied reference to state
 - `isFirst`: `true` on first run, `false` on updates
 - Return `AbortSignal` to enable unsubscription
+- Return `false` to stop after this run
+- Once a subscription has ended, reading through its reference never revives it
 
 ## Unsubscription
 

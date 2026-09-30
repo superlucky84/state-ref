@@ -58,6 +58,19 @@ export const AIAgentSkillsKo = () => (
       <li>
         Flux 패턴을 위한 <code class="text-sm">createStoreManualSync</code> 적용
       </li>
+      <li>
+        커넥터를 거쳐서만 쓰기(선택값의 <code class="text-sm">.value</code>나
+        setter). 선택한 객체를 직접 바꾸지 않기
+      </li>
+      <li>
+        편집 후 확정하는 화면에는 <code class="text-sm">createDraft</code>, 여러
+        쓰기를 묶을 때는 <code class="text-sm">batch</code> 사용
+      </li>
+      <li>
+        <code class="text-sm">@stateref/sync</code>가 설치돼 있으면 조회를
+        불러오고 <code class="text-sm">capture()</code>와{' '}
+        <code class="text-sm">mutation.run</code>으로 올바르게 저장
+      </li>
     </ul>
 
     <hr class="border-t border-gray-200 dark:border-gray-700 my-10" />

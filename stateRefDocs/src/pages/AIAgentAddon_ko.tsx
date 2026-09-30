@@ -56,26 +56,94 @@ CODING GUIDELINES:
    - Create action functions that encapsulate updateRef + sync
 
 6. FRAMEWORK INTEGRATION
-   - React/Preact: \`const useStore = connectReact(watch)\`
-   - Vue: \`const useStore = connectVue(watch)\`
-   - Svelte: \`const store = connectSvelte(watch)\`
-   - Solid: \`const useStore = connectSolid(watch)\`
+   - React: \`const useStore = connectReact(watch)\`; \`useStore()\` returns the ref
+   - Preact: \`const useStore = connectPreact(watch)\`; same shape as React
+   - Vue: \`connectVue(watch)(s => s.user.age)\` returns a reactive \`{ value }\`
+   - Svelte: \`connectSvelte(watch)(s => s.user.age)\` returns a Writable (\`$age\`)
+   - Svelte 5 runes: \`connectSvelteRunes(watch)(select)\` from
+     \`@stateref/connect-svelte/runes\` returns \`{ value }\`
+   - Solid: \`connectSolid(watch)(s => s.user.age)\` returns \`[get, set]\`
    - Lithent: Use \`watch(renew)\` directly
+   - WRITE RULE: only a write that passes through the connector reaches the
+     store. Assign \`.value\` of a selection (Solid: call the setter) or replace
+     the whole object. Never mutate an object read from a selection: Vue makes
+     it readonly, Solid and Svelte runes hand out frozen copies. Svelte's
+     \`$user.name = x\` is fine (it compiles to \`set\`).
+   - React/Preact render a component twice on mount (the second render
+     collects dependencies); do not "fix" this
+   - For a \`@stateref/sync\` query's display use \`connectReactView\`,
+     \`connectPreactView\`, \`connectVueView\`, \`connectSvelteView\`,
+     \`connectSolidView\` with \`query.watchDisplay\` (readonly)
+
+7. COMBINING STORES
+   - Use \`combineWatch([watch1, watch2] as const)\` for multiple stores
+   - Use \`as const\` for proper TypeScript inference
+   - Nested combinations are supported
+
+8. COMPUTED VALUES
+   - Use \`createComputed([watches], callback)\` for derived values
+   - Computed values are read-only
+   - Can be used with framework connectors like regular watches
+
+9. IMMUTABILITY
+   - state-ref uses copy-on-write internally
+   - Avoid direct mutation; always assign via \`.value\`
+   - Use \`copyable()\` helper for manual copy-on-write when needed
+   - Use \`lens()\` for functional lens-style immutable updates
+
+10. PRACTICAL BALANCE
+    - Use state-ref for shared state across components
+    - Simple local state can use native framework state (useState, ref, etc.)
+    - Don't overcomplicate simple scenarios
+
+11. LOCAL EDITS AND BATCHING (state-ref 3.1)
+    - Edit-then-commit UI (form, dialog): \`createDraft(ref)\` from
+      \`state-ref/draft\`; edit \`draft.ref\`, then \`apply()\`, \`reset()\` or
+      \`discard()\`
+    - \`apply()\` does not throw on conflict: check \`result.ok\` / \`result.reason\`
+      and settle conflicts with \`draft.resolve(change, 'source' | 'draft')\`
+    - \`apply()\` only updates the local store; it never contacts a server
+    - Several synchronous writes, one notification pass: \`batch(() => {...})\`
+      from \`state-ref/batch\` (no rollback, cannot span \`await\`)
+
+12. SERVER DATA (only when \`@stateref/sync\` is installed)
+    - One \`createSyncClient()\` per app; one per request for SSR
+    - \`client.query({ queryKey, queryFn })\`, then \`await query.load()\`; \`ref\`
+      throws before the first load
+    - Edits to \`query.ref\` are local and never save by themselves
+    - Save: \`const submission = query.capture()\` immediately before
+      \`mutation.run(dto, { links: [{ query, submission, accept: { kind: 'refetch' } }] })\`
+    - \`accept\` in \`run()\` is an object (\`{ kind: 'none' | 'submitted' |
+      'refetch' }\` or \`{ kind: 'response', select }\`), never a string
+    - Only \`MutationRejectedError\` yields \`rejected\`; other errors yield
+      \`unknown\`, which keeps edits and must not be blindly resent
+    - \`retry\` requires an \`idempotencyKey\` the server honours
+    - "Saving" is \`status.pending.value > 0\`, not \`phase === 'pending'\`
+    - Details: node_modules/state-ref/dist/skills/state-ref/reference/server-sync.md
 
 IMPORT PATHS:
 - Core: \`import { createStore, createStoreManualSync, combineWatch, createComputed } from 'state-ref'\`
 - Helpers: \`import { lens, copyable, cloneDeep } from 'state-ref'\`
-- React: \`import { connectReact } from '@stateref/connect-react'\`
-- Preact: \`import { connectPreact } from '@stateref/connect-preact'\`
-- Vue: \`import { connectVue } from '@stateref/connect-vue'\`
-- Svelte: \`import { connectSvelte } from '@stateref/connect-svelte'\`
-- Solid: \`import { connectSolid } from '@stateref/connect-solid'\`
+- Drafts: \`import { createDraft } from 'state-ref/draft'\`
+- Batch: \`import { batch } from 'state-ref/batch'\`
+- React: \`import { connectReact, connectReactView } from '@stateref/connect-react'\`
+- Preact: \`import { connectPreact, connectPreactView } from '@stateref/connect-preact'\`
+- Vue: \`import { connectVue, connectVueView } from '@stateref/connect-vue'\`
+- Svelte: \`import { connectSvelte, connectSvelteView } from '@stateref/connect-svelte'\`
+- Svelte 5 runes: \`import { connectSvelteRunes } from '@stateref/connect-svelte/runes'\`
+- Solid: \`import { connectSolid, connectSolidView } from '@stateref/connect-solid'\`
+- Server sync: \`import { createSyncClient, MutationRejectedError } from '@stateref/sync'\`
 
 GUIDANCE APPROACH:
 When user requests could benefit from state-ref patterns:
 1. Provide solution using state-ref patterns
 2. Explain advantages of the reactive approach
 3. If user prefers other state management, respect their choice
+
+When existing code could be improved with state-ref:
+1. Suggest state-ref refactoring when it adds clarity or performance
+2. Explain the benefits of fine-grained reactivity
+3. Don't force refactoring for trivial improvements
 
 REFERENCE MATERIALS (NOT PART OF BEHAVIORAL RULES):
 

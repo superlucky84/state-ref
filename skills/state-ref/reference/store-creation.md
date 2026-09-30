@@ -45,7 +45,7 @@ const { watch, updateRef, sync } = createStoreManualSync<{
 
 ### Returns
 
-- `watch`: Subscribe to state (read-only refs)
+- `watch`: Subscribe to state (read-only refs; `{ editable: true }` opts in)
 - `updateRef`: Writable reference for modifications
 - `sync`: Function to notify all subscribers
 
@@ -104,3 +104,19 @@ sumWatch((ref) => {
 ```
 
 Computed values are read-only.
+
+Calling the computed watch without a callback subscribes to nothing; reading
+`.value` recalculates only when a value the calculation read has changed.
+
+## Options (second argument)
+
+```ts
+const watch = createStore({ count: 0 }, { trackDeps: true });
+const store = createStoreManualSync({ count: 0 }, { trackDeps: true });
+```
+
+- `trackDeps` (off by default): a subscriber stops being woken by a path it no
+  longer reads. Worth it only when the branch condition lives in the store; it
+  costs about 1.4x per notification otherwise.
+
+See `draft-and-batch.md` for `createDraft` and `batch`.

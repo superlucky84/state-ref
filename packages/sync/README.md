@@ -236,8 +236,8 @@ display data enters the shared cache. One-way lifecycle wiring is available
 through `connectReactView`, `connectPreactView`, `connectVueView`,
 `connectSvelteView`, and `connectSolidView`. Each connector ends its UI
 subscription on unmount; the owner of `live` calls `live.dispose()` when the
-view itself is no longer needed. Edit actual data through `live.query?.ref`
-after it loads.
+view itself is no longer needed. Edit actual data through `live.ref` after it
+loads (check `live.display.enabled` first).
 
 For numbered pagination, include the page in the key the source resolves to.
 Each page then has its own cache entry. A `placeholderData` value is only a

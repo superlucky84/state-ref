@@ -18,9 +18,6 @@ are what `@stateref/sync` and the draft helpers build on.
 - **`state-ref/plugin`** (ESM only) - the integration surface `@stateref/sync`
   and draft use: `connectRef`, `observeRef`, `createWriteJournal` and
   `guardWriteObserver`.
-- **`onWrite` option on `createStore` / `create`** - `create(initial, { onWrite })`
-  receives `{ parent, segment, before, after }` for every successful setter,
-  before subscribers run.
 - **An unbound computed ref memoizes.** Reading a computed with no subscriber
   reuses the result until a value the calculation read changes, without
   subscribing to its sources.
