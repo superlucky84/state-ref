@@ -1,5 +1,55 @@
 # IMPLEMENT — 독립 Draft와 ref 기반 서버 동기화
 
+## Phase 10 — 작은 쇼핑몰 사용자 화면 (2026-09-30)
+
+**진입:** 사용자 R2-29와 DC2-24~27 확정. 기존 HEAD `cb6d635`, 최종 gate/E2E 통과 기록은 기존 범위의 증거다.
+
+### 10.0 요구사항·설계
+
+- [x] 작은 쇼핑몰 세 화면, Preact/Vue, 자동 응답과 접힌 테스트 도구를 문서화했다.
+- [x] 기존 진단 화면과 별도 진입점, 공유 모델·커넥터 경계를 정했다.
+
+**기준 확인 / 종료:** REQUIREMENTS·DESIGN·본 계획·M2-22의 화면 및 판정 기준이 일치한다.
+
+### 10.1 공유 모델
+
+- [x] 자동 지연/취소 mock, 검색·무한 목록, 배송 query/미리보기·연결 저장·주소 draft, 편집 복원, batch 비교를 구현했다.
+- [x] T2-29: 빠른 key 전환, 저장 중 후속 입력, 확정 거절, draft 충돌·취소, 복원, 일반 3회/batch 1회 구독을 실제 API로 검증했다.
+
+**기준 테스트 / 종료:** 공유 모델 타입 검사와 실제 API의 사용자 흐름 테스트 통과. 성공/오류를 빈 catch로 삼키지 않는다.
+
+### 10.2 두 프레임워크 UI
+
+- [x] 검색·폼·native dialog·주문 요약, 접근 가능한 label과 공통 반응형 스타일을 구현했다.
+- [x] 두 `shop.html`을 빌드하고 M2-22의 기본 흐름을 DOM에서 확인했다.
+
+**기준 테스트 / 종료:** Preact tsc, Vue vue-tsc, 두 production 빌드 통과. 첫 화면/좁은 화면 screenshot 검토. 상태·후속 입력이 DOM에 나타난다.
+
+### 10.3 Test Hardening
+
+- [x] 빠른 검색 전환(모델), 저장 중 입력, 실패 후 재시도, 충돌 해결, 새로고침 복원을 두 UI에서 확인했다.
+- [x] batch의 실제 구독 관측과 최종 값, 저장 이중 실행 방지, 페이지 종료 시 timer/구독 정리를 확인했다.
+
+**기준 테스트 / 종료:** 새 브라우저 시나리오가 DOM 값·상태·알림을 검증하고 console/pageerror가 없다.
+
+### 10.4 Integration Test와 인계
+
+- [x] 변경된 TS/TSX/Vue/MJS만 prettier 처리하고 `pnpm gate`, `pnpm check:examples`, 전체 E2E를 실행했다.
+- [x] 미수행 수동 판정과 실제 통과 범위, 실행 URL, done/next/blockers/HEAD를 기록했다.
+- [x] Preact/Vue 개발 서버를 띄워 사용자가 바로 확인할 수 있게 했다. 5182/5183의 `/shop.html` HTTP 200 및 개발 모드 DOM smoke PASS.
+
+**종료:** 새 사용자 화면과 기존 진단 화면이 검증을 통과하고 두 URL이 열림. UI 이해도는 사용자의 확인을 기다린다.
+
+T2-29는 R2-29의 자동 확인이며 기존 M2 미수행 항목 전체를 대체하지 않는다. 현재 done: Phase 10.0~10.4의 구현·자동 검증・캡처 검토・개발 서버·로컬 커밋. next: M2-22의 사용자 화면 이해도 판정과 PR 반영. blockers: 구현/자동 검증 없음. 구현 commit: `6e3c267`; 문서는 별도 커밋으로 기록하며 최신 HEAD는 `git log -1`로 확인한다. 이번 예제 커밋은 로컬 브랜치에 있다.
+
+**10.1~10.2 실행 결과 (2026-09-30):** `examples/shared/src/shop.test.ts` 8/8 PASS. Preact tsc·Vue vue-tsc와 두 multi-entry production 빌드 PASS. 개발 모드에서 두 프레임워크의 상품·배송·주소 modal·batch 화면과 console/pageerror 없음 확인. 캡처는 `/private/tmp/state-ref-shop-review/{preact,vue}-{catalog,delivery,address,basket,basket-mobile}.png`이며 desktop과 390px 모바일 화면을 검토했다.
+
+**발견과 회귀:** 상품 재조회 성공 뒤 이전 오류 안내가 남는 결함을 두 UI의 DOM 테스트에서 재현했다. 모델 테스트에 안내 소멸 단언을 추가해 수정 전 실패를 확인하고, 성공 시 안내를 지우도록 고쳤다. 저장 중 종료/복원 테스트는 clean 캐시의 GC timer가 남음을 검출했고, 소유자 해제 뒤 `client.remove`로 clean 캐시를 정리한 후 통과했다. dirty/미확정 cache 보호는 유지한다.
+
+**통합 결과:** Node 22.13.0 / pnpm 9.12.3에서 `pnpm gate` 19단계 PASS, 전체 테스트 838개(별도 SSR 3개 포함) PASS. `pnpm check:examples` PASS. 예제 빌드 뒤 `pnpm --filter stateref-example-e2e e2e` 전체 100/100 PASS(기존 88 + 쇼핑몰 12, 5.6분); flaky/skip 0. 새 시나리오는 console warning/error와 pageerror도 검사한다. 기록은 `/tmp/state-ref-shop-{gate,examples,full-e2e}.log`와 `examples/e2e/transcripts/last-run.json`이다.
+
+**직접 확인:** [Preact](http://127.0.0.1:5182/shop.html), [Vue](http://127.0.0.1:5183/shop.html). 다시 실행하는 명령과 짧은 조작 순서는 [SHOP](../../examples/SHOP.md)에 있다. 가상 서버를 사용하며 core/sync/connector 라이브러리 소스 변경은 없다. UI 이해도는 사용자 몫이고, 이 예제로 SSR·오프라인 복구·F2 전체 동등성을 주장하지 않는다.
+
 - 기준: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md).
 - 개정일: 2026-09-22. 기준 SHA: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
 - 상태: `feat/server-sync-draft`에서 Phase 4 mutation 이후 Phase 5.1~5.11의 조회·view·UI 연결·영속화·연결 제출 하위 범위, [Phase 5.12](./PHASE5_12.md)의 읽기 전용 캐시 관측 및 [Phase 5.13](./PHASE5_13.md)의 무한 조회 편의 API를 구현했다. F2 전체 동등성은 미완료다. 상세 이력은 [HANDOFF](./HANDOFF.md)와 단계별 문서를 따른다.

@@ -1,5 +1,16 @@
 # DESIGN — resource 변경 추적과 독립 Draft
 
+## 2026-09-30 추가 — 사용자 흐름 예제 설계
+
+- [x] **DC2-24:** 작은 쇼핑몰 세 화면을 Preact/Vue에 같은 내용으로 제공한다(사용자 선택). R2-29 / M2-22.
+- [x] **DC2-25:** `examples/shared/src/shop.ts`에 실제 core/sync API를 사용하는 모델과 자동 지연 mock 서버를 둔다. 프레임워크별 UI는 각 커넥터를 통해 ref/display를 구독한다. mock은 AbortSignal을 따르고 실패를 확정 거절과 조회 실패로 구분한다. T2-29.
+- [x] **DC2-26:** `examples/{preact,vue}/shop.html`을 별도 진입점으로 빌드한다. 기존 진단 예제와 E2E 경로를 보존하며 새 화면은 E2E의 `/shop.html`로 확인한다. T2-29 / 기존 E2E 회귀.
+- [x] **DC2-27:** 기본 화면은 상품·배송 폼·주문 요약을 보여 준다. 상세 metadata 표 대신 짧은 상태 문장과 접힌 테스트 도구를 제공한다. batch 비교는 store 구독이 관측한 중간 주문 요약과 갱신 수로 판정한다. M2-22 / T2-29.
+
+상품 기본 목록은 `infiniteQuery`이며 `select`로 페이지를 평탄화한다. 검색/분류는 source를 받는 `query`로 key를 바꾸고, 이전 결과가 새 검색 화면을 채우지 않게 한다. 배송 폼과 미리보기는 같은 key의 서로 다른 query 관찰자다. 저장은 `capture()`와 연결 mutation의 응답 수용을 사용하고 `pending > 0`으로 저장 중을 판정한다. 주소 modal은 `profile.ref.address`의 draft여서 취소 시 원본에 쓰지 않고 충돌 해결 후 로컬 적용한다.
+
+브라우저별 예제 저장 공간을 분리한다. 저장된 mock 서버 데이터와 `dehydrateLocal` snapshot은 다른 키를 쓰며 복원은 query를 열기 전에 한다. 전송 중 snapshot은 미확정으로 보관하고, 복원 뒤 READ로 확인하며 WRITE를 재전송하지 않는다. UI가 닫힐 때 커넥터·draft·query·mutation·저장 listener와 debounce timer를 정리한다. 소유자를 해제한 clean 캐시는 `client.remove`로 제거해 GC timer도 정리하고, dirty/미확정 데이터는 공개 API의 보호 규칙을 따른다. 실패 주입은 접힌 도구의 명시적 사용자 동작으로만 설정한다.
+
 - 개정일: 2026-09-23. 기준: [REQUIREMENTS](./REQUIREMENTS.md).
 - 기준 commit: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`.
 - **DC2-19~23(표시와 자원의 통합)은 2026-09-28에 후보 A로 닫혔고 구현을 마쳤다.** 조회 팩토리 5 → 2, 상태 어휘 3 → 1. 계약은 아래 §5.4가 현재 동작이며, 수행 결과는 [M2-21](./MANUAL_TEST_CHECKLIST.md#m2-21), 근거는 [Phase 9](./PHASE9.md)에 있다.

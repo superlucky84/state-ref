@@ -131,6 +131,8 @@ A shared query cache with an editable resource ref, from the separate `@stateref
 
 The package README at [`packages/state-ref`](./packages/state-ref/README.md) carries the full set of runnable examples, and [`packages/sync`](./packages/sync/README.md) documents every rule of the sync package.
 
+For a small app to try locally, see the [Preact and Vue shop examples](./examples/SHOP.md): product search and pagination, editable shipping information, an address draft, and a basket that compares regular writes with `batch`.
+
 ## Acknowledgements
 
 I would like to extend my gratitude to the following people and projects:

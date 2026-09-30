@@ -1,5 +1,14 @@
 # 서버 동기화·독립 Draft 현재 인계
 
+> **현재 재개 지점 (2026-09-30): 병합 전 작은 쇼핑몰 예제를 추가하고 두 서버를 띄웠다.**
+>
+> - **done:** 사용자 선택 R2-29 / DC2-24~27 / IMPLEMENT Phase 10. Preact와 Vue의 `/shop.html`에 상품 검색·더 보기, 배송정보·미리보기·주소 draft, 장바구니 batch 비교를 같은 구성으로 제공한다. 가상 서버는 자동 응답하며 실패/지연/충돌 제어는 접혀 있다. 기존 `/` 진단 화면을 보존했다. 라이브러리 소스 변경 0.
+> - **검증:** 새 모델 테스트 8/8; `pnpm gate` 19단계 / 전체 테스트 838 PASS; `pnpm check:examples` PASS; 전체 Chromium E2E 100/100 PASS(기존 88 + 쇼핑몰 12, flaky/skip 0). 개발 모드 두 UI smoke 및 데스크톱/390px 캡처 검토 PASS. 실행 Node 22.13.0 / pnpm 9.12.3.
+> - **직접 열기:** [Preact](http://127.0.0.1:5182/shop.html), [Vue](http://127.0.0.1:5183/shop.html). 실행/조작 안내는 [examples/SHOP](../../examples/SHOP.md), 기능 증거와 사용자 판정은 [M2-22](./MANUAL_TEST_CHECKLIST.md#m2-22).
+> - **next:** 사용자가 M2-22 화면 이해도와 실제 조작을 확인한다. 예제 구현은 `6e3c267`로 로컬 커밋했고 문서는 별도 커밋으로 기록한다. 사용자 피드백 뒤 필요한 수정과 기존 main 대상 PR #13 반영을 진행한다.
+> - **blockers:** 구현·자동 검증 없음. 전체 SSR·오프라인 복구·F2 동등성이나 사용자 이해도 완료를 주장하지 않는다.
+> - **구현 commit:** `6e3c26779bb834b8ee4944bc81725870d779faec` (`feat/server-sync-draft`); 구현과 문서를 나눠 로컬 커밋한다. 최신 HEAD는 `git log -1`로 확인한다. 로그 `/tmp/state-ref-shop-{gate,examples,full-e2e}.log`, 캡처 `/private/tmp/state-ref-shop-review/`. 아래 2026-09-28/24 내용은 이전 기록이다.
+
 > **현재 재개 지점 (2026-09-28): 조회 공개 표면의 통합을 마쳤다.**
 >
 > 사용자 보고로 [Phase 9](./PHASE9.md) 설계를 시작했다 — `view`와 `query`가 겹쳐 보이는 문제이며, 측정 결과 **`client.view()`가 `client.query()`를 소유한 래퍼인데 API가 대안처럼 생긴 것**이 원인이다. 현재 조회 팩토리 **5**·handle 타입 **5**·상태 어휘 **3**.
