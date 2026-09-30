@@ -7,7 +7,10 @@
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./demo.css": "./src/demo.css"
+    "./demo.css": "./src/demo.css",
+    "./shop": "./src/shop.ts",
+    "./shop-art": "./src/shop-art.ts",
+    "./shop.css": "./src/shop.css"
   },
   "scripts": {
     "test": "vitest run --reporter verbose",
