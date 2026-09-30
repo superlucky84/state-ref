@@ -31,10 +31,12 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src'),
       name: 'staterefConnectSvelte',
+      formats: ['es', 'umd', 'cjs'],
       fileName: format => {
-        return format === 'umd'
-          ? 'stateref-connect-svelte.umd.js'
-          : 'stateref-connect-svelte.mjs';
+        if (format === 'umd') return 'stateref-connect-svelte.umd.js';
+        // "type": "module" makes a .js file ESM, so the UMD output
+        // cannot serve the `require` condition.
+        return format === 'cjs' ? 'stateref-connect-svelte.cjs' : 'stateref-connect-svelte.mjs';
       },
     },
     rollupOptions: {
@@ -50,6 +52,9 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     includeSource: ['src/tests/**/*.{js,ts,jsx,tsx}'],
+    // Server renders have their own config; running them here would put them
+    // in a DOM, where the connectors take the browser path they are not about.
+    exclude: ['**/node_modules/**', '**/dist/**', 'src/tests/**/*.ssr.test.*'],
     setupFiles: './test/setup.ts',
     globals: true,
   },

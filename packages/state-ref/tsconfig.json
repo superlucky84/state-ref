@@ -23,7 +23,9 @@
     "baseUrl": "./",
     "types": ["vitest/globals", "vitest/importMeta"],
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "state-ref": ["src/index.ts"],
+      "state-ref/batch": ["src/batch/index.ts"]
     }
   },
   "include": ["src"],

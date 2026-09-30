@@ -9,7 +9,12 @@
 - Use `AbortController.signal` returned from callback to unsubscribe.
 - Use `createStoreManualSync()` for Flux-like patterns.
 - In manual-sync mode, modify via `updateRef`, then call `sync()` to notify subscribers.
-- Framework connectors transform `watch` into framework-specific hooks/stores.
+- Framework connectors transform `watch` into framework-specific hooks/stores. Vue, Svelte and Solid take a selector (`connectVue(watch)(s => s.user)`).
+- Only a write that passes through the connector reaches the store: assign `.value` of a selection (or call the Solid setter), or replace the whole object. A selected object is readonly (Vue) or a frozen copy (Solid, Svelte runes).
+- React/Preact connectors render a component twice on mount (the second render collects dependencies).
+- `createDraft(ref)` (`state-ref/draft`) edits a local copy; `apply()` returns `{ ok, ... }` and reports conflicts instead of overwriting.
+- `batch(fn)` (`state-ref/batch`) groups notifications of synchronous writes; it does not roll back and cannot span `await`.
+- With `@stateref/sync`: edits to `query.ref` are local; saving is `capture()` then `mutation.run(dto, { links })`.
 - Use `combineWatch([watch1, watch2] as const)` to observe multiple stores together.
 - Use `createComputed([watches], callback)` to derive read-only computed values.
 - Use `copyable(obj)` for manual copy-on-write when needed.

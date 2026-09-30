@@ -6,7 +6,6 @@ const computedRef = useComputedRef(storeRef => storeRef);
 
 const incrementFromage = () => {
   ageRef.value += 1;
-  
 };
 </script>
 

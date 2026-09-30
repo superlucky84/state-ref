@@ -1,0 +1,19 @@
+{
+  "type": "module",
+  "name": "stateref-example-preact",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Preact demo for the state-ref server-sync manual checklist",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@stateref/connect-preact": "workspace:*",
+    "@stateref/sync": "workspace:*",
+    "preact": "^10.24.1",
+    "state-ref": "workspace:*",
+    "stateref-example-shared": "workspace:*"
+  }
+}

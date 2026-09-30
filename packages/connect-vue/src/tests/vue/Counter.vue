@@ -3,7 +3,8 @@ import { useCounterRef, counterRef } from '@/tests/store/boardStore';
 
 const countRef = useCounterRef<number>(stateRef => stateRef.count);
 
-const bumpFromStore = () => (counterRef.count.value = counterRef.count.value + 1);
+const bumpFromStore = () =>
+  (counterRef.count.value = counterRef.count.value + 1);
 </script>
 
 <template>

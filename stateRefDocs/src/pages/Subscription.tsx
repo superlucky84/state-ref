@@ -7,15 +7,17 @@ export const Subscription = mount(() => {
       <h1>Subscription</h1>
 
       <p>
-        Subscriptions in StateRef allow you to react to state changes automatically.
-        When you pass a callback to the <code>watch()</code> function, it creates a subscription
-        that runs whenever tracked properties change.
+        Subscriptions in StateRef allow you to react to state changes
+        automatically. When you pass a callback to the <code>watch()</code>{' '}
+        function, it creates a subscription that runs whenever tracked
+        properties change.
       </p>
 
       <h2>Basic Subscription</h2>
 
       <p>
-        Create a subscription by passing a callback function to <code>watch()</code>:
+        Create a subscription by passing a callback function to{' '}
+        <code>watch()</code>:
       </p>
 
       <CodeBlock
@@ -40,7 +42,8 @@ ref.count.value = 10;  // Logs all the values above`}
       <h2>Subscription Callback Signature</h2>
 
       <p>
-        The subscription callback receives two parameters and can optionally return an <code>AbortSignal</code>:
+        The subscription callback receives two parameters and can optionally
+        return an <code>AbortSignal</code>:
       </p>
 
       <CodeBlock
@@ -65,8 +68,8 @@ watch((store, isFirst) => {
       <h2>The isFirst Parameter</h2>
 
       <p>
-        The <code>isFirst</code> parameter indicates whether this is the initial execution
-        or a subsequent update. This is useful for setup logic:
+        The <code>isFirst</code> parameter indicates whether this is the initial
+        execution or a subsequent update. This is useful for setup logic:
       </p>
 
       <CodeBlock
@@ -125,7 +128,8 @@ watch((store, isFirst) => {
       <h2>Unsubscribing with AbortController</h2>
 
       <p>
-        Use <code>AbortController</code> to cancel subscriptions when they're no longer needed:
+        Use <code>AbortController</code> to cancel subscriptions when they're no
+        longer needed:
       </p>
 
       <CodeBlock
@@ -216,7 +220,8 @@ ref.theme.value = 'light'; // Triggers subscription 3 only`}
       <h2>Subscription Lifecycle</h2>
 
       <p>
-        Understanding the subscription lifecycle helps prevent memory leaks and unexpected behavior:
+        Understanding the subscription lifecycle helps prevent memory leaks and
+        unexpected behavior:
       </p>
 
       <CodeBlock
@@ -248,8 +253,8 @@ trackedRef.count.value = 20;  // No callback triggered`}
       <h2>Selective Property Tracking</h2>
 
       <p>
-        Subscriptions only react to properties that were READ via tracked references
-        (innerRef/outerRef) during the callback:
+        Subscriptions only react to properties that were READ via tracked
+        references (innerRef/outerRef) during the callback:
       </p>
 
       <CodeBlock
@@ -279,7 +284,8 @@ ref.settings.theme.value = 'light';  // ✗ Does NOT trigger (read via unbound r
       <h2>Derived State Pattern</h2>
 
       <p>
-        Use subscriptions to compute derived state that depends on multiple properties:
+        Use subscriptions to compute derived state that depends on multiple
+        properties:
       </p>
 
       <CodeBlock
@@ -308,7 +314,8 @@ ref.firstName.value = 'Jane';
       <h2>Side Effects Pattern</h2>
 
       <p>
-        Subscriptions are perfect for side effects like API calls, logging, or analytics:
+        Subscriptions are perfect for side effects like API calls, logging, or
+        analytics:
       </p>
 
       <CodeBlock
@@ -398,9 +405,7 @@ watch((store, isFirst) => {
 
       <h2>Subscription Performance</h2>
 
-      <p>
-        Keep subscriptions efficient by following these guidelines:
-      </p>
+      <p>Keep subscriptions efficient by following these guidelines:</p>
 
       <CodeBlock
         language="typescript"
@@ -430,25 +435,32 @@ const filteredWatch = createComputed([watch], ([store]) => {
 
       <ul>
         <li>
-          <strong>Always clean up subscriptions</strong> - Use AbortController to prevent memory leaks
+          <strong>Always clean up subscriptions</strong> - Use AbortController
+          to prevent memory leaks
         </li>
         <li>
-          <strong>Use isFirst for initialization</strong> - Distinguish setup from updates
+          <strong>Use isFirst for initialization</strong> - Distinguish setup
+          from updates
         </li>
         <li>
-          <strong>Keep callbacks focused</strong> - Each subscription should have a single responsibility
+          <strong>Keep callbacks focused</strong> - Each subscription should
+          have a single responsibility
         </li>
         <li>
-          <strong>Avoid infinite loops</strong> - Don't update tracked properties without checking if values changed
+          <strong>Avoid infinite loops</strong> - Don't update tracked
+          properties without checking if values changed
         </li>
         <li>
-          <strong>Be mindful of what you track</strong> - Only read properties you actually need to react to
+          <strong>Be mindful of what you track</strong> - Only read properties
+          you actually need to react to
         </li>
         <li>
-          <strong>Use createComputed for derived state</strong> - More efficient than manual subscriptions
+          <strong>Use createComputed for derived state</strong> - More efficient
+          than manual subscriptions
         </li>
         <li>
-          <strong>Debounce expensive operations</strong> - Don't perform heavy work on every update
+          <strong>Debounce expensive operations</strong> - Don't perform heavy
+          work on every update
         </li>
       </ul>
 
@@ -504,16 +516,20 @@ const Component = () => {
 
       <ul>
         <li>
-          <a href="#/guide/watch">Watch Function</a> - Understanding the watch function
+          <a href="#/guide/watch">Watch Function</a> - Understanding the watch
+          function
         </li>
         <li>
-          <a href="#/guide/references">Understanding References</a> - How tracking works
+          <a href="#/guide/references">Understanding References</a> - How
+          tracking works
         </li>
         <li>
-          <a href="#/guide/computed">createComputed</a> - Efficient derived state
+          <a href="#/guide/computed">createComputed</a> - Efficient derived
+          state
         </li>
         <li>
-          <a href="#/guide/combine-watch">combineWatch</a> - Combining multiple subscriptions
+          <a href="#/guide/combine-watch">combineWatch</a> - Combining multiple
+          subscriptions
         </li>
       </ul>
     </div>

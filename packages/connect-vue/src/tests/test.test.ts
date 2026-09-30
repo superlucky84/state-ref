@@ -17,6 +17,7 @@ import Root2 from '@/tests/vue/Root2.vue';
 import Root3 from '@/tests/vue/Root3.vue';
 import AgeCombind from '@/tests/vue/AgeCombind.vue';
 import { nextTick } from 'vue';
+import { batch } from 'state-ref/batch';
 
 const resetStore = () => {
   handleRef.value = getDefaultValue();
@@ -26,6 +27,33 @@ describe('Connect Vue', () => {
   afterEach(() => {
     cleanup();
     resetStore();
+  });
+
+  it('applies one synchronous batch notification and keeps two-way input writable', async () => {
+    render(Age);
+    await nextTick();
+    const seen: Array<[string, number]> = [];
+    const abort = new AbortController();
+    watch(state => {
+      seen.push([state.name.value, state.age.value]);
+      return abort.signal;
+    });
+    seen.length = 0;
+
+    batch(() => {
+      handleRef.name.value = 'Batch';
+      handleRef.age.value = 20;
+      expect(seen).toEqual([]);
+    });
+    expect(seen).toEqual([['Batch', 20]]);
+    await nextTick();
+    expect(screen.getByTestId('age-display').textContent).toBe('age: 20');
+
+    await fireEvent.click(screen.getByTestId('age-increase'));
+    await nextTick();
+    expect(handleRef.age.value).toBe(21);
+    expect(screen.getByTestId('age-display').textContent).toBe('age: 21');
+    abort.abort();
   });
 
   it('It should work well responsively for stateRef value.', () => {

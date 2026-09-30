@@ -7,23 +7,22 @@ export const QuickStart = mount(() => {
       <h1>Quick Start</h1>
 
       <p>
-        This guide will help you get started with StateRef in just a few minutes.
-        You'll learn how to create a store, subscribe to changes, and update values.
+        This guide will help you get started with StateRef in just a few
+        minutes. You'll learn how to create a store, subscribe to changes, and
+        update values.
       </p>
 
       <h2>Installation</h2>
 
       <p>First, install the core library:</p>
 
-      <CodeBlock
-        language="bash"
-        code={`$ npm install state-ref`}
-      />
+      <CodeBlock language="bash" code={`$ npm install state-ref`} />
 
       <h2>Creating Your First Store</h2>
 
       <p>
-        Use <code>createStore()</code> to create a reactive store with an initial value:
+        Use <code>createStore()</code> to create a reactive store with an
+        initial value:
       </p>
 
       <CodeBlock
@@ -59,8 +58,9 @@ store.name.value = 'Updated';`}
       <h2>Subscribing to Changes</h2>
 
       <p>
-        Pass a callback function to <code>watch()</code> to subscribe to state changes.
-        The callback receives the store reference and an <code>isFirst</code> flag:
+        Pass a callback function to <code>watch()</code> to subscribe to state
+        changes. The callback receives the store reference and an{' '}
+        <code>isFirst</code> flag:
       </p>
 
       <CodeBlock
@@ -80,9 +80,10 @@ store.count.value = 5;
       <h2>Understanding References</h2>
 
       <p>
-        The <code>watch</code> function returns the same reference whether called with
-        or without a callback. Both the returned reference (<code>outerRef</code>) and
-        the callback argument (<code>innerRef</code>) track dependencies:
+        The <code>watch</code> function returns the same reference whether
+        called with or without a callback. Both the returned reference (
+        <code>outerRef</code>) and the callback argument (<code>innerRef</code>)
+        track dependencies:
       </p>
 
       <CodeBlock
@@ -107,9 +108,17 @@ anotherRef.y.value = 5;  // ✗ Does NOT trigger callback`}
       <h3>Key Points</h3>
 
       <ul>
-        <li>Only values accessed through a <strong>subscribed reference</strong> trigger updates</li>
-        <li>Both <code>innerRef</code> and <code>outerRef</code> are tracked when created with a callback</li>
-        <li>References created without a callback are <strong>not tracked</strong></li>
+        <li>
+          Only values accessed through a <strong>subscribed reference</strong>{' '}
+          trigger updates
+        </li>
+        <li>
+          Both <code>innerRef</code> and <code>outerRef</code> are tracked when
+          created with a callback
+        </li>
+        <li>
+          References created without a callback are <strong>not tracked</strong>
+        </li>
       </ul>
 
       <h2>Canceling Subscriptions</h2>
@@ -151,22 +160,23 @@ numStore.value = 200; // Triggers callback`}
 
       <h2>Next Steps</h2>
 
-      <p>
-        Now that you understand the basics, explore these topics:
-      </p>
+      <p>Now that you understand the basics, explore these topics:</p>
 
       <ul>
         <li>
-          <a href="#/guide/create-store">createStore API</a> - Deep dive into store creation
+          <a href="#/guide/create-store">createStore API</a> - Deep dive into
+          store creation
         </li>
         <li>
           <a href="#/guide/watch">Watch Function</a> - Advanced watch patterns
         </li>
         <li>
-          <a href="#/guide/react">React Integration</a> - Use StateRef with React
+          <a href="#/guide/react">React Integration</a> - Use StateRef with
+          React
         </li>
         <li>
-          <a href="#/guide/computed">createComputed</a> - Derive values from multiple stores
+          <a href="#/guide/computed">createComputed</a> - Derive values from
+          multiple stores
         </li>
       </ul>
     </div>

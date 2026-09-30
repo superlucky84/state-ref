@@ -1,0 +1,25 @@
+{
+  "type": "module",
+  "name": "stateref-example-vue",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Vue demo for the state-ref server-sync manual checklist",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "vue-tsc --noEmit",
+    "dev:ssr": "node server.mjs"
+  },
+  "dependencies": {
+    "@stateref/connect-vue": "workspace:*",
+    "@stateref/sync": "workspace:*",
+    "state-ref": "workspace:*",
+    "stateref-example-shared": "workspace:*",
+    "vue": "^3.5.10"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.1.4",
+    "@vue/server-renderer": "^3.5.10",
+    "vue-tsc": "^2.1.6"
+  }
+}

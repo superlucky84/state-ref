@@ -7,13 +7,16 @@ export const ComputedKo = mount(() => {
       <h1>createComputed</h1>
 
       <p>
-        <code>createComputed</code>는 여러 watch를 결합하여 새로운 계산된(파생) 값을 생성하는
-        헬퍼 함수입니다. 계산된 값이 변경될 때마다 콜백 함수를 실행합니다.
+        <code>createComputed</code>는 여러 watch를 결합하여 새로운 계산된(파생)
+        값을 생성하는 헬퍼 함수입니다. 계산된 값이 변경될 때마다 콜백 함수를
+        실행합니다.
       </p>
 
       <p>
-        <code>createComputed</code>로 생성된 watch는 다른 watch처럼 사용할 수 있으며,
-        <code>connectReact</code>나 <code>connectPreact</code> 같은 연동에서도 사용할 수 있습니다.
+        <code>createComputed</code>로 생성된 watch는 다른 watch처럼 사용할 수
+        있으며,
+        <code>connectReact</code>나 <code>connectPreact</code> 같은 연동에서도
+        사용할 수 있습니다.
       </p>
 
       <h2>기본 사용법</h2>
@@ -64,13 +67,12 @@ console.log(sumRef.value);  // 35`}
 
       <h3>반환값</h3>
 
-      <p>
-        콜백 유무에 따라 호출할 수 있는 watch와 유사한 함수를 반환합니다:
-      </p>
+      <p>콜백 유무에 따라 호출할 수 있는 watch와 유사한 함수를 반환합니다:</p>
 
       <ul>
         <li>
-          <strong>콜백 없이</strong>: <code>.value</code>를 가진 읽기 전용 프록시 반환
+          <strong>콜백 없이</strong>: <code>.value</code>를 가진 읽기 전용
+          프록시 반환
         </li>
         <li>
           <strong>콜백과 함께</strong>: 변경 사항을 구독하고 동일한 프록시 반환
@@ -81,9 +83,9 @@ console.log(sumRef.value);  // 35`}
 
       <p>
         여기서 만든 구독도 해제 방법은 같습니다. 콜백에서{' '}
-        <code>AbortSignal</code>을 반환한 뒤 abort하거나, <code>false</code>를 반환해
-        그 실행 이후 구독을 끊습니다. 두 방법 모두 이 헬퍼가 내부적으로 연 구독까지
-        함께 정리합니다.
+        <code>AbortSignal</code>을 반환한 뒤 abort하거나, <code>false</code>를
+        반환해 그 실행 이후 구독을 끊습니다. 두 방법 모두 이 헬퍼가 내부적으로
+        연 구독까지 함께 정리합니다.
       </p>
 
       <CodeBlock
@@ -105,9 +107,7 @@ computedWatch((refs, isFirst) => {
 
       <h2>계산된 값 구독</h2>
 
-      <p>
-        콜백을 전달하여 계산된 값 변경을 구독합니다:
-      </p>
+      <p>콜백을 전달하여 계산된 값 변경을 구독합니다:</p>
 
       <CodeBlock
         language="typescript"
@@ -160,9 +160,7 @@ console.log(sumRef.value);  // 여전히 30`}
 
       <h2>복잡한 계산된 값</h2>
 
-      <p>
-        계산 콜백은 객체를 포함한 모든 타입을 반환할 수 있습니다:
-      </p>
+      <p>계산 콜백은 객체를 포함한 모든 타입을 반환할 수 있습니다:</p>
 
       <CodeBlock
         language="typescript"
@@ -192,9 +190,7 @@ console.log(displayRef.value);
 
       <h2>여러 스토어 결합</h2>
 
-      <p>
-        단일 computed에서 여러 스토어를 결합할 수 있습니다:
-      </p>
+      <p>단일 computed에서 여러 스토어를 결합할 수 있습니다:</p>
 
       <CodeBlock
         language="typescript"
@@ -225,9 +221,7 @@ console.log(total.value);
 
       <h2>프레임워크 커넥터와 사용</h2>
 
-      <p>
-        계산된 watch는 프레임워크 커넥터와 원활하게 작동합니다:
-      </p>
+      <p>계산된 watch는 프레임워크 커넥터와 원활하게 작동합니다:</p>
 
       <CodeBlock
         language="typescript"
@@ -256,9 +250,7 @@ function AreaDisplay() {
 
       <h2>계산된 값 체이닝</h2>
 
-      <p>
-        계산된 watch를 다른 계산된 watch의 입력으로 사용할 수 있습니다:
-      </p>
+      <p>계산된 watch를 다른 계산된 watch의 입력으로 사용할 수 있습니다:</p>
 
       <CodeBlock
         language="typescript"
@@ -318,11 +310,20 @@ const result = computedWatch();
 // result.value는 { userName: string; doubleAge: number } 타입`}
       />
 
+      <p>
+        콜백 없는 <code>computedWatch()</code>는 구독을 만들지 않습니다. 최초
+        계산 후에는 읽었던 ref 값이 바뀌었을 때만 다음 읽기에서 다시 계산하고,
+        그대로면 같은 결과 객체를 재사용합니다. <code>sync()</code> 전에도 최신
+        원본을 읽으며, 구독 콜백에 대한 알림은 수동 모드의 <code>sync()</code>
+        에서 실행됩니다. 계산은 전달받은 ref를 읽는 순수 함수로 작성하세요.
+      </p>
+
       <h2>성능 고려사항</h2>
 
       <ul>
         <li>
-          <strong>계산된 값은 캐시됨</strong> - 콜백은 소스 값이 변경될 때만 실행됨
+          <strong>계산된 값은 캐시됨</strong> - 콜백은 소스 값이 변경될 때만
+          실행됨
         </li>
         <li>
           <strong>세밀한 업데이트</strong> - 접근한 프로퍼티만 재계산을 트리거함
@@ -355,15 +356,18 @@ const heavyComputed = createComputed(
       <h2>combineWatch와 비교</h2>
 
       <p>
-        <code>createComputed</code>와 <code>combineWatch</code>는 다른 목적을 가지고 있습니다:
+        <code>createComputed</code>와 <code>combineWatch</code>는 다른 목적을
+        가지고 있습니다:
       </p>
 
       <ul>
         <li>
-          <strong>createComputed</strong> - 여러 스토어에서 <em>새로운 값</em>을 파생
+          <strong>createComputed</strong> - 여러 스토어에서 <em>새로운 값</em>을
+          파생
         </li>
         <li>
-          <strong>combineWatch</strong> - 여러 스토어를 <em>튜플 구조</em>로 그룹화
+          <strong>combineWatch</strong> - 여러 스토어를 <em>튜플 구조</em>로
+          그룹화
         </li>
       </ul>
 
@@ -413,7 +417,8 @@ console.log(combined[1].value);  // 20`}
           <a href="#/ko/guide/create-store">createStore</a> - 소스 스토어 생성
         </li>
         <li>
-          <a href="#/ko/guide/combine-watch">combineWatch</a> - 여러 watch 그룹화
+          <a href="#/ko/guide/combine-watch">combineWatch</a> - 여러 watch
+          그룹화
         </li>
         <li>
           <a href="#/ko/guide/subscription">구독</a> - 구독 이해하기

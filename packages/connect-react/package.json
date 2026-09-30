@@ -1,11 +1,11 @@
 {
   "type": "module",
   "name": "@stateref/connect-react",
-  "version": "18.3.0",
+  "version": "19.0.0",
   "private": false,
   "description": "React connector for state-ref",
   "packageManager": "pnpm@7.6.0",
-  "main": "./dist/stateref-connect-react.umd.js",
+  "main": "./dist/stateref-connect-react.cjs",
   "module": "./dist/stateref-connect-react.mjs",
   "scripts": {
     "dev": "vite",
@@ -15,14 +15,20 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/stateref-connect-react.mjs",
-      "require": "./dist/stateref-connect-react.umd.js"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/stateref-connect-react.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/stateref-connect-react.cjs"
+      }
     }
   },
   "types": "./dist/index.d.ts",
   "files": [
     "src",
+    "!src/tests",
     "dist"
   ],
   "author": "superlucky84",
@@ -36,15 +42,16 @@
     "state-ref"
   ],
   "peerDependencies": {
-    "react": "^18.0.0",
-    "state-ref": "^3.0.0"
+    "react": "^18.0.0 || ^19.0.0",
+    "state-ref": "^3.1.0"
   },
   "devDependencies": {
+    "@stateref/sync": "workspace:^",
     "@testing-library/react": "^16.0.1",
-    "@types/react": "^18.3.11",
-    "@types/react-dom": "^18.3.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "state-ref": "workspace:*"
   },
   "volta": {

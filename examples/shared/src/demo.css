@@ -1,0 +1,99 @@
+/* One stylesheet for all five demos, so the screens Phase 8.7 compares differ
+   in connector behaviour rather than in layout. */
+:root {
+  color-scheme: light dark;
+  --line: #8883;
+  --warn: #b45309;
+  --bad: #b91c1c;
+  --ok: #15803d;
+}
+body {
+  margin: 0;
+  padding: 16px;
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+h1 {
+  font-size: 16px;
+  margin: 0 0 4px;
+}
+h2 {
+  font-size: 13px;
+  margin: 0 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+.grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  align-items: start;
+}
+.card {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px dotted var(--line);
+  padding: 2px 0;
+}
+.row:last-child {
+  border-bottom: 0;
+}
+.row b {
+  font-weight: 600;
+}
+button {
+  font: inherit;
+  padding: 3px 7px;
+  margin: 0 4px 4px 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+button:hover {
+  border-color: currentColor;
+}
+input {
+  font: inherit;
+  padding: 2px 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  width: 10em;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+th,
+td {
+  border-bottom: 1px solid var(--line);
+  padding: 2px 4px;
+  text-align: left;
+  font-weight: 400;
+}
+th {
+  opacity: 0.7;
+}
+.flag-on {
+  color: var(--warn);
+  font-weight: 700;
+}
+.flag-off {
+  opacity: 0.5;
+}
+.bad {
+  color: var(--bad);
+}
+.ok {
+  color: var(--ok);
+}
+.note {
+  opacity: 0.7;
+  margin: 4px 0 10px;
+}

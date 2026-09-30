@@ -1,0 +1,25 @@
+{
+  "type": "module",
+  "name": "stateref-example-react",
+  "version": "0.0.0",
+  "private": true,
+  "description": "React demo for the state-ref server-sync manual checklist",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "dev:ssr": "node server.mjs"
+  },
+  "dependencies": {
+    "@stateref/connect-react": "workspace:*",
+    "@stateref/sync": "workspace:*",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "state-ref": "workspace:*",
+    "stateref-example-shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0"
+  }
+}

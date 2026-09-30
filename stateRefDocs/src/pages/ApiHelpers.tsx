@@ -7,15 +7,17 @@ export const ApiHelpers = mount(() => {
       <h1>Helper API</h1>
 
       <p>
-        This page documents the helper functions exported from <code>state-ref</code>.
-        These utilities assist with immutable updates and deep copying.
+        This page documents the helper functions exported from{' '}
+        <code>state-ref</code>. These utilities assist with immutable updates
+        and deep copying.
       </p>
 
       <h2>lens</h2>
 
       <p>
-        Creates a lens for navigating and immutably updating nested data structures.
-        Lenses provide a functional approach to accessing and modifying deeply nested properties.
+        Creates a lens for navigating and immutably updating nested data
+        structures. Lenses provide a functional approach to accessing and
+        modifying deeply nested properties.
       </p>
 
       <h3>Signature</h3>
@@ -31,7 +33,8 @@ export const ApiHelpers = mount(() => {
 
       <ul>
         <li>
-          <code>sceneList</code> (optional) - Initial path array for the lens. Defaults to empty array.
+          <code>sceneList</code> (optional) - Initial path array for the lens.
+          Defaults to empty array.
         </li>
       </ul>
 
@@ -69,17 +72,25 @@ export const ApiHelpers = mount(() => {
         </thead>
         <tbody>
           <tr>
-            <td><code>chain(prop)</code></td>
+            <td>
+              <code>chain(prop)</code>
+            </td>
             <td>Navigate to a nested property</td>
-            <td>New <code>Lens</code> focused on the property</td>
+            <td>
+              New <code>Lens</code> focused on the property
+            </td>
           </tr>
           <tr>
-            <td><code>get(obj)</code></td>
+            <td>
+              <code>get(obj)</code>
+            </td>
             <td>Extract the focused value</td>
             <td>The value at the focused path</td>
           </tr>
           <tr>
-            <td><code>set(value)</code></td>
+            <td>
+              <code>set(value)</code>
+            </td>
             <td>Create an update function</td>
             <td>Function that returns a new object with the update</td>
           </tr>
@@ -145,8 +156,8 @@ console.log(firstItemNameLens.get(listState));  // 'Item 1'`}
       <h2>copyable</h2>
 
       <p>
-        Wraps an object to provide a convenient <code>writeCopy</code> method for immutable updates.
-        Combines lens navigation with a fluent API.
+        Wraps an object to provide a convenient <code>writeCopy</code> method
+        for immutable updates. Combines lens navigation with a fluent API.
       </p>
 
       <h3>Signature</h3>
@@ -184,7 +195,9 @@ type Copyable<T, Root = T> = {
 
       <ul>
         <li>Property navigation (like regular object access)</li>
-        <li><code>writeCopy(value)</code> method to create an immutable update</li>
+        <li>
+          <code>writeCopy(value)</code> method to create an immutable update
+        </li>
       </ul>
 
       <h3>Example</h3>
@@ -268,8 +281,9 @@ console.log(ref.todos.value[0].done);  // true`}
       <h3>Returns</h3>
 
       <p>
-        Returns a deep copy of the input value. For primitives, returns the value as-is.
-        For objects and arrays, creates new instances with recursively cloned contents.
+        Returns a deep copy of the input value. For primitives, returns the
+        value as-is. For objects and arrays, creates new instances with
+        recursively cloned contents.
       </p>
 
       <h3>Behavior</h3>
@@ -283,7 +297,9 @@ console.log(ref.todos.value[0].done);  // true`}
         </thead>
         <tbody>
           <tr>
-            <td><code>null</code> / <code>undefined</code></td>
+            <td>
+              <code>null</code> / <code>undefined</code>
+            </td>
             <td>Returns as-is</td>
           </tr>
           <tr>
@@ -373,17 +389,23 @@ ref.items.value = newItems;`}
         </thead>
         <tbody>
           <tr>
-            <td><code>lens</code></td>
+            <td>
+              <code>lens</code>
+            </td>
             <td>Navigate and update nested structures</td>
             <td>No</td>
           </tr>
           <tr>
-            <td><code>copyable</code></td>
+            <td>
+              <code>copyable</code>
+            </td>
             <td>Fluent API for immutable updates</td>
             <td>No</td>
           </tr>
           <tr>
-            <td><code>cloneDeep</code></td>
+            <td>
+              <code>cloneDeep</code>
+            </td>
             <td>Deep copy values</td>
             <td>No (creates copy)</td>
           </tr>
@@ -394,16 +416,19 @@ ref.items.value = newItems;`}
 
       <ul>
         <li>
-          <a href="#/guide/lens">Lens Pattern Guide</a> - Detailed lens usage guide
+          <a href="#/guide/lens">Lens Pattern Guide</a> - Detailed lens usage
+          guide
         </li>
         <li>
           <a href="#/guide/copyable">copyable Guide</a> - copyable usage guide
         </li>
         <li>
-          <a href="#/guide/clone-deep">cloneDeep Guide</a> - cloneDeep usage guide
+          <a href="#/guide/clone-deep">cloneDeep Guide</a> - cloneDeep usage
+          guide
         </li>
         <li>
-          <a href="#/api/core">Core API</a> - createStore, createComputed, combineWatch
+          <a href="#/api/core">Core API</a> - createStore, createComputed,
+          combineWatch
         </li>
         <li>
           <a href="#/api/types">TypeScript Types</a> - Complete type definitions

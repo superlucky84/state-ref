@@ -7,7 +7,8 @@ export const AIAgentSkillsKo = () => (
     </h1>
 
     <p class="text-lg text-gray-600 dark:text-gray-400 mb-8">
-      AI 코딩 어시스턴트가 state-ref 스타일의 반응형 코드를 자동으로 작성하도록 도와줍니다
+      AI 코딩 어시스턴트가 state-ref 스타일의 반응형 코드를 자동으로 작성하도록
+      도와줍니다
     </p>
 
     <div class="bg-purple-50 dark:bg-purple-900/20 p-6 rounded-lg border border-purple-200 dark:border-purple-800 mb-8">
@@ -15,7 +16,8 @@ export const AIAgentSkillsKo = () => (
         실험적 기능
       </h3>
       <p class="text-sm text-purple-800 dark:text-purple-300">
-        이 스펙은 state-ref가 AI 코딩 에이전트의 일급 행동 제약으로 어떻게 적용될 수 있는지 탐구합니다.
+        이 스펙은 state-ref가 AI 코딩 에이전트의 일급 행동 제약으로 어떻게
+        적용될 수 있는지 탐구합니다.
       </p>
     </div>
 
@@ -26,7 +28,9 @@ export const AIAgentSkillsKo = () => (
     </h2>
 
     <p class="text-sm md:text-base text-gray-700 dark:text-gray-300 leading-relaxed mb-6">
-      state-ref에는 AI 코딩 어시스턴트(Claude Code, GitHub Copilot, Cursor 등)가 자동으로 state-ref 스타일의 반응형 코드를 작성하도록 돕는 AI 에이전트 스킬 패키지가 포함되어 있습니다.
+      state-ref에는 AI 코딩 어시스턴트(Claude Code, GitHub Copilot, Cursor 등)가
+      자동으로 state-ref 스타일의 반응형 코드를 작성하도록 돕는 AI 에이전트 스킬
+      패키지가 포함되어 있습니다.
     </p>
 
     <p class="text-sm md:text-base text-gray-700 dark:text-gray-300 leading-relaxed mb-6">
@@ -34,12 +38,39 @@ export const AIAgentSkillsKo = () => (
     </p>
 
     <ul class="list-disc list-inside space-y-2 text-sm md:text-base text-gray-700 dark:text-gray-300 mb-6">
-      <li>반응형 상태 관리를 위해 <code class="text-sm">createStore</code> 사용</li>
-      <li><code class="text-sm">.value</code> 속성을 통해 값에 올바르게 접근</li>
-      <li>적절한 의존성 추적과 함께 <code class="text-sm">watch(callback)</code>을 사용한 구독</li>
-      <li>정리를 위한 <code class="text-sm">AbortController</code> 처리</li>
-      <li>프레임워크 커넥터(<code class="text-sm">connectReact</code>, <code class="text-sm">connectVue</code> 등)를 적절히 사용</li>
-      <li>Flux 패턴을 위한 <code class="text-sm">createStoreManualSync</code> 적용</li>
+      <li>
+        반응형 상태 관리를 위해 <code class="text-sm">createStore</code> 사용
+      </li>
+      <li>
+        <code class="text-sm">.value</code> 속성을 통해 값에 올바르게 접근
+      </li>
+      <li>
+        적절한 의존성 추적과 함께 <code class="text-sm">watch(callback)</code>을
+        사용한 구독
+      </li>
+      <li>
+        정리를 위한 <code class="text-sm">AbortController</code> 처리
+      </li>
+      <li>
+        프레임워크 커넥터(<code class="text-sm">connectReact</code>,{' '}
+        <code class="text-sm">connectVue</code> 등)를 적절히 사용
+      </li>
+      <li>
+        Flux 패턴을 위한 <code class="text-sm">createStoreManualSync</code> 적용
+      </li>
+      <li>
+        커넥터를 거쳐서만 쓰기(선택값의 <code class="text-sm">.value</code>나
+        setter). 선택한 객체를 직접 바꾸지 않기
+      </li>
+      <li>
+        편집 후 확정하는 화면에는 <code class="text-sm">createDraft</code>, 여러
+        쓰기를 묶을 때는 <code class="text-sm">batch</code> 사용
+      </li>
+      <li>
+        <code class="text-sm">@stateref/sync</code>가 설치돼 있으면 조회를
+        불러오고 <code class="text-sm">capture()</code>와{' '}
+        <code class="text-sm">mutation.run</code>으로 올바르게 저장
+      </li>
     </ul>
 
     <hr class="border-t border-gray-200 dark:border-gray-700 my-10" />
@@ -49,7 +80,8 @@ export const AIAgentSkillsKo = () => (
     </h2>
 
     <p class="text-sm md:text-base text-gray-700 dark:text-gray-300 leading-relaxed mb-6">
-      skills 폴더를 프로젝트의 <code class="text-sm">.claude/skills/</code> 디렉토리에 복사하세요:
+      skills 폴더를 프로젝트의 <code class="text-sm">.claude/skills/</code>{' '}
+      디렉토리에 복사하세요:
     </p>
 
     <CodeBlock
@@ -68,7 +100,10 @@ cp -R node_modules/state-ref/dist/skills/state-ref/* .claude/skills/state-ref/`}
     />
 
     <p class="text-sm md:text-base text-gray-700 dark:text-gray-300 leading-relaxed mb-6">
-      도구가 단일 파일을 기대하는 경우, <code class="text-sm">.claude/skills/state-ref/SKILL.md</code>를 가리키거나 해당 파일을 <code class="text-sm">.claude/skills/state-ref.md</code>로 링크하세요.
+      도구가 단일 파일을 기대하는 경우,{' '}
+      <code class="text-sm">.claude/skills/state-ref/SKILL.md</code>를
+      가리키거나 해당 파일을{' '}
+      <code class="text-sm">.claude/skills/state-ref.md</code>로 링크하세요.
     </p>
 
     <hr class="border-t border-gray-200 dark:border-gray-700 my-10" />
@@ -78,7 +113,9 @@ cp -R node_modules/state-ref/dist/skills/state-ref/* .claude/skills/state-ref/`}
     </h2>
 
     <p class="text-sm md:text-base text-gray-700 dark:text-gray-300 leading-relaxed mb-6">
-      Codex 스킬을 프로젝트의 <code class="text-sm">$CODEX_HOME/skills/</code> 디렉토리(기본값: <code class="text-sm">~/.codex/skills</code>)에 복사하세요:
+      Codex 스킬을 프로젝트의 <code class="text-sm">$CODEX_HOME/skills/</code>{' '}
+      디렉토리(기본값: <code class="text-sm">~/.codex/skills</code>)에
+      복사하세요:
     </p>
 
     <CodeBlock
@@ -99,7 +136,9 @@ Copy-Item node_modules/state-ref/dist/skills/state-ref/* $HOME/.codex/skills/sta
     </h2>
 
     <p class="text-sm md:text-base text-gray-700 dark:text-gray-300 leading-relaxed mb-6">
-      더 나은 신뢰성을 위해 프로젝트 루트에 <code class="text-sm">CLAUDE.md</code> 파일을 생성하세요. 이렇게 하면 AI 에이전트가 코드를 작성하기 전에 state-ref 스킬 패키지를 읽게 됩니다.
+      더 나은 신뢰성을 위해 프로젝트 루트에{' '}
+      <code class="text-sm">CLAUDE.md</code> 파일을 생성하세요. 이렇게 하면 AI
+      에이전트가 코드를 작성하기 전에 state-ref 스킬 패키지를 읽게 됩니다.
     </p>
 
     <CodeBlock
@@ -124,7 +163,8 @@ Copy-Item node_modules/state-ref/dist/skills/state-ref/* $HOME/.codex/skills/sta
     />
 
     <p class="text-sm md:text-base text-gray-700 dark:text-gray-300 leading-relaxed mb-6 mt-6">
-      이 파일을 프로젝트 루트에 <code class="text-sm">CLAUDE.md</code>로 배치하세요. Claude Code는 모든 대화 시작 시 자동으로 이 파일을 읽습니다.
+      이 파일을 프로젝트 루트에 <code class="text-sm">CLAUDE.md</code>로
+      배치하세요. Claude Code는 모든 대화 시작 시 자동으로 이 파일을 읽습니다.
     </p>
 
     <hr class="border-t border-gray-200 dark:border-gray-700 my-10" />
@@ -134,7 +174,8 @@ Copy-Item node_modules/state-ref/dist/skills/state-ref/* $HOME/.codex/skills/sta
     </h2>
 
     <p class="text-sm md:text-base text-gray-700 dark:text-gray-300 leading-relaxed mb-6">
-      설정이 완료되면, AI 어시스턴트는 코드 작성을 도울 때 자동으로 state-ref 코딩 패턴을 적용합니다.
+      설정이 완료되면, AI 어시스턴트는 코드 작성을 도울 때 자동으로 state-ref
+      코딩 패턴을 적용합니다.
     </p>
 
     <h3 class="text-xl md:text-2xl font-medium text-gray-900 dark:text-white mb-4 mt-8">
@@ -189,7 +230,12 @@ ref.count.value = 10;`}
     </h2>
 
     <p class="text-sm md:text-base text-gray-700 dark:text-gray-300 leading-relaxed mb-6">
-      스킬 패키지는 설치 후 <code class="text-sm">node_modules/state-ref/dist/skills/state-ref/</code>에 위치합니다 (<code class="text-sm">SKILL.md</code>, <code class="text-sm">examples/</code>, <code class="text-sm">reference/</code>, <code class="text-sm">constraints/</code> 포함).
+      스킬 패키지는 설치 후{' '}
+      <code class="text-sm">node_modules/state-ref/dist/skills/state-ref/</code>
+      에 위치합니다 (<code class="text-sm">SKILL.md</code>,{' '}
+      <code class="text-sm">examples/</code>,{' '}
+      <code class="text-sm">reference/</code>,{' '}
+      <code class="text-sm">constraints/</code> 포함).
     </p>
 
     <p class="text-sm md:text-base text-gray-700 dark:text-gray-300 leading-relaxed mb-6">
@@ -207,7 +253,9 @@ ref.count.value = 10;`}
 
     <div class="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg border border-blue-200 dark:border-blue-800 mt-6">
       <p class="text-sm md:text-base text-blue-900 dark:text-blue-200 leading-relaxed">
-        <span class="font-medium">팁:</span> 스킬 패키지를 설정한 후, AI 어시스턴트에게 "state-ref를 사용하여 리팩토링해줘" 또는 "반응형 상태 관리를 추가해줘"와 같은 질문을 하면 자동으로 패턴이 적용됩니다.
+        <span class="font-medium">팁:</span> 스킬 패키지를 설정한 후, AI
+        어시스턴트에게 "state-ref를 사용하여 리팩토링해줘" 또는 "반응형 상태
+        관리를 추가해줘"와 같은 질문을 하면 자동으로 패턴이 적용됩니다.
       </p>
     </div>
   </div>

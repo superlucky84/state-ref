@@ -7,9 +7,11 @@ export const References = mount(() => {
       <h1>Understanding References</h1>
 
       <p>
-        StateRef uses a reference-based tracking system to determine which state changes should trigger
-        subscriptions. Understanding the difference between <strong>innerRef</strong>, <strong>outerRef</strong>,
-        and <strong>unbound references</strong> is crucial for effective state management.
+        StateRef uses a reference-based tracking system to determine which state
+        changes should trigger subscriptions. Understanding the difference
+        between <strong>innerRef</strong>, <strong>outerRef</strong>, and{' '}
+        <strong>unbound references</strong> is crucial for effective state
+        management.
       </p>
 
       <h2>Three Types of References</h2>
@@ -20,21 +22,25 @@ export const References = mount(() => {
 
       <ul>
         <li>
-          <strong>innerRef</strong> - The reference passed as the first parameter to subscription callbacks
+          <strong>innerRef</strong> - The reference passed as the first
+          parameter to subscription callbacks
         </li>
         <li>
-          <strong>outerRef</strong> - The reference returned by <code>watch()</code> when subscribing
+          <strong>outerRef</strong> - The reference returned by{' '}
+          <code>watch()</code> when subscribing
         </li>
         <li>
-          <strong>Unbound reference</strong> - References created by calling <code>watch()</code> without a callback
+          <strong>Unbound reference</strong> - References created by calling{' '}
+          <code>watch()</code> without a callback
         </li>
       </ul>
 
       <h2>InnerRef and OuterRef: The Same Reference</h2>
 
       <p>
-        The most important concept to understand is that <strong>innerRef and outerRef are the same reference</strong>.
-        Both are bound to the subscription and tracked for changes.
+        The most important concept to understand is that{' '}
+        <strong>innerRef and outerRef are the same reference</strong>. Both are
+        bound to the subscription and tracked for changes.
       </p>
 
       <CodeBlock
@@ -58,8 +64,12 @@ const outerRef = watch(subscribeCallback);
       <h2>Key Principle: Tracking is Based on Reading, Not Writing</h2>
 
       <p>
-        The most important concept: <strong>What matters is which reference you use to READ a property during subscription,
-        not which reference you use to WRITE it later</strong>.
+        The most important concept:{' '}
+        <strong>
+          What matters is which reference you use to READ a property during
+          subscription, not which reference you use to WRITE it later
+        </strong>
+        .
       </p>
 
       <CodeBlock
@@ -88,8 +98,9 @@ anotherRef.y.value = 20;  // ✗ Does NOT trigger (y not tracked)`}
       <h2>Unbound References</h2>
 
       <p>
-        An unbound reference is created by calling <code>watch()</code> without a callback.
-        These references can read and write state but don't register any tracking.
+        An unbound reference is created by calling <code>watch()</code> without
+        a callback. These references can read and write state but don't register
+        any tracking.
       </p>
 
       <CodeBlock
@@ -102,7 +113,7 @@ const unboundRef = watch();
 // Read values
 console.log(unboundRef.count.value);  // 0
 
-// Write values - updates state but doesn't trigger subscriptions
+// Writes notify any existing subscriber that tracks count; this ref adds none
 unboundRef.count.value = 10;
 
 // This reference exists independently of any subscription`}
@@ -111,8 +122,10 @@ unboundRef.count.value = 10;
       <h2>Selective Property Tracking</h2>
 
       <p>
-        Only properties <strong>read via tracked references (innerRef/outerRef)</strong> within the subscription callback are tracked.
-        Once a property is tracked, <strong>any reference can modify it and trigger the callback</strong>.
+        Only properties{' '}
+        <strong>read via tracked references (innerRef/outerRef)</strong> within
+        the subscription callback are tracked. Once a property is tracked,{' '}
+        <strong>any reference can modify it and trigger the callback</strong>.
       </p>
 
       <CodeBlock
@@ -151,28 +164,34 @@ outerRef.etcCount.value = 7;        // ✗ Does NOT trigger`}
       />
 
       <p>
-        <strong>Key principle</strong>: Tracking is determined by <em>which reference was used to READ the property during subscription</em>,
-        not which reference is used to WRITE it later. Once tracked, any write triggers the callback.
+        <strong>Key principle</strong>: Tracking is determined by{' '}
+        <em>
+          which reference was used to READ the property during subscription
+        </em>
+        , not which reference is used to WRITE it later. Once tracked, any write
+        triggers the callback.
       </p>
 
       <h2>Why This Design?</h2>
 
-      <p>
-        This reference-based tracking system provides several benefits:
-      </p>
+      <p>This reference-based tracking system provides several benefits:</p>
 
       <ul>
         <li>
-          <strong>Fine-grained control</strong> - You decide exactly which properties trigger updates
+          <strong>Fine-grained control</strong> - You decide exactly which
+          properties trigger updates
         </li>
         <li>
-          <strong>Performance</strong> - Only tracked properties cause re-renders
+          <strong>Performance</strong> - Only tracked properties cause
+          re-renders
         </li>
         <li>
-          <strong>Flexibility</strong> - Mix tracked and untracked access in the same callback
+          <strong>Flexibility</strong> - Mix tracked and untracked access in the
+          same callback
         </li>
         <li>
-          <strong>UI integration</strong> - OuterRef makes component integration seamless
+          <strong>UI integration</strong> - OuterRef makes component integration
+          seamless
         </li>
       </ul>
 
@@ -210,8 +229,9 @@ const Component = mount((renew) => {
       <h2>Multiple Independent Subscriptions</h2>
 
       <p>
-        Each subscription has its own tracking context based on what properties were READ
-        during its callback. Multiple subscriptions can coexist independently:
+        Each subscription has its own tracking context based on what properties
+        were READ during its callback. Multiple subscriptions can coexist
+        independently:
       </p>
 
       <CodeBlock
@@ -338,22 +358,28 @@ outerRef.a.value = 20;    // ✓ Triggers`}
 
       <ul>
         <li>
-          <strong>Read via innerRef to track</strong> - Properties read via innerRef/outerRef are tracked; read via unbound refs to avoid tracking
+          <strong>Read via innerRef to track</strong> - Properties read via
+          innerRef/outerRef are tracked; read via unbound refs to avoid tracking
         </li>
         <li>
-          <strong>Use unbound refs for static data</strong> - Read configuration or constants via unbound refs so they don't trigger updates
+          <strong>Use unbound refs for static data</strong> - Read configuration
+          or constants via unbound refs so they don't trigger updates
         </li>
         <li>
-          <strong>Be explicit about tracking</strong> - Make it clear which properties are tracked by choosing the right ref for reading
+          <strong>Be explicit about tracking</strong> - Make it clear which
+          properties are tracked by choosing the right ref for reading
         </li>
         <li>
-          <strong>Remember: READ determines tracking, WRITE doesn't</strong> - Any ref can trigger updates to tracked properties
+          <strong>Remember: READ determines tracking, WRITE doesn't</strong> -
+          Any ref can trigger updates to tracked properties
         </li>
         <li>
-          <strong>Leverage outerRef for components</strong> - Makes UI library integration natural
+          <strong>Leverage outerRef for components</strong> - Makes UI library
+          integration natural
         </li>
         <li>
-          <strong>Understand the tracking context</strong> - Each subscription has independent tracking
+          <strong>Understand the tracking context</strong> - Each subscription
+          has independent tracking
         </li>
       </ul>
 
@@ -361,13 +387,16 @@ outerRef.a.value = 20;    // ✓ Triggers`}
 
       <ul>
         <li>
-          <a href="#/guide/watch">Watch Function</a> - Understanding the watch function API
+          <a href="#/guide/watch">Watch Function</a> - Understanding the watch
+          function API
         </li>
         <li>
-          <a href="#/guide/subscription">Subscription</a> - Advanced subscription patterns
+          <a href="#/guide/subscription">Subscription</a> - Advanced
+          subscription patterns
         </li>
         <li>
-          <a href="#/guide/state-ref-store">StateRefStore</a> - Working with store references
+          <a href="#/guide/state-ref-store">StateRefStore</a> - Working with
+          store references
         </li>
         <li>
           <a href="#/guide/create-store">createStore</a> - Creating stores

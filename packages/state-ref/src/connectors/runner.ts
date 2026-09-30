@@ -7,6 +7,7 @@ import type {
 } from '@/types';
 import type { PathNode } from '@/path';
 import { forEachAffected, pathToString } from '@/path';
+import { endRun } from './collector';
 
 /**
  * Reports the errors user code threw during a single propagation pass.
@@ -40,6 +41,14 @@ export function removeRun(storeRenderList: StoreRenderList<any>, run: Run) {
   }
 
   storeRenderList.delete(run);
+  /**
+   * The caller still holds the ref this subscription was bound to, and reading
+   * through it lands in the `collector`. Marking the run ended is what stops one
+   * such read from re-creating the record the line above just dropped, which
+   * left the subscription firing again on the next write with no way to end it a
+   * second time (`CI-30`).
+   */
+  endRun(run);
 }
 
 /**
@@ -80,15 +89,16 @@ export function runner(
    * where the writes went.
    */
   writtenParent?: PathNode,
-  writtenSegment?: string | symbol | null
+  writtenSegment?: string | symbol | null,
+  writtenNodes?: Set<PathNode>
 ) {
   if (passDepth >= MAX_PASS_DEPTH) {
     throw new Error(
-      `state-ref: a subscriber kept writing while its own change was still propagating (over ${MAX_PASS_DEPTH} levels deep${
+      `state-ref: subscriber write loop exceeded ${MAX_PASS_DEPTH} levels${
         writtenParent
           ? ` at "${pathToString(writtenParent, writtenSegment)}"`
           : ''
-      }). A subscriber that writes the path it reads never settles.`
+      }. Avoid writing a path this subscriber reads.`
     );
   }
 
@@ -117,7 +127,7 @@ export function runner(
     }
   };
 
-  if (writtenParent) {
+  if (writtenParent || writtenNodes) {
     /**
      * A write moves references only along its own path and through the subtree
      * it replaced, so those are the only nodes worth re-reading - and at each
@@ -134,7 +144,8 @@ export function runner(
         }
       });
 
-    forEachAffected(writtenParent, writtenSegment, visit);
+    if (writtenNodes) writtenNodes.forEach(visit);
+    else forEachAffected(writtenParent!, writtenSegment, visit);
   } else {
     /**
      * A manual `sync()` knows nothing about where the writes landed, so every
@@ -179,6 +190,18 @@ export function runner(
   runableRenewList.clear();
   reportPassErrors(errors);
 }
+
+/** Internal hook installed by the optional state-ref/batch entry point. */
+export const runBatch = runner as typeof runner & {
+  batch?: {
+    write: (
+      subscriptions: StoreRenderList<any>,
+      parent: PathNode,
+      segment: string | symbol | null
+    ) => boolean;
+    end: (callback: () => void) => boolean;
+  };
+};
 
 export function firstRunner<V>(
   run: Run,

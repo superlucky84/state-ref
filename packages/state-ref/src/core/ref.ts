@@ -9,6 +9,7 @@ import type {
   StoreType,
   StateRefStore,
   StoreRenderList,
+  RefWrite,
 } from '@/types';
 
 /**
@@ -23,9 +24,10 @@ export function makeReference<V>({
   cache,
   editable,
   trackDeps,
+  onWrite,
   pathRoot,
 }: {
-  renew: Renew<StateRefStore<V>>;
+  renew?: Renew<StateRefStore<V>>;
   rootValue: StoreType<V>;
   storeRenderList: StoreRenderList<any>;
   cacheMap: WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>;
@@ -33,6 +35,7 @@ export function makeReference<V>({
   cache: boolean;
   editable: boolean;
   trackDeps: boolean;
+  onWrite?: (write: RefWrite) => void;
   pathRoot: PathNode;
 }) {
   const ref: { value: null | StateRefStore<StoreType<V>> } = {
@@ -56,28 +59,33 @@ export function makeReference<V>({
    *
    * Note where the wipe lives - inside `run`, so only a store change triggers
    * it. A reader that runs outside `run` (a framework re-rendering for its own
-   * reasons) still reaches `collector` and therefore only ever adds.
+   * reasons) still reaches `collector` and therefore only ever adds - with one
+   * exception, which is the whole of `CI-30`: once this subscription has ended,
+   * `collector` refuses it, so a repaint after teardown cannot bring it back.
+   * For a live subscription "only ever adds" holds exactly as before.
    */
-  const run: Run = (isFirst?: boolean) => {
-    if (!trackDeps || isFirst) {
-      return renew(ref.value!.root, isFirst ?? false);
-    }
+  // A callbackless ref remains live, but reading it must not register a run.
+  const run: Run = renew
+    ? (isFirst?: boolean) => {
+        if (!trackDeps || isFirst) {
+          return renew(ref.value!.root, isFirst ?? false);
+        }
 
-    const previous = forgetDeps(storeRenderList, run);
+        const previous = forgetDeps(storeRenderList, run);
 
-    try {
-      return renew(ref.value!.root, false);
-    } catch (error) {
-      /**
-       * The callback may have read a path or two before failing. Keeping the
-       * old set as well leaves the subscription too wide rather than too
-       * narrow, so a throwing callback cannot silently stop being woken.
-       */
-      restoreDeps(storeRenderList, run, previous);
+        try {
+          return renew(ref.value!.root, false);
+        } catch (error) {
+          /**
+           * The callback may have read a path or two before failing. Keeping
+           * the old set leaves the subscription too wide rather than narrow.
+           */
+          restoreDeps(storeRenderList, run, previous);
 
-      throw error;
-    }
-  };
+          throw error;
+        }
+      }
+    : null;
 
   ref.value = makeProxy<StoreType<V>, StateRefStore<StoreType<V>>>(
     storeRenderList,
@@ -85,20 +93,21 @@ export function makeReference<V>({
     autoSync,
     editable,
     rootValue,
-    pathRoot
+    pathRoot,
+    onWrite
   );
 
   /**
    * It is initialized only once per subscription and collects the 'abort' signal.
    */
-  firstRunner(run, storeRenderList, cacheMap, renew);
+  if (renew) firstRunner(run, storeRenderList, cacheMap, renew);
 
   /**
    * Only a cached subscription may claim the cache slot. `cache: false` asks
    * for a subscription of its own, so letting it write here handed the next
    * `watch(renew)` a reference belonging to one of those extra subscriptions.
    */
-  if (cache) {
+  if (cache && renew) {
     cacheMap.set(renew, ref.value!.root);
   }
 

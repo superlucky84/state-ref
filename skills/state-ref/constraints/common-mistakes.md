@@ -63,6 +63,55 @@ updateRef.count.value = 10;
 sync();
 ```
 
+## Mutating a selected object through a connector
+
+```ts
+// BAD - does not pass through the connector; refused, store untouched
+const user = useStore(s => s.user); // Vue
+user.value.name = 'Jane'; // readonly warning, nothing changes
+
+// GOOD - write through .value
+useStore(s => s.user.name).value = 'Jane';
+user.value = { ...user.value, name: 'Jane' };
+```
+
+Solid: `setUser(prev => ({ ...prev, name: 'Jane' }))`, never mutate `prev`.
+Svelte store: `$user.name = 'Jane'` is fine (it compiles to `set`).
+
+## Forgetting the selector (Vue, Svelte, Solid)
+
+```ts
+// BAD
+const store = connectVue(watch)();
+// GOOD
+const age = connectVue(watch)(s => s.user.age);
+```
+
+## Checking a draft apply as if it throws
+
+```ts
+// BAD - a conflict does not throw
+try { editor.apply(); } catch { /* never reached for a conflict */ }
+
+// GOOD
+const result = editor.apply();
+if (!result.ok && result.reason === 'conflict') {
+  // editor.resolve(change, 'source' | 'draft'), then apply again
+}
+```
+
+## Expecting a query edit to save (`@stateref/sync`)
+
+```ts
+account.ref.address.city.value = 'Busan'; // local edit only
+// Save explicitly, capturing right before run:
+const submission = account.capture();
+await save.run(dto, { links: [{ query: account, submission, accept: { kind: 'refetch' } }] });
+```
+
+`accept` in `run()` is an object (`{ kind: 'refetch' }`), not a string.
+"Saving?" is `status.pending.value > 0`, not `phase === 'pending'`.
+
 ## Primitive stores access value directly
 
 ```ts

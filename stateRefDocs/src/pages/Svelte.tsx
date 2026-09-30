@@ -7,8 +7,9 @@ export const Svelte = mount(() => {
       <h1>Svelte Integration</h1>
 
       <p>
-        Use <code>@stateref/connect-svelte</code> to connect a StateRef store to Svelte.
-        It returns Svelte <code>Writable</code> stores that integrate with Svelte's reactivity.
+        Use <code>@stateref/connect-svelte</code> to connect a StateRef store to
+        Svelte. It returns Svelte <code>Writable</code> stores that integrate
+        with Svelte's reactivity.
       </p>
 
       <h2>Install</h2>
@@ -18,10 +19,21 @@ export const Svelte = mount(() => {
         code={`pnpm add state-ref @stateref/connect-svelte`}
       />
 
+      <h2>Supported Versions</h2>
+
+      <p>
+        Svelte 4 and 5 (<code>svelte ^4.0.0 || ^5.0.0</code>). The package major
+        follows the newest Svelte it supports, so{' '}
+        <code>@stateref/connect-svelte</code> 5.x still works with Svelte 4. The
+        store API below works in both; Svelte 5 also has a runes entry (see
+        &quot;Svelte 5 Runes&quot; below).
+      </p>
+
       <h2>Basic Usage</h2>
 
       <p>
-        The Svelte connector uses a callback pattern to select which part of the store to track:
+        The Svelte connector uses a callback pattern to select which part of the
+        store to track:
       </p>
 
       <CodeBlock
@@ -57,16 +69,16 @@ export const useProfile = connectSvelte(watch);`}
 
       <h2>How It Works</h2>
 
-      <p>
-        The Svelte connector bridges StateRef with Svelte's store system:
-      </p>
+      <p>The Svelte connector bridges StateRef with Svelte's store system:</p>
 
       <ul>
         <li>
-          <code>connectSvelte(watch)</code> returns a function that accepts a selector callback
+          <code>connectSvelte(watch)</code> returns a function that accepts a
+          selector callback
         </li>
         <li>
-          The selector receives the StateRefStore and returns the specific property to track
+          The selector receives the StateRefStore and returns the specific
+          property to track
         </li>
         <li>
           Returns a Svelte <code>Writable</code> store
@@ -77,16 +89,12 @@ export const useProfile = connectSvelte(watch);`}
         <li>
           Two-way binding: Svelte changes sync back to StateRef, and vice versa
         </li>
-        <li>
-          Cleanup is automatic on component destroy
-        </li>
+        <li>Cleanup is automatic on component destroy</li>
       </ul>
 
       <h2>Selecting Properties</h2>
 
-      <p>
-        Use the selector callback to pick specific properties:
-      </p>
+      <p>Use the selector callback to pick specific properties:</p>
 
       <CodeBlock
         language="typescript"
@@ -119,9 +127,7 @@ const useStore = connectSvelte(watch);`}
 
       <h2>Working with Objects</h2>
 
-      <p>
-        You can also select entire objects:
-      </p>
+      <p>You can also select entire objects:</p>
 
       <CodeBlock
         language="html"
@@ -179,9 +185,7 @@ export const increment = () => {
 
       <h2>Using with Svelte's Reactive Statements</h2>
 
-      <p>
-        Combine with Svelte's reactive statements for derived values:
-      </p>
+      <p>Combine with Svelte's reactive statements for derived values:</p>
 
       <CodeBlock
         language="html"
@@ -202,9 +206,7 @@ export const increment = () => {
 
       <h2>Two-Way Binding with bind:value</h2>
 
-      <p>
-        Svelte's two-way binding works seamlessly:
-      </p>
+      <p>Svelte's two-way binding works seamlessly:</p>
 
       <CodeBlock
         language="html"
@@ -225,9 +227,7 @@ export const increment = () => {
 
       <h2>TypeScript Tips</h2>
 
-      <p>
-        The connector preserves types from your store:
-      </p>
+      <p>The connector preserves types from your store:</p>
 
       <CodeBlock
         language="typescript"
@@ -243,6 +243,99 @@ const done = useTodo(store => store.done);
 // done is Writable<boolean>`}
       />
 
+      <h2>Readonly Query Views</h2>
+
+      <p>
+        <code>connectSvelteView</code> binds a readonly query view from{' '}
+        <a href="#/guide/sync-view">@stateref/sync</a>. It takes the same{' '}
+        <code>Watch</code> shape as <code>connectSvelte</code> but never hands
+        out setters, because a display can be a selected value or a placeholder
+        that was never on the server.
+      </p>
+
+      <CodeBlock
+        language="html"
+        code={`<script lang="ts">
+  const view = connectSvelteView(live.watchDisplay);
+  const city = view(ref => ref.data.value);
+</script>
+
+<span>{$city ?? '-'}</span>`}
+      />
+
+      <p>
+        Edit the actual data through <code>live.ref</code> once it has loaded,
+        not through the display. Unmounting this component ends{' '}
+        <strong>its own subscription only</strong> - the view itself is released
+        by whoever owns it, with <code>live.dispose()</code>, so a second screen
+        watching the same view keeps working.
+      </p>
+
+      <h2>Writing Rules</h2>
+
+      <ul>
+        <li>
+          <code>$user.name = 'Jane'</code> is a real store write. Svelte
+          compiles it into <code>user.set(...)</code>, which passes through the
+          connector; the connector hands Svelte a copy, so the store changes
+          only when that <code>set</code> arrives, with a correct{' '}
+          <code>before</code>.
+        </li>
+        <li>When the component is destroyed, the store stops writing back.</li>
+      </ul>
+
+      <h2>Svelte 5 Runes</h2>
+
+      <p>
+        <code>@stateref/connect-svelte/runes</code> is a separate, ESM-only
+        entry for Svelte 5 (<code>svelte/reactivity</code> does not exist in
+        Svelte 4). A selection is an object with <code>.value</code>:
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`// store.ts
+import { createStore } from 'state-ref';
+import { connectSvelteRunes } from '@stateref/connect-svelte/runes';
+
+export const watch = createStore({ user: { name: 'John', age: 30 } });
+export const useStore = connectSvelteRunes(watch);`}
+      />
+
+      <CodeBlock
+        language="html"
+        code={`<script lang="ts">
+  import { useStore } from './store';
+
+  const name = useStore(s => s.user.name);
+  const user = useStore(s => s.user);
+</script>
+
+<p>{name.value} ({user.value.age})</p>
+<button onclick={() => (name.value = 'Jane')}>Rename</button>
+<button onclick={() => (user.value = { ...user.value, age: 31 })}>Age</button>`}
+      />
+
+      <ul>
+        <li>
+          It subscribes while a template, <code>$effect</code> or{' '}
+          <code>$derived</code> reads <code>.value</code>, and releases when the
+          last reader goes away.
+        </li>
+        <li>
+          Assigning <code>.value</code> writes the store synchronously. A
+          selected object or array is a frozen copy, so{' '}
+          <code>user.value.age = 31</code> throws - it does not pass through the
+          connector.
+        </li>
+        <li>
+          <strong>It is not tied to a component.</strong> A selection made at
+          module level works, and a write through it always reaches the store -
+          unlike the store API, which stops writing back when its component is
+          destroyed.
+        </li>
+      </ul>
+
       <h2>Related</h2>
 
       <ul>
@@ -250,7 +343,8 @@ const done = useTodo(store => store.done);
           <a href="#/guide/create-store">createStore</a> - store creation
         </li>
         <li>
-          <a href="#/guide/manual-sync">Manual Sync (Flux)</a> - action-based updates
+          <a href="#/guide/manual-sync">Manual Sync (Flux)</a> - action-based
+          updates
         </li>
         <li>
           <a href="#/guide/watch">Watch Function</a> - subscription behavior

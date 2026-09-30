@@ -1,6 +1,20 @@
 # REQUIREMENTS — state-ref 서버 동기화와 독립 Draft
 
-- 개정일: 2026-09-19. 사용자 최종 결정 반영, 구현 전.
+## 2026-09-30 추가 — 병합 전 사용자 화면 예제 (R2-29)
+
+사용자 요청: 복잡한 진단 화면 대신 Preact와 Vue에서 대표 sync 기능과 batch를 실제 사용자 흐름으로 확인한다. **작은 쇼핑몰(상품 검색·더 보기 / 배송정보 저장 / 장바구니 batch 비교)**을 사용자가 선택했다.
+
+- 같은 세 화면을 두 프레임워크에서 제공한다. 한국어 UI, 자동 응답, 첫 화면부터 짧은 안내로 사용할 수 있어야 한다.
+- 상품에서는 검색·분류에 따른 key 전환, 캐시 재사용, 무한 조회, 로딩·오류·재시도를 확인한다.
+- 배송정보에서는 공유 조회의 편집 미리보기, 명시적 저장, 저장 중 후속 입력 보존, 확정 거절 후 입력 유지, 주소 draft의 취소·적용·충돌 해결을 확인한다. 편집 복원을 지원하면 새로고침을 별도 검증한다.
+- 장바구니에서는 같은 세 필드 변경의 최종 주문 내용과 실제 store 구독 알림을 일반 쓰기/batch로 비교한다. 프레임워크 렌더 횟수와 혼동하지 않는다.
+- 실패·외부 서버 변경을 재현하는 제어는 접힌 테스트 도구에 둔다. 실제 서버·사용자 계정에 접근하지 않는다.
+- 기존 진단 예제는 별도 진입점으로 유지하고, 새 화면도 production 빌드와 상시 브라우저 검증에 포함한다.
+- 서버 기능 전체나 SSR·오프라인 명령 복구까지 이 세 화면에서 검증했다고 주장하지 않는다. 사람의 UI 이해도 판정은 M2-22로 추적한다.
+
+검증 연결: T2-29, M2-22, IMPLEMENT Phase 10. 기준 HEAD `cb6d635`.
+
+- 개정일: 2026-09-23. Phase 8.4까지 자동 검증했다. 5종의 실제 서버 렌더는 구독을 남기지 않고, 별도 client의 편집 격리와 clean snapshot 왕복을 확인했다. 브라우저 hydration·loading/error 화면과 M2 수동 검증, 전체 서버 기능 동등성은 미완료다.
 - 기준 commit: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`, `state-ref@3.0.2`.
 - 연계: [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 - `R2-*`는 이번 개정의 요구사항이다. 이전 `SR-*`는 당시 커밋의 기록이며 현재 계약으로 사용하지 않는다.
@@ -9,7 +23,7 @@
 
 state-ref 코어, 서버 동기화 헬퍼, draft 헬퍼를 선택적으로 조합한다. 서버 동기화는 계속 추진한다. TanStack Query의 query/mutation 모델과 기능을 참고하면서 동기화 결과를 편집 가능한 state-ref ref로 제공하고, 변경 추적과 독립 편집을 같은 ref 사용 경험으로 연결한다.
 
-- **U2-01** 코어는 범용 상태·ref·구독을 담당한다. 서버 동기화와 draft는 코어 밖의 별도 헬퍼다.
+- **U2-01** 기본 코어 진입점은 범용 상태·ref·구독을 담당한다. draft는 같은 `state-ref` 패키지의 선택적 진입점으로 제공하고, 서버 동기화는 별도 패키지로 분리한다.
 - **U2-02** draft는 서버 없이도 일반 state-ref 원본에서 사용할 수 있어야 한다. 서버 동기화도 draft 없이 사용할 수 있다.
 - **U2-03** 조회와 서버 변경은 query/resource와 mutation으로 분리한다. resource의 `write`/`save`와 mutation을 중복 제공하지 않는다.
 - **U2-04** resourceRef를 직접 수정하면 공유 편집값과 `dirty`/`changes`에 반영한다. 자동 서버 WRITE는 발생하지 않는다.
@@ -21,8 +35,9 @@ state-ref 코어, 서버 동기화 헬퍼, draft 헬퍼를 선택적으로 조�
 - **U2-10** 적용에 성공하고 추가 입력이 없다면 draft는 clean이다. resource는 서버 기준과의 차이를 계속 추적한다.
 - **U2-11** TanStack에 런타임 의존하지 않는 서버 동기화를 지향한다. TanStack Query의 기능 전반을 목표로 하되, 기준 버전·기능별 계약·출시 단계는 검증 가능한 목록으로 확정한다.
 - **U2-12** 서버 저장 중의 후속 입력, 실패 작업 이외의 변경, 최신 서버 값을 보존한다. 단순 전체 스냅샷 복원으로 구현하지 않는다.
+- **U2-13** 여러 ref 쓰기를 호출자가 명시적으로 `batch(() => { ... })`로 묶을 수 있어야 한다. 값은 즉시 읽히고 구독 알림은 batch 종료 시점에 동기적으로 합쳐진다. `watch` 콜백 인자와 반환 ref를 통한 쓰기를 모두 지원하며, 기본 쓰기 알림 시점은 그대로 유지한다. `state-ref/batch`에서 제공하며 [Phase 3.5](./PHASE3_5.md)에서 자동 검증했다.
 
-패키지 이름, export 경로, 함수 이름, 내부 hook, 구체적인 조회 기본값은 아직 구현 설계 항목이다. 대화의 예시를 이미 제공되는 API나 모든 세부 사항에 대한 사용자 승인으로 취급하지 않는다.
+batch의 export 경로는 `state-ref/batch`로 확정했다. 그 밖의 미구현 기능의 패키지 이름, export 경로, 함수 이름, 내부 hook, 구체적인 조회 기본값은 구현 설계 항목이다. 대화의 예시를 이미 제공되는 API나 모든 세부 사항에 대한 사용자 승인으로 취급하지 않는다.
 
 ## 2. 기존 결정의 대체 관계
 
@@ -64,13 +79,13 @@ state-ref 코어, 서버 동기화 헬퍼, draft 헬퍼를 선택적으로 조�
 
 | ID | 요구사항 | 수용 기준 | 검증 |
 |---|---|---|---|
-| R2-01 | 세 구성의 독립성 | core 단독, core+draft, core+sync, 세 구성 조합을 각각 import·실행 가능 | T2-01, M2-01 |
-| R2-02 | 코어 계약 보존 | 동기 전파·Watch identity·해제·readonly·불변 갱신과 기존 성능 예산 유지 | T2-02, M2-02 |
+| R2-01 | 서버 플러그인과 선택적 draft | sync는 별도 설치·import하고 draft는 `state-ref`의 선택적 진입점에서 import한다. ESM의 네 조합과 UMD 브라우저의 core 단독·core+draft를 실행 가능 | T2-01, M2-01 |
+| R2-02 | 코어 계약 보존 | 기본 쓰기는 쓰기마다 동기 전파, 명시적 batch만 스코프 종료 시 동기 전파; Watch identity·해제·readonly·불변 갱신과 기존 성능 예산 유지 | T2-02, M2-02 |
 | R2-03 | 공유 query 캐시 | 같은 client+key의 진행 조회와 기준 데이터 공유, freshness·GC 정책 준수 | T2-03, M2-03 |
 | R2-04 | 로딩과 상태 | 미로드 payload 접근을 명시적으로 처리하고 가짜 데이터·오류 상태 혼동 없음 | T2-04, M2-04 |
 | R2-05 | resource 직접 편집 | 첫 setter부터 변경 기록, 편집만으로 WRITE 0회, 서버 기준은 유지 | T2-05, M2-05 |
 | R2-06 | resource dirty/changes | 마지막 수용 서버 값에 대한 차이를 readonly로 제공, 원상복귀는 변경 해소 | T2-06, M2-05 |
-| R2-07 | 공유와 격리 | 같은 key의 resource 편집 공유, 서로 다른 client/SSR 요청의 데이터·작업 격리 | T2-07, M2-03 |
+| R2-07 | 공유와 격리 | 같은 key의 resource 편집 공유, 서로 다른 client/SSR 요청의 데이터·작업 격리, helper 조합을 포함해 서버 렌더 뒤 커넥터 구독 0건 | T2-07, M2-03, M2-04 |
 | R2-08 | 독립 mutation | 조회 shape와 다른 DTO, resource 미지정 명령, 여러 결과 반영 대상을 명시 가능 | T2-08, M2-06 |
 | R2-09 | 명시적 기준 반영 | 재조회·응답 매핑·서버가 수용한 제출값 반영을 구분, 반영 자체가 새 편집/WRITE를 만들지 않음 | T2-09, M2-07 |
 | R2-10 | 제출과 후속 입력 | 제출 시 값·변경 버전 고정, DTO에 포함하지 않은 편집·후속 입력을 임의로 clean 처리하지 않음 | T2-10, M2-08 |
@@ -90,23 +105,84 @@ state-ref 코어, 서버 동기화 헬퍼, draft 헬퍼를 선택적으로 조�
 | R2-24 | UI 통합 | React·Preact·Vue·Svelte·Solid에서 로컬 draft와 서버 ref/draft/변경 검토 검증 | T2-24, M2-20 |
 | R2-25 | 데이터와 타입 경계 | query 데이터 지원과 편집 가능 데이터 지원을 구분, 미지원 값·예약 키·직접 객체 변형 처리 명시 | T2-25, M2-17 |
 | R2-26 | 변경 검토의 유효성 | 버전 있는 변경 snapshot, 오래된 검토에 의한 적용/충돌 해결이 새 입력을 지우지 않음 | T2-26, M2-16 |
+| R2-27 | 명시적 동기 batch | `watch` 콜백 ref와 반환/보관 ref의 쓰기, 중첩 호출, 최종 값 기준 구독자 1회 알림, 즉시 값 읽기, 동기 종료·예외·metadata·커넥터 경계를 검증한다. 기본 동기 쓰기와 manual sync 의미는 유지 | T2-27, M2-02 |
+| R2-28 | 조회 공개 표면의 통합 | 표시(display)와 자원(resource)을 사용자가 **하나의 조회 개념**으로 학습할 수 있어야 한다. 상태 어휘는 하나이며, 표시 계약 넷(select 오류 격리·placeholder 비캐시·표시값 비편집·언마운트가 구독만 종료)은 통합 후에도 유지한다. 기능을 줄이거나 조용히 범위에서 빼지 않는다 | T2-28, M2-21 |
+
+R2-28의 수용 범위는 **공개 표면이지 기능이 아니다.** 현재 `SyncClient`는 조회 팩토리 5개(`query`·`infiniteQuery`·`view`·`infiniteView`·`liveView`), handle 타입 5개, 상태 어휘 3개(`QueryStatus`·`QueryViewState`·`LiveQueryViewState`)를 노출하며 `client.view()`는 `client.query()`를 소유한 래퍼다. 사용자 보고는 "둘 다 학습하는 비용이 `view`의 편의보다 크다"이며 측정으로 확인했다. 후보·권고·마이그레이션 범위는 [Phase 9](./PHASE9.md), 계약은 [DESIGN §5.4](./DESIGN.md)와 `DC2-19~23`에 있고 **전부 미결이다.** 이 요구사항은 통합의 *방향*만 고정하며 어떤 후보를 고를지는 `DC2-19`가 닫는다.
+
+F2-08의 Phase 5.12 하위 수용 범위는 client별 현재 캐시 metadata 조회와 생성·변경·제거 구독이다. query payload·로컬 편집 값·mutation DTO는 이벤트에 포함하지 않고, listener 해제와 오류 격리는 T2-23/M2-19에서 확인한다. [Phase 5.12 계약](./PHASE5_12.md)을 따른다.
+
+Phase 7.3의 수용 범위는 배포 경계다. 선언한 모든 진입점이 지원 소비자 형태에서 해석돼야 하고, 지원하지 않는 형태는 조용한 빈 객체가 아니라 명확한 오류로 실패해야 한다. `state-ref`와 커넥터 5종은 ESM·CommonJS를 모두 지원하고 `state-ref/plugin`·`@stateref/sync`는 ESM 전용이다. `QueryKey`의 비-JSON 값과 reactive status 쓰기는 타입이 아닌 런타임이 거절한다. [Phase 7.3 계약](./PHASE7_3.md)을 따른다.
+
+Phase 7.2의 수용 범위는 결과별 잔여 intent와 두 기준의 모델 대조다. `unknown`과 `sync-error`는 미확정으로 두고 입력을 보존하며, 확정 거절은 `remove` 정책에서만 제출 입력을 되돌린다. `refetch` 수용은 제출한 입력을 소비하므로 미제출 입력만 새 기준보다 우선한다. 참조 모델은 구현의 병합·변경 추적을 재사용하지 않는다. [Phase 7.2 계약](./PHASE7_2.md)을 따른다.
+
+Phase 7.1의 수용 범위는 순서·경계 계약의 고정이다. 충돌은 현재 원본 값의 함수이고, 배열 재정렬은 apply를 거절하며, 로컬 입력은 늦게 도착한 기준보다 우선한다. 캐시는 최신 epoch의 READ만 받고 `invalidate()`는 진행 중 READ를 abort한다. 연결 WRITE 중에는 READ를 시작하지 않고 이전 READ의 기준도 받지 않는다. T2-01~26 및 [Phase 7.1 계약](./PHASE7_1.md)을 따른다.
+
+Phase 6의 수용 범위는 resource 원본과 draft의 조합이다. draft는 원본의 현재 값에서 clean하게 분기하고 부모의 변경 기록을 복사하지 않는다. `apply()`는 네트워크를 호출하지 않고 병합한 값을 root에 한 번 써서 원본의 변경 기록을 root 경로 1건으로 만든다. 겹친 갱신은 conflict로 표시하고 입력을 보존하며, 해제된 원본의 쓰기 실패는 `missing-source`로 보고한다. T2-01/05/06/10~22/26 및 [Phase 6 계약](./PHASE6.md)을 따른다.
+
+F2-07의 Phase 5.17 하위 수용 범위는 보관된 독립 명령의 자동 재개다. `autoResume`는 `resume()`을 부르는 시점만 자동화하고 순서·`unknown` 차단·`maxAge`·`isOnline`·직렬화 규칙을 바꾸지 않으며 `retryUnknown`을 호출하지 않는다. 연결 제출은 살아 있는 query handle과 최신 로컬 상태가 필요하므로 자동 재개 대상이 아니다. T2-23/M2-19 및 [Phase 5.17 계약](./PHASE5_17.md)을 따른다.
+
+F2-07의 Phase 5.16 하위 수용 범위는 전송 중 로컬 편집의 durable 보존이다. `dehydrateLocal({ inFlight: 'unconfirmed' })`는 진행 중 READ·연결 WRITE를 거절하지 않고 보수적으로 표시해 저장하고, `checkpoint: true` 기록의 `send`는 WRITE 중 변경을 같은 기록에 합쳐 갱신한다. checkpoint는 작업 상태를 바꾸지 않고 실패해도 WRITE를 취소하지 않으며, 연결 query는 계속 미확정이다. T2-23/M2-19 및 [Phase 5.16 계약](./PHASE5_16.md)을 따른다.
+
+F2-07의 Phase 5.15 하위 수용 범위는 연결 제출 1건이 여러 query를 묶는 schema 2 기록이다. 각 link는 query key·revision·선택 변경·수용/거절 정책을 갖고 같은 key는 한 번만 연결한다. `send`는 모든 link를 먼저 재검사하고 하나라도 다르면 WRITE를 시작하지 않으며, durable 장벽은 연결된 모든 query를 미확정으로 표시한다. 결과는 작업 단위로 기록한다. T2-23/M2-19 및 [Phase 5.15 계약](./PHASE5_15.md)을 따른다.
+
+F2-08의 Phase 5.14 하위 수용 범위는 client별 미종료 WRITE 작업 조회와 시작·전환·종료 구독이다. 작업 ID·관측 phase·scope·attempt·idempotency 사용 여부·연결 query key·시각만 제공하고 입력 DTO·응답·오류 객체·`idempotencyKey` 값은 이벤트에 포함하지 않는다. 종료한 작업은 client가 보관하지 않으며, 관측 결과를 재전송 근거로 쓰지 않는다. T2-23/M2-19 및 [Phase 5.14 계약](./PHASE5_14.md)을 따른다.
+
+F2-05의 Phase 5.13 하위 수용 범위는 무한 조회 결과의 임시 캐시 준비와 고정 key 관찰자별 placeholder/select 표시다. 같은 key의 활성 query 설정과 READ 소유권을 보존하고, 무한 페이지 값은 readonly로 유지한다. T2-23/M2-19 및 [Phase 5.13 계약](./PHASE5_13.md)을 따른다.
 
 ## 5. 비기능 요구사항
 
-- **NFR2-01** core 단독 소비자에게 draft·네트워크 엔진의 런타임 의존성을 추가하지 않는다. draft 단독 소비자도 sync 엔진을 로드하지 않는다.
+- **NFR2-01** 기본 코어 진입점은 draft·batch 구현이나 sync 패키지, 네트워크·캐시·전송 구현을 import하지 않는다. core 단독 소비자의 빌드에는 이 구현과 런타임 의존성이 들어가지 않고, draft 진입점도 sync 엔진을 로드하지 않는다. ref 연결이 필요하면 서버 의미가 없는 opt-in 코어 인터페이스로 한정하고 기본 코어의 번들·성능을 검증한다. Phase 3.5의 선택적 batch 연결 때문에 기본 core gzip 한도를 실측 근거와 함께 3,400→3,500 B로 변경한다. [Phase 3.5 기록](./PHASE3_5.md)에 기본·선택적 진입점 크기를 각각 남긴다.
 - **NFR2-02** 매 입력마다 전체 트리를 깊은 복사하거나 diff하지 않는다. 변경되지 않은 구조를 공유하며 비용은 측정한다.
 - **NFR2-03** 필드 값과 변경 metadata를 일관된 순서로 발행한다. 구독 콜백에서 변경을 다시 읽어도 직전 입력을 놓치지 않는다.
 - **NFR2-04** key/배열 위치와 도메인 ID를 혼동하지 않는다. 원격 저장의 원자성·중복 방지·서버 취소를 클라이언트 기능으로 과장하지 않는다.
 - **NFR2-05** 현재 `pnpm gate`와 새 헬퍼의 타입·테스트·빌드·의존성 검사 모두를 출시 조건에 포함한다. 문서 정적 검사는 런타임 증거가 아니다.
 - **NFR2-06** Node·pnpm·TypeScript 버전, baseline, 성능·번들 예산을 Phase 0에서 기록하고 근거 없이 기존 예산을 늘리지 않는다.
-- **NFR2-07** client는 앱/SSR 요청별로 명시적으로 소유한다. 전역 singleton으로 서로 다른 사용자의 데이터를 공유하지 않는다.
+- **NFR2-07** client는 앱/SSR 요청별로 명시적으로 소유한다. 전역 singleton으로 서로 다른 사용자의 데이터를 공유하지 않는다. 서버 렌더는 해제할 수 없는 UI 구독을 생성하지 않는다.
 - **NFR2-08** changes는 현재 편집을 위한 정보이며 영구 감사 로그가 아니다. 값이나 요청 DTO를 자동 외부 전송·로그 출력하지 않는다.
+- **NFR2-09** 명시적 batch는 microtask/타이머/프레임워크 스케줄러에 알림 시점을 맡기지 않는다. 기본 core 번들·쓰기 성능 예산과 5종 커넥터의 실제 양방향 갱신을 재검증한다.
 
 ## 6. 완료 판정과 인계
 
-이번 개정은 제품·동작 방향을 확정한다. 패키지/export, 완전한 공개 타입, mutation 제출 기록 연결, 서버 기능 동등성의 기준·단계는 [DESIGN의 IC2](./DESIGN.md)에 남겨두며 구현 전에 해당 게이트에서 닫는다.
+이번 개정은 제품·동작 방향을 확정한다. 서버 기능 비교의 참조 버전과 단계는 [Phase 0](./PHASE0.md)에 고정했다. 패키지/export의 실제 타입·빌드, mutation 제출 기록 연결과 기능별 실행 검증은 [DESIGN의 IC2](./DESIGN.md) 및 후속 단계에서 닫는다.
+
+### 2026-09-20 Phase 3 인계
+
+후속 우선순위 변경: [IMPLEMENT Phase 3.5](./IMPLEMENT.md#phase-35--명시적-동기-batch-최우선)를 Phase 4보다 먼저 진행한다. 아래 `next (Phase 4)`는 Phase 3 완료 당시 기록이며 현재의 첫 작업 순서는 아니다.
+
+- done: [독립 sync query/resource](./PHASE3.md)에 client별 cache·READ 공유·stale/GC/취소/retry와 편집 가능한 resource의 서버 기준·dirty/changes를 구현했다. `pnpm gate`와 고정 Node 기본 core 번들 예산 PASS.
+- next (Phase 4): IC2-04 제출/기준 수용 계약을 닫고 mutation·실패 복구를 구현한다. Phase 3 resource PASS를 pending/복구·draft 조합의 PASS로 간주하지 않는다.
+- blockers: pending overlay·전체 조합, 5종 실제 커넥터 UI, M2 수동 시나리오는 미완료.
+- 기록 작성 시 최신 commit: `f4e27f6`; Phase 3 작업은 미커밋이다.
+
+### 2026-09-19 구현 브랜치 진행
+
+- done (Phase 2 일반 원본): [선택적 draft](./PHASE2.md)에 독립 편집·원본 live 추종·충돌·로컬 apply·status·종료 수명과 ESM/UMD를 구현했다. `pnpm gate` 및 고정 Node 기본 core 번들 예산 PASS.
+- next (Phase 3): 별도 sync 패키지의 query/cache와 편집 가능한 resourceRef를 구현한다. 일반 원본 draft PASS를 resource pending/복구 조합의 PASS로 간주하지 않는다.
+- blockers: IC2-01의 resource/로드 guard·커넥터 UI 검증과 IC2-05의 pending overlay 조합, M2 수동 시나리오는 미완료.
+- 기록 작성 시 최신 commit: `f86aec8`; Phase 2 작업은 미커밋이다.
+
+### Phase 1 완료 당시 기록
+
+- done (Phase 1 완료): [plugin 연결](./PHASE1.md)에 일반 하위 ref의 소속·경로 구독·존재 여부, 출처/버전 journal을 구현. 기존 gate와 고정 Node 번들/bench 통과. draft·sync 기능은 아직 없다.
+- next (Phase 2): IC2-01의 공개 draft 계약과 실제 `state-ref/draft` 진입점·원본 live 갱신을 검증한다.
+- blockers (Phase 2): core 기본 번들 여유 2 B. IC2-02는 해소했고 IC2-01의 제품 API는 미해소.
+- 기록 작성 시 기준 commit: `e01828b`. 이후 문서 이력은 Git HEAD를 따른다.
+
+### Phase 0 시작 당시 인계
+
+- done: `feat/server-sync-draft`에서 [Phase 0 기준·실험](./PHASE0.md)을 시작했다. 기존 gate와 독립 모델·타입 실험 PASS, IC2-03의 참조 버전·설계 계약 결정.
+- next: IC2-01/02의 core 연결·비용 실험 후 Phase 1 진입.
+- blockers: 현재 ref에서 구조화 소속·구독을 조회할 수 없고 기본 번들 여유는 15 B다. 새 helper 구현은 미완료다.
+- 기록 작성 시 기준 commit: `1c6460b`. 이후 문서 이력은 Git HEAD를 따른다.
+
+### 이전 문서 개정 인계
 
 - done: 최종 사용자 결정과 이전 결정의 대체 관계를 기록하고 R2/T2/M2 검증 연결을 재정의.
 - next: IMPLEMENT Phase 0에서 공개 계약·기능 목록·독립 엔진과 draft 연결 실험.
 - blockers: 문서 개정 차단 없음. 상세 설계와 기능 구현·실행 검증은 미완료.
 - latest commit: `0d8aaa9714c0d397c5e1019fbbdeaba4563e5435`. 이번 개정은 미커밋 문서 변경이다.
+
+- Phase 8.4 computed 캐시 보강: 콜백 없는 computed는 구독 없이 최신 원본을 읽되, 실제 의존 값이 같으면 재계산 없이 결과 객체를 재사용한다. 수동 `sync()`는 구독 알림의 경계다.
+
+- Phase 8.4 캐시 보강의 번들 예산은 고정 Node 20.3.0에서 minified gzip 3,800 B다. 이전 3,500 B 대비 약 0.22 kB의 실제 의존 값 캐시 비용을 수용하며 근거는 [PHASE8_4](./PHASE8_4.md)에 기록했다.

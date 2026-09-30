@@ -27,10 +27,12 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src'),
       name: 'reactStateRef',
+      formats: ['es', 'umd', 'cjs'],
       fileName: format => {
-        return format === 'umd'
-          ? 'stateref-connect-react.umd.js'
-          : 'stateref-connect-react.mjs';
+        if (format === 'umd') return 'stateref-connect-react.umd.js';
+        // "type": "module" makes a .js file ESM, so the UMD output
+        // cannot serve the `require` condition.
+        return format === 'cjs' ? 'stateref-connect-react.cjs' : 'stateref-connect-react.mjs';
       },
     },
     rollupOptions: {

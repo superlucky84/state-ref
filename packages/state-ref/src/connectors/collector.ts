@@ -2,6 +2,28 @@ import type { Run, RunInfo, RenderListSub, StoreRenderList } from '@/types';
 import type { PathNode } from '@/path';
 
 /**
+ * Runs whose subscription has ended for good.
+ *
+ * `removeRun` drops a subscription's record and its marks on the path tree, but
+ * the `run` itself lives on inside the ref the caller still holds - and every
+ * read through that ref comes back here. Without this set, one read re-creates
+ * the record and the next write wakes a subscription the caller ended
+ * (`CI-30`). `CI-24` closed the same hole for a read from inside a propagation
+ * pass by refusing to *run* such a subscriber; this closes it at the collector,
+ * which is the one place every entrance passes through.
+ *
+ * A `WeakSet` because the mark must not outlive the run.
+ */
+const endedRuns = new WeakSet<object>();
+
+/** Marks a run as ended. Nothing it reads afterwards may resubscribe it. */
+export function endRun(run: Run) {
+  if (run) {
+    endedRuns.add(run);
+  }
+}
+
+/**
  * The subscription to store starts the moment the user of stateRef fetches the reference as a “.value”.
  * This code captures the moment of fetching to “.value” and collects the subscription.
  */
@@ -12,7 +34,7 @@ export function collector(
   run: Run,
   storeRenderList: StoreRenderList<any>
 ) {
-  if (!run) {
+  if (!run || endedRuns.has(run)) {
     return;
   }
 
@@ -69,7 +91,9 @@ export function restoreDeps(
   run: Run,
   previous: RenderListSub<any> | undefined
 ) {
-  if (!previous) {
+  // A callback that threw *and* ended in the same pass has no deps to restore:
+  // putting them back would resubscribe what the caller ended (`CI-30`).
+  if (!previous || (run && endedRuns.has(run))) {
     return;
   }
 

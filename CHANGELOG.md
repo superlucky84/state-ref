@@ -1,5 +1,224 @@
 # Changelog
 
+## state-ref 3.1.0
+
+Additive: nothing that worked on 3.0.x changes meaning. The new entry points
+are what `@stateref/sync` and the draft helpers build on.
+
+### Added
+
+- **`state-ref/draft`** - `createDraft(ref)` opens a local edit session over
+  any ref, including a child ref: edit through `draft.ref`, inspect
+  `changes()`, then `apply()`, `reset()` or `discard()`. Each edit remembers
+  the source value it started from, so a source changed underneath is
+  reported as a conflict (settled with `resolve()`) rather than overwritten.
+- **`state-ref/batch`** - `batch(fn)` coalesces notifications inside a
+  synchronous scope. Values and write observers still update at each setter;
+  subscribers run once when the outer scope returns.
+- **`state-ref/plugin`** (ESM only) - the integration surface `@stateref/sync`
+  and draft use: `connectRef`, `observeRef`, `createWriteJournal` and
+  `guardWriteObserver`.
+- **An unbound computed ref memoizes.** Reading a computed with no subscriber
+  reuses the result until a value the calculation read changes, without
+  subscribing to its sources.
+
+### Fixed
+
+- **An ended subscription stays ended when its ref is read again** (`CI-30`).
+  Reading through a ref whose subscription had been aborted re-registered it,
+  so the next write woke a callback the caller had ended - once more for every
+  read/write pair, with no way to end it again.
+- **`watch()` with no callback no longer registers a no-op subscription.** The
+  reference it returns still reads and writes the live store.
+- **`require('state-ref')` works again, and `node16`/`nodenext` types resolve.**
+  `exports.require` pointed at the UMD file, which Node parses as ESM in a
+  `"type": "module"` package, so CommonJS got an empty namespace. It now points
+  at `dist/*.cjs` with its own `.d.cts` declarations, and the published
+  declarations import with `.js` extensions. The UMD file stays for
+  `<script>` use. `state-ref/draft` and `state-ref/batch` work under `require`
+  too, and the five connectors below ship the same fix. `state-ref/plugin`,
+  `@stateref/connect-svelte/runes` and `@stateref/sync` are ESM only and refuse
+  `require` with `ERR_PACKAGE_PATH_NOT_EXPORTED` rather than an empty object.
+
+## @stateref/sync 0.1.0
+
+First release. An optional query cache, editable resource and mutation
+package for `state-ref`; importing `state-ref` alone does not load it.
+ESM only. Requires `state-ref ^3.1.0`.
+
+- `createSyncClient()` - one client per app or SSR request.
+- Queries: `client.query({ queryKey, queryFn })` with `load()`, a live `ref`
+  you can edit, `isDirty()` and `changes()` against the server baseline;
+  cache observation (`subscribeCache`), automatic refetch on focus,
+  reconnect and interval, pagination and infinite queries.
+- Mutations: `query.capture()` fixes what a save submits;
+  `client.mutation().run(..., { links })` declares which queries it affects
+  and how the response is accepted (`none`, `submitted`, `response`,
+  `refetch`). Edits made while saving are kept. `MutationRejectedError` marks a
+  server refusal; retries need an `idempotencyKey`.
+- SSR hydration, persistence of linked mutations, and a browser environment
+  adapter (`createBrowserSyncEnvironment`).
+
+See the docs site's Server Sync chapters for the full contract.
+
+## @stateref/connect-solid 1.4.0
+
+The major follows Solid, so the breaking change below lands in a minor here.
+Peer range unchanged (`solid-js ^1.9.1`); measured on 1.9.1 and 1.9.15.
+
+Requires `state-ref ^3.1.0` (was `^3.0.0`): tested only against 3.1.0, whose
+`CI-30` fix keeps a subscription the connector ended from coming back.
+
+### Breaking
+
+- **The accessor returns a frozen copy of an object or array** (DC-CN-04).
+  `value().city = 'x'`, or a functional update that mutates `prev` and returns
+  it, now throws a TypeError instead of changing the store. Write through the
+  setter with a new value: `setAddress(prev => ({ ...prev, city: 'x' }))`.
+
+### Fixed
+
+- **A nested mutation no longer changes the store behind its back** (F-SO3).
+  The accessor handed out the store's internal object, so both forms above
+  changed the store in place and no write was recorded.
+
+### Changed
+
+- **The setter writes the store directly and synchronously** (DC-CN-06). The
+  signal used to be copied back into the store from a `createEffect`, which
+  Solid advises against for syncing state and whose model Solid 2 changes.
+- **Server rendering is detected with `isServer`** from `solid-js/web`
+  instead of `typeof window` (DC-CN-07).
+
+## @stateref/connect-svelte 5.0.0
+
+The major follows the newest Svelte it supports; it still supports Svelte 4
+(`peerDependencies`: `svelte ^4.0.0 || ^5.0.0`). Measured on 4.2.19 and 5.57.1.
+
+Requires `state-ref ^3.1.0` (was `^3.0.0`): tested only against 3.1.0, whose
+`CI-30` fix keeps a subscription the connector ended from coming back.
+
+### Added
+
+- **`@stateref/connect-svelte/runes`** - `connectSvelteRunes(watch)(select)`
+  returns `{ value }` for Svelte 5 runes components (DC-CN-05). It subscribes
+  through `createSubscriber` while a template, `$effect` or `$derived` reads
+  `.value`, and releases when the last reader goes. Assigning `.value` writes
+  the store synchronously; a selected object or array is a frozen copy, so a
+  nested mutation throws instead of changing the store behind its back. A
+  separate, ESM-only entry: `svelte/reactivity` does not exist in Svelte 4.
+
+### Fixed
+
+- **`$store.field = value` is a real store write** (F-S5). The connector
+  handed Svelte the store's internal object, so Svelte's own nested
+  assignment syntax mutated the store in place - no write, no subscriber
+  notified. Svelte now gets a copy, and the `set` Svelte compiles the
+  assignment into writes the store with a correct `before`.
+
+### Changed
+
+- The store API is unchanged in shape and works on Svelte 4 and 5 (on 5,
+  components written with `$store` compile in legacy mode).
+- The write-back compares by value instead of an echo flag: Svelte queues a
+  `set` made while it is notifying, so the flag was already down when the
+  connector's own delivery came back.
+
+## @stateref/connect-vue 3.4.0
+
+The major follows Vue, so the breaking change below lands in a minor here.
+Peer range is now `vue ^3.2.0` (was `^3.0.0`): the connector uses
+`onScopeDispose`, which arrived in 3.2. Measured on 3.2.47, 3.5.10 and 3.5.43.
+
+Requires `state-ref ^3.1.0` (was `^3.0.0`): tested only against 3.1.0, whose
+`CI-30` fix keeps a subscription the connector ended from coming back.
+
+### Breaking
+
+- **A selected object or array is readonly** (DC-CN-04). `addr.value.city = 'x'`
+  or `list.value.push(x)` is refused with Vue's readonly warning in
+  development and the store is untouched - the rule the core and the other
+  connectors already had. Write through `.value` of a selection instead: pick
+  the leaf (`use(s => s.address.city).value = 'x'`) or replace the whole value
+  (`addr.value = { ...addr.value, city: 'x' }`).
+
+### Fixed
+
+- **A nested write no longer changes the store behind its back** (F-V4). The
+  connector wrapped the store's own object in `reactive`, so a nested write
+  mutated the store in place with no subscriber notified, and the write the
+  store saw a tick later had `before` equal to `after` - invisible to draft
+  and sync change tracking.
+- **Writes reach the store synchronously.** `city.value = 'x'` used to land on
+  the next tick through a deep `watch`; reading the store in the same handler
+  saw the old value.
+- **Teardown follows the scope** (F-V2). `onScopeDispose` replaces
+  `onUnmounted`, so a connector used inside an `effectScope` or a composable
+  releases its subscription when that scope stops.
+
+### Changed
+
+- **No copy, no deep watch, no echo guard.** Reads go through the subscribed
+  state-ref reference inside a `customRef`; writes go straight to the store.
+  The guard that produced `CI-25`, `CI-26` and `CI-29` is gone; their
+  regression tests still pass.
+
+## @stateref/connect-preact 10.4.0
+
+The major follows Preact, so a behavior change that would otherwise be a
+major lands in a minor here - read the Changed entry before upgrading.
+
+Requires `state-ref ^3.1.0` (was `^3.0.0`): tested only against 3.1.0, whose
+`CI-30` fix keeps a subscription the connector ended from coming back.
+
+### Fixed
+
+- **A render that suspends no longer leaks its subscription** (F-P3,
+  docs/connectors/DESIGN.md). The connector subscribed during render and
+  released in an effect cleanup; a suspended render never commits, so nothing
+  released it, and the next store write after unmount reached a dead setState
+  and threw `TypeError: Cannot read properties of undefined (reading '__c')`.
+
+### Changed
+
+- **The subscription is made in an effect, after commit** - the same design
+  as `@stateref/connect-react` 19.0.0, written with `preact/hooks` (no
+  `preact/compat` dependency). A server render runs no effects and subscribes
+  to nothing, without a `typeof window` check.
+- **A mount renders twice**, for the same reason as the React connector: the
+  second render collects the paths the component reads. Tests that counted
+  renders exactly now count one more on mount.
+
+## @stateref/connect-react 19.0.0
+
+The major follows the newest React it supports; it still supports React 18
+(`peerDependencies`: `react ^18.0.0 || ^19.0.0`).
+
+Requires `state-ref ^3.1.0` (was `^3.0.0`): tested only against 3.1.0, whose
+`CI-30` fix keeps a subscription the connector ended from coming back.
+
+### Fixed
+
+- **Components update under `<StrictMode>` again** (F-R1,
+  docs/connectors/DESIGN.md). The connector subscribed during render and
+  aborted in an effect cleanup. StrictMode's simulated unmount ended that
+  subscription and the remount never made a new one: React 18.3 dropped the
+  first write, React 19.3 never updated at all. A subscription also survived
+  a StrictMode unmount.
+
+### Changed
+
+- **Built on `useSyncExternalStore`**, React's contract for external stores.
+  The subscription is made after commit and ended by React, and the server
+  render uses `getServerSnapshot` instead of a `typeof window` check.
+- **A mount renders twice.** state-ref collects what a component reads while
+  it renders through a subscribed reference, and there is none before the
+  first commit - so the first render paints through a reference that
+  subscribes to nothing, and the connector renders once more through the
+  subscribed one. What is shown is correct from the first render; the second
+  only collects paths (DC-CN-03). Tests that counted renders exactly now count
+  one more on mount.
+
 ## 3.0.2
 
 ### Fixed

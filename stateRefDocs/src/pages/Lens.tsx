@@ -66,9 +66,7 @@ console.log(next.todos[0].title); // 'Review docs'`}
 
       <h2>Reusable Lenses</h2>
 
-      <p>
-        Build reusable lenses by chaining from a base lens.
-      </p>
+      <p>Build reusable lenses by chaining from a base lens.</p>
 
       <CodeBlock
         language="typescript"
@@ -154,7 +152,8 @@ class Lens<Root, Focus> {
 
       <ul>
         <li>
-          <a href="#/guide/create-store">createStore</a> - StateRef store creation
+          <a href="#/guide/create-store">createStore</a> - StateRef store
+          creation
         </li>
         <li>
           <a href="#/guide/state-ref-store">StateRefStore</a> - proxy references

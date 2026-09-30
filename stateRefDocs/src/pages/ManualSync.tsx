@@ -126,8 +126,8 @@ sync();`}
       <h2>Using with Framework Connectors</h2>
 
       <p>
-        Manual sync works with connectors because <code>watch</code> is still the
-        subscription source.
+        Manual sync works with connectors because <code>watch</code> is still
+        the subscription source.
       </p>
 
       <CodeBlock
@@ -192,7 +192,8 @@ function Counter() {
           <a href="#/guide/watch">Watch Function</a> - subscription basics
         </li>
         <li>
-          <a href="#/guide/subscription">Subscription</a> - lifecycle and cleanup
+          <a href="#/guide/subscription">Subscription</a> - lifecycle and
+          cleanup
         </li>
       </ul>
     </div>

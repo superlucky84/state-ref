@@ -14,7 +14,5 @@ onUpdated(() => {
 </script>
 
 <template>
-  <button>
-    age: {{ ageRef.value }}
-  </button>
+  <button>age: {{ ageRef.value }}</button>
 </template>

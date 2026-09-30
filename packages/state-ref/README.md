@@ -38,10 +38,59 @@ It is also designed for easy integration with other UI libraries. We provide cod
 
 The basic principle is that the subscription function only reacts to values retrieved through `.value`, and when a value is assigned with `.value=`, the subscription function is triggered if the value is already subscribed.
 
+### Optional synchronous batch
+
+Import `batch` from `state-ref/batch` to group several writes into one synchronous notification pass. Values change immediately inside the callback, and subscribers reading both paths run once with the final values when the outermost batch ends.
+
+```typescript
+import { createStore } from 'state-ref';
+import { batch } from 'state-ref/batch';
+
+const watch = createStore({ b: 0, c: 0 });
+watch(state => {
+  console.log(state.b.value, state.c.value);
+}); // runs once immediately to collect both dependencies
+
+const ref = watch();
+batch(() => {
+  ref.b.value = 3;
+  ref.c.value = 4;
+}); // subscriber runs once with 3, 4 before batch returns
+```
+
+The ref passed into a `watch` callback can also write inside `batch`. Nested calls flush only at the outermost boundary. Ordinary writes outside a batch still notify synchronously per write. A batch groups notifications; it does not roll back writes when the callback throws, and it cannot span an `await`. Manual-sync stores still require their explicit `sync()`. For UMD, load `state-ref.umd.js` before `state-ref.batch.umd.js`, then call `stateRefBatch.batch`.
+
+### Optional drafts
+
+Import `createDraft` from `state-ref/draft` when you need an independent local edit session over an existing ref. The draft starts from the source's current value. Edits stay local until `apply()` merges the edited fields into the latest source value; a concurrent edit to the same field produces a conflict.
+
+```typescript
+import { createStore } from 'state-ref';
+import { createDraft } from 'state-ref/draft';
+
+const source = createStore({ address: { city: 'Seoul', zip: 100 } })();
+const editor = createDraft(source.address);
+editor.ref.city.value = 'Busan';
+
+editor.isDirty(); // true
+editor.changes(); // city: Seoul -> Busan
+editor.apply(); // updates the source locally; does not contact a server
+editor.discard(); // releases subscriptions and closes the draft
+```
+
+`editor.watch` and `editor.watchStatus` have the same `Watch` shape accepted by the UI connectors. `editor.status` exposes reactive `dirty`, `conflicts`, and `version` values without adding fields to the payload. `reset()` discards local edits but keeps the session open. Changes from a read-only source can be drafted, while `apply()` returns a `readonly` result.
+
+Draft editing supports acyclic plain data and dense arrays. Arrays are merged as one atomic field. Functions, Date, Map, core-reserved payload keys, and direct mutation of an object obtained through draft `.value` are rejected. The UMD build is a companion script: load `state-ref.umd.js` before `state-ref.draft.umd.js`, then use the `stateRefDraft` global.
+
+### Optional server query package
+
+`@stateref/sync` is a separate ESM package for shared query caching, editable resource refs and mutations. It is installed and imported only by apps that need it. Direct resource edits are local; saving is explicit - capture the edits and run a mutation linked to the query. See [the sync package guide](../sync/README.md) for its API and supported scope.
+
 ### Understanding References: Inner vs Outer
 
 When you register a subscription function via `watch`, it is executed once initially to collect dependencies. The second argument `isFirst` indicates whether this is the first run.
 
+<!-- doc-example: skip - an excerpt: `watch` and the store it points at come from the prose above -->
 ```typescript
 const subscribeCallback = (innerRef, isFirst) => {
   const matrixCount = innerRef.rowCount.value * innerRef.columnCount.value;
@@ -60,6 +109,7 @@ const anotherRef = watch();
 - Both are **bound to the subscription** - accessing `.value` from either registers tracking
 - `anotherRef` is **unbound** - accessing `.value` doesn't register any tracking
 
+<!-- doc-example: skip - an excerpt: continues the store described above -->
 ```typescript
 // This WON'T trigger subscribeCallback when etcCount changes
 const anotherRef = watch();
@@ -86,6 +136,7 @@ Besides the `innerRef` reference object used inside the subscription function, a
 
 To illustrate, I’ll use my project, the component-based UI library [lithent](https://github.com/superlucky84/lithent), as an example.
 
+<!-- doc-example: skip - a lithent example; `mount` and its JSX are not part of this package -->
 ```typescript
 const Component = mount((renew) => {
     let count = 1;
@@ -108,18 +159,19 @@ The `renew` function requests an update for the component. In the example below,
 
 If you want to share store values using `state-ref` instead of the component’s internal `count` state, you can do so as follows.
 
+<!-- doc-example: skip - a lithent example; `mount` and its JSX are not part of this package -->
 ```typescript
 
 const watch = createStore(1);
 
 const Component = mount((renew) => {
-    count countRef = watch(renew);
+    const countRef = watch(renew);
   
     const change = () => {
       countRef.value += 1;
     };
   
-    return () => <button onClick={change}>{count.value}</button>;
+    return () => <button onClick={change}>{countRef.value}</button>;
 });
 ```
 
@@ -137,6 +189,7 @@ Building on this feature, you can also connect state easily in `React` and `Prea
 
 If you want to cancel the subscription, use `abortController` as shown in the example below.
 
+<!-- doc-example: skip - an excerpt: continues the store from the section above -->
 ```typescript
 const abortController = new AbortController();
 
@@ -156,6 +209,7 @@ The signal has to be returned from the callback's **first** run — that is when
 the store registers it. Returning `false` from any later run also removes the
 subscription:
 
+<!-- doc-example: skip - an excerpt: continues the subscription from the section above -->
 ```typescript
 watch((stateRef) => {
     if (stateRef.john.age.value > 40) {
@@ -173,6 +227,7 @@ just the one that happened to fire.
 
 **Primitive types** like numbers or strings can also be handled easily. Here's how:
 
+<!-- doc-example: skip - an excerpt: creates a store without showing the import -->
 ```typescript
 const watch = createStore<number>(3);
 
@@ -194,6 +249,7 @@ watch((stateRef) => {
 * Create the store and pass the `watch` to `connectReact` to create a state that can be used in components.
 
 > profileStore.ts
+<!-- doc-example: file profileStore.ts -->
 ```typescript
 import { connectReact } from "@stateref/connect-react";
 // import { connectPreact } from "@stateref/connect-preact"; // for Preact
@@ -234,7 +290,7 @@ function UserComponent() {
   return (
     <button onClick={increaseAge}>
         john's age: {ageRef.value}
-    </button>;
+    </button>
   );
 }
 ```
@@ -252,6 +308,7 @@ You can create your own custom connection pattern by referring to the [connectRe
 * [Solid](https://www.npmjs.com/package/@stateref/connect-solid)
 * Lithent
 
+<!-- doc-example: skip - a lithent example; `lithent` is not a dependency of this repository -->
     ```tsx
     import { mount, h } from 'lithent';
     import { watch } from 'profileStore';
@@ -274,6 +331,8 @@ You can create your own custom connection pattern by referring to the [connectRe
 
 Unlike `createComputed`, which produces a **single derived value**, `combineWatch` focuses on **grouping multiple watches** so you can react to changes from any of them in a **single subscription**.
 When combined multiple times, the structure naturally **nests**, allowing you to build **hierarchical watch compositions**.
+
+Calling the combined watch without a callback returns live source refs without subscribing, including nested combinations.
 
 #### Basic Usage
 
@@ -300,6 +359,7 @@ countRef.value = 200;
 
 You can **nest `combineWatch`** to observe more complex structures:
 
+<!-- doc-example: skip - continues the example above and redeclares its stores -->
 ```typescript
 const countWatch = createStore<number>(100);
 const textWatch = createStore<string>("hello");
@@ -323,9 +383,12 @@ combinedAllWatch(([countTextRef, toggleRef], isFirst) => {
 
 A Watch created with `createComputed` can be used just like any other watch, including in integrations such as `connectReact` or `connectPreact`.
 
+Calling the computed watch without a callback creates no source subscriptions. Its calculation runs initially. Later `.value` reads compare the ref values read by that calculation using `Object.is`: unchanged dependencies reuse the cached result object, while changed dependencies trigger one recalculation using current values even before a manual `sync()`. Conditional reads refresh the dependency set, and iterating ref arrays also tracks the collection. Keep the calculation free of side effects and read dependencies through the supplied refs; changes to unrelated closure variables are not tracked. `equals` (default `Object.is`) preserves the previous result when the next result is equivalent. Source writes alone do not run this unbound calculation; pass a subscriber callback when you need change notifications.
+
 Below is a simple usage example.
 
 ```typescript
+import { connectReact } from "@stateref/connect-react";
 import { createStore, createComputed } from "state-ref";
 import type { StateRefStore, Watch } from "state-ref";
 
@@ -336,7 +399,7 @@ const watch1 = createStore<Info>(
 );
 const watch2 = createStore<number>(20);
 
-const computedWatch = creatComputed<[Watch<Info>, Watch<number>], number>([watch1, watch2], ([ref1, ref2]) => {
+const computedWatch = createComputed<[Watch<Info>, Watch<number>], number>([watch1, watch2], ([ref1, ref2]) => {
     return ref1.age.value + ref2.value;
 });
 
@@ -371,7 +434,9 @@ In the default mode, values can be modified through the references created by `w
 
 To update values, you must use `updateRef`. To propagate the changes to subscribed code (and trigger subscription callbacks), you can manually execute the `sync` function at your desired time.
 
+<!-- doc-example: file profileStore.ts -->
 ```typescript
+import { connectReact } from "@stateref/connect-react";
 import { createStoreManualSync } from "state-ref";
 
 type Info = { age: number; house: { color: string; floor: number }[] };
@@ -380,6 +445,7 @@ type People = { john: Info; brown: Info; sara: Info };
 const { watch, updateRef, sync } = createStoreManualSync<People>({
     john: { age: 20, house: [ { color: "red", floor: 5 }] },
     brown: { age: 26, house: [{ color: "red", floor: 5 }] },
+    sara: { age: 26, house: [{ color: "red", floor: 5 }] },
 });
 
 export const useProfileStore = connectReact(watch);
@@ -426,7 +492,7 @@ function UserComponent() {
   return (
     <button onClick={increaseAge}>
         john's age: {ageRef.value}
-    </button>;
+    </button>
   );
 }
 ```
@@ -445,4 +511,3 @@ I would like to extend my gratitude to the following people and projects:
 * [connect-svelte](https://www.npmjs.com/package/@stateref/connect-svelte)
 * [connect-vue](https://www.npmjs.com/package/@stateref/connect-vue)
 * [lithent](https://www.npmjs.com/package/lithent)
-

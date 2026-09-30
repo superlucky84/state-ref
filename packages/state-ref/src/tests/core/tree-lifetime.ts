@@ -23,7 +23,7 @@
  * replacement that prunes cannot even reach its own subtree, because pruning
  * happens before the runner does.
  */
-import { createStore } from '@/index';
+import { createStore, combineWatch, createComputed } from '@/index';
 import { create } from '@/core';
 import { createPathRoot, childOf, forEachAffected } from '@/path';
 import type { PathNode } from '@/path';
@@ -46,6 +46,14 @@ const countNodes = (node: PathNode): number => {
   return total;
 };
 
+const countSubscriptions = (node: PathNode): number => {
+  let total = node.subs?.size ?? 0;
+  node.children?.forEach(child => {
+    total += countSubscriptions(child);
+  });
+  return total;
+};
+
 const store = <V>(value: V) => {
   const { pathRoot, watch } = create(value, { autoSync: true });
 
@@ -56,6 +64,97 @@ if (import.meta.vitest) {
   const { describe, it, expect, vi } = import.meta.vitest;
 
   describe('a node exists only for a path a subscription reached (DC-14)', () => {
+    it.each([true, false])(
+      'keeps nested callbackless helpers live without subscriptions (autoSync=%s)',
+      autoSync => {
+        const { watch, updateRef, sync, pathRoot } = create(
+          { n: 1 },
+          { autoSync }
+        );
+        const combined = combineWatch([watch]);
+        const computed = createComputed(
+          [combined],
+          ([refs]) => refs[0].n.value * 2
+        );
+        const nested = combineWatch([combined, computed]);
+        const unbound = nested();
+
+        for (let index = 0; index < 11; index += 1) {
+          expect(nested()[1].value).toBe(2);
+        }
+        expect(countSubscriptions(pathRoot)).toBe(0);
+
+        const seen: number[] = [];
+        const abort = new AbortController();
+        nested(refs => {
+          seen.push(refs[1].value);
+          return abort.signal;
+        });
+        updateRef.n.value = 2;
+        expect(unbound[0][0].n.value).toBe(2);
+        expect(unbound[1].value).toBe(4);
+        if (!autoSync) {
+          expect(seen).toEqual([2]);
+          expect(() => {
+            unbound[0][0].n.value = 3;
+          }).toThrow();
+          sync();
+        }
+        expect(seen).toEqual([2, 4]);
+        abort.abort();
+        expect(countSubscriptions(pathRoot)).toBe(0);
+      }
+    );
+
+    it('evaluates unbound computed reads without retaining a subscription', () => {
+      const { watch, updateRef, pathRoot } = create({ n: 1 });
+      const calculate = vi.fn(([ref]: [ReturnType<typeof watch>]) => ({
+        parity: ref.n.value % 2,
+      }));
+      const computed = createComputed([watch] as const, calculate, {
+        equals: (a, b) => a.parity === b.parity,
+      });
+      const ref = computed();
+      const first = ref.value;
+      expect(ref.value).toBe(first);
+      calculate.mockClear();
+      updateRef.n.value = 3;
+      expect(calculate.mock.calls.length).toBe(0);
+      expect(ref.value).toBe(first);
+      updateRef.n.value = 4;
+      expect(ref.value).toEqual({ parity: 0 });
+      expect(ref.value).not.toBe(first);
+      expect(countSubscriptions(pathRoot)).toBe(0);
+    });
+
+    it('keeps callbackless refs live without tracking their reads', () => {
+      const { watch, pathRoot } = create(
+        { n: 1, other: 1 },
+        { autoSync: true }
+      );
+      const unbound = watch();
+
+      for (let index = 0; index < 11; index += 1) {
+        expect(watch().n.value).toBe(1);
+      }
+
+      expect(countSubscriptions(pathRoot)).toBe(0);
+
+      const seen: number[] = [];
+      watch(ref => {
+        seen.push(ref.n.value);
+        void unbound.other.value;
+      });
+      expect(countSubscriptions(pathRoot)).toBe(1);
+
+      unbound.other.value = 2;
+      expect(seen).toEqual([1]);
+      unbound.n.value = 2;
+      expect(seen).toEqual([1, 2]);
+      expect(watch().n.value).toBe(2);
+      expect(countSubscriptions(pathRoot)).toBe(1);
+    });
+
     it('costs no node for a path that is only written', () => {
       const { watch, nodes } = store<{ byId: Record<string, number> }>({
         byId: {},

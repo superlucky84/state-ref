@@ -7,28 +7,31 @@ export const CustomConnectorKo = mount(() => {
       <h1>커스텀 커넥터</h1>
 
       <p>
-        StateRef를 어떤 UI 프레임워크와도 통합할 수 있는 커스텀 커넥터를 만드는 방법을 알아봅니다.
-        이 가이드는 공식 커넥터에서 사용되는 패턴을 설명합니다.
+        StateRef를 어떤 UI 프레임워크와도 통합할 수 있는 커스텀 커넥터를 만드는
+        방법을 알아봅니다. 이 가이드는 공식 커넥터에서 사용되는 패턴을
+        설명합니다.
       </p>
 
       <h2>핵심 개념</h2>
 
-      <p>
-        커넥터는 StateRef의 구독 시스템과 프레임워크의 반응성을 연결합니다:
-      </p>
+      <p>커넥터는 StateRef의 구독 시스템과 프레임워크의 반응성을 연결합니다:</p>
 
       <ul>
         <li>
-          <strong>구독</strong>: <code>watch(callback)</code>을 호출하여 업데이트를 받습니다
+          <strong>구독</strong>: <code>watch(callback)</code>을 호출하여
+          업데이트를 받습니다
         </li>
         <li>
-          <strong>리렌더 트리거</strong>: StateRef가 알릴 때 프레임워크의 상태를 업데이트합니다
+          <strong>리렌더 트리거</strong>: StateRef가 알릴 때 프레임워크의 상태를
+          업데이트합니다
         </li>
         <li>
-          <strong>정리</strong>: <code>AbortController</code>를 사용하여 언마운트 시 구독 해제합니다
+          <strong>정리</strong>: <code>AbortController</code>를 사용하여
+          언마운트 시 구독 해제합니다
         </li>
         <li>
-          <strong>양방향 동기화</strong>: 선택적으로 프레임워크 상태를 StateRef로 다시 동기화합니다
+          <strong>양방향 동기화</strong>: 선택적으로 프레임워크 상태를
+          StateRef로 다시 동기화합니다
         </li>
       </ul>
 
@@ -51,7 +54,8 @@ export const CustomConnectorKo = mount(() => {
           <code>store</code>: 값을 읽고 쓰기 위한 StateRefStore
         </li>
         <li>
-          <code>isFirst</code>: 초기 호출 시 <code>true</code>, 업데이트 시 <code>false</code>
+          <code>isFirst</code>: 초기 호출 시 <code>true</code>, 업데이트 시{' '}
+          <code>false</code>
         </li>
         <li>
           구독 해제를 위해 <code>AbortSignal</code>을 반환합니다
@@ -100,9 +104,7 @@ export function connectReact<T>(watch: Watch<T>) {
 }`}
       />
 
-      <p>
-        핵심 포인트:
-      </p>
+      <p>핵심 포인트:</p>
 
       <ul>
         <li>
@@ -122,8 +124,8 @@ export function connectReact<T>(watch: Watch<T>) {
       <h2>패턴 2: 셀렉터 콜백 (Vue 스타일)</h2>
 
       <p>
-        자체 반응성이 있는 프레임워크의 경우, 프레임워크 네이티브 반응형 객체를 반환하는
-        셀렉터 패턴을 사용합니다:
+        자체 반응성이 있는 프레임워크의 경우, 프레임워크 네이티브 반응형 객체를
+        반환하는 셀렉터 패턴을 사용합니다:
       </p>
 
       <CodeBlock
@@ -188,14 +190,10 @@ export function connectVue<T>(refWatch: Watch<T>) {
 }`}
       />
 
-      <p>
-        핵심 포인트:
-      </p>
+      <p>핵심 포인트:</p>
 
       <ul>
-        <li>
-          셀렉터 콜백으로 사용자가 추적할 특정 프로퍼티 선택 가능
-        </li>
+        <li>셀렉터 콜백으로 사용자가 추적할 특정 프로퍼티 선택 가능</li>
         <li>
           프레임워크 네이티브 반응형 객체 반환 (Vue의 <code>Reactive</code>)
         </li>
@@ -206,7 +204,8 @@ export function connectVue<T>(refWatch: Watch<T>) {
           <code>cloneDeep</code>으로 적절한 객체 복사 보장
         </li>
         <li>
-          양방향 동기화: Vue 변경은 StateRef 업데이트, StateRef 변경은 Vue 업데이트
+          양방향 동기화: Vue 변경은 StateRef 업데이트, StateRef 변경은 Vue
+          업데이트
         </li>
       </ul>
 
@@ -277,15 +276,11 @@ export function connectSolid<T>(refWatch: Watch<T>) {
 
       <h2>직접 커넥터 만들기</h2>
 
-      <p>
-        어떤 프레임워크든 커넥터를 만들려면 다음 단계를 따르세요:
-      </p>
+      <p>어떤 프레임워크든 커넥터를 만들려면 다음 단계를 따르세요:</p>
 
       <h3>1단계: 리렌더 메커니즘 파악</h3>
 
-      <p>
-        모든 UI 프레임워크에는 리렌더를 트리거하는 방법이 있습니다:
-      </p>
+      <p>모든 UI 프레임워크에는 리렌더를 트리거하는 방법이 있습니다:</p>
 
       <CodeBlock
         language="typescript"
@@ -375,9 +370,7 @@ frameworkWatch(newValue => {
 
       <h2>최소 예제</h2>
 
-      <p>
-        가상의 프레임워크를 위한 최소 커넥터입니다:
-      </p>
+      <p>가상의 프레임워크를 위한 최소 커넥터입니다:</p>
 
       <CodeBlock
         language="typescript"
@@ -412,19 +405,24 @@ export function connectMyFramework<T>(watch: Watch<T>) {
 
       <ul>
         <li>
-          <strong>isFirst 검사</strong>: 초기 구독에서 리렌더를 건너뛰어 이중 렌더 방지
+          <strong>isFirst 검사</strong>: 초기 구독에서 리렌더를 건너뛰어 이중
+          렌더 방지
         </li>
         <li>
-          <strong>동기화 루프 방지</strong>: 양방향 바인딩에 <code>changing</code> 플래그 사용
+          <strong>동기화 루프 방지</strong>: 양방향 바인딩에{' '}
+          <code>changing</code> 플래그 사용
         </li>
         <li>
-          <strong>객체 복제</strong>: 시스템 간 객체 전달 시 <code>cloneDeep</code> 사용
+          <strong>객체 복제</strong>: 시스템 간 객체 전달 시{' '}
+          <code>cloneDeep</code> 사용
         </li>
         <li>
-          <strong>AbortController</strong>: 항상 시그널을 반환하고 정리 시 abort 호출
+          <strong>AbortController</strong>: 항상 시그널을 반환하고 정리 시 abort
+          호출
         </li>
         <li>
-          <strong>queueMicrotask</strong>: 일괄 업데이트 처리를 위해 플래그를 비동기로 리셋
+          <strong>queueMicrotask</strong>: 일괄 업데이트 처리를 위해 플래그를
+          비동기로 리셋
         </li>
       </ul>
 

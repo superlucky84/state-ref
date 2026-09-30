@@ -7,15 +7,16 @@ export const ApiHelpersKo = mount(() => {
       <h1>Helper API</h1>
 
       <p>
-        이 페이지는 <code>state-ref</code>에서 내보내는 헬퍼 함수들을 문서화합니다.
-        이 유틸리티들은 불변 업데이트와 깊은 복사를 지원합니다.
+        이 페이지는 <code>state-ref</code>에서 내보내는 헬퍼 함수들을
+        문서화합니다. 이 유틸리티들은 불변 업데이트와 깊은 복사를 지원합니다.
       </p>
 
       <h2>lens</h2>
 
       <p>
-        중첩된 데이터 구조를 탐색하고 불변하게 업데이트하기 위한 렌즈를 생성합니다.
-        렌즈는 깊게 중첩된 프로퍼티에 접근하고 수정하는 함수형 접근 방식을 제공합니다.
+        중첩된 데이터 구조를 탐색하고 불변하게 업데이트하기 위한 렌즈를
+        생성합니다. 렌즈는 깊게 중첩된 프로퍼티에 접근하고 수정하는 함수형 접근
+        방식을 제공합니다.
       </p>
 
       <h3>시그니처</h3>
@@ -31,7 +32,8 @@ export const ApiHelpersKo = mount(() => {
 
       <ul>
         <li>
-          <code>sceneList</code> (선택) - 렌즈의 초기 경로 배열. 기본값은 빈 배열.
+          <code>sceneList</code> (선택) - 렌즈의 초기 경로 배열. 기본값은 빈
+          배열.
         </li>
       </ul>
 
@@ -69,17 +71,25 @@ export const ApiHelpersKo = mount(() => {
         </thead>
         <tbody>
           <tr>
-            <td><code>chain(prop)</code></td>
+            <td>
+              <code>chain(prop)</code>
+            </td>
             <td>중첩된 프로퍼티로 탐색</td>
-            <td>해당 프로퍼티에 포커스된 새 <code>Lens</code></td>
+            <td>
+              해당 프로퍼티에 포커스된 새 <code>Lens</code>
+            </td>
           </tr>
           <tr>
-            <td><code>get(obj)</code></td>
+            <td>
+              <code>get(obj)</code>
+            </td>
             <td>포커스된 값 추출</td>
             <td>포커스된 경로의 값</td>
           </tr>
           <tr>
-            <td><code>set(value)</code></td>
+            <td>
+              <code>set(value)</code>
+            </td>
             <td>업데이트 함수 생성</td>
             <td>업데이트가 적용된 새 객체를 반환하는 함수</td>
           </tr>
@@ -145,8 +155,8 @@ console.log(firstItemNameLens.get(listState));  // 'Item 1'`}
       <h2>copyable</h2>
 
       <p>
-        객체를 감싸서 불변 업데이트를 위한 편리한 <code>writeCopy</code> 메서드를 제공합니다.
-        렌즈 탐색과 플루언트 API를 결합합니다.
+        객체를 감싸서 불변 업데이트를 위한 편리한 <code>writeCopy</code>{' '}
+        메서드를 제공합니다. 렌즈 탐색과 플루언트 API를 결합합니다.
       </p>
 
       <h3>시그니처</h3>
@@ -184,7 +194,9 @@ type Copyable<T, Root = T> = {
 
       <ul>
         <li>프로퍼티 탐색 (일반 객체 접근처럼)</li>
-        <li>불변 업데이트를 생성하는 <code>writeCopy(value)</code> 메서드</li>
+        <li>
+          불변 업데이트를 생성하는 <code>writeCopy(value)</code> 메서드
+        </li>
       </ul>
 
       <h3>예제</h3>
@@ -246,9 +258,7 @@ console.log(ref.todos.value[0].done);  // true`}
 
       <h2>cloneDeep</h2>
 
-      <p>
-        값의 깊은 복사본을 생성합니다. 객체와 배열을 재귀적으로 복제합니다.
-      </p>
+      <p>값의 깊은 복사본을 생성합니다. 객체와 배열을 재귀적으로 복제합니다.</p>
 
       <h3>시그니처</h3>
 
@@ -283,7 +293,9 @@ console.log(ref.todos.value[0].done);  // true`}
         </thead>
         <tbody>
           <tr>
-            <td><code>null</code> / <code>undefined</code></td>
+            <td>
+              <code>null</code> / <code>undefined</code>
+            </td>
             <td>그대로 반환</td>
           </tr>
           <tr>
@@ -373,17 +385,23 @@ ref.items.value = newItems;`}
         </thead>
         <tbody>
           <tr>
-            <td><code>lens</code></td>
+            <td>
+              <code>lens</code>
+            </td>
             <td>중첩 구조 탐색 및 업데이트</td>
             <td>아니오</td>
           </tr>
           <tr>
-            <td><code>copyable</code></td>
+            <td>
+              <code>copyable</code>
+            </td>
             <td>불변 업데이트를 위한 플루언트 API</td>
             <td>아니오</td>
           </tr>
           <tr>
-            <td><code>cloneDeep</code></td>
+            <td>
+              <code>cloneDeep</code>
+            </td>
             <td>값 깊은 복사</td>
             <td>아니오 (복사본 생성)</td>
           </tr>
@@ -397,13 +415,16 @@ ref.items.value = newItems;`}
           <a href="#/ko/guide/lens">Lens 패턴 가이드</a> - 상세 lens 사용 가이드
         </li>
         <li>
-          <a href="#/ko/guide/copyable">copyable 가이드</a> - copyable 사용 가이드
+          <a href="#/ko/guide/copyable">copyable 가이드</a> - copyable 사용
+          가이드
         </li>
         <li>
-          <a href="#/ko/guide/clone-deep">cloneDeep 가이드</a> - cloneDeep 사용 가이드
+          <a href="#/ko/guide/clone-deep">cloneDeep 가이드</a> - cloneDeep 사용
+          가이드
         </li>
         <li>
-          <a href="#/ko/api/core">코어 API</a> - createStore, createComputed, combineWatch
+          <a href="#/ko/api/core">코어 API</a> - createStore, createComputed,
+          combineWatch
         </li>
         <li>
           <a href="#/ko/api/types">TypeScript 타입</a> - 전체 타입 정의

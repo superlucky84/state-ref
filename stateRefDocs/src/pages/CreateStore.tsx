@@ -7,8 +7,10 @@ export const CreateStore = mount(() => {
       <h1>createStore</h1>
 
       <p>
-        The <code>createStore</code> function is the primary way to create a reactive state store in StateRef.
-        It accepts an initial value and returns a <code>watch</code> function that you use to access and subscribe to the state.
+        The <code>createStore</code> function is the primary way to create a
+        reactive state store in StateRef. It accepts an initial value and
+        returns a <code>watch</code> function that you use to access and
+        subscribe to the state.
       </p>
 
       <h2>Basic Usage</h2>
@@ -32,7 +34,8 @@ const watch = createStore({ count: 0, name: 'StateRef' });`}
 
       <ul>
         <li>
-          <code>initialValue</code> - The initial state value. Can be any type: object, array, primitive, etc.
+          <code>initialValue</code> - The initial state value. Can be any type:
+          object, array, primitive, etc.
         </li>
       </ul>
 
@@ -44,17 +47,20 @@ const watch = createStore({ count: 0, name: 'StateRef' });`}
 
       <ul>
         <li>
-          <strong>Without arguments</strong>: Returns a <code>StateRefStore</code> reference for reading/writing values
+          <strong>Without arguments</strong>: Returns a{' '}
+          <code>StateRefStore</code> reference for reading/writing values
         </li>
         <li>
-          <strong>With callback</strong>: Subscribes to changes and returns a tracked <code>StateRefStore</code> reference
+          <strong>With callback</strong>: Subscribes to changes and returns a
+          tracked <code>StateRefStore</code> reference
         </li>
       </ul>
 
       <h2>Creating Object Stores</h2>
 
       <p>
-        Object stores are the most common use case. They allow you to manage complex nested state:
+        Object stores are the most common use case. They allow you to manage
+        complex nested state:
       </p>
 
       <CodeBlock
@@ -87,7 +93,8 @@ store.todos[0].done.value = true;`}
       <h2>Creating Primitive Stores</h2>
 
       <p>
-        StateRef also works seamlessly with primitive types like numbers, strings, and booleans:
+        StateRef also works seamlessly with primitive types like numbers,
+        strings, and booleans:
       </p>
 
       <CodeBlock
@@ -140,7 +147,8 @@ const userWatch = createStore<User>({
       <h2>Using the Returned Watch Function</h2>
 
       <p>
-        The <code>watch</code> function returned by <code>createStore</code> is the core interface for your store:
+        The <code>watch</code> function returned by <code>createStore</code> is
+        the core interface for your store:
       </p>
 
       <CodeBlock
@@ -169,8 +177,9 @@ trackedStore.count.value = 20;`}
       <h2>Auto-sync Mode</h2>
 
       <p>
-        By default, <code>createStore</code> operates in <strong>auto-sync</strong> mode,
-        which means changes immediately trigger subscriptions:
+        By default, <code>createStore</code> operates in{' '}
+        <strong>auto-sync</strong> mode, which means changes immediately trigger
+        subscriptions:
       </p>
 
       <CodeBlock
@@ -187,14 +196,13 @@ store.count.value = 2; // ✓ Immediately triggers subscription`}
       />
 
       <p>
-        For manual control over when updates propagate, see <a href="#/guide/manual-sync">Manual Sync (Flux)</a>.
+        For manual control over when updates propagate, see{' '}
+        <a href="#/guide/manual-sync">Manual Sync (Flux)</a>.
       </p>
 
       <h2>Working with Arrays</h2>
 
-      <p>
-        Arrays are fully supported with copy-on-write semantics:
-      </p>
+      <p>Arrays are fully supported with copy-on-write semantics:</p>
 
       <CodeBlock
         language="typescript"
@@ -222,16 +230,20 @@ store.items.value = [...store.items.value]; // Trigger update`}
 
       <ul>
         <li>
-          <strong>Keep stores focused</strong> - Create separate stores for different domains of your application
+          <strong>Keep stores focused</strong> - Create separate stores for
+          different domains of your application
         </li>
         <li>
-          <strong>Use TypeScript</strong> - Type your stores for better IDE support and type safety
+          <strong>Use TypeScript</strong> - Type your stores for better IDE
+          support and type safety
         </li>
         <li>
-          <strong>Initialize with complete state</strong> - Provide all properties in the initial value to ensure proper type inference
+          <strong>Initialize with complete state</strong> - Provide all
+          properties in the initial value to ensure proper type inference
         </li>
         <li>
-          <strong>Don't create stores in render functions</strong> - Create stores at the module level or in hooks
+          <strong>Don't create stores in render functions</strong> - Create
+          stores at the module level or in hooks
         </li>
       </ul>
 
@@ -272,13 +284,16 @@ export const todosWatch = createStore<Todo[]>([]);`}
 
       <ul>
         <li>
-          <a href="#/guide/watch">Watch Function</a> - Understanding the watch function
+          <a href="#/guide/watch">Watch Function</a> - Understanding the watch
+          function
         </li>
         <li>
-          <a href="#/guide/state-ref-store">StateRefStore</a> - Working with store references
+          <a href="#/guide/state-ref-store">StateRefStore</a> - Working with
+          store references
         </li>
         <li>
-          <a href="#/guide/manual-sync">Manual Sync</a> - createStoreManualSync for Flux-like patterns
+          <a href="#/guide/manual-sync">Manual Sync</a> - createStoreManualSync
+          for Flux-like patterns
         </li>
       </ul>
     </div>

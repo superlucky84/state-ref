@@ -68,17 +68,17 @@ export const IntroductionKo = mount(() => {
       <h3>StateRefStore</h3>
 
       <p>
-        <code>StateRefStore</code>는 <code>.value</code> 속성을 통해 값에
-        접근할 수 있는 프록시 참조입니다. 프록시는 구독 콜백 동안 접근되는
-        속성을 자동으로 추적하여 세밀한 반응성을 가능하게 합니다.
+        <code>StateRefStore</code>는 <code>.value</code> 속성을 통해 값에 접근할
+        수 있는 프록시 참조입니다. 프록시는 구독 콜백 동안 접근되는 속성을
+        자동으로 추적하여 세밀한 반응성을 가능하게 합니다.
       </p>
 
       <h3>Copy-on-Write</h3>
 
       <p>
-        모든 변경은 수정된 경로에 새로운 객체 참조를 생성하고 변경되지 않은
-        하위 트리는 공유합니다. 이를 통해 참조 동등성을 통한 효율적인 불변성
-        검사가 가능합니다.
+        모든 변경은 수정된 경로에 새로운 객체 참조를 생성하고 변경되지 않은 하위
+        트리는 공유합니다. 이를 통해 참조 동등성을 통한 효율적인 불변성 검사가
+        가능합니다.
       </p>
 
       <h2>설치</h2>
@@ -119,7 +119,8 @@ store.count.value = 1;
       <h2>React와 함께 사용하기</h2>
 
       <p>
-        StateRef는 <code>connectReact</code> 헬퍼를 사용하여 React와 쉽게 통합할 수 있습니다:
+        StateRef는 <code>connectReact</code> 헬퍼를 사용하여 React와 쉽게 통합할
+        수 있습니다:
       </p>
 
       <CodeBlock
@@ -149,15 +150,17 @@ function Counter() {
       />
 
       <p>
-        <code>count.value</code>가 변경되면 컴포넌트가 자동으로 다시 렌더링됩니다.
-        자세한 내용은 <a href="#/ko/guide/react">React 연동</a> 가이드를 참고하세요.
+        <code>count.value</code>가 변경되면 컴포넌트가 자동으로 다시
+        렌더링됩니다. 자세한 내용은 <a href="#/ko/guide/react">React 연동</a>{' '}
+        가이드를 참고하세요.
       </p>
 
       <h2>다음 단계</h2>
 
       <p>
-        더 자세히 알아볼 준비가 되셨나요? <a href="#/ko/guide/quick-start">빠른 시작</a>{' '}
-        가이드를 확인하여 프로젝트에서 StateRef를 사용하는 방법을 배워보세요.
+        더 자세히 알아볼 준비가 되셨나요?{' '}
+        <a href="#/ko/guide/quick-start">빠른 시작</a> 가이드를 확인하여
+        프로젝트에서 StateRef를 사용하는 방법을 배워보세요.
       </p>
     </div>
   );

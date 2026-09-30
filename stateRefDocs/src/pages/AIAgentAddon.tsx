@@ -56,26 +56,94 @@ CODING GUIDELINES:
    - Create action functions that encapsulate updateRef + sync
 
 6. FRAMEWORK INTEGRATION
-   - React/Preact: \`const useStore = connectReact(watch)\`
-   - Vue: \`const useStore = connectVue(watch)\`
-   - Svelte: \`const store = connectSvelte(watch)\`
-   - Solid: \`const useStore = connectSolid(watch)\`
+   - React: \`const useStore = connectReact(watch)\`; \`useStore()\` returns the ref
+   - Preact: \`const useStore = connectPreact(watch)\`; same shape as React
+   - Vue: \`connectVue(watch)(s => s.user.age)\` returns a reactive \`{ value }\`
+   - Svelte: \`connectSvelte(watch)(s => s.user.age)\` returns a Writable (\`$age\`)
+   - Svelte 5 runes: \`connectSvelteRunes(watch)(select)\` from
+     \`@stateref/connect-svelte/runes\` returns \`{ value }\`
+   - Solid: \`connectSolid(watch)(s => s.user.age)\` returns \`[get, set]\`
    - Lithent: Use \`watch(renew)\` directly
+   - WRITE RULE: only a write that passes through the connector reaches the
+     store. Assign \`.value\` of a selection (Solid: call the setter) or replace
+     the whole object. Never mutate an object read from a selection: Vue makes
+     it readonly, Solid and Svelte runes hand out frozen copies. Svelte's
+     \`$user.name = x\` is fine (it compiles to \`set\`).
+   - React/Preact render a component twice on mount (the second render
+     collects dependencies); do not "fix" this
+   - For a \`@stateref/sync\` query's display use \`connectReactView\`,
+     \`connectPreactView\`, \`connectVueView\`, \`connectSvelteView\`,
+     \`connectSolidView\` with \`query.watchDisplay\` (readonly)
+
+7. COMBINING STORES
+   - Use \`combineWatch([watch1, watch2] as const)\` for multiple stores
+   - Use \`as const\` for proper TypeScript inference
+   - Nested combinations are supported
+
+8. COMPUTED VALUES
+   - Use \`createComputed([watches], callback)\` for derived values
+   - Computed values are read-only
+   - Can be used with framework connectors like regular watches
+
+9. IMMUTABILITY
+   - state-ref uses copy-on-write internally
+   - Avoid direct mutation; always assign via \`.value\`
+   - Use \`copyable()\` helper for manual copy-on-write when needed
+   - Use \`lens()\` for functional lens-style immutable updates
+
+10. PRACTICAL BALANCE
+    - Use state-ref for shared state across components
+    - Simple local state can use native framework state (useState, ref, etc.)
+    - Don't overcomplicate simple scenarios
+
+11. LOCAL EDITS AND BATCHING (state-ref 3.1)
+    - Edit-then-commit UI (form, dialog): \`createDraft(ref)\` from
+      \`state-ref/draft\`; edit \`draft.ref\`, then \`apply()\`, \`reset()\` or
+      \`discard()\`
+    - \`apply()\` does not throw on conflict: check \`result.ok\` / \`result.reason\`
+      and settle conflicts with \`draft.resolve(change, 'source' | 'draft')\`
+    - \`apply()\` only updates the local store; it never contacts a server
+    - Several synchronous writes, one notification pass: \`batch(() => {...})\`
+      from \`state-ref/batch\` (no rollback, cannot span \`await\`)
+
+12. SERVER DATA (only when \`@stateref/sync\` is installed)
+    - One \`createSyncClient()\` per app; one per request for SSR
+    - \`client.query({ queryKey, queryFn })\`, then \`await query.load()\`; \`ref\`
+      throws before the first load
+    - Edits to \`query.ref\` are local and never save by themselves
+    - Save: \`const submission = query.capture()\` immediately before
+      \`mutation.run(dto, { links: [{ query, submission, accept: { kind: 'refetch' } }] })\`
+    - \`accept\` in \`run()\` is an object (\`{ kind: 'none' | 'submitted' |
+      'refetch' }\` or \`{ kind: 'response', select }\`), never a string
+    - Only \`MutationRejectedError\` yields \`rejected\`; other errors yield
+      \`unknown\`, which keeps edits and must not be blindly resent
+    - \`retry\` requires an \`idempotencyKey\` the server honours
+    - "Saving" is \`status.pending.value > 0\`, not \`phase === 'pending'\`
+    - Details: node_modules/state-ref/dist/skills/state-ref/reference/server-sync.md
 
 IMPORT PATHS:
 - Core: \`import { createStore, createStoreManualSync, combineWatch, createComputed } from 'state-ref'\`
 - Helpers: \`import { lens, copyable, cloneDeep } from 'state-ref'\`
-- React: \`import { connectReact } from '@stateref/connect-react'\`
-- Preact: \`import { connectPreact } from '@stateref/connect-preact'\`
-- Vue: \`import { connectVue } from '@stateref/connect-vue'\`
-- Svelte: \`import { connectSvelte } from '@stateref/connect-svelte'\`
-- Solid: \`import { connectSolid } from '@stateref/connect-solid'\`
+- Drafts: \`import { createDraft } from 'state-ref/draft'\`
+- Batch: \`import { batch } from 'state-ref/batch'\`
+- React: \`import { connectReact, connectReactView } from '@stateref/connect-react'\`
+- Preact: \`import { connectPreact, connectPreactView } from '@stateref/connect-preact'\`
+- Vue: \`import { connectVue, connectVueView } from '@stateref/connect-vue'\`
+- Svelte: \`import { connectSvelte, connectSvelteView } from '@stateref/connect-svelte'\`
+- Svelte 5 runes: \`import { connectSvelteRunes } from '@stateref/connect-svelte/runes'\`
+- Solid: \`import { connectSolid, connectSolidView } from '@stateref/connect-solid'\`
+- Server sync: \`import { createSyncClient, MutationRejectedError } from '@stateref/sync'\`
 
 GUIDANCE APPROACH:
 When user requests could benefit from state-ref patterns:
 1. Provide solution using state-ref patterns
 2. Explain advantages of the reactive approach
 3. If user prefers other state management, respect their choice
+
+When existing code could be improved with state-ref:
+1. Suggest state-ref refactoring when it adds clarity or performance
+2. Explain the benefits of fine-grained reactivity
+3. Don't force refactoring for trivial improvements
 
 REFERENCE MATERIALS (NOT PART OF BEHAVIORAL RULES):
 
@@ -92,7 +160,8 @@ export const AIAgentAddon = () => (
     </h1>
 
     <p class="text-lg text-gray-600 dark:text-gray-400 mb-8">
-      A reusable behavior module that conditionally guides state-ref patterns in AI coding agents
+      A reusable behavior module that conditionally guides state-ref patterns in
+      AI coding agents
     </p>
 
     <div class="bg-purple-50 dark:bg-purple-900/20 p-6 rounded-lg border border-purple-200 dark:border-purple-800 mb-8">
@@ -100,7 +169,8 @@ export const AIAgentAddon = () => (
         Experimental by Design
       </h3>
       <p class="text-sm text-purple-800 dark:text-purple-300">
-        This specification explores how state-ref can be applied as a first-class behavioral constraint for AI coding agents.
+        This specification explores how state-ref can be applied as a
+        first-class behavioral constraint for AI coding agents.
       </p>
     </div>
 
@@ -111,12 +181,18 @@ export const AIAgentAddon = () => (
     </h2>
 
     <p class="text-sm md:text-base text-gray-700 dark:text-gray-300 leading-relaxed mb-6">
-      The state-ref Agent Role Add-on is a copy-paste ready behavior extension for AI coding agents (OpenCode, custom agents, IDE extensions, etc.). Unlike skills packages that are project-specific, this add-on is attached directly to your agent's system prompt, making it work across all your projects.
+      The state-ref Agent Role Add-on is a copy-paste ready behavior extension
+      for AI coding agents (OpenCode, custom agents, IDE extensions, etc.).
+      Unlike skills packages that are project-specific, this add-on is attached
+      directly to your agent's system prompt, making it work across all your
+      projects.
     </p>
 
     <div class="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg border border-blue-200 dark:border-blue-800 mb-6">
       <p class="text-sm md:text-base text-blue-900 dark:text-blue-200 leading-relaxed">
-        <span class="font-medium">Key Difference:</span> Skills files are per-project configurations. Agent add-ons are global agent behaviors that activate conditionally based on project context.
+        <span class="font-medium">Key Difference:</span> Skills files are
+        per-project configurations. Agent add-ons are global agent behaviors
+        that activate conditionally based on project context.
       </p>
     </div>
 
@@ -125,11 +201,27 @@ export const AIAgentAddon = () => (
     </h3>
 
     <ul class="list-disc list-inside space-y-2 text-sm md:text-base text-gray-700 dark:text-gray-300 mb-6">
-      <li><strong>Conditional Activation:</strong> Only suggests state-ref patterns when state-ref is detected in the project</li>
-      <li><strong>Auto-Detection:</strong> Checks <code class="text-sm">package.json</code>, <code class="text-sm">node_modules</code>, and existing imports</li>
-      <li><strong>Respects Non-state-ref Projects:</strong> Uses standard coding practices when state-ref isn't installed</li>
-      <li><strong>Single Configuration:</strong> Works across multiple projects with different technology stacks</li>
-      <li><strong>Copy-Paste Ready:</strong> No complex setup, just paste into your agent's system prompt</li>
+      <li>
+        <strong>Conditional Activation:</strong> Only suggests state-ref
+        patterns when state-ref is detected in the project
+      </li>
+      <li>
+        <strong>Auto-Detection:</strong> Checks{' '}
+        <code class="text-sm">package.json</code>,{' '}
+        <code class="text-sm">node_modules</code>, and existing imports
+      </li>
+      <li>
+        <strong>Respects Non-state-ref Projects:</strong> Uses standard coding
+        practices when state-ref isn't installed
+      </li>
+      <li>
+        <strong>Single Configuration:</strong> Works across multiple projects
+        with different technology stacks
+      </li>
+      <li>
+        <strong>Copy-Paste Ready:</strong> No complex setup, just paste into
+        your agent's system prompt
+      </li>
     </ul>
 
     <hr class="border-t border-gray-200 dark:border-gray-700 my-10" />
@@ -143,10 +235,14 @@ export const AIAgentAddon = () => (
     </h3>
 
     <ul class="list-disc list-inside space-y-2 text-sm md:text-base text-gray-700 dark:text-gray-300 mb-6">
-      <li>You work across multiple projects, some using state-ref and others not</li>
+      <li>
+        You work across multiple projects, some using state-ref and others not
+      </li>
       <li>You want automatic pattern guidance when state-ref is detected</li>
       <li>Your team adopts state-ref selectively per project</li>
-      <li>You need a single agent configuration that adapts to project context</li>
+      <li>
+        You need a single agent configuration that adapts to project context
+      </li>
     </ul>
 
     <h3 class="text-xl md:text-2xl font-medium text-gray-900 dark:text-white mb-4 mt-6">
@@ -166,7 +262,8 @@ export const AIAgentAddon = () => (
     </h2>
 
     <p class="text-sm md:text-base text-gray-700 dark:text-gray-300 leading-relaxed mb-6">
-      Copy the behavioral constraints block below and paste it into your AI agent's system prompt or configuration.
+      Copy the behavioral constraints block below and paste it into your AI
+      agent's system prompt or configuration.
     </p>
 
     <h3 class="text-xl md:text-2xl font-medium text-gray-900 dark:text-white mb-4 mt-6">
@@ -177,10 +274,7 @@ export const AIAgentAddon = () => (
       Copy the entire add-on configuration below:
     </p>
 
-    <CodeBlock
-      language="bash"
-      code={ADDON_CODE}
-    />
+    <CodeBlock language="bash" code={ADDON_CODE} />
 
     <hr class="border-t border-gray-200 dark:border-gray-700 my-10" />
 
@@ -235,7 +329,8 @@ export const AIAgentAddon = () => (
     </h2>
 
     <p class="text-sm md:text-base text-gray-700 dark:text-gray-300 leading-relaxed mb-6">
-      The add-on uses conditional logic to adapt its behavior based on the project context:
+      The add-on uses conditional logic to adapt its behavior based on the
+      project context:
     </p>
 
     <div class="space-y-6 mb-6">
@@ -244,7 +339,9 @@ export const AIAgentAddon = () => (
           When state-ref is installed
         </h4>
         <p class="text-sm text-green-800 dark:text-green-300">
-          The agent suggests state-ref patterns, explains benefits of reactive approaches, and respects user preferences while prioritizing fine-grained reactivity for clarity.
+          The agent suggests state-ref patterns, explains benefits of reactive
+          approaches, and respects user preferences while prioritizing
+          fine-grained reactivity for clarity.
         </p>
       </div>
 
@@ -253,7 +350,8 @@ export const AIAgentAddon = () => (
           When state-ref is NOT installed
         </h4>
         <p class="text-sm text-gray-700 dark:text-gray-400">
-          The agent uses standard coding practices appropriate for the project, never mentions state-ref, and respects existing conventions.
+          The agent uses standard coding practices appropriate for the project,
+          never mentions state-ref, and respects existing conventions.
         </p>
       </div>
     </div>
@@ -267,8 +365,14 @@ export const AIAgentAddon = () => (
     </p>
 
     <ul class="list-disc list-inside space-y-2 text-sm md:text-base text-gray-700 dark:text-gray-300 mb-6">
-      <li><code class="text-sm">package.json</code> dependency declarations (most reliable)</li>
-      <li><code class="text-sm">node_modules</code> directory presence (installation confirmation)</li>
+      <li>
+        <code class="text-sm">package.json</code> dependency declarations (most
+        reliable)
+      </li>
+      <li>
+        <code class="text-sm">node_modules</code> directory presence
+        (installation confirmation)
+      </li>
       <li>Existing import statements (usage confirmation)</li>
     </ul>
 
@@ -279,7 +383,11 @@ export const AIAgentAddon = () => (
     </h2>
 
     <p class="text-sm md:text-base text-gray-700 dark:text-gray-300 leading-relaxed mb-6">
-      The complete add-on documentation is available at <code class="text-sm">node_modules/state-ref/dist/ai-addons/state-ref-agent-addon.md</code> after installation.
+      The complete add-on documentation is available at{' '}
+      <code class="text-sm">
+        node_modules/state-ref/dist/ai-addons/state-ref-agent-addon.md
+      </code>{' '}
+      after installation.
     </p>
 
     <p class="text-sm md:text-base text-gray-700 dark:text-gray-300 leading-relaxed mb-6">
@@ -291,12 +399,22 @@ export const AIAgentAddon = () => (
         class="text-blue-600 dark:text-blue-400 hover:underline"
       >
         GitHub repository
-      </a>.
+      </a>
+      .
     </p>
 
     <div class="bg-yellow-50 dark:bg-yellow-900/20 p-6 rounded-lg border border-yellow-200 dark:border-yellow-800 mt-6">
       <p class="text-sm md:text-base text-yellow-900 dark:text-yellow-200 leading-relaxed">
-        <span class="font-medium">Important:</span> This add-on is designed for agents with system prompt support. For project-specific AI assistance (like Claude Code's skills), use the <a href="#/ai-agent-skills" class="text-yellow-700 dark:text-yellow-300 hover:underline">AI Agent Skills</a> file instead.
+        <span class="font-medium">Important:</span> This add-on is designed for
+        agents with system prompt support. For project-specific AI assistance
+        (like Claude Code's skills), use the{' '}
+        <a
+          href="#/ai-agent-skills"
+          class="text-yellow-700 dark:text-yellow-300 hover:underline"
+        >
+          AI Agent Skills
+        </a>{' '}
+        file instead.
       </p>
     </div>
   </div>

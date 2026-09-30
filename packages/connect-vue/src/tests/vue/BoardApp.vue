@@ -14,7 +14,8 @@ vueWatch(itemsRef, () => (renders.list += 1));
 /** Writes made from inside the component, the way the rest of the suite does. */
 const changeTag = () => (boardRef.meta.tag.value = 'b');
 const growItems = () => (boardRef.items[3].value = 4);
-const replaceItems = () => (boardRef.items.value = [...boardRef.items.value, 9]);
+const replaceItems = () =>
+  (boardRef.items.value = [...boardRef.items.value, 9]);
 const changeTitle = () => (boardRef.title.value = 'elsewhere');
 </script>
 

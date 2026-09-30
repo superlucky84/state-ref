@@ -15,7 +15,8 @@ export const PrimitivesKo = mount(() => {
       <h2>원시 타입 스토어 생성</h2>
 
       <p>
-        <code>createStore()</code>에 원시 값을 전달하여 원시 타입 스토어를 생성합니다:
+        <code>createStore()</code>에 원시 값을 전달하여 원시 타입 스토어를
+        생성합니다:
       </p>
 
       <CodeBlock
@@ -38,7 +39,8 @@ const nullableWatch = createStore<string | null>(null);`}
       <h2>값 읽기와 쓰기</h2>
 
       <p>
-        원시 타입 스토어의 경우, 스토어 참조에서 <code>.value</code>를 통해 직접 값에 접근합니다:
+        원시 타입 스토어의 경우, 스토어 참조에서 <code>.value</code>를 통해 직접
+        값에 접근합니다:
       </p>
 
       <CodeBlock
@@ -60,9 +62,7 @@ console.log(count.value);  // 201`}
 
       <h2>변경 사항 구독</h2>
 
-      <p>
-        객체 스토어와 마찬가지로 원시 타입 스토어의 변경 사항을 구독합니다:
-      </p>
+      <p>객체 스토어와 마찬가지로 원시 타입 스토어의 변경 사항을 구독합니다:</p>
 
       <CodeBlock
         language="typescript"
@@ -83,8 +83,8 @@ count.value = 20;  // 로그: Count: 20, 첫 실행? false`}
       <h2>TypeScript 타입 추론</h2>
 
       <p>
-        TypeScript는 초기값에서 자동으로 타입을 추론하거나,
-        명시적으로 타입을 지정할 수 있습니다:
+        TypeScript는 초기값에서 자동으로 타입을 추론하거나, 명시적으로 타입을
+        지정할 수 있습니다:
       </p>
 
       <CodeBlock
@@ -107,9 +107,7 @@ const userIdWatch = createStore<number | null>(null);`}
 
       <h2>객체 스토어와의 비교</h2>
 
-      <p>
-        원시 타입과 객체 스토어의 주요 차이점은 접근 패턴입니다:
-      </p>
+      <p>원시 타입과 객체 스토어의 주요 차이점은 접근 패턴입니다:</p>
 
       <CodeBlock
         language="typescript"
@@ -211,7 +209,8 @@ const fetchData = async () => {
       <h2>AbortController 사용하기</h2>
 
       <p>
-        <code>AbortController</code>를 사용하여 원시 타입 스토어의 구독을 취소합니다:
+        <code>AbortController</code>를 사용하여 원시 타입 스토어의 구독을
+        취소합니다:
       </p>
 
       <CodeBlock
@@ -235,7 +234,8 @@ count.value = 2;  // 로그 없음 (구독 취소됨)`}
       <h2>createComputed와 결합하기</h2>
 
       <p>
-        원시 타입 스토어는 파생 값을 위해 <code>createComputed</code>와 잘 작동합니다:
+        원시 타입 스토어는 파생 값을 위해 <code>createComputed</code>와 잘
+        작동합니다:
       </p>
 
       <CodeBlock
@@ -264,7 +264,8 @@ width.value = 15;  // 로그: 면적: 300`}
       <h2>프레임워크 연동</h2>
 
       <p>
-        원시 타입 스토어는 객체 스토어와 동일한 방식으로 UI 프레임워크와 연동됩니다:
+        원시 타입 스토어는 객체 스토어와 동일한 방식으로 UI 프레임워크와
+        연동됩니다:
       </p>
 
       <CodeBlock
@@ -292,7 +293,8 @@ function Counter() {
 
       <ul>
         <li>
-          <strong>간단한 상태에 원시 타입 스토어 사용</strong> - 카운터, 토글, 단일 값
+          <strong>간단한 상태에 원시 타입 스토어 사용</strong> - 카운터, 토글,
+          단일 값
         </li>
         <li>
           <strong>복잡한 상태에 객체 스토어 사용</strong> - 여러 관련 값
@@ -301,7 +303,8 @@ function Counter() {
           <strong>스토어에 타입 지정</strong> - 특히 유니온 타입과 널러블 값에
         </li>
         <li>
-          <strong>스토어 결합 고려</strong> - 원시 타입 스토어들이 함께 작동해야 할 때 <code>createComputed</code>나 <code>combineWatch</code> 사용
+          <strong>스토어 결합 고려</strong> - 원시 타입 스토어들이 함께 작동해야
+          할 때 <code>createComputed</code>나 <code>combineWatch</code> 사용
         </li>
       </ul>
 
@@ -312,7 +315,8 @@ function Counter() {
           <a href="#/ko/guide/create-store">createStore</a> - 스토어 생성
         </li>
         <li>
-          <a href="#/ko/guide/state-ref-store">StateRefStore</a> - 스토어 참조 다루기
+          <a href="#/ko/guide/state-ref-store">StateRefStore</a> - 스토어 참조
+          다루기
         </li>
         <li>
           <a href="#/ko/guide/computed">createComputed</a> - 스토어에서 값 파생

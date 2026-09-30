@@ -17,7 +17,10 @@ const menuData: MenuSection[] = [
     text: { en: 'Getting Started', ko: '시작하기' },
     items: [
       { text: { en: 'Introduction', ko: '소개' }, link: '/guide/introduction' },
-      { text: { en: 'Quick Start', ko: '빠른 시작' }, link: '/guide/quick-start' },
+      {
+        text: { en: 'Quick Start', ko: '빠른 시작' },
+        link: '/guide/quick-start',
+      },
       {
         text: { en: 'GitHub', ko: 'GitHub' },
         link: 'https://github.com/superlucky84/state-ref',
@@ -36,20 +39,108 @@ const menuData: MenuSection[] = [
   {
     text: { en: 'Core Concepts', ko: '핵심 개념' },
     items: [
-      { text: { en: 'createStore', ko: 'createStore' }, link: '/guide/create-store' },
-      { text: { en: 'Watch Function', ko: 'Watch 함수' }, link: '/guide/watch' },
-      { text: { en: 'Understanding References', ko: '참조 이해하기' }, link: '/guide/references' },
-      { text: { en: 'StateRefStore', ko: 'StateRefStore' }, link: '/guide/state-ref-store' },
+      {
+        text: { en: 'createStore', ko: 'createStore' },
+        link: '/guide/create-store',
+      },
+      {
+        text: { en: 'Watch Function', ko: 'Watch 함수' },
+        link: '/guide/watch',
+      },
+      {
+        text: { en: 'Understanding References', ko: '참조 이해하기' },
+        link: '/guide/references',
+      },
+      {
+        text: { en: 'StateRefStore', ko: 'StateRefStore' },
+        link: '/guide/state-ref-store',
+      },
       { text: { en: 'Subscription', ko: '구독' }, link: '/guide/subscription' },
-      { text: { en: 'Primitive Types', ko: '원시 타입' }, link: '/guide/primitives' },
+      {
+        text: { en: 'Primitive Types', ko: '원시 타입' },
+        link: '/guide/primitives',
+      },
     ],
   },
   {
     text: { en: 'Advanced Usage', ko: '고급 사용법' },
     items: [
-      { text: { en: 'createComputed', ko: 'createComputed' }, link: '/guide/computed' },
-      { text: { en: 'combineWatch', ko: 'combineWatch' }, link: '/guide/combine-watch' },
-      { text: { en: 'Manual Sync (Flux)', ko: '수동 동기화 (Flux)' }, link: '/guide/manual-sync' },
+      {
+        text: { en: 'createComputed', ko: 'createComputed' },
+        link: '/guide/computed',
+      },
+      {
+        text: { en: 'combineWatch', ko: 'combineWatch' },
+        link: '/guide/combine-watch',
+      },
+      {
+        text: { en: 'Manual Sync (Flux)', ko: '수동 동기화 (Flux)' },
+        link: '/guide/manual-sync',
+      },
+      { text: { en: 'batch', ko: 'batch' }, link: '/guide/batch' },
+    ],
+  },
+  {
+    text: { en: 'Local Draft', ko: '로컬 draft' },
+    items: [
+      { text: { en: 'createDraft', ko: 'createDraft' }, link: '/guide/draft' },
+      {
+        text: { en: 'apply, reset, discard', ko: 'apply · reset · discard' },
+        link: '/guide/draft-apply',
+      },
+      {
+        text: { en: 'Conflicts', ko: '충돌과 해소' },
+        link: '/guide/draft-conflicts',
+      },
+      {
+        text: { en: 'Lifetime', ko: '수명과 정리' },
+        link: '/guide/draft-lifetime',
+      },
+    ],
+  },
+  {
+    text: { en: 'Server Sync', ko: '서버 동기화' },
+    items: [
+      {
+        text: { en: 'createSyncClient', ko: 'createSyncClient' },
+        link: '/guide/sync',
+      },
+      {
+        text: { en: 'query and resource', ko: 'query와 resource' },
+        link: '/guide/sync-query',
+      },
+      {
+        text: { en: 'mutation and link', ko: 'mutation과 link' },
+        link: '/guide/sync-mutation',
+      },
+      {
+        text: { en: 'Edit Lifecycle', ko: '편집의 생애' },
+        link: '/guide/sync-lifecycle',
+      },
+      {
+        text: { en: 'display and reactive keys', ko: '표시와 반응형 key' },
+        link: '/guide/sync-view',
+      },
+      {
+        text: { en: 'Infinite Queries', ko: '무한 조회' },
+        link: '/guide/sync-infinite',
+      },
+      {
+        text: { en: 'Automatic Refetch', ko: '자동 재조회' },
+        link: '/guide/sync-refetch',
+      },
+      {
+        text: { en: 'Persistence and SSR', ko: '영속화와 SSR' },
+        link: '/guide/sync-persistence',
+      },
+      {
+        text: { en: 'Observation', ko: '관측' },
+        link: '/guide/sync-observation',
+      },
+      {
+        text: { en: 'Form Save Recipe', ko: '폼 저장 레시피' },
+        link: '/guide/sync-form',
+      },
     ],
   },
   {
@@ -69,7 +160,10 @@ const menuData: MenuSection[] = [
       { text: { en: 'Svelte', ko: 'Svelte' }, link: '/guide/svelte' },
       { text: { en: 'Solid', ko: 'Solid' }, link: '/guide/solid' },
       { text: { en: 'Lithent', ko: 'Lithent' }, link: '/guide/lithent' },
-      { text: { en: 'Custom Connector', ko: '커스텀 커넥터' }, link: '/guide/custom-connector' },
+      {
+        text: { en: 'Custom Connector', ko: '커스텀 커넥터' },
+        link: '/guide/custom-connector',
+      },
     ],
   },
   {
@@ -77,7 +171,13 @@ const menuData: MenuSection[] = [
     items: [
       { text: { en: 'Core API', ko: '코어 API' }, link: '/api/core' },
       { text: { en: 'Helper API', ko: '헬퍼 API' }, link: '/api/helpers' },
-      { text: { en: 'TypeScript Types', ko: 'TypeScript 타입' }, link: '/api/types' },
+      {
+        text: { en: 'TypeScript Types', ko: 'TypeScript 타입' },
+        link: '/api/types',
+      },
+      { text: { en: 'Draft API', ko: 'Draft API' }, link: '/api/draft' },
+      { text: { en: 'Sync API', ko: 'Sync API' }, link: '/api/sync' },
+      { text: { en: 'Plugin API', ko: 'Plugin API' }, link: '/api/plugin' },
     ],
   },
 ];
@@ -139,7 +239,11 @@ export const Sidebar = mount(renew => {
             border-r border-gray-200 dark:border-gray-800
             overflow-y-auto
             transition-transform duration-300
-            ${store.sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+            ${
+              store.sidebarOpen
+                ? 'translate-x-0'
+                : '-translate-x-full lg:translate-x-0'
+            }
           `}
         >
           <nav class="pl-6 md:pl-12 pr-3 md:pr-4 py-6">
@@ -175,7 +279,11 @@ export const Sidebar = mount(renew => {
                   <ul
                     class={`
                       space-y-0 overflow-hidden transition-all duration-200 ease-in-out
-                      ${isExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}
+                      ${
+                        isExpanded
+                          ? 'max-h-[800px] opacity-100'
+                          : 'max-h-0 opacity-0 pointer-events-none'
+                      }
                     `}
                     aria-hidden={!isExpanded}
                   >

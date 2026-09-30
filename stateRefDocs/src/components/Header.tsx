@@ -1,5 +1,11 @@
 import { mount } from 'lithent';
-import { appStore, toggleTheme, toggleLanguage, isKoreanRoute, navigateTo } from '@/store';
+import {
+  appStore,
+  toggleTheme,
+  toggleLanguage,
+  isKoreanRoute,
+  navigateTo,
+} from '@/store';
 
 export const Header = mount(renew => {
   const store = appStore.watch(renew);
@@ -18,7 +24,11 @@ export const Header = mount(renew => {
               }}
               class="flex items-center gap-3 hover:opacity-80 transition-opacity"
             >
-              <img src="/state-ref/stateref.png" alt="StateRef Logo" class="w-8 h-8 rounded-lg" />
+              <img
+                src="/state-ref/stateref.png"
+                alt="StateRef Logo"
+                class="w-8 h-8 rounded-lg"
+              />
               <span class="text-xl font-bold text-gray-900 dark:text-white">
                 StateRef
               </span>
@@ -61,7 +71,11 @@ export const Header = mount(renew => {
                 onClick={toggleTheme}
                 class="hidden sm:inline-flex ml-6 relative items-center h-9 w-16 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 bg-gray-200 dark:bg-gray-700"
                 aria-label="Toggle dark mode"
-                title={store.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                title={
+                  store.theme === 'dark'
+                    ? 'Switch to light mode'
+                    : 'Switch to dark mode'
+                }
               >
                 <span
                   class={`inline-block h-7 w-7 transform rounded-full bg-white shadow-lg transition-transform duration-200 ease-in-out ${

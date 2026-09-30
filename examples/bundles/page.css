@@ -1,0 +1,80 @@
+/* One stylesheet for every page here, linked rather than imported so the
+   classic-script UMD pages can use it too and the ESM module graphs stay
+   free of anything that is not the point of the page. */
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+body {
+  margin: 0 auto;
+  max-width: 54rem;
+  padding: 1.5rem 1rem 4rem;
+  line-height: 1.55;
+}
+h1 {
+  font-size: 1.35rem;
+  margin-bottom: 0.25rem;
+}
+p.lead {
+  margin-top: 0;
+  opacity: 0.8;
+}
+nav a {
+  margin-right: 0.75rem;
+}
+section {
+  border: 1px solid rgba(127, 127, 127, 0.4);
+  border-radius: 6px;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem 1rem;
+}
+section > h2 {
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  margin: 0 0 0.6rem;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+#actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+button {
+  border: 1px solid rgba(127, 127, 127, 0.55);
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.3rem 0.65rem;
+}
+button:hover {
+  border-color: currentColor;
+}
+dl {
+  display: grid;
+  grid-template-columns: minmax(8rem, max-content) 1fr;
+  gap: 0.2rem 1rem;
+  margin: 0;
+}
+dt {
+  opacity: 0.7;
+}
+dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+ol#log {
+  font-size: 0.9rem;
+  margin: 0;
+  max-height: 16rem;
+  overflow-y: auto;
+  padding-left: 1.4rem;
+}
+code {
+  background: rgba(127, 127, 127, 0.16);
+  border-radius: 3px;
+  padding: 0.05rem 0.3rem;
+}

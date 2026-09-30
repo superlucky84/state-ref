@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>state-ref 번들 조합 — 전체 조합</title>
+    <link rel="stylesheet" href="/page.css" />
+  </head>
+  <body>
+    <h1>전체 조합</h1>
+    <p class="lead">core·draft·batch·sync를 한 페이지에서 함께 쓴다.</p>
+    <nav><a href="/">← 조합 목록</a></nav>
+    <p>resource ref에서 분기한 draft도 네트워크 없이 로컬로 적용되고, <code>batch</code>는 core 쓰기의 알림만 합친다. 그래프는 <code>dist/esm/combined/module-graph.json</code>이다.</p>
+    <section>
+      <h2>조작</h2>
+      <div id="actions"></div>
+    </section>
+    <section>
+      <h2>패널</h2>
+      <dl id="panel"></dl>
+    </section>
+    <section>
+      <h2>기록 (최근이 위)</h2>
+      <ol id="log"></ol>
+    </section>
+    <script type="module" src="/src/combined.ts"></script>
+  </body>
+</html>

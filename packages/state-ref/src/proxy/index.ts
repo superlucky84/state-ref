@@ -4,8 +4,9 @@ import { NAVI, TYPE, NODE_INSPECT, getType } from '@/helper';
 import { childOf, pathToString } from '@/path';
 import type { PathNode } from '@/path';
 import { collector } from '@/connectors/collector';
-import { runner } from '@/connectors/runner';
-import type { Run, WithRoot, StoreRenderList } from '@/types';
+import { runBatch } from '@/connectors/runner';
+import { REF_CONNECTION } from '@/internal/ref-connection-key';
+import type { Run, WithRoot, StoreRenderList, RefWrite } from '@/types';
 
 /**
  * Use proxies to secure values and match them to lens.
@@ -17,6 +18,7 @@ export function makeProxy<S extends WithRoot, T extends object>(
   editable: boolean,
   rootValue: S,
   parentNode: PathNode,
+  onWrite?: (write: RefWrite) => void,
   /**
    * This proxy's own segment, or `null` when it *is* `parentNode` - the root
    * proxy of a store.
@@ -55,6 +57,7 @@ export function makeProxy<S extends WithRoot, T extends object>(
       editable,
       rootValue,
       ownNode(),
+      onWrite,
       segment,
       lensValue.chain(segment)
     );
@@ -64,11 +67,14 @@ export function makeProxy<S extends WithRoot, T extends object>(
     return created;
   };
 
-  const inspect = () => ({
-    navi: pathToString(parentNode, segment),
-    type: getType(lensValue.get(rootValue)),
-    value: lensValue.get(rootValue),
-  });
+  const inspect = () => {
+    const value = lensValue.get(rootValue);
+    return {
+      navi: pathToString(parentNode, segment),
+      type: getType(value),
+      value,
+    };
+  };
 
   /**
    * The proxy target carries what a console reads, and nothing else.
@@ -105,6 +111,10 @@ export function makeProxy<S extends WithRoot, T extends object>(
        * 3. When accessing child object types from a proxy
        */
       get(_: T, prop: keyof T & (string | symbol)) {
+        if (prop === REF_CONNECTION) {
+          return [rootValue, lensValue, ownNode(), editable, storeRenderList];
+        }
+
         /**
          * When accessing ".value" from a proxy
          */
@@ -256,20 +266,30 @@ export function makeProxy<S extends WithRoot, T extends object>(
       set(_, prop: string | symbol, value) {
         if (prop !== 'value') {
           throw new Error('Can only be assigned to a "value".');
-        } else if (prop === 'value' && !editable) {
+        } else if (!editable) {
           throw new Error(
             'With the current settings, direct modification is not allowed.'
           );
-        } else if (prop === 'value' && value !== lensValue.get(rootValue)) {
+        } else {
+          const before = lensValue.get(rootValue);
+
+          if (value === before) return true;
+
           const newTree = lensValue.set(value)(rootValue);
+
+          onWrite?.({ parent: parentNode, segment, before, after: value });
+
           rootValue.root = newTree.root;
 
           /**
            * Run dependency subscription callbacks, limited to the subscriptions
            * this path can have invalidated.
            */
-          if (autoSync) {
-            runner(storeRenderList, parentNode, segment);
+          if (
+            autoSync &&
+            !runBatch.batch?.write(storeRenderList, parentNode, segment)
+          ) {
+            runBatch(storeRenderList, parentNode, segment);
           }
         }
         return true;

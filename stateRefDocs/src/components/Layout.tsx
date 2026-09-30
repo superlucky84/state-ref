@@ -24,6 +24,36 @@ import { Computed } from '@/pages/Computed';
 import { ComputedKo } from '@/pages/Computed_ko';
 import { CombineWatch } from '@/pages/CombineWatch';
 import { CombineWatchKo } from '@/pages/CombineWatch_ko';
+import { Batch } from '@/pages/Batch';
+import { BatchKo } from '@/pages/Batch_ko';
+import { Draft } from '@/pages/Draft';
+import { DraftKo } from '@/pages/Draft_ko';
+import { DraftApply } from '@/pages/DraftApply';
+import { DraftApplyKo } from '@/pages/DraftApply_ko';
+import { DraftConflicts } from '@/pages/DraftConflicts';
+import { DraftConflictsKo } from '@/pages/DraftConflicts_ko';
+import { DraftLifetime } from '@/pages/DraftLifetime';
+import { DraftLifetimeKo } from '@/pages/DraftLifetime_ko';
+import { Sync } from '@/pages/Sync';
+import { SyncKo } from '@/pages/Sync_ko';
+import { SyncQuery } from '@/pages/SyncQuery';
+import { SyncQueryKo } from '@/pages/SyncQuery_ko';
+import { SyncMutation } from '@/pages/SyncMutation';
+import { SyncMutationKo } from '@/pages/SyncMutation_ko';
+import { SyncLifecycle } from '@/pages/SyncLifecycle';
+import { SyncLifecycleKo } from '@/pages/SyncLifecycle_ko';
+import { SyncView } from '@/pages/SyncView';
+import { SyncForm } from '@/pages/SyncForm';
+import { SyncFormKo } from '@/pages/SyncForm_ko';
+import { SyncInfinite } from '@/pages/SyncInfinite';
+import { SyncInfiniteKo } from '@/pages/SyncInfinite_ko';
+import { SyncViewKo } from '@/pages/SyncView_ko';
+import { SyncRefetch } from '@/pages/SyncRefetch';
+import { SyncRefetchKo } from '@/pages/SyncRefetch_ko';
+import { SyncPersistence } from '@/pages/SyncPersistence';
+import { SyncPersistenceKo } from '@/pages/SyncPersistence_ko';
+import { SyncObservation } from '@/pages/SyncObservation';
+import { SyncObservationKo } from '@/pages/SyncObservation_ko';
 import { ManualSync } from '@/pages/ManualSync';
 import { ManualSyncKo } from '@/pages/ManualSync_ko';
 import { Lens } from '@/pages/Lens';
@@ -50,6 +80,12 @@ import { ApiCore } from '@/pages/ApiCore';
 import { ApiCoreKo } from '@/pages/ApiCore_ko';
 import { ApiHelpers } from '@/pages/ApiHelpers';
 import { ApiHelpersKo } from '@/pages/ApiHelpers_ko';
+import { ApiDraft } from '@/pages/ApiDraft';
+import { ApiDraftKo } from '@/pages/ApiDraft_ko';
+import { ApiSync } from '@/pages/ApiSync';
+import { ApiSyncKo } from '@/pages/ApiSync_ko';
+import { ApiPlugin } from '@/pages/ApiPlugin';
+import { ApiPluginKo } from '@/pages/ApiPlugin_ko';
 import { ApiTypes } from '@/pages/ApiTypes';
 import { ApiTypesKo } from '@/pages/ApiTypes_ko';
 import { AIAgentSkills } from '@/pages/AIAgentSkills';
@@ -90,6 +126,36 @@ const routes: Record<string, PageComponent> = {
   '/ko/guide/combine-watch': CombineWatchKo,
   '/guide/manual-sync': ManualSync,
   '/ko/guide/manual-sync': ManualSyncKo,
+  '/guide/batch': Batch,
+  '/ko/guide/batch': BatchKo,
+  '/guide/draft': Draft,
+  '/ko/guide/draft': DraftKo,
+  '/guide/draft-apply': DraftApply,
+  '/ko/guide/draft-apply': DraftApplyKo,
+  '/guide/draft-conflicts': DraftConflicts,
+  '/ko/guide/draft-conflicts': DraftConflictsKo,
+  '/guide/draft-lifetime': DraftLifetime,
+  '/ko/guide/draft-lifetime': DraftLifetimeKo,
+  '/guide/sync': Sync,
+  '/ko/guide/sync': SyncKo,
+  '/guide/sync-query': SyncQuery,
+  '/ko/guide/sync-query': SyncQueryKo,
+  '/guide/sync-mutation': SyncMutation,
+  '/ko/guide/sync-mutation': SyncMutationKo,
+  '/guide/sync-lifecycle': SyncLifecycle,
+  '/ko/guide/sync-lifecycle': SyncLifecycleKo,
+  '/guide/sync-view': SyncView,
+  '/ko/guide/sync-view': SyncViewKo,
+  '/guide/sync-form': SyncForm,
+  '/ko/guide/sync-form': SyncFormKo,
+  '/guide/sync-infinite': SyncInfinite,
+  '/ko/guide/sync-infinite': SyncInfiniteKo,
+  '/guide/sync-refetch': SyncRefetch,
+  '/ko/guide/sync-refetch': SyncRefetchKo,
+  '/guide/sync-persistence': SyncPersistence,
+  '/ko/guide/sync-persistence': SyncPersistenceKo,
+  '/guide/sync-observation': SyncObservation,
+  '/ko/guide/sync-observation': SyncObservationKo,
   '/guide/lens': Lens,
   '/ko/guide/lens': LensKo,
   '/guide/copyable': Copyable,
@@ -116,6 +182,12 @@ const routes: Record<string, PageComponent> = {
   '/ko/api/helpers': ApiHelpersKo,
   '/api/types': ApiTypes,
   '/ko/api/types': ApiTypesKo,
+  '/api/draft': ApiDraft,
+  '/ko/api/draft': ApiDraftKo,
+  '/api/sync': ApiSync,
+  '/ko/api/sync': ApiSyncKo,
+  '/api/plugin': ApiPlugin,
+  '/ko/api/plugin': ApiPluginKo,
   '/ai-agent-skills': AIAgentSkills,
   '/ko/ai-agent-skills': AIAgentSkillsKo,
   '/ai-agent-addon': AIAgentAddon,

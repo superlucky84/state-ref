@@ -7,22 +7,26 @@ export const Watch = mount(() => {
       <h1>Watch Function</h1>
 
       <p>
-        The <code>watch</code> function is the core interface returned by <code>createStore()</code>.
-        It serves dual purposes: accessing state references and subscribing to state changes.
+        The <code>watch</code> function is the core interface returned by{' '}
+        <code>createStore()</code>. It serves dual purposes: accessing state
+        references and subscribing to state changes.
       </p>
 
       <h2>Overview</h2>
 
       <p>
-        When you call <code>createStore()</code>, it returns a <code>watch</code> function that can be used in two ways:
+        When you call <code>createStore()</code>, it returns a{' '}
+        <code>watch</code> function that can be used in two ways:
       </p>
 
       <ul>
         <li>
-          <strong>Without arguments</strong>: Returns a <code>StateRefStore</code> reference for reading/writing values
+          <strong>Without arguments</strong>: Returns a{' '}
+          <code>StateRefStore</code> reference for reading/writing values
         </li>
         <li>
-          <strong>With a callback</strong>: Subscribes to changes and returns a tracked <code>StateRefStore</code> reference
+          <strong>With a callback</strong>: Subscribes to changes and returns a
+          tracked <code>StateRefStore</code> reference
         </li>
       </ul>
 
@@ -31,7 +35,8 @@ export const Watch = mount(() => {
       <h3>Getting a Reference (No Subscription)</h3>
 
       <p>
-        Call <code>watch()</code> without arguments to get a reference for reading and writing state:
+        Call <code>watch()</code> without arguments to get a reference for
+        reading and writing state:
       </p>
 
       <CodeBlock
@@ -55,7 +60,8 @@ store.name.value = 'Updated';`}
       <h3>Subscribing to Changes</h3>
 
       <p>
-        Call <code>watch()</code> with a callback function to subscribe to state changes:
+        Call <code>watch()</code> with a callback function to subscribe to state
+        changes:
       </p>
 
       <CodeBlock
@@ -75,9 +81,7 @@ store.count.value = 1; // Logs: "Count: 1" and "Is first run? false"`}
 
       <h2>Callback Signature</h2>
 
-      <p>
-        The subscription callback receives two parameters:
-      </p>
+      <p>The subscription callback receives two parameters:</p>
 
       <CodeBlock
         language="typescript"
@@ -91,24 +95,27 @@ store.count.value = 1; // Logs: "Count: 1" and "Is first run? false"`}
 
       <ul>
         <li>
-          <code>store</code> - The <code>StateRefStore</code> reference (innerRef) that is automatically tracked
+          <code>store</code> - The <code>StateRefStore</code> reference
+          (innerRef) that is automatically tracked
         </li>
         <li>
-          <code>isFirst</code> - Boolean indicating if this is the first execution of the callback
+          <code>isFirst</code> - Boolean indicating if this is the first
+          execution of the callback
         </li>
       </ul>
 
       <h3>Return Value</h3>
 
       <p>
-        The callback can optionally return an <code>AbortSignal</code> to unsubscribe when the signal is aborted.
+        The callback can optionally return an <code>AbortSignal</code> to
+        unsubscribe when the signal is aborted.
       </p>
 
       <h2>Understanding isFirst Parameter</h2>
 
       <p>
-        The <code>isFirst</code> parameter helps distinguish between the initial callback execution
-        and subsequent updates:
+        The <code>isFirst</code> parameter helps distinguish between the initial
+        callback execution and subsequent updates:
       </p>
 
       <CodeBlock
@@ -133,8 +140,10 @@ store.count.value = 5;
       <h2>InnerRef vs OuterRef</h2>
 
       <p>
-        Understanding innerRef and outerRef is crucial: they are <strong>the same reference</strong>,
-        both bound to the subscription. What matters is <strong>which reference you use to READ properties</strong>
+        Understanding innerRef and outerRef is crucial: they are{' '}
+        <strong>the same reference</strong>, both bound to the subscription.
+        What matters is{' '}
+        <strong>which reference you use to READ properties</strong>
         during the callback.
       </p>
 
@@ -166,8 +175,9 @@ anotherRef.y.value = 20;  // ✗ Does NOT trigger`}
       />
 
       <p>
-        <strong>Key principle</strong>: Tracking is based on which reference was used to READ
-        the property during subscription, not which reference is used to WRITE it later.
+        <strong>Key principle</strong>: Tracking is based on which reference was
+        used to READ the property during subscription, not which reference is
+        used to WRITE it later.
       </p>
 
       <h2>Unsubscribing with AbortController</h2>
@@ -229,7 +239,8 @@ ref2.count.value = 20;
       <h2>Combining Reference Access and Subscription</h2>
 
       <p>
-        The subscription callback returns a tracked reference, which you can use immediately:
+        The subscription callback returns a tracked reference, which you can use
+        immediately:
       </p>
 
       <CodeBlock
@@ -248,15 +259,16 @@ const untrackedStore = watch();
 trackedStore.count.value = 5;
 // ✓ Logs: "State changed: 5"
 
-// Update via untracked reference - does NOT trigger callback
+// Writing a tracked path through an untracked ref still notifies subscribers
 untrackedStore.count.value = 10;
-// ✗ Does NOT log anything`}
+// ✓ Logs: "State changed: 10"`}
       />
 
       <h2>Selective Property Tracking</h2>
 
       <p>
-        Subscriptions only track properties that are accessed within the callback:
+        Subscriptions only track properties that are accessed within the
+        callback:
       </p>
 
       <CodeBlock
@@ -329,27 +341,30 @@ watch((store, isFirst) => {
 
       <ul>
         <li>
-          <strong>Use isFirst for initialization</strong> - Distinguish setup logic from update logic
+          <strong>Use isFirst for initialization</strong> - Distinguish setup
+          logic from update logic
         </li>
         <li>
-          <strong>Return AbortSignal for cleanup</strong> - Always clean up subscriptions in components
+          <strong>Return AbortSignal for cleanup</strong> - Always clean up
+          subscriptions in components
         </li>
         <li>
-          <strong>Be mindful of tracking</strong> - Only the outerRef (returned by subscription) is tracked
+          <strong>Be mindful of tracking</strong> - Only the outerRef (returned
+          by subscription) is tracked
         </li>
         <li>
-          <strong>Access only needed properties</strong> - Subscriptions track only accessed properties
+          <strong>Access only needed properties</strong> - Subscriptions track
+          only accessed properties
         </li>
         <li>
-          <strong>Avoid creating references in loops</strong> - Create watch references at module or component level
+          <strong>Avoid creating references in loops</strong> - Create watch
+          references at module or component level
         </li>
       </ul>
 
       <h2>Type Safety</h2>
 
-      <p>
-        The watch function is fully typed with TypeScript:
-      </p>
+      <p>The watch function is fully typed with TypeScript:</p>
 
       <CodeBlock
         language="typescript"
@@ -381,16 +396,20 @@ watch((innerRef) => {
 
       <ul>
         <li>
-          <a href="#/guide/create-store">createStore</a> - Creating stores that return watch functions
+          <a href="#/guide/create-store">createStore</a> - Creating stores that
+          return watch functions
         </li>
         <li>
-          <a href="#/guide/references">Understanding References</a> - Deep dive into innerRef, outerRef, and unbound references
+          <a href="#/guide/references">Understanding References</a> - Deep dive
+          into innerRef, outerRef, and unbound references
         </li>
         <li>
-          <a href="#/guide/subscription">Subscription</a> - Advanced subscription patterns
+          <a href="#/guide/subscription">Subscription</a> - Advanced
+          subscription patterns
         </li>
         <li>
-          <a href="#/guide/state-ref-store">StateRefStore</a> - Working with store references
+          <a href="#/guide/state-ref-store">StateRefStore</a> - Working with
+          store references
         </li>
       </ul>
     </div>

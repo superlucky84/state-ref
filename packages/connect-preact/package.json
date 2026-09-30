@@ -1,11 +1,11 @@
 {
   "type": "module",
   "name": "@stateref/connect-preact",
-  "version": "10.3.0",
+  "version": "10.4.0",
   "private": false,
   "description": "Preact connector for state-ref",
   "packageManager": "pnpm@7.6.0",
-  "main": "./dist/stateref-connect-preact.umd.js",
+  "main": "./dist/stateref-connect-preact.cjs",
   "module": "./dist/stateref-connect-preact.mjs",
   "scripts": {
     "dev": "vite",
@@ -15,14 +15,20 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/stateref-connect-preact.mjs",
-      "require": "./dist/stateref-connect-preact.umd.js"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/stateref-connect-preact.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/stateref-connect-preact.cjs"
+      }
     }
   },
   "types": "./dist/index.d.ts",
   "files": [
     "src",
+    "!src/tests",
     "dist"
   ],
   "author": "superlucky84",
@@ -36,13 +42,15 @@
     "state-ref"
   ],
   "peerDependencies": {
-    "state-ref": "^3.0.0",
-    "preact": "^10.0.0"
+    "preact": "^10.0.0",
+    "state-ref": "^3.1.0"
   },
   "devDependencies": {
-    "state-ref": "workspace:*",
+    "@stateref/sync": "workspace:^",
+    "@testing-library/preact": "^3.2.4",
     "preact": "^10.24.1",
-    "@testing-library/preact": "^3.2.4"
+    "preact-render-to-string": "^6.7.0",
+    "state-ref": "workspace:*"
   },
   "volta": {
     "node": "20.3.0"

@@ -1,0 +1,519 @@
+import {
+  createBrowserSyncEnvironment,
+  createSyncClient,
+  MutationRejectedError,
+  openPersistedMutationQueue,
+  openPersistedLinkedMutation,
+  restoreSyncSnapshot,
+  saveSyncSnapshot,
+  saveLocalSyncSnapshot,
+  restoreLocalSyncSnapshot,
+} from '@stateref/sync';
+import type {
+  AutomaticRefetchPolicy,
+  AutoResumeHandlers,
+  BrowserSyncHost,
+  InfiniteData,
+  InfiniteQueryHandle,
+  InFlightDehydration,
+  LocalSyncSnapshot,
+  MutationResult,
+  NetworkMode,
+  QueryKey,
+  ResourceSubmission,
+  SyncClientOptions,
+  SyncCacheEntry,
+  SyncCacheEvent,
+  SyncMutationEntry,
+  SyncMutationEvent,
+  SyncEnvironment,
+  SyncEnvironmentEvent,
+  SyncStorage,
+  PersistedMutationQueue,
+  ResumedMutation,
+  PersistedLinkedMutation,
+  PersistedLinkedMutationLink,
+  SyncSnapshot,
+} from '@stateref/sync';
+import { createDraft } from 'state-ref/draft';
+import { create } from 'state-ref';
+
+const query = createSyncClient({ ssr: true }).query({
+  queryKey: ['account', { id: 1 }],
+  queryFn: async ({ signal }) => {
+    const aborted: boolean = signal.aborted;
+    return { city: aborted ? '중단' : '서울' };
+  },
+});
+
+async function edit() {
+  await query.load();
+  const city: string = query.ref.city.value;
+  query.ref.city.value = city;
+  const draft = createDraft(query.ref);
+  draft.ref.city.value = city;
+  const applied = draft.apply();
+  if (!applied.ok) {
+    const reason:
+      | 'readonly'
+      | 'missing-source'
+      | 'invalid-source'
+      | 'conflict' = applied.reason;
+    void reason;
+  }
+  draft.discard();
+  query.dispose();
+}
+
+void edit;
+
+const client = createSyncClient({ ssr: true });
+const cacheEntries: readonly SyncCacheEntry[] = client.inspectCache();
+// @ts-expect-error diagnostic snapshots omit caller-owned error objects
+cacheEntries[0].status.error;
+const stopCacheObservation: () => void = client.subscribeCache(
+  (event: SyncCacheEvent) => {
+    const owners: number = event.entry.owners;
+    const loaded: boolean = event.entry.status.loaded;
+    void owners;
+    void loaded;
+  }
+);
+void cacheEntries;
+stopCacheObservation();
+const mutationEntries: readonly SyncMutationEntry[] = client.inspectMutations();
+// @ts-expect-error diagnostic snapshots omit the input, the response and errors
+mutationEntries[0].error;
+const stopMutationObservation: () => void = client.subscribeMutations(
+  (event: SyncMutationEvent) => {
+    const phase:
+      | 'queued'
+      | 'pending'
+      | 'success'
+      | 'sync-error'
+      | 'rejected'
+      | 'unknown' = event.entry.phase;
+    const scope: string | null = event.entry.scope;
+    const linked: readonly QueryKey[] = event.entry.linkedKeys;
+    void phase;
+    void scope;
+    void linked;
+  }
+);
+void mutationEntries;
+stopMutationObservation();
+const resource = client.query({
+  queryKey: ['edit'],
+  queryFn: () => ({ city: '서울' }),
+});
+const mutation = client.mutation({
+  mutationFn: (input: { city: string }, { operationId, idempotencyKey }) => {
+    const id: number = operationId;
+    const key: string | undefined = idempotencyKey;
+    void id;
+    void key;
+    return Promise.resolve({ acceptedCity: input.city });
+  },
+});
+
+async function submit() {
+  await resource.load();
+  resource.ref.city.value = '부산';
+  const submission: ResourceSubmission<{ city: string }> = resource.capture();
+  const result: MutationResult<{ acceptedCity: string }> = await mutation.run(
+    { city: submission.value.city },
+    {
+      scope: 'account-save',
+      links: [
+        {
+          query: resource,
+          submission,
+          accept: {
+            kind: 'response',
+            select: data => ({ city: data.acceptedCity }),
+          },
+        },
+      ],
+    }
+  );
+  if (result.kind === 'success') {
+    const city: string = result.data.acceptedCity;
+    void city;
+  }
+  const rejected: Error = new MutationRejectedError('validation');
+  void rejected;
+}
+
+void submit;
+
+async function restore() {
+  const server = createSyncClient({ ssr: true });
+  const source = server.query({
+    queryKey: ['hydrated'],
+    queryFn: () => ({ city: '서울' }),
+  });
+  await source.load();
+  const snapshot: SyncSnapshot = server.dehydrate();
+  const browser = createSyncClient();
+  browser.hydrate(snapshot);
+  const restored = browser.query({
+    queryKey: ['hydrated'],
+    queryFn: () => ({ city: '부산' }),
+  });
+  const city: string = restored.ref.city.value;
+  const unconfirmed: boolean = restored.status.unconfirmed.value;
+  void city;
+  void unconfirmed;
+  source.dispose();
+  restored.dispose();
+}
+
+void restore;
+
+async function prepareCache() {
+  const client = createSyncClient({ ssr: true });
+  const options = {
+    queryKey: ['prepared'],
+    queryFn: () => ({ city: '서울' }),
+    initialData: { city: '부산' },
+    initialUpdatedAt: 1000,
+  };
+  await client.prefetch(options);
+  const fetched: { city: string } = await client.fetch(options);
+  const ensured: { city: string } = await client.ensure(options);
+  const query = client.query(options);
+  const city: string = query.ref.city.value;
+  void fetched;
+  void ensured;
+  void city;
+  query.dispose();
+}
+
+void prepareCache;
+
+async function displayQuery() {
+  const client = createSyncClient({ ssr: true });
+  const query = client.query({
+    queryKey: ['display'],
+    queryFn: () => ({ city: '서울', count: 1 }),
+    select: data => data.city,
+    placeholderData: { city: '대기', count: 0 },
+  });
+  const preview: string | undefined = query.display.data.value;
+  const placeholder: boolean = query.display.isPlaceholder.value;
+  // The display carries the shared status under the same names (DC9-09).
+  const dirty: boolean = query.display.dirty.value;
+  const version: number = query.display.version.value;
+  // @ts-expect-error a display has no value setter
+  query.display.data.value = '수정';
+  query.watchDisplay(ref => {
+    // @ts-expect-error a display callback has no value setter
+    ref.status.value = 'success';
+  });
+  // @ts-expect-error `phase` is gone; `isPlaceholder` carries that fact
+  void query.display.phase;
+  await query.load();
+  // The resource is the same handle now: no `.query` hop.
+  const source: string = query.ref.city.value;
+  void preview;
+  void placeholder;
+  void dirty;
+  void version;
+  void source;
+  query.dispose();
+}
+
+void displayQuery;
+
+async function liveDisplayView() {
+  const client = createSyncClient({ ssr: true });
+  const source = create({ id: null as number | null, enabled: false });
+  const live = client.query({
+    source: source.watch,
+    resolve: input =>
+      input.id === null
+        ? null
+        : {
+            queryKey: ['account', input.id],
+            queryFn: () => ({ city: '서울' }),
+            enabled: input.enabled,
+          },
+    select: data => data.city,
+  });
+  const enabled: boolean = live.display.enabled.value;
+  const selected: string | undefined = live.display.data.value;
+  // @ts-expect-error a display has no value setter
+  live.display.data.value = '부산';
+  source.updateRef.id.value = 1;
+  source.updateRef.enabled.value = true;
+  // `enabled` is the guard now: there is no handle to test for null (DC9-10).
+  if (live.display.enabled.value) await live.load();
+  void enabled;
+  void selected;
+  live.dispose();
+}
+
+void liveDisplayView;
+
+const environmentListeners = new Set<(event: SyncEnvironmentEvent) => void>();
+const environment: SyncEnvironment = {
+  subscribe(listener) {
+    environmentListeners.add(listener);
+    return () => environmentListeners.delete(listener);
+  },
+  isFocused: () => true,
+  isOnline: () => true,
+};
+const automaticOptions: SyncClientOptions = { environment };
+const focusPolicy: AutomaticRefetchPolicy = 'always';
+const automatic = createSyncClient(automaticOptions).query({
+  queryKey: ['automatic'],
+  queryFn: () => ({ city: '서울' }),
+  refetchOnFocus: focusPolicy,
+  refetchOnReconnect: false,
+  refetchInterval: 30_000,
+  refetchIntervalInBackground: true,
+});
+void automatic.load().then(() => automatic.dispose());
+
+const browserHost: BrowserSyncHost = {
+  window,
+  document,
+  navigator,
+};
+const browserEnvironment: SyncEnvironment =
+  createBrowserSyncEnvironment(browserHost);
+const networkMode: NetworkMode = 'offlineFirst';
+const networkQuery = createSyncClient({
+  environment: browserEnvironment,
+}).query({
+  queryKey: ['network'],
+  queryFn: () => ({ n: 1 }),
+  networkMode,
+});
+const networkFetchStatus: 'idle' | 'fetching' | 'paused' =
+  networkQuery.status.fetchStatus.value;
+void networkFetchStatus;
+networkQuery.dispose();
+
+async function infiniteDisplay() {
+  const feed: InfiniteQueryHandle<{ id: number }, number> = createSyncClient({
+    ssr: true,
+  }).infiniteQuery({
+    queryKey: ['feed'],
+    queryFn: ({ pageParam, signal }) => ({
+      id: signal.aborted ? -1 : pageParam,
+    }),
+    initialPageParam: 0,
+    getNextPageParam: (last, pages, lastParam, params) =>
+      pages.length === params.length ? last.id + lastParam + 1 : undefined,
+    maxPages: 2,
+  });
+  const loaded: InfiniteData<{ id: number }, number> = await feed.load();
+  const hasMore: boolean = feed.hasNextPage();
+  const next: number = (await feed.fetchNextPage()).pageParams[1];
+  void loaded;
+  void hasMore;
+  void next;
+  // @ts-expect-error infinite data is a readonly view
+  feed.ref.value = { pages: [], pageParams: [] };
+  // @ts-expect-error infinite query has no editable change capture
+  feed.capture();
+  feed.dispose();
+}
+
+void infiniteDisplay;
+
+async function prepareInfiniteDisplay() {
+  const client = createSyncClient({ ssr: true });
+  const options = {
+    queryKey: ['prepared-feed'],
+    queryFn: ({ pageParam }: { pageParam: number }) => ({ id: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam: (page: { id: number }) => page.id + 1,
+  };
+  await client.prefetchInfinite(options);
+  const fetched: InfiniteData<{ id: number }, number> =
+    await client.fetchInfinite(options);
+  const ensured: InfiniteData<{ id: number }, number> =
+    await client.ensureInfinite(options);
+  const view: InfiniteQueryHandle<{ id: number }, number, number> =
+    client.infiniteQuery({
+      ...options,
+      placeholderData: { pages: [{ id: -1 }], pageParams: [-1] },
+      select: data => data.pages.length,
+    });
+  const count: number | undefined = view.display.data.value;
+  await view.fetchNextPage();
+  // @ts-expect-error selected infinite display data is readonly
+  view.display.data.value = 3;
+  void fetched;
+  void ensured;
+  void count;
+  view.dispose();
+}
+
+void prepareInfiniteDisplay;
+
+async function persistedCommands() {
+  const values = new Map<string, string>();
+  const storage: SyncStorage = {
+    getItem: key => values.get(key) ?? null,
+    setItem: (key, value) => {
+      values.set(key, value);
+    },
+    removeItem: key => {
+      values.delete(key);
+    },
+  };
+  const source = createSyncClient({ ssr: true });
+  await saveSyncSnapshot(source, storage, { key: 'baseline', buster: 'v1' });
+  const restored: boolean = await restoreSyncSnapshot(
+    createSyncClient({ ssr: true }),
+    storage,
+    { key: 'baseline', buster: 'v1', maxAge: 1000 }
+  );
+  const send = source.mutation({
+    mutationFn: (input: { n: number }) => input.n,
+  });
+  const queue: PersistedMutationQueue = await openPersistedMutationQueue({
+    storage,
+    key: 'jobs',
+    buster: 'v1',
+    maxAge: 1000,
+    commands: { send },
+    isOnline: () => true,
+  });
+  await queue.enqueue({
+    id: 'one',
+    command: 'send',
+    input: { n: 1 },
+    idempotencyKey: 'server-supported-key',
+  });
+  const state: 'queued' | 'inFlight' | 'unknown' | 'rejected' =
+    queue.entries()[0].state;
+  const results: readonly ResumedMutation[] = await queue.resume();
+  const handlers: AutoResumeHandlers = {
+    onSettled: settled => void settled.length,
+    onError: error => void error,
+  };
+  const stopAutoResume: () => void = queue.autoResume(
+    {
+      subscribe: () => () => {},
+      isFocused: () => true,
+      isOnline: () => true,
+    },
+    handlers
+  );
+  stopAutoResume();
+  void restored;
+  void state;
+  void results;
+}
+
+void persistedCommands;
+
+async function recoveredLocalEdits() {
+  const client = createSyncClient({ ssr: true });
+  const query = client.query({
+    queryKey: ['local'],
+    queryFn: () => ({ n: 1 }),
+  });
+  await query.load();
+  query.ref.n.value = 2;
+  const snapshot: LocalSyncSnapshot = client.dehydrateLocal();
+  const restored = createSyncClient({ ssr: true });
+  restored.hydrateLocal(snapshot);
+  const storage: SyncStorage = {
+    getItem: () => null,
+    setItem: () => {},
+    removeItem: () => {},
+  };
+  await saveLocalSyncSnapshot(client, storage, {
+    key: 'local',
+    buster: 'v1',
+  });
+  const loaded: boolean = await restoreLocalSyncSnapshot(
+    createSyncClient({ ssr: true }),
+    storage,
+    { key: 'local', buster: 'v1' }
+  );
+  void loaded;
+  query.dispose();
+}
+
+void recoveredLocalEdits;
+
+async function persistedLinkedSubmission() {
+  const client = createSyncClient({ ssr: true });
+  const query = client.query({
+    queryKey: ['linked'],
+    queryFn: () => ({ city: '서울' }),
+  });
+  await query.load();
+  query.ref.city.value = '부산';
+  const values = new Map<string, string>();
+  const storage: SyncStorage = {
+    getItem: key => values.get(key) ?? null,
+    setItem: (key, value) => {
+      values.set(key, value);
+    },
+    removeItem: key => {
+      values.delete(key);
+    },
+  };
+  const journal: PersistedLinkedMutation = await openPersistedLinkedMutation({
+    storage,
+    key: 'linked',
+    buster: 'v1',
+    checkpoint: true,
+  });
+  const checkpointed: LocalSyncSnapshot = client.dehydrateLocal({
+    inFlight: 'unconfirmed',
+  });
+  const mode: InFlightDehydration = 'reject';
+  void checkpointed;
+  void mode;
+  await journal.stage(client, {
+    id: 'one',
+    input: { city: '부산' },
+    idempotencyKey: 'server-key',
+    links: [
+      {
+        query,
+        ids: query.changes().map(change => change.id),
+        accept: 'submitted',
+      },
+    ],
+  });
+  const links: readonly PersistedLinkedMutationLink[] =
+    journal.entry()?.links ?? [];
+  void links;
+  const mutation = client.mutation({
+    mutationFn: (input: { city: string }) => input.city,
+  });
+  const result: MutationResult<string> | null = await journal.send(
+    client,
+    [query],
+    mutation
+  );
+  void result;
+  query.dispose();
+}
+
+void persistedLinkedSubmission;
+
+/**
+ * The value is still rejected, but the report moved.
+ *
+ * `query` is overloaded now (DC9-04), so a bad property fails the whole call
+ * rather than that line: the marker has to sit on the call. Both overloads
+ * are printed, which is a real cost of folding the reactive key in - the
+ * diagnostic is worse even though the check is not.
+ */
+// @ts-expect-error automatic policy accepts only boolean or always
+createSyncClient().query({
+  queryKey: ['bad-automatic-policy'],
+  queryFn: () => 1,
+  refetchOnFocus: 'stale',
+});

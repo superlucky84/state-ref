@@ -18,6 +18,14 @@ export const React = mount(() => {
         code={`pnpm add state-ref @stateref/connect-react`}
       />
 
+      <h2>Supported Versions</h2>
+
+      <p>
+        React 18 and 19 (<code>react ^18.0.0 || ^19.0.0</code>). The package
+        major follows the newest React it supports, so{' '}
+        <code>@stateref/connect-react</code> 19.x still works with React 18.
+      </p>
+
       <h2>Basic Usage</h2>
 
       <CodeBlock
@@ -60,16 +68,14 @@ export function ProfileCard() {
         <li>
           Updates are driven by reading <code>.value</code> in the render
         </li>
-        <li>
-          Cleanup is automatic on unmount (AbortController)
-        </li>
+        <li>Cleanup is automatic on unmount (AbortController)</li>
       </ul>
 
       <h2>Manual Sync with Actions</h2>
 
       <p>
-        If you use <code>createStoreManualSync</code>, keep writes in actions and
-        call <code>sync()</code> after updates.
+        If you use <code>createStoreManualSync</code>, keep writes in actions
+        and call <code>sync()</code> after updates.
       </p>
 
       <CodeBlock
@@ -113,6 +119,58 @@ const useTodo = connectReact(watch);
 // useTodo() returns StateRefStore<Todo>`}
       />
 
+      <h2>Readonly Query Views</h2>
+
+      <p>
+        <code>connectReactView</code> binds a readonly query view from{' '}
+        <a href="#/guide/sync-view">@stateref/sync</a>. It takes the same{' '}
+        <code>Watch</code> shape as <code>connectReact</code> but never hands
+        out setters, because a display can be a selected value or a placeholder
+        that was never on the server.
+      </p>
+
+      <CodeBlock
+        language="tsx"
+        code={`const useLive = connectReactView(live.watchDisplay);
+
+function CityDisplay() {
+  const state = useLive();
+  if (state.status.value === 'pending') return <span>Loading…</span>;
+  return <span>{state.data.value ?? '-'}</span>;
+}`}
+      />
+
+      <p>
+        Edit the actual data through <code>live.ref</code> once it has loaded,
+        not through the display. Unmounting this component ends{' '}
+        <strong>its own subscription only</strong> - the view itself is released
+        by whoever owns it, with <code>live.dispose()</code>, so a second screen
+        watching the same view keeps working.
+      </p>
+
+      <h2>How the Hook Subscribes</h2>
+
+      <ul>
+        <li>
+          It is built on <code>useSyncExternalStore</code>, React&apos;s
+          contract for external stores. The subscription is made after commit
+          and ended by React, so <code>&lt;StrictMode&gt;</code> and renders
+          React throws away leave nothing behind.
+        </li>
+        <li>
+          <strong>A mount renders twice.</strong> state-ref learns what a
+          component reads while it renders through a subscribed reference, and
+          there is none before the first commit. The first render paints with
+          the correct values; the second, through the subscribed reference,
+          collects the paths. After that, only a change to a path the component
+          read re-renders it.
+        </li>
+        <li>
+          A server render uses <code>getServerSnapshot</code> and subscribes to
+          nothing.
+        </li>
+      </ul>
+
       <h2>Related</h2>
 
       <ul>
@@ -120,7 +178,8 @@ const useTodo = connectReact(watch);
           <a href="#/guide/create-store">createStore</a> - store creation
         </li>
         <li>
-          <a href="#/guide/manual-sync">Manual Sync (Flux)</a> - action-based updates
+          <a href="#/guide/manual-sync">Manual Sync (Flux)</a> - action-based
+          updates
         </li>
         <li>
           <a href="#/guide/watch">Watch Function</a> - subscription behavior

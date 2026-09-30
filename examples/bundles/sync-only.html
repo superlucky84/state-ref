@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>state-ref 번들 조합 — core + sync</title>
+    <link rel="stylesheet" href="/page.css" />
+  </head>
+  <body>
+    <h1>core + sync</h1>
+    <p class="lead">조회·resource 편집·mutation을 수행한다. draft를 필수로 가져오지 않는다.</p>
+    <nav><a href="/">← 조합 목록</a></nav>
+    <p>서버는 in-memory다(DC8-5-07). 기록된 그래프는 <code>dist/esm/sync-only/module-graph.json</code>이며 draft 모듈이 없어야 한다.</p>
+    <section>
+      <h2>조작</h2>
+      <div id="actions"></div>
+    </section>
+    <section>
+      <h2>패널</h2>
+      <dl id="panel"></dl>
+    </section>
+    <section>
+      <h2>기록 (최근이 위)</h2>
+      <ol id="log"></ol>
+    </section>
+    <script type="module" src="/src/sync-only.ts"></script>
+  </body>
+</html>

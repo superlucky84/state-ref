@@ -1,0 +1,144 @@
+# 서버 동기화·독립 Draft 현재 인계
+
+> **현재 재개 지점 (2026-09-30): 병합 전 작은 쇼핑몰 예제를 추가하고 두 서버를 띄웠다.**
+>
+> - **done:** 사용자 선택 R2-29 / DC2-24~27 / IMPLEMENT Phase 10. Preact와 Vue의 `/shop.html`에 상품 검색·더 보기, 배송정보·미리보기·주소 draft, 장바구니 batch 비교를 같은 구성으로 제공한다. 가상 서버는 자동 응답하며 실패/지연/충돌 제어는 접혀 있다. 기존 `/` 진단 화면을 보존했다. 라이브러리 소스 변경 0.
+> - **검증:** 새 모델 테스트 8/8; `pnpm gate` 19단계 / 전체 테스트 838 PASS; `pnpm check:examples` PASS; 전체 Chromium E2E 100/100 PASS(기존 88 + 쇼핑몰 12, flaky/skip 0). 개발 모드 두 UI smoke 및 데스크톱/390px 캡처 검토 PASS. 실행 Node 22.13.0 / pnpm 9.12.3.
+> - **직접 열기:** [Preact](http://127.0.0.1:5182/shop.html), [Vue](http://127.0.0.1:5183/shop.html). 실행/조작 안내는 [examples/SHOP](../../examples/SHOP.md), 기능 증거와 사용자 판정은 [M2-22](./MANUAL_TEST_CHECKLIST.md#m2-22).
+> - **next:** 사용자가 M2-22 화면 이해도와 실제 조작을 확인한다. 예제 구현은 `6e3c267`로 로컬 커밋했고 문서는 별도 커밋으로 기록한다. 사용자 피드백 뒤 필요한 수정과 기존 main 대상 PR #13 반영을 진행한다.
+> - **blockers:** 구현·자동 검증 없음. 전체 SSR·오프라인 복구·F2 동등성이나 사용자 이해도 완료를 주장하지 않는다.
+> - **구현 commit:** `6e3c26779bb834b8ee4944bc81725870d779faec` (`feat/server-sync-draft`); 구현과 문서를 나눠 로컬 커밋한다. 최신 HEAD는 `git log -1`로 확인한다. 로그 `/tmp/state-ref-shop-{gate,examples,full-e2e}.log`, 캡처 `/private/tmp/state-ref-shop-review/`. 아래 2026-09-28/24 내용은 이전 기록이다.
+
+> **현재 재개 지점 (2026-09-28): 조회 공개 표면의 통합을 마쳤다.**
+>
+> 사용자 보고로 [Phase 9](./PHASE9.md) 설계를 시작했다 — `view`와 `query`가 겹쳐 보이는 문제이며, 측정 결과 **`client.view()`가 `client.query()`를 소유한 래퍼인데 API가 대안처럼 생긴 것**이 원인이다. 현재 조회 팩토리 **5**·handle 타입 **5**·상태 어휘 **3**.
+>
+> 사용자가 후보 **A**를 골랐고 8단계를 전부 마쳤다. **팩토리 5 → 2, handle 타입 5 → 2, 상태 어휘 3 → 1.** `client.view`·`infiniteView`·`liveView`가 사라지고 표시는 handle의 `display`/`watchDisplay`가 됐다. `phase`는 삭제했다 — `isPlaceholder`가 이미 들고 있던 사실이다.
+>
+> - 현재 동작의 계약은 [DESIGN §5.4](./DESIGN.md), 근거와 측정은 [Phase 9](./PHASE9.md), 수행 결과는 [M2-21](./MANUAL_TEST_CHECKLIST.md#m2-21).
+> - **기능은 줄지 않았다:** 조작 91, 시나리오 62, `examples/shared` 114, 브라우저 84 — 전부 통합 전과 같다. `pnpm gate` 19단계 PASS, `pnpm test:e2e` 84/84.
+> - `packages/state-ref` 변경 0줄. sync ESM +301 B gzip.
+> - **다음:** 사람이 다섯 데모를 눈으로 여는 것, 그리고 [문서 사이트](../docs-site/HANDOFF.md)의 보류가 풀린 항목들.
+>
+> 아래 본문은 2026-09-24 기준 기록이다.
+
+기준일: 2026-09-24. 브랜치 `feat/server-sync-draft`. Phase 8.5(예제 워크스페이스·번들 경계·문서 예제 타입 검사)와 Phase 8.6(F2 지원표 교차 확인)을 마쳤고, **Phase 8.7의 수동 수행을 시작했다** — **M2-05·M2-07·M2-08 통과**, M2-04(4/6)·M2-06(2/4) 부분 수행, 나머지 15항목 미수행이다. 수행 중 막힌 블로커 넷을 모두 해소했다 — B8-7-01(재시도에 흡수되어 오류 화면에 못 감), B8-7-02(조작 그룹과 읽기 패널의 제목 충돌), B8-7-03(보내지 않은 변경까지 기준으로 옮김), B8-7-04(수용 방식 하나만 사용). 결정은 [DC8-5-29~37](./PHASE8_5.md)에 있다. **`packages/` 소스 변경 0.** 이 문서는 해당 구현과 함께 커밋되며, 확정 SHA와 재개 메모는 ctxbin의 `state-ref-root/feat/server-sync-draft`에 기록한다. 작업 재개 시 `git log -1 --oneline`과 `git status --short --branch`로 최신 커밋과 작업 트리를 확인한다.
+
+## 먼저 읽을 문서
+
+1. [README](./README.md): 제품 방향과 문서 지도.
+2. [REQUIREMENTS](./REQUIREMENTS.md): R2 수용 기준과 이전 결정의 대체 관계.
+3. [DESIGN](./DESIGN.md): helper 경계, DC2/IC2 결정, F2 기능 목록.
+4. [IMPLEMENT](./IMPLEMENT.md): T2 테스트 계약과 Phase 5~8의 진입·종료 조건.
+5. [Phase 8.6](./PHASE8_6.md): **F2-01~09 지원표.** 지금 무엇이 되고 무엇이 안 되는지 한자리에서 본다.
+6. [Phase 8.5](./PHASE8_5.md): `examples/` 워크스페이스, 번들 경계, 문서 예제 타입 검사. 결정 DC8-5-01~37과 단계별 검증 기록이 여기에 있다. DC8-5-29~37은 8.7 수행이 요구한 fixture 보강이다.
+7. [Phase 8.4](./PHASE8_4.md): 실제 서버 렌더의 구독 수명과 SSR client 격리. 이전 단계는 [README](./README.md)의 문서 지도를 따른다.
+8. [수동 체크리스트](./MANUAL_TEST_CHECKLIST.md): M2-01~20과 **수행 기록**. 1절의 실행 기록 표에 환경이 들어 있고, 각 항목의 결과란이 수행 여부와 증거다. 2026-09-25 기준 M2-05·M2-07·M2-08이 통과다.
+
+`PHASE0.md`~`PHASE4.md`의 “next”와 “미커밋” 문구는 **해당 단계 작성 당시의 이력**이다. 현재 재개 지점과 최신 구현 SHA는 이 문서가 우선한다.
+
+## 현재 구현과 핵심 결정
+
+- 기본 `state-ref` 코어는 서버 엔진을 import하지 않는다. 범용 setter `onWrite`와 선택적 `state-ref/plugin` 연결이 편집 의도를 기록한다. `observeRef`는 실제 값 반영 후 구독 경로의 변화를 확인한다. `state-ref/draft`와 `state-ref/batch`는 별도 ESM/UMD 진입점이고, 서버 기능은 별도 `@stateref/sync` ESM 패키지다. UMD는 core→draft/batch 순서로 로드한다.
+- `state-ref/batch`는 호출자가 지정한 동기 스코프에서 setter 값을 즉시 반영하고 가장 바깥 스코프 종료 시 구독 알림을 합친다. 기본 쓰기별 동기 알림은 유지된다. 마이크로태스크 스케줄러는 사용하지 않는다.
+- `createDraft(sourceRef)`는 일반 core ref 또는 하위 ref에서 clean으로 시작해 독립 편집, live 원본 갱신, 세 값 비교/충돌, 원본에 대한 동기 로컬 `apply()`를 제공한다. `apply()`는 네트워크 WRITE가 아니다. source가 resource일 때 dirty/pending과 결합한 실제 런타임 검증은 Phase 6에 남아 있다.
+- `createSyncClient()`는 client별 query 캐시와 편집 가능한 resource를 소유한다. 동일 client+key만 기준·편집·진행 READ를 공유한다. `load/refetch/invalidate`, 로드 전 status, 로드 후 ref/Watch, `dirty/changes/version`을 제공한다. 기본 편집 데이터는 순환 없는 plain tree이고 배열은 원자적으로 기록한다. 임의 조회 객체는 `editable:false`로 readonly 처리한다. 편집 자체는 WRITE를 시작하지 않는다.
+- Phase 4의 `client.mutation()`은 조회 데이터와 다른 DTO도 받는다. `query.capture(ids?)`가 소유자·버전·변경 경로/값을 고정하고, `run(..., { links })`가 영향을 주는 query와 수용 방식(`none`/`submitted`/`response`/`refetch`)을 명시한다. 시작 전 stale capture는 거절한다. 저장 중 추가 입력과 미제출 필드, 서버 보정값을 보존한다. 같은 key의 연결 작업은 동시에 시작할 수 없으며, 다음 작업은 앞 결과 뒤 새 capture로 시작한다.
+- mutation 결과는 `success`/`sync-error`(WRITE 성공·기준 복구 실패)/`rejected`(확정 거절)/`unknown`(서버 결과 불명)이다. 확정 거절에서만 제출 변경 제거를 선택할 수 있고, unknown은 자동 재전송하지 않는다. 기본 mutation은 병렬이며 명시적 `scope`는 같은 client의 작업을 시작 순서대로 실행한다. retry는 기본 0회이고 서버가 지원하는 `idempotencyKey`를 명시해야 opt-in 가능하다. 여러 query의 수용은 서버 간 원자성을 약속하지 않는다.
+- **Phase 5.1:** `client.dehydrate()`/`client.hydrate(snapshot)`는 완료된 깨끗한 JSON 서버 기준만 별도 client에 전달한다. 시간·무효화·편집 가능 여부를 보존하고, 빈 client에만 복원한다. 로컬 dirty, 진행 READ/연결 WRITE, 결과 불명이나 기준 복구 실패는 snapshot 생성을 거절한다. `query.status.unconfirmed`는 미확정 WRITE를 표시하며 성공한 재조회/알려진 서버 값 수용까지 GC로 제거하지 않는다. 이 snapshot의 명시적 영속화는 Phase 5.9에서 추가했다. 전체 경계는 [Phase 5.1](./PHASE5_1.md)에 있다.
+- **Phase 5.2:** `initialData`는 알려진 서버 값을 빈 캐시의 기준으로 설치하고 `initialUpdatedAt`으로 freshness를 지정한다. `client.fetch/prefetch/ensure`는 임시 소유권으로 같은 캐시/READ를 사용한다. `ensure`는 stale·dirty라도 확정 기준을 돌려주고 미확정 WRITE는 READ로 확인한다. 편집 가능한 기준과 반환 객체는 caller 객체에서 분리한다. placeholder/select·의존 조회와 pagination/infinite는 남아 있다. 상세 계약은 [Phase 5.2](./PHASE5_2.md)에 있다.
+- **Phase 5.3:** `client.view(queryOptions, viewOptions)`는 같은 query/cache를 공유하면서 관찰자별 placeholder/select 결과를 읽기 전용 ref/Watch로 보인다. placeholder는 캐시·SSR snapshot·편집 resource에 들어가지 않는다. selector와 비교 오류는 해당 view에만 남고 query 오류와 구분한다. 실제 편집·READ는 소유한 `view.query`에서 수행한다. 수동 의존·병렬 READ는 검증했고, 자동 enabled/key 전환은 남아 있다. 상세 계약은 [Phase 5.3](./PHASE5_3.md)에 있다.
+- **Phase 5.4:** `client.liveView(source, resolve, viewOptions)`는 `state-ref` 입력의 enabled/key 변화를 따라가며 자동 READ를 시작한다. 안정된 읽기 전용 표시 ref는 전환 즉시 이전 값을 버린다. 마지막 query 소유자가 떠난 READ는 abort하고 늦은 결과를 제외하며, 다른 소유자가 있으면 공유 READ를 유지한다. 비활성화·source 오류는 표시와 소유권을 비운다. 런타임 계약은 [Phase 5.4](./PHASE5_4.md)에 있다.
+- **Phase 5.5:** 5종 `connectXView`는 sync의 읽기 전용 `view.watch`를 각 UI의 한 방향 반응형 값으로 연결한다. 실제 컴포넌트에서 key 전환·이전 결과 차단·로컬 편집 표시·언마운트 구독 종료를 자동 검증했다. 커넥터는 sync를 런타임 import하지 않으며, 공유 view의 `dispose()`는 소유자 책임이다. resource/draft/pending 전체 UI 조합은 남아 있다. 상세 계약은 [Phase 5.5](./PHASE5_5.md)에 있다.
+- **Phase 5.6:** `SyncEnvironment`를 client에 주입해 시작된 query handle과 `liveView`의 focus/reconnect/polling을 관리한다. stale/always/disabled, foreground/background/offline, same-key 공유, 실패 복구, linked WRITE 차단, 로컬 편집 rebase, dispose/SSR을 자동 검증했다. sync는 브라우저 전역을 직접 읽지 않는다. 상세 계약은 [Phase 5.6](./PHASE5_6.md)에 있다.
+- **Phase 5.7:** 일반 페이지는 key에 pageParam을 넣고 `liveView`로 표시한다. `client.infiniteQuery`는 한 key에 readonly `pages/pageParams`를 저장하고 양방향 cursor·`maxPages`·순차 재조회·취소·SSR 복원을 제공한다. 같은 key의 추가 페이지는 순서화된다. 무한 조회 편의 API는 Phase 5.13에서 추가했다. 상세 기본 계약은 [Phase 5.7](./PHASE5_7.md)에 있다.
+- **Phase 5.8:** query별 `online`·`always`·`offlineFirst` 정책은 오프라인 READ의 시작·retry pause와 reconnect 재개를 구분한다. `createBrowserSyncEnvironment()`는 명시적 브라우저 호출에서 focus/visibility/online을 client 환경으로 연결한다. 상세 계약은 [Phase 5.8](./PHASE5_8.md)에 있다.
+- **Phase 5.9:** `saveSyncSnapshot`/`restoreSyncSnapshot`은 기존 clean 기준에 별도 storage envelope, TTL·buster를 적용한다. `openPersistedMutationQueue`는 독립 명령의 JSON DTO·작업 ID·서버 지원 idempotency key를 저장한다. `resume()`은 online에서 순차 실행하고 각 WRITE 전에 durable `inFlight`를 기록한다. 재시작한 `inFlight`는 `unknown`이며 자동 재전송하지 않고 후속 명령도 막는다. 연결 제출 기록·dirty resource의 복원과 자동 resume는 미지원이다. 상세 계약은 [Phase 5.9](./PHASE5_9.md)에 있다.
+- **Phase 5.10:** `client.dehydrateLocal()`/`hydrateLocal()`은 schema 1 clean SSR snapshot과 별도인 schema 2에 서버 기준·dirty 값·변경 ID/충돌·미확정 표시를 보존한다. `saveLocalSyncSnapshot`/`restoreLocalSyncSnapshot`은 앱 storage의 별도 key에 TTL·buster를 적용한다. 진행 READ/연결 WRITE는 저장을 거절하고 복원은 자동 WRITE를 시작하지 않는다. 연결 제출 기록의 durable 재개는 남아 있다. 상세 계약은 [Phase 5.10](./PHASE5_10.md)에 있다.
+- **Phase 5.11:** `openPersistedLinkedMutation`은 별도 storage key에 연결 제출 1건의 JSON DTO·idempotency key·선택 변경과 로컬 snapshot을 한 기록으로 저장한다. 명시적 `send`는 staged 기준을 재검사하고 WRITE 직전에 durable `inFlight`와 보수적인 미확정 snapshot을 저장한다. 재시작한 `inFlight`는 unknown으로 보류하며 자동 재전송하지 않는다. 성공/거절/sync-error/unknown은 구분해 기록한다. 다중 연결·함수형 응답 매핑·진행 WRITE 중 로컬 편집의 연속 저장은 미지원이다. 상세 계약은 [Phase 5.11](./PHASE5_11.md)에 있다.
+- **Phase 5.12:** `inspectCache()`/`subscribeCache()`는 client별 query key·일반/무한 kind·소유자 수·상태와 생성/변경/제거 이벤트를 제공한다. 이벤트는 발생 시점 metadata를 microtask에서 전달하고 구독자 오류·해제를 격리한다. query payload·편집 값·mutation DTO를 자동 노출하지 않는다. 개발 도구 UI·mutation 이벤트·플랫폼 자동 설치는 미지원이다. 상세 계약은 [Phase 5.12](./PHASE5_12.md)에 있다.
+- **Phase 5.13:** `fetchInfinite`/`prefetchInfinite`/`ensureInfinite`는 무한 조회 aggregate를 임시 소유권으로 준비하면서 활성 query의 설정을 보존한다. `infiniteView`는 고정 key 무한 query handle과 observer별 placeholder/select 표시를 제공한다. 표시값은 캐시·SSR 기준에 들어가지 않는다. 반응형 infinite key 전환은 미지원이다. 상세 계약은 [Phase 5.13](./PHASE5_13.md)에 있다.
+- **Phase 5.14:** `inspectMutations()`는 해당 client의 미종료 WRITE 작업만 시작 순서로 반환하고 `subscribeMutations()`는 `started`·`updated`·`settled`를 전달한다. 관측 phase는 진단용이며 scope 대기를 `queued`로 구분한다. 입력 DTO·응답·오류 객체·`idempotencyKey` 값은 제외하고 `idempotent`로 사용 여부만 알린다. 캐시 스트림과 구독자 집합은 분리하되 전달 queue를 공유해 상대 순서를 유지한다. 종료 작업은 client가 보관하지 않으며 관측은 서버 성공의 근거가 아니다. 개발 도구 UI·TanStack devtools/plugin 호환·플랫폼 자동 설치·영속 queue 작업 관측은 미지원이다. 상세 계약은 [Phase 5.14](./PHASE5_14.md)에 있다.
+- **Phase 5.15:** 연결 제출 1건은 `links` 배열을 갖는 schema 2 기록이며 각 link에 query key·revision·선택 변경·수용/거절 정책을 고정한다. 같은 key는 한 번만 연결한다. `stage(client, input)`은 모든 link를 확인한 뒤에만 저장하고, `send(client, queries, mutation)`은 저장된 모든 link를 재검사한 뒤에만 durable 장벽을 쓴다. 장벽 snapshot은 연결된 모든 query를 `invalidated`·`unconfirmed`로 표시한다. 결과는 작업 단위이며 일부 link의 조정 실패는 `sync-error`다. 함수형 `response.select`·작업 다건 보관·진행 중 편집 연속 저장·자동 재개는 미지원이고 schema 1 기록은 마이그레이션하지 않는다. 상세 계약은 [Phase 5.15](./PHASE5_15.md)에 있다.
+- **Phase 5.16:** `dehydrateLocal({ inFlight: 'unconfirmed' })`는 진행 중 READ·연결 WRITE를 거절하지 않고 보수적으로 저장한다. 연결 WRITE 중인 query는 `unconfirmed`·`invalidated`, 진행 READ만 있는 query는 `invalidated`로 표시하며 기본값 `'reject'`는 기존 계약을 유지한다. `checkpoint: true`로 연 연결 기록의 `send`는 WRITE 중 캐시 변경을 구독해 같은 기록의 snapshot을 갱신하고, 연속 변경을 마지막 한 번으로 합치며, 결과를 기록하기 전에 진행 중 저장을 기다린다. checkpoint는 작업 상태를 바꾸지 않고 실패해도 WRITE를 취소하지 않는다. 상세 계약은 [Phase 5.16](./PHASE5_16.md)에 있다.
+- **Phase 5.17:** `queue.autoResume(environment, handlers?)`는 `resume()`을 부르는 시점만 자동화한다. `reconnect`에만 반응하고 `focus`는 무시하며, 실행 직전 `isOnline()`을 확인하고 연결된 상태로 연결하면 한 번 즉시 실행한다. 실행은 겹치지 않고 그 사이 사건은 마지막 한 번으로 합치며, 해제는 대기 중인 실행까지 막는다. 결과는 `onSettled`, `resume()` 실패는 `onError`로 보고하고 callback 예외는 격리한다. 순서·`unknown` 차단·`maxAge`·직렬화는 그대로이며 자동 경로는 `retryUnknown`을 부르지 않는다. 연결 제출은 살아 있는 handle과 최신 로컬 상태가 필요해 자동 재개 대상이 아니다. 상세 계약은 [Phase 5.17](./PHASE5_17.md)에 있다.
+- **Phase 6:** resource 원본의 `createDraft`는 원본의 현재 값에서 clean하게 분기하고 부모의 변경 기록을 복사하지 않는다. `apply()`는 네트워크 없이 병합값을 root에 한 번 쓰므로 원본에는 root 경로 변경 1건이 남고, 경로별 선택 제출이 필요하면 apply 전에 `capture`한다. 원본이 다른 draft·직접 편집·연결 WRITE 수용으로 바뀌면 겹친 경로는 conflict가 되고 입력은 보존되며 `resolve`로만 해소한다. 원본의 로컬 편집은 재조회 기준보다 우선하므로 그 경로에는 겹침이 생기지 않는다. 열린 draft는 원본 수명을 연장하지 않고, 해제된 원본의 쓰기 실패는 `missing-source`로 보고한다. 상세 계약은 [Phase 6](./PHASE6.md)에 있다.
+- **Phase 7.1:** 순서·경계 계약을 반례로 고정했다. draft 충돌은 현재 원본 값의 함수라 A→B→A는 해소되고 수렴한 edit은 `applied: 0`으로 사라진다. 배열 재정렬처럼 같은 경로가 다른 요소를 가리키면 apply를 거절한다. 로컬 apply는 진행 중 READ의 늦은 기준보다 우선한다. 캐시는 역순 완료에서도 최신 epoch만 받고, 제거·재생성 뒤 늦은 결과를 차단하며, `invalidate()`는 진행 중 READ를 abort한다(signal을 무시하는 `queryFn`은 **캐시에 반영되지 않는 값으로 resolve**된다). 연결 WRITE 중에는 READ를 거절하고 WRITE 이전에 시작한 READ의 기준도 받지 않으며, 장벽 뒤 취소는 `unknown`·`unconfirmed`로 입력을 보존한다. 상세 계약은 [Phase 7.1](./PHASE7_1.md)에 있다.
+- **Phase 7.2:** 결과 행렬 144개 조합을 독립 참조 모델과 전수 대조했다. `unknown`·`sync-error`는 모두 미확정으로 두고 입력을 보존하며, 확정 거절은 `remove` 정책에서만 제출 입력을 되돌린다. **`refetch` 수용은 제출한 입력을 소비**하므로 재조회 기준이 제출 경로를 덮고 미제출 후속 입력만 살아남는다([Phase 7.1](./PHASE7_1.md)의 "로컬 입력 우선"은 미제출 입력에만 적용된다). 재조회나 `acceptServer`로 확정 기준을 얻으면 미확정이 해소되고 소비되지 않은 입력은 새 기준 위에 남는다. 상세 계약은 [Phase 7.2](./PHASE7_2.md)에 있다.
+- **Phase 7.3:** 배포 경계에서 결함 3건을 찾아 고쳤다. `"type": "module"` 패키지가 UMD를 `.js`로 내보내 Node가 ESM으로 파싱했고, CJS `require`가 `state-ref`·`draft`·커넥터 5종에서 **빈 네임스페이스**, `state-ref/batch`에서 **예외**였다. 배포 `.d.ts`의 확장자 없는 상대 import 때문에 `node16`/`nodenext` **ESM 소비자**도 TS2834로 깨졌고, CJS 선언은 아예 없었다. 이제 `exports.require`·`main`이 별도 `dist/*.cjs`를 가리키고(`dist/*.umd.js`는 `<script>`용으로 유지), 빌드 후처리가 선언의 상대 import에 `.js`를 붙이며 `require`를 광고하는 패키지에만 `.d.cts` 트리를 만든다. `state-ref/plugin`과 `@stateref/sync`는 ESM 전용이라 `require`가 `ERR_PACKAGE_PATH_NOT_EXPORTED`로 명확히 실패한다 — 조용한 빈 객체를 주지 않는 것이 계약이다. `QueryKey`의 비-JSON 값과 reactive status 쓰기는 타입이 아니라 런타임이 거절한다. 상세 계약은 [Phase 7.3](./PHASE7_3.md)에 있다.
+- **Phase 7.4:** 캐시 항목의 회수를 막는 사유는 `owners > 0`·로컬 편집(`dirty`)·미확정(`unconfirmed`)·진행 중 연결 WRITE(`pending`) 넷뿐이며 `evict()`와 `remove(key)`가 같은 조건을 쓴다. 넷 모두 `inspectCache()`로 관측되고, 사유가 없는 항목은 `gcTime` 만료로 반드시 사라진다. `remove()`는 보존 중인 항목에 예외가 아니라 `false`를 돌려준다. **미확정 항목은 gc 타이머를 무장하지 않으므로 자동 회수 경로가 아예 없고**, 소유자가 `acceptServer`나 재조회로 확정 기준을 얻을 때까지 유지된다. `evict()`는 진행 중 READ를 직접 보지 않지만 `detach()`가 마지막 소유자 이탈 시 그 READ를 취소하므로 안전하다(연결 WRITE 중에는 취소하지 않는다). 해제된 handle·view·mutation은 조용한 no-op이 아니라 정해진 문구로 거절하며 **해제 전에 받아 둔 ref도 같은 예외를 던진다**. core 경로 트리는 원래 노드를 제거하지 않으므로(`CI-22`/`DC-13`) 구독 해제 뒤 노드 감소를 기대하지 않는다. 상세 계약은 [Phase 7.4](./PHASE7_4.md)에 있다.
+- **Phase 8.1:** 5종 커넥터에서 서버 resource와 그 원본에서 분기한 draft를 **기존 editable `connectX`로** 함께 구동한다. `query.watch`와 `draft.watch`가 둘 다 `Watch<T>`라 sync 전용 커넥터가 필요 없고, 커넥터는 여전히 sync를 런타임 import하지 않는다. 원본이 dirty여도 draft는 clean에서 분기하고, draft 입력은 원본에 닿지 않으며, 겹친 원본 변경은 conflict가 되어 apply를 거절하고, 폐기는 원본을 보존하며, apply는 **root 변경 1건**으로 합쳐진다(경로별 제출은 apply 전에 `capture`). **해제된 query에 대한 UI 쓰기는 거절되지만 어느 프레임워크에서도 호출 지점으로 돌아오지 않는다** — React·Preact·Svelte·Solid는 uncaught error, Vue는 app 레벨 `errorHandler`다. 그래서 계약은 "앱이 잡는다"가 아니라 **query 수명을 컴포넌트 수명에 맞추는 것**이다. 커넥터 tsconfig의 `moduleResolution`은 `"bundler"`로 맞췄다. 상세 계약은 [Phase 8.1](./PHASE8_1.md)에 있다.
+- **Phase 8.2:** 같은 key의 handle 2개는 기준과 편집을 공유하고 `owners`는 **handle 수를 따른다** — 컴포넌트의 마운트·언마운트는 `owners`를 바꾸지 않는다. 한 원본의 draft 2개는 입력이 격리되고, 한쪽의 apply는 다른 쪽에 원본 갱신으로 도착해 같은 경로면 conflict가 된다. **`connectSvelte`의 결함 2건을 고쳤다**: (1) 쓰기 되돌림 구독이 파괴를 넘어 살아남아 파괴된 컴포넌트가 원본에 계속 썼다 — Svelte는 마크업의 `$store` 자동 구독만 정리하고 수동 `subscribe`는 정리하지 않으므로 커넥터가 직접 해제해야 한다. (2) 그 구독자가 던지면 Svelte의 전역 `subscriber_queue`가 비워지지 않아 **앱 전체의 스토어가 조용히 알림을 멈춘다**(그 뒤 새로 만든 스토어까지). 이제 구독자 본문 전체를 감싸 거절을 `reportError`로 밖에서 보고한다 — 폐기된 draft·해제된 query는 **읽기도** 던지므로 대입만 감싸면 부족하다. React·Preact는 미러를 만들지 않고 hook이 원본 ref를 그대로 돌려주므로 파괴 뒤 held ref로 쓰면 원본에 써지는 것이 정상이다. 상세 계약은 [Phase 8.2](./PHASE8_2.md)에 있다.
+- **Phase 8.3:** 화면이 로컬 적용과 서버 WRITE를 구분하는 근거는 `dirty`가 아니다 — **로컬 apply도 `dirty`를 만들고 `pending`·mutation phase는 건드리지 않으며 `mutationFn`을 부르지 않는다**. 진행 중 서버 작업은 `status.pending > 0`과 mutation phase `pending`으로만 드러난다. 입력 DTO는 조회 shape와 무관하다. `capture()` 이후의 입력은 같은 경로든 다른 경로든 보존되며 `submitted` 수용은 capture한 개정만 소비한다. `unconfirmed`는 성공/실패와 **다른 축**이다: `unknown`은 입력을 지킨 채 미확정, `sync-error`는 WRITE 성공 뒤 기준 복구 실패로 입력 없이 미확정이다. 둘 다 성공으로도 확정 실패로도 보이면 안 되고, `unknown` 뒤 자동 재전송 경로는 없다(반례가 호출 횟수로 고정). 상세 계약은 [Phase 8.3](./PHASE8_3.md)에 있다.
+- **Phase 8.4:** React·Preact·Vue·Solid의 실제 서버 렌더는 renew 없는 `watch()`로 값을 읽는다. 처음 수정은 프레임워크 갱신 콜백만 없앴다. 코어 경로 트리에서 콜백 없는 ref 11개가 no-op 구독 11개를 남기는 것을 뒤늦게 확인해, 콜백 없는 `watch()` 자체를 구독 없는 ref로 고쳤다. 수정 전에는 같은 store를 11회 렌더하고 쓴 뒤 네 커넥터가 각각 11회 renew를 받았다. 이는 **장수 store 재사용** 조건의 측정이며 요청마다 별도 store/client를 버리는 앱의 지속 누수를 입증하지 않는다. Svelte는 기존 `onDestroy`로 0회였으므로 구현을 유지했다. 네 커넥터의 읽기 전용 View, React의 별도 client 편집 격리·dirty snapshot 거절·clean 복원을 확인했다. 브라우저 hydration과 loading/error 화면은 8.5 데모와 8.7 수동 검증에 남긴다. 상세 기록은 [Phase 8.4](./PHASE8_4.md)에 있다.
+- 비교 기준은 `@tanstack/query-core@5.103.1`의 기능 목록이다. TanStack 런타임·플러그인·API 호환 또는 F2 전체 동등성을 선언하지 않는다. 과거 `resource.save`, `draft.save`, draft 직접 서버 저장, 서버 부분 저장 scope 설계는 현재 계약이 아니다.
+
+주요 코드 위치: [core batch](../../packages/state-ref/src/batch/index.ts), [draft](../../packages/state-ref/src/draft/index.ts), [sync query/client](../../packages/sync/src/index.ts), [무한 조회](../../packages/sync/src/infinite.ts), [network gate](../../packages/sync/src/network.ts), [browser adapter](../../packages/sync/src/browser-environment.ts), [자동 재조회](../../packages/sync/src/automatic-refetch.ts), [display](../../packages/sync/src/display.ts), [반응형 key](../../packages/sync/src/live-key.ts), [clean hydration 형식](../../packages/sync/src/hydration.ts), [로컬 복구 형식](../../packages/sync/src/local-hydration.ts), [영속화와 명령 queue](../../packages/sync/src/persistence.ts), [resource 기록](../../packages/sync/src/resource.ts), [mutation](../../packages/sync/src/mutation.ts). 소비자 예제는 [sync README](../../packages/sync/README.md)를 따른다.
+
+## 마지막 검증 증거
+
+- Phase 5.1 변경에서 `pnpm gate` **PASS**: 전체 workspace 빌드·타입·lint·테스트, draft/batch/sync bundle smoke, core bench·bundle. 마지막 무효화 반례 추가 후 sync 런타임 **43개 테스트 PASS**와 lint PASS. 빌드 소비자 타입·ESM 복원 smoke도 gate에서 통과했다. Phase 5.1 세부 반례는 [PHASE5_1](./PHASE5_1.md)에 있다.
+- Phase 5.2 변경에서 `pnpm gate` **PASS**. 마지막 미확정 초기값 반례 추가 후 sync 런타임 **53개 테스트 PASS**, 타입·lint·재빌드 ESM 소비자 타입/smoke PASS. 검증한 경계는 [PHASE5_2](./PHASE5_2.md)에 있다.
+- Phase 5.3 변경에서 `pnpm gate` **PASS**. sync 런타임 **62개 테스트 PASS**, 타입·lint·빌드 소비자 타입/ESM view smoke PASS. 검증한 경계는 [PHASE5_3](./PHASE5_3.md)에 있다.
+- Phase 5.4 변경에서 `pnpm gate` **PASS**. sync 런타임 **68개 테스트 PASS**, 타입·lint·빌드 소비자 타입/ESM liveView smoke PASS. 검증한 경계는 [PHASE5_4](./PHASE5_4.md)에 있다.
+- Phase 5.5 변경에서 `pnpm gate` **PASS**. 5종 실제 UI view 테스트·커넥터 타입 PASS, 빌드된 ESM에 `connectXView` export 존재·sync 런타임 import 없음. 검증한 경계는 [PHASE5_5](./PHASE5_5.md)에 있다.
+- Phase 5.6 변경에서 `pnpm gate` **PASS**. sync 런타임 **78개 테스트 PASS**, 소비자 타입·빌드 ESM 자동 focus/해제 smoke PASS. 검증한 경계는 [PHASE5_6](./PHASE5_6.md)에 있다.
+- Phase 5.7 변경에서 `pnpm gate` **PASS**. sync 런타임 **85개 테스트 PASS**, 소비자 타입·빌드 ESM 무한 조회/SSR smoke PASS. 검증한 경계는 [PHASE5_7](./PHASE5_7.md)에 있다.
+- Phase 5.8 변경에서 `pnpm gate` **PASS**. sync 런타임 **95개 테스트 PASS**, 소비자 타입·빌드 ESM network mode/browser adapter smoke PASS. 검증한 경계는 [PHASE5_8](./PHASE5_8.md)에 있다.
+- Phase 5.9 변경에서 `pnpm gate` **PASS**. sync 런타임 **107개 테스트 PASS**, 소비자 타입·빌드 ESM persistence smoke PASS. 검증한 경계는 [PHASE5_9](./PHASE5_9.md)에 있다.
+- Phase 5.10 변경에서 `pnpm gate` **PASS**. sync 런타임 **117개 테스트 PASS**, 소비자 타입·빌드 ESM local recovery smoke PASS. 검증한 경계는 [PHASE5_10](./PHASE5_10.md)에 있다.
+- Phase 5.11 변경에서 `pnpm gate` **PASS**. sync 런타임 **123개 테스트 PASS**, 소비자 타입·빌드 ESM linked persistence smoke PASS. 검증한 경계는 [PHASE5_11](./PHASE5_11.md)에 있다.
+- Phase 5.12 변경에서 `pnpm gate` **PASS**. sync 런타임 **127개 테스트 PASS**, 소비자 타입·빌드 ESM cache observation smoke PASS. 첫 전체 gate의 Vue 패키지는 16개 테스트 통과 뒤 `fsevents` 종료 시 `SIGABRT`였으나 Vue 단독 재실행과 이후 전체 gate가 통과했다. 검증한 경계는 [PHASE5_12](./PHASE5_12.md)에 있다.
+- Phase 5.13 변경에서 `pnpm gate` **PASS**. sync 런타임 **132개 테스트 PASS**, 소비자 선언 타입·빌드 ESM infinite helper/view smoke PASS. 검증한 경계는 [PHASE5_13](./PHASE5_13.md)에 있다.
+- Phase 5.14 변경에서 `pnpm gate` **PASS**. sync 런타임 **136개 테스트 PASS**, 소비자 선언 타입·빌드 ESM mutation 관측 smoke PASS. 첫 gate는 prettier 형식 오류로 lint에서 멈췄고 수정 뒤 전체 gate가 통과했다. 검증한 경계는 [PHASE5_14](./PHASE5_14.md)에 있다.
+- Phase 5.15 변경에서 `pnpm gate` **PASS**. sync 런타임 **139개 테스트 PASS**, 소비자 선언 타입·빌드 ESM 다중 연결 smoke PASS. 검증한 경계는 [PHASE5_15](./PHASE5_15.md)에 있다.
+- Phase 5.16 변경에서 `pnpm gate` **PASS**. sync 런타임 **144개 테스트 PASS**, 소비자 선언 타입·빌드 ESM checkpoint smoke PASS. 검증한 경계는 [PHASE5_16](./PHASE5_16.md)에 있다.
+- Phase 5.17 변경에서 `pnpm gate` **PASS**. sync 런타임 **149개 테스트 PASS**, 소비자 선언 타입·빌드 ESM 자동 재개 smoke PASS. 새 반례는 구현 결함 6종을 주입해 모두 실패함을 확인했다. 검증한 경계는 [PHASE5_17](./PHASE5_17.md)에 있다.
+- Phase 6 변경에서 `pnpm gate` **PASS**. sync 런타임 **154개 테스트 PASS**, core **325개 PASS**(불변), 소비자 선언 타입·빌드 ESM draft 분기 smoke PASS. 구현 변경은 `draft.apply()`의 쓰기 실패 분류 한 곳이며 반례로 load-bearing임을 확인했다. 검증한 경계는 [PHASE6](./PHASE6.md)에 있다.
+- Phase 7.1 변경에서 `pnpm gate` **PASS**. sync 런타임 **166개 테스트 PASS**, core **325개 PASS**(불변). 정확성 결함 0건이며 구현 변경은 없다. 반례는 sync 내부 가드 3종을 제거해 모두 실패함을 확인했다. 검증한 경계는 [PHASE7_1](./PHASE7_1.md)에 있다.
+- Phase 7.2 변경에서 `pnpm gate` **PASS**. sync 런타임 **168개 테스트 PASS**. 정확성 결함 0건이며 구현 변경은 없다. 대조의 검증력은 잘못된 모델 규칙과 구현 결함 주입 3종 양쪽으로 확인했다. 검증한 경계는 [PHASE7_2](./PHASE7_2.md)에 있다.
+- Phase 7.3 변경에서 `pnpm gate` **PASS**. gate에 `packaging`·`negative-types` 단계를 추가했다. sync 런타임 **170개 테스트 PASS**, core **325개 PASS**. 배포 검사는 원래 결함을 재현해 잡는지 확인했다. 기본 core gzip은 **3,433/3,500 B 불변**이며, `@stateref/sync`는 불필요한 `.d.cts`를 빼 패킹 43.8 → **36.7 kB**로 줄었다. 검증한 경계는 [PHASE7_3](./PHASE7_3.md)에 있다.
+- Phase 7.4 변경에서 `pnpm gate` **PASS**. sync 런타임 **183개 테스트 PASS**, core **325개 PASS**(불변). 정확성 결함 0건이며 구현 변경은 없다. 반례는 구현 결함 6종(보존 사유 4개 가드, `environment` 구독 반납, `detach()`의 진행 READ 취소)을 주입해 모두 실패함을 확인했다. 처음 쓴 dirty 반례는 결함 주입에도 통과해 — 소유자를 쥔 채 `remove()`를 불러 `owners` 가드가 대신 답했다 — 소유자 해제 뒤로 옮겨 고쳤다. 기본 core gzip **3,433/3,500 B 불변**. 검증한 경계는 [PHASE7_4](./PHASE7_4.md)에 있다.
+- Phase 8.1 변경에서 `pnpm gate` **PASS**. 커넥터 테스트 React **26**·Vue **21**·Preact **18**·Svelte **18**·Solid **18**, sync **183개**·core **325개 PASS**(불변). 정확성 결함 0건이며 라이브러리 구현 변경은 없다. 반례는 결함 3종(draft 충돌 감지, 해제된 handle 가드, 커넥터 unmount abort)을 5종 전수 주입해 15칸 모두 실패함을 확인했다. 처음 쓴 React·Preact 언마운트 반례는 주입에도 통과해 `countingWatch`로 구독 자체를 관찰하도록 고쳤다. 기본 core gzip **3,433/3,500 B 불변**. 검증한 경계는 [PHASE8_1](./PHASE8_1.md)에 있다.
+- Phase 8.2 변경에서 `pnpm gate` **PASS**. 커넥터 테스트 React **28**·Vue **23**·Svelte **21**·Preact **20**·Solid **20**, sync **183개**·core **325개 PASS**(불변). `connectSvelte` 결함 2건을 반례를 먼저 쓴 뒤 고쳤고, 주입 3종(쓰기 되돌림 해제 제거, 구독자를 다시 flush 안에서 던지게 함, `owners` 미집계)으로 검증력을 확인했다. Svelte 기존 테스트 회귀 없음(`integration.test.ts` 4·`test.test.ts` 9·`live-view.test.ts` 1). 기본 core gzip **3,433/3,500 B 불변**. 검증한 경계는 [PHASE8_2](./PHASE8_2.md)에 있다.
+- Phase 8.3 변경에서 `pnpm gate` **PASS**. 커넥터 테스트 React **33**·Vue **28**·Svelte **26**·Preact **25**·Solid **25**, sync **183개**·core **325개 PASS**(불변). 정확성 결함 0건이며 구현 변경은 없다. 주입 3종(진행 중 연결 WRITE의 `pending` 미보고, `unknown`·`sync-error`의 미확정 미표시, idle mutation이 `pending`으로 읽힘)을 5종 전수 적용해 15칸 모두 실패함을 확인했다. 기본 core gzip **3,433/3,500 B 불변**. 검증한 경계는 [PHASE8_3](./PHASE8_3.md)에 있다.
+- Phase 8.4 변경에서 `pnpm gate` **16단계 PASS**. React **36**·Preact **27**·Vue **30**개 테스트에 Node SSR이 포함되고, Svelte **26**·Solid **25**개 브라우저 테스트 뒤 별도 SSR 단계에서 Svelte **1**·Solid **2**개가 통과했다. sync **183개**·core **326개 PASS**. 네 커넥터의 서버 분기 제거를 반례가 잡았으며, Solid 읽기 전용 View 분기 제거는 11회 renew로 실패했다. 코어 경로 트리 반례는 수정 전 11개 no-op 구독을 검출하고 수정 후 0개로 통과했다. 기본 core gzip은 **3,442/3,500 B PASS**. 검증한 경계는 [PHASE8_4](./PHASE8_4.md)에 있다.
+- Phase 8.4 리뷰 보강(2026-09-24): Vue SSR getter로 `onServerPrefetch` 이후 최신값과 선택 경로를 반영하고, 콜백 없는 중첩 helper가 원본을 구독하지 않도록 수정했다. computed는 읽을 때 계산하며 `equals`로 동일 결과의 identity를 유지한다. 새 반례 8개는 수정 전 실패, 수정 후 통과했다. core **329개**·Vue **35개**, 전체 테스트 **661개 + 별도 SSR 3개**, gate **16단계 PASS**. 세부 계약과 증거는 [PHASE8_4](./PHASE8_4.md)에 있다.
+- 고정 Node 20.3.0의 기본 core 기준은 **3,455/3,500 B PASS**다. 리뷰 보강 후 측정은 고정 Node 20.3.0에서 **3,491/3,500 B PASS**, gate Node 24.11.1에서 **3,470/3,500 B PASS**다. Phase 5.17 별도 sync ESM은 약 **86.19 kB raw / 20.68 kB gzip**이며 기본 core 빌드에 포함되지 않는다.
+- 구현을 바꾸면 해당 패키지 테스트·타입을 먼저 실행하고 전체 `pnpm gate`로 종료한다. 문서 변경은 `git diff --check`와 링크 경로를 확인한다.
+
+Phase 8 계획은 `7e16f14`, Phase 8.1은 `70d65f2`, Phase 8.2는 `8d1cfdf`, Phase 8.3은 `eff7f5b`다. Phase 8.4 및 computed 캐시 변경은 이 문서를 포함한 커밋에 함께 기록한다. 최신 SHA는 `git log -1 --oneline`으로 확인한다.
+
+## 다음 단계와 완료 기준
+
+1. **Phase 5/6 종료 범위:** [Phase 5.17](./PHASE5_17.md)에서 F2-07의 남은 차이를, [Phase 6](./PHASE6.md)에서 resource/draft 조합과 IC2-05를 닫았다. F2-08의 개발 도구 UI·플랫폼 자동 설치는 Phase 8 범위로 남는다. Phase 5 전체 종료 조건은 [IMPLEMENT](./IMPLEMENT.md)의 F2별 증거이며, 일부 기능을 구현해도 전체 동등성 완료로 표시하지 않는다.
+2. `unknown`은 재조정이나 폐기 전까지 전송할 수 없다. 연결 제출의 자동 재개는 계약상 제공하지 않는다. 완료 기록을 버리기 전 후속 편집을 별도 저장해야 한다.
+3. **Phase 6 완료:** dirty·미확정 WRITE 중인 원본에서 가지 draft를 만들고 독립 편집→로컬 apply→변경 재검토→mutation까지 연결하는 흐름을 자동 검증했다. 서울→부산→대전과 겹친 광주 갱신, 열린 draft의 수명 경계를 포함한다.
+4. **Phase 7 종료:** [Phase 7.1](./PHASE7_1.md) 순서·경계 반례, [Phase 7.2](./PHASE7_2.md) 결과 행렬 모델 대조, [Phase 7.3](./PHASE7_3.md) 배포 경계, [Phase 7.4](./PHASE7_4.md) 수명 반복·보존 사유를 모두 마쳤다. 하위 범위 5개에서 찾은 결함은 배포 3건뿐이고 정확성 결함은 0건이다. `QueryKey` 정밀화와 status readonly화는 공개 API 변경이라 별도 결정으로 남으며, 현재는 `packages/sync/src/tests/negative-runtime.test.ts`의 런타임 거절로 고정돼 있다.
+5. **Phase 8:** [계획](./PHASE8.md)의 8.1~8.4 자동 범위, [8.5](./PHASE8_5.md)의 구현 단계 1~9, [8.6](./PHASE8_6.md)의 F2 지원표를 완료했다. **남은 것은 8.7의 M2-01~20 수동 수행뿐이다.** **브라우저에서 실행한 증거는 아직 없다** — hydration 일치와 상호작용 데모의 화면 동작은 8.7이며, Preact·Svelte·Solid에는 SSR 데모가 없다. **개발 도구 UI와 플랫폼 자동 설치는 만들지 않고 F2 잔여로 명시한다**(DC8-01). 수동 미수행을 PASS로 바꾸지 않는다.
+
+## 현재 인계
+
+- done: [Phase 8.6](./PHASE8_6.md)에서 F2-01~09의 계약·테스트 근거·현재 상태·차이를 한 표로 모으고 `scripts/check-support-table.mjs`로 고정했다. **지원 5행·부분 지원 4행**이며, 부분 지원 행은 달성할 수 없는 것을 이름으로 적는다 — 반응형 infinite key 전환(F2-05), 브라우저 hydration과 Preact·Svelte·Solid의 SSR(F2-06), 개발 도구 UI·플랫폼 자동 설치·TanStack 연동(F2-08, [DC8-01](./PHASE8.md)의 잔여), `QueryKey` 정밀화와 반응형 status readonly(F2-09). 인용한 근거 28개 파일이 모두 실재하고 각각 vitest suite이거나 gate·루트 스크립트가 실행한다. gate는 **19단계**가 됐고, [DESIGN](./DESIGN.md)의 F2 표에 현재 상태 칸을, [README](./README.md)의 문서 지도에 PHASE5_14~PHASE8_6을 더했다.
+- **이 표는 기능 동등성 선언이 아니고 브라우저 증거도 아니다.** 9행 전부의 근거가 Node에서 도는 자동 테스트다.
+- 이전 done: [Phase 8.5](./PHASE8_5.md)의 구현 단계 1~9를 마쳤다. private `examples/` 워크스페이스 7개에서 5종 커넥터 데모가 `examples/shared`의 한 모델과 같은 조작 37개를 렌더하고, React·Vue의 실제 서버 렌더가 조회한 값을 HTML에 담고 11회 렌더 뒤 구독 0개다. `examples/bundles`의 네 조합은 각각 단독 빌드되고 경계는 **해석된 모듈 그래프**로 단언한다(앱 번들은 의존성을 인라인하므로 import 문자열 검사가 성립하지 않는다). UMD 페이지 4종은 실제 dist를 로드해 jsdom에서 판정까지 도달한다. `scripts/check-doc-examples.mjs`가 README 3종의 예제 25개를 빌드된 공개 선언 타입으로 컴파일하고, 이 검사가 찾아낸 README 결함 5종을 고쳤다. `pnpm gate`가 **18단계**가 되었고 `lint`는 `examples/*/src`까지 본다.
+- 검증: `pnpm gate` **18단계 PASS**, 기존 수치 불변 — core **338**, sync **183**, React **36**, Preact **27**, Vue **35**, Svelte **26**, Solid **25**, `examples/shared` **23**, gate Node 24.11.1 core gzip **3,696/3,800 B**. `pnpm check:examples` PASS. 결함 주입은 단계 6에서 8종, 단계 7에서 5종, 단계 8에서 3종을 넣어 **16종 모두 잡혔다**. `packages/` 소스는 8.5 전체에서 한 줄도 바뀌지 않았다(README 2건 제외).
+- **자동 결과를 수동 결과로 읽지 않는다:** 8.5의 증거 범위는 타입 검사·빌드·소스 대조·모듈 그래프·Node 서버 렌더·jsdom까지다. 데모가 존재한다는 사실은 어떤 M2도 통과시키지 않는다.
+- next: **Phase 8.7 — 사람이 브라우저에서 M2-01~20을 수행한다.** 실행 절차와 데모 URL은 [체크리스트 1절](./MANUAL_TEST_CHECKLIST.md)에 있다. 이 단계만 자동화하지 않는다.
+- blockers: 없음. F2 전체 동등성과 M2-01~20 수동 결과는 미완료다. `unknown`을 자동 재전송하지 않는다.
+- 시작 기준 commit: `89a46e9` (Phase 8.4 및 computed 캐시). 8.5의 커밋은 `e0f6e3a`(계획)·`0d72401`·`5309c94`·`c86ae92`·`7d4fc60`·`bac2be6`·`2cc15a7`이며, 이 문서를 포함한 커밋이 단계 9다.
+
+## Phase 8.4 인계 (이전)
+
+- done: Phase 8.4의 구현·Node SSR 반례·코어의 직접 구독 수 반례·결함 주입·`pnpm gate`를 완료했다. README와 `stateRefDocs`의 언바운드 ref 사용 사례를 대조했고, 언바운드 ref로 이미 추적된 경로에 쓰면 기존 구독에 알림이 간다는 예제 설명 네 곳을 바로잡았다. [Phase 8.4 기록](./PHASE8_4.md)과 [IMPLEMENT](./IMPLEMENT.md)를 갱신했다.
+- next: Phase 8.5의 데모와 공개 타입 검증을 시작한다. 브라우저 hydration·loading/error 화면은 아직 미검증이다.
+- blockers: 외부 차단 없음. F2 전체 동등성과 M2-01~20 수동 결과는 미완료다. `unknown`을 자동 재전송하지 않는다.
+- 이전 구현 commit: `eff7f5b` (Phase 8.3). Phase 8.4 및 computed 캐시 변경은 이 문서를 포함한 커밋에 함께 기록한다.
+
+## 콜백 없는 computed 캐시 인계 (2026-09-24)
+
+- done: 입력 ref의 실제 `.value` 읽기와 배열 반복을 기록하는 캐시를 helper 안에 격리했다. 의존 값이 같으면 결과 객체를 재사용하고, 바뀌면 다음 읽기에서 재계산한다. `sync()` 전 최신 읽기, 콜백을 넘긴 구독의 기존 알림, 실패 후 재시도를 검증했다. 기본 proxy/collector는 이 보강에서 수정하지 않았다.
+- 검증: core 338개·전체 670개 + 별도 SSR 3개, `pnpm gate` 16단계 PASS. 원격 main `1c6460b`와 기본 동작 400회 쓰기 비교 일치. 고정 Node 20.3.0 core gzip 3,718 B(+227 B); 기능 비용을 수용해 새 예산은 3,800 B다. 이전 3,500 B는 초과하므로 이전 예산 통과로 해석하지 않는다.
+- next: Phase 8.5 예제와 브라우저 hydration 검증. 콜백 없는 계산은 전달받은 ref를 읽는 순수 함수로 작성한다.
+- blockers: 없음. 브라우저 hydration 수동 검증은 미수행.
+- commit: `eff7f5b` 이후의 Phase 8.4 및 캐시 구현을 이 문서와 함께 커밋한다. 확정 SHA는 ctxbin 인계 기록을 확인한다.

@@ -17,6 +17,21 @@ If subscription doesn't trigger:
 3. Verify you're using the callback's ref, not an external unbound ref
 4. Verify the subscription wasn't aborted
 
+If a UI write does nothing (store unchanged):
+1. Are you mutating an object read from a selection? Write through `.value` / the setter instead.
+2. Vue: look for `Set operation on key ... failed: target is readonly` in the console.
+3. Solid / Svelte runes: a `TypeError` about a frozen object means the same thing.
+
+If a React component renders one more time than expected on mount:
+- Expected: the connector renders twice on mount to collect dependencies.
+
+If `@stateref/sync` misbehaves:
+1. `ref`/`watch` throw before the first `load()` - load first.
+2. "Submission is stale" - capture again right before `run`.
+3. "A linked operation is already pending for this query." - await the previous save.
+4. "Mutation retry requires an idempotencyKey." - pass one the server honours.
+5. A failed save came back `unknown`, not `rejected` - only `MutationRejectedError` means rejected.
+
 If type errors occur:
 1. Add explicit generic: `createStore<MyType>(...)`
 2. Use `as const` with `combineWatch`

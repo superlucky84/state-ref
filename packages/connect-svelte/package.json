@@ -1,28 +1,41 @@
 {
   "type": "module",
   "name": "@stateref/connect-svelte",
-  "version": "4.3.0",
+  "version": "5.0.0",
   "private": false,
   "description": "Svelte connector for state-ref",
   "packageManager": "pnpm@7.6.0",
-  "main": "./dist/stateref-connect-svelte.umd.js",
+  "main": "./dist/stateref-connect-svelte.cjs",
   "module": "./dist/stateref-connect-svelte.mjs",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && vite build --config vite.runes.config.js",
     "test": "vitest run --reporter verbose",
-    "test:dev": "vitest"
+    "test:dev": "vitest",
+    "test:ssr": "vitest run --config vite.ssr.config.js --reporter verbose"
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/stateref-connect-svelte.mjs",
-      "require": "./dist/stateref-connect-svelte.umd.js"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/stateref-connect-svelte.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/stateref-connect-svelte.cjs"
+      }
+    },
+    "./runes": {
+      "import": {
+        "types": "./dist/runes.d.ts",
+        "default": "./dist/stateref-connect-svelte.runes.mjs"
+      }
     }
   },
   "types": "./dist/index.d.ts",
   "files": [
     "src",
+    "!src/tests",
     "dist"
   ],
   "author": "superlucky84",
@@ -36,14 +49,15 @@
     "state-ref"
   ],
   "peerDependencies": {
-    "state-ref": "^3.0.0",
-    "svelte": "^4.0.0"
+    "state-ref": "^3.1.0",
+    "svelte": "^4.0.0 || ^5.0.0"
   },
   "devDependencies": {
-    "@sveltejs/vite-plugin-svelte": "^3.1.2",
+    "@stateref/sync": "workspace:^",
+    "@sveltejs/vite-plugin-svelte": "^4.0.4",
     "@testing-library/svelte": "^5.2.3",
     "state-ref": "workspace:*",
-    "svelte": "^4.2.19"
+    "svelte": "^5.57.1"
   },
   "volta": {
     "node": "20.3.0"

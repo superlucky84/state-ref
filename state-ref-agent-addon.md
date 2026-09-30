@@ -98,11 +98,24 @@ CODING GUIDELINES:
    - Create action functions that encapsulate updateRef + sync
 
 6. FRAMEWORK INTEGRATION
-   - React/Preact: `const useStore = connectReact(watch)`
-   - Vue: `const useStore = connectVue(watch)`
-   - Svelte: `const store = connectSvelte(watch)`
-   - Solid: `const useStore = connectSolid(watch)`
+   - React: `const useStore = connectReact(watch)`; `useStore()` returns the ref
+   - Preact: `const useStore = connectPreact(watch)`; same shape as React
+   - Vue: `connectVue(watch)(s => s.user.age)` returns a reactive `{ value }`
+   - Svelte: `connectSvelte(watch)(s => s.user.age)` returns a Writable (`$age`)
+   - Svelte 5 runes: `connectSvelteRunes(watch)(select)` from
+     `@stateref/connect-svelte/runes` returns `{ value }`
+   - Solid: `connectSolid(watch)(s => s.user.age)` returns `[get, set]`
    - Lithent: Use `watch(renew)` directly
+   - WRITE RULE: only a write that passes through the connector reaches the
+     store. Assign `.value` of a selection (Solid: call the setter) or replace
+     the whole object. Never mutate an object read from a selection: Vue makes
+     it readonly, Solid and Svelte runes hand out frozen copies. Svelte's
+     `$user.name = x` is fine (it compiles to `set`).
+   - React/Preact render a component twice on mount (the second render
+     collects dependencies); do not "fix" this
+   - For a `@stateref/sync` query's display use `connectReactView`,
+     `connectPreactView`, `connectVueView`, `connectSvelteView`,
+     `connectSolidView` with `query.watchDisplay` (readonly)
 
 7. COMBINING STORES
    - Use `combineWatch([watch1, watch2] as const)` for multiple stores
@@ -125,14 +138,43 @@ CODING GUIDELINES:
     - Simple local state can use native framework state (useState, ref, etc.)
     - Don't overcomplicate simple scenarios
 
+11. LOCAL EDITS AND BATCHING (state-ref 3.1)
+    - Edit-then-commit UI (form, dialog): `createDraft(ref)` from
+      `state-ref/draft`; edit `draft.ref`, then `apply()`, `reset()` or
+      `discard()`
+    - `apply()` does not throw on conflict: check `result.ok` / `result.reason`
+      and settle conflicts with `draft.resolve(change, 'source' | 'draft')`
+    - `apply()` only updates the local store; it never contacts a server
+    - Several synchronous writes, one notification pass: `batch(() => {...})`
+      from `state-ref/batch` (no rollback, cannot span `await`)
+
+12. SERVER DATA (only when `@stateref/sync` is installed)
+    - One `createSyncClient()` per app; one per request for SSR
+    - `client.query({ queryKey, queryFn })`, then `await query.load()`; `ref`
+      throws before the first load
+    - Edits to `query.ref` are local and never save by themselves
+    - Save: `const submission = query.capture()` immediately before
+      `mutation.run(dto, { links: [{ query, submission, accept: { kind: 'refetch' } }] })`
+    - `accept` in `run()` is an object (`{ kind: 'none' | 'submitted' |
+      'refetch' }` or `{ kind: 'response', select }`), never a string
+    - Only `MutationRejectedError` yields `rejected`; other errors yield
+      `unknown`, which keeps edits and must not be blindly resent
+    - `retry` requires an `idempotencyKey` the server honours
+    - "Saving" is `status.pending.value > 0`, not `phase === 'pending'`
+    - Details: node_modules/state-ref/dist/skills/state-ref/reference/server-sync.md
+
 IMPORT PATHS:
 - Core: `import { createStore, createStoreManualSync, combineWatch, createComputed } from 'state-ref'`
 - Helpers: `import { lens, copyable, cloneDeep } from 'state-ref'`
-- React: `import { connectReact } from '@stateref/connect-react'`
-- Preact: `import { connectPreact } from '@stateref/connect-preact'`
-- Vue: `import { connectVue } from '@stateref/connect-vue'`
-- Svelte: `import { connectSvelte } from '@stateref/connect-svelte'`
-- Solid: `import { connectSolid } from '@stateref/connect-solid'`
+- Drafts: `import { createDraft } from 'state-ref/draft'`
+- Batch: `import { batch } from 'state-ref/batch'`
+- React: `import { connectReact, connectReactView } from '@stateref/connect-react'`
+- Preact: `import { connectPreact, connectPreactView } from '@stateref/connect-preact'`
+- Vue: `import { connectVue, connectVueView } from '@stateref/connect-vue'`
+- Svelte: `import { connectSvelte, connectSvelteView } from '@stateref/connect-svelte'`
+- Svelte 5 runes: `import { connectSvelteRunes } from '@stateref/connect-svelte/runes'`
+- Solid: `import { connectSolid, connectSolidView } from '@stateref/connect-solid'`
+- Server sync: `import { createSyncClient, MutationRejectedError } from '@stateref/sync'`
 
 GUIDANCE APPROACH:
 When user requests could benefit from state-ref patterns:
@@ -183,7 +225,13 @@ This section provides minimal context to help agents locate and use state-ref fu
 
 ### Combining & Computing
 - **combineWatch** - Combine multiple watches into single watch
-- **createComputed** - Derive computed values from multiple watches
+- **createComputed** - Derive computed values from multiple watches. Read
+  without a subscriber, it recalculates only when an input it read changed
+
+### Drafts & Batch (3.1, separate entry points)
+- **createDraft** (`state-ref/draft`) - Local edit session over any ref:
+  `ref`, `changes()`, `apply()`, `resolve()`, `reset()`, `discard()`
+- **batch** (`state-ref/batch`) - One notification pass for synchronous writes
 
 ### Helper Functions
 - **lens** - Functional lens for immutable updates
@@ -191,11 +239,19 @@ This section provides minimal context to help agents locate and use state-ref fu
 - **cloneDeep** - Deep clone utility
 
 ### Framework Connectors
-- **connectReact** - React hook connector (`@stateref/connect-react`)
+- **connectReact** - React 18/19 hook connector (`@stateref/connect-react`)
 - **connectPreact** - Preact hook connector (`@stateref/connect-preact`)
-- **connectVue** - Vue reactive connector (`@stateref/connect-vue`)
-- **connectSvelte** - Svelte store connector (`@stateref/connect-svelte`)
-- **connectSolid** - Solid signal connector (`@stateref/connect-solid`)
+- **connectVue** - Vue 3.2+ connector, takes a selector (`@stateref/connect-vue`)
+- **connectSvelte** - Svelte 4/5 store connector, takes a selector (`@stateref/connect-svelte`)
+- **connectSvelteRunes** - Svelte 5 runes (`@stateref/connect-svelte/runes`)
+- **connectSolid** - Solid signal connector, takes a selector (`@stateref/connect-solid`)
+- **connect*View** - Readonly display of a `@stateref/sync` query
+
+### Server Sync (`@stateref/sync`, optional package)
+- **createSyncClient** - Query cache and mutation client
+- **client.query / client.infiniteQuery** - Editable server resource / page list
+- **query.capture + client.mutation().run** - Explicit save with linked queries
+- **MutationRejectedError** - Throw from `mutationFn` when the server refuses
 
 ### Key Types
 - **StateRefStore<T>** - Proxied reference with `.value` accessor

@@ -6,6 +6,7 @@ import {
   waitFor,
 } from '@testing-library/svelte';
 import { describe, it, expect } from 'vitest';
+import { batch } from 'state-ref/batch';
 import { handleRef, getDefaultValue, watch, watch2 } from '@/tests/store/store';
 
 import AgeWithAction from '@/tests/svelte/AgeWithAction.svelte';
@@ -25,6 +26,34 @@ describe('Connect Svelte', () => {
   afterEach(() => {
     cleanup();
     resetStore();
+  });
+
+  it('applies one synchronous batch notification and keeps two-way input writable', async () => {
+    render(Age);
+    const seen: Array<[string, number]> = [];
+    const abort = new AbortController();
+    watch(state => {
+      seen.push([state.name.value, state.age.value]);
+      return abort.signal;
+    });
+    seen.length = 0;
+
+    batch(() => {
+      handleRef.name.value = 'Batch';
+      handleRef.age.value = 20;
+      expect(seen).toEqual([]);
+    });
+    expect(seen).toEqual([['Batch', 20]]);
+    await waitFor(() =>
+      expect(screen.getByTestId('age-display').textContent).toBe('age: 20')
+    );
+
+    await fireEvent.click(screen.getByTestId('age-increase'));
+    await waitFor(() =>
+      expect(screen.getByTestId('age-display').textContent).toBe('age: 21')
+    );
+    expect(handleRef.age.value).toBe(21);
+    abort.abort();
   });
 
   it('It should work well responsively for stateRef value.', () => {

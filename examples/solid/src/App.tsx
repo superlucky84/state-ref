@@ -1,0 +1,690 @@
+import { For, Show, createMemo } from 'solid-js';
+import { connectSolid, connectSolidView } from '@stateref/connect-solid';
+import type { Draft } from 'state-ref/draft';
+import {
+  CARD_TITLE,
+  OPERATION_GROUPS,
+  POLICY_TEXT,
+  createDemoModel,
+  keyText,
+  draftPanel,
+  inspectPanel,
+  label as fieldLabel,
+  requestPanel,
+  resourcePanel,
+  show,
+  displayPhaseOf,
+} from 'stateref-example-shared';
+import type {
+  CardId,
+  ChangeLine,
+  FieldId,
+  OperationId,
+  Profile,
+} from 'stateref-example-shared';
+import 'stateref-example-shared/demo.css';
+
+/**
+ * The Solid demo (step 4 of docs/server-sync/PHASE8_5.md).
+ *
+ * Same model and operations as the React demo; `connectSolid` hands back a
+ * signal per selected leaf, so the bindings are getter/setter pairs.
+ */
+const model = createDemoModel();
+
+// The label comes from the shared table and the row carries its field id, so
+// the browser runner addresses it by that id rather than by Korean text
+// (DC8-8-04).
+function Row(props: { field: FieldId; value: unknown }) {
+  return (
+    <div class="row" data-field={props.field}>
+      <span>{fieldLabel(props.field)}</span>
+      <b>{show(props.value)}</b>
+    </div>
+  );
+}
+
+function Flag(props: { field: FieldId; on: boolean }) {
+  return (
+    <div class="row" data-field={props.field}>
+      <span>{fieldLabel(props.field)}</span>
+      <b class={props.on ? 'flag-on' : 'flag-off'}>
+        {props.on ? 'true' : 'false'}
+      </b>
+    </div>
+  );
+}
+
+function Changes(props: { rows: readonly ChangeLine[] }) {
+  // A draft's rows carry what the source holds now; a resource's do not. The
+  // column appears only where there is a third value to show (B8-7-16).
+  const hasSource = () => props.rows.some(row => row.source !== undefined);
+  return (
+    <Show when={props.rows.length > 0} fallback={<p class="note">변경 없음</p>}>
+      <table>
+        <thead>
+          <tr>
+            <th>id</th>
+            <th>경로</th>
+            <th>before</th>
+            <th>after</th>
+            <Show when={hasSource()}>
+              <th>원본</th>
+            </Show>
+            <th>충돌</th>
+          </tr>
+        </thead>
+        <tbody>
+          <For each={props.rows}>
+            {row => (
+              <tr data-change={row.id}>
+                <td>{row.id}</td>
+                <td data-cell="path">{row.path}</td>
+                <td data-cell="before">{row.before}</td>
+                <td data-cell="after">{row.after}</td>
+                <Show when={hasSource()}>
+                  <td data-cell="source">{row.source}</td>
+                </Show>
+                <td data-cell="conflict" class={row.conflict ? 'bad' : ''}>
+                  {row.conflict ? 'conflict' : '-'}
+                </td>
+              </tr>
+            )}
+          </For>
+        </tbody>
+      </table>
+    </Show>
+  );
+}
+
+/** Created only once the query has loaded: `query.watch` throws before that. */
+
+/**
+ * The live view card.
+ *
+ * A disposed view refuses every access, so the rows that read it mount only
+ * while it is alive - the same shape as a resource panel's value rows.
+ */
+function LiveRows() {
+  const view = connectSolidView(model.liveView.watchDisplay);
+  const key = view(ref => ref.queryKey.value);
+  const enabled = view(ref => ref.enabled.value);
+  const phase = view(ref => displayPhaseOf(ref));
+  const fetchStatus = view(ref => ref.fetchStatus.value);
+  const city = view(ref => ref.data.value?.city);
+  return (
+    <>
+      <Row
+        field="liveKey"
+        value={key() === null ? '(없음)' : keyText(key() as string[])}
+      />
+      <Row field="liveEnabled" value={String(enabled())} />
+      <Row field="livePhase" value={`${phase()} / ${fetchStatus()}`} />
+      <Row field="liveCity" value={city() ?? '(없음)'} />
+    </>
+  );
+}
+
+/**
+ * The second display of the same key.
+ *
+ * Unlike the probe card this one *is* about the connector (DC8-8-33): it holds
+ * a second, independent subscription on a shared view, and closing the screen
+ * unmounts it without releasing that view. Bound here rather than at module
+ * scope because the view does not exist until the card is opened.
+ */
+function ShareRows(props: {
+  watch: NonNullable<ReturnType<typeof model.shareWatch>>;
+}) {
+  const view = connectSolidView(props.watch);
+  const phase = view(ref => displayPhaseOf(ref));
+  const fetchStatus = view(ref => ref.fetchStatus.value);
+  const city = view(ref => ref.data.value?.city);
+  return (
+    <>
+      <Row field="livePhase" value={`${phase()} / ${fetchStatus()}`} />
+      <Row field="liveCity" value={city() ?? '(없음)'} />
+    </>
+  );
+}
+
+function LiveGone() {
+  return (
+    <>
+      <Row field="liveKey" value="(해제됨)" />
+      <Row field="liveEnabled" value="(해제됨)" />
+      <Row field="livePhase" value="(해제됨)" />
+      <Row field="liveCity" value="(해제됨)" />
+    </>
+  );
+}
+
+function ResourceValues(props: { which: 'a' | 'b' }) {
+  const source = connectSolid(
+    props.which === 'a' ? model.panelA.watch : model.panelB.watch
+  );
+  const [city, setCity] = source(store => store.city);
+  const [zip] = source(store => store.zip);
+  const [memo] = source(store => store.memo);
+  const [contacts] = source(store => store.contacts);
+  const [office] = source(store => store.office);
+
+  return (
+    <>
+      <div class="row" data-field="city">
+        <span>{fieldLabel('city')}</span>
+        <input
+          value={city()}
+          onInput={event => setCity(event.currentTarget.value)}
+        />
+      </div>
+      <Row field="zip" value={zip()} />
+      <Row field="memo" value={memo()} />
+      <Row
+        field="contacts"
+        value={contacts()
+          .map(c => c.name)
+          .join(',')}
+      />
+      <Row field="office" value={office() ?? '(없음)'} />
+    </>
+  );
+}
+
+function ResourceCard(props: {
+  card: Extract<CardId, 'resource-a' | 'resource-b'>;
+  which: 'a' | 'b';
+}) {
+  const handle = props.which === 'a' ? model.panelA : model.panelB;
+  const [status] = connectSolid(handle.watchStatus)(store => store);
+  const panel = createMemo(() =>
+    resourcePanel(status(), status().loaded ? handle.changes() : [])
+  );
+
+  return (
+    <section class="card" data-card={props.card}>
+      <h2>{CARD_TITLE[props.card]}</h2>
+      <Show
+        when={panel().loaded}
+        fallback={
+          <p class="note">
+            {panel().status === 'error'
+              ? `오류: ${panel().errorText}`
+              : '아직 로드되지 않았다. 여기에 가짜 성공 값을 보이지 않는다.'}
+          </p>
+        }
+      >
+        <ResourceValues which={props.which} />
+      </Show>
+      <Row
+        field="status"
+        value={`${panel().status} / ${panel().fetchStatus}`}
+      />
+      <Flag field="dirty" on={panel().dirty} />
+      <Flag field="serverBusy" on={panel().serverBusy} />
+      <Flag field="unconfirmed" on={panel().unconfirmed} />
+      <Flag field="invalidated" on={panel().invalidated} />
+      <Row
+        field="version"
+        value={`${panel().version} / ${panel().conflicts}`}
+      />
+      <Changes rows={panel().changes} />
+    </section>
+  );
+}
+
+function DraftCard(props: {
+  card: Extract<CardId, 'draft-a' | 'draft-b'>;
+  draft: Draft<Profile>;
+}) {
+  const value = connectSolid(props.draft.watch);
+  const [city, setCity] = value(store => store.city);
+  const [zip] = value(store => store.zip);
+  const [memo] = value(store => store.memo);
+  const [status] = connectSolid(props.draft.watchStatus)(store => store);
+  const panel = createMemo(() => draftPanel(status(), props.draft.changes()));
+
+  return (
+    <section class="card" data-card={props.card}>
+      <h2>{CARD_TITLE[props.card]}</h2>
+      <div class="row" data-field="city">
+        <span>{fieldLabel('city')}</span>
+        <input
+          value={city()}
+          onInput={event => setCity(event.currentTarget.value)}
+        />
+      </div>
+      <Row field="zip" value={zip()} />
+      {/* A field the draft never edits: an update to it on the source has to
+          show up here, which is the first thing M2-13 asks (B8-7-17). */}
+      <Row field="memo" value={memo()} />
+      <Flag field="draftDirty" on={panel().dirty} />
+      <Row
+        field="version"
+        value={`${panel().version} / ${panel().conflicts}`}
+      />
+      <Changes rows={panel().changes} />
+    </section>
+  );
+}
+
+export default function App() {
+  const ui = connectSolid(model.watchUi);
+  const [tick] = ui(store => store.tick);
+  const [draftGeneration] = ui(store => store.draftGeneration);
+  const [lastOperation] = ui(store => store.lastOperation);
+  const [lastResult] = ui(store => store.lastResult);
+  const [captured] = ui(store => store.captured);
+  const [focused] = ui(store => store.focused);
+  const [online] = ui(store => store.online);
+  const [computedValue] = ui(store => store.computedValue);
+  const [computedCalculations] = ui(store => store.computedCalculations);
+  const [computedIdentityStable] = ui(store => store.computedIdentityStable);
+  const [computedSubscribed] = ui(store => store.computedSubscribed);
+  const [liveDisposed] = ui(store => store.liveDisposed);
+  const [shareMounted] = ui(store => store.shareMounted);
+  const [inspectSubscribed] = ui(store => store.inspectSubscribed);
+  const [cacheEventsSeen] = ui(store => store.cacheEventsSeen);
+  const [mutationEventsSeen] = ui(store => store.mutationEventsSeen);
+  const [cacheEventFields] = ui(store => store.cacheEventFields);
+  const [mutationEventFields] = ui(store => store.mutationEventFields);
+  const [mutation] = connectSolid(model.mutation.watchStatus)(store => store);
+  const [readonlyStatus] = connectSolid(model.readonlyQuery.watchStatus)(
+    store => store
+  );
+
+  // The mock server is not reactive: reading the tick is what repaints these.
+  const requests = createMemo(() => {
+    void tick();
+    return requestPanel(model.server);
+  });
+  const drafts = createMemo(() => {
+    void draftGeneration();
+    return model.drafts();
+  });
+  // The client's observation surface is a snapshot too, and so is the
+  // environment's listener count: the tick repaints both (DC8-8-12).
+  const inspect = createMemo(() => {
+    void tick();
+    return inspectPanel(
+      model.client.inspectCache(),
+      model.client.inspectMutations()
+    );
+  });
+  const envListeners = createMemo(() => {
+    void tick();
+    return model.environment.listenerCount();
+  });
+  // The second client's card. Same key, different client (DC8-8-18); read
+  // through the tick rather than a connector (DC8-8-19).
+  const probe = createMemo(() => {
+    void tick();
+    return model.probe();
+  });
+  // The second display's card. Its `state` row and its closed/released value
+  // rows are snapshots; the open rows come from the connector (DC8-8-33).
+  const share = createMemo(() => {
+    void tick();
+    void shareMounted();
+    return model.share();
+  });
+  const shareWatch = createMemo(() => {
+    void tick();
+    void shareMounted();
+    return model.shareWatch();
+  });
+  // The screen-wide unsaved sum, and the readonly query's own review surface.
+  // Both are non-reactive calls, so they follow the tick like the tables do.
+  const unsaved = createMemo(() => {
+    void tick();
+    return model.unsaved();
+  });
+  const lifetime = createMemo(() => {
+    void tick();
+    return model.lifetime();
+  });
+  const readonlyPanel = createMemo(() => {
+    void tick();
+    return resourcePanel(readonlyStatus(), model.readonlyQuery.changes());
+  });
+  // The boundary card. One draft slot over a child ref or the readonly query;
+  // read through the tick for the same reason the probe card is (DC8-8-19).
+  const boundary = createMemo(() => {
+    void tick();
+    return model.boundary();
+  });
+  const time = (at: number | null) =>
+    at ? new Date(at).toLocaleTimeString() : '-';
+
+  return (
+    <main>
+      <h1>state-ref — Solid 서버 동기화 데모</h1>
+      <p class="note">
+        수동 체크리스트 1절의 fixture를 그대로 쓴다. 실제 서버는 없다.
+      </p>
+      <div class="grid">
+        <For each={OPERATION_GROUPS}>
+          {group => (
+            <section class="card">
+              <h2>{group.title}</h2>
+              <For each={group.operations}>
+                {([id, label]) => (
+                  <button
+                    data-operation={id}
+                    onClick={() => model.run(id as OperationId)}
+                  >
+                    {label}
+                  </button>
+                )}
+              </For>
+            </section>
+          )}
+        </For>
+
+        <section class="card" data-card="requests">
+          <h2>{CARD_TITLE.requests}</h2>
+          <Row
+            field="server"
+            value={`${requests().serverCity} / ${requests().serverRevision}`}
+          />
+          <Row
+            field="counts"
+            value={`${requests().readCount} / ${requests().writeCount}`}
+          />
+          <Row field="inFlight" value={requests().inFlight} />
+          <table>
+            <thead>
+              <tr>
+                <th>요청 ID</th>
+                <th>key</th>
+                <th>revision</th>
+                <th>결과</th>
+                <th>시작</th>
+                <th>종료</th>
+              </tr>
+            </thead>
+            <tbody>
+              <For each={requests().rows}>
+                {row => (
+                  <tr data-request={row.id}>
+                    <td>{row.id}</td>
+                    <td data-cell="key">{row.key}</td>
+                    <td data-cell="revision">{row.revision}</td>
+                    <td
+                      data-cell="outcome"
+                      class={row.outcome === 'in-flight' ? 'flag-on' : ''}
+                    >
+                      {row.outcome}
+                    </td>
+                    <td>{time(row.startedAt)}</td>
+                    <td>{time(row.settledAt)}</td>
+                  </tr>
+                )}
+              </For>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="card" data-card="operations">
+          <h2>{CARD_TITLE.operations}</h2>
+          <Row field="lastOperation" value={lastOperation()} />
+          <Row field="lastResult" value={lastResult()} />
+          <Row field="captured" value={captured() ?? '(없음)'} />
+          <Row field="mutationPhase" value={mutation().phase} />
+          <Row field="mutationPending" value={mutation().pending} />
+          <Row field="readonlyStatus" value={readonlyStatus().status} />
+          {/* Beside the parents' own `dirty`, never instead of it (M2-16 항목 2). */}
+          <Flag field="unsaved" on={unsaved()} />
+          <Flag field="focused" on={focused()} />
+          <Flag field="online" on={online()} />
+          <Row field="policy" value={POLICY_TEXT} />
+          <p class="note">
+            staleTime과 interval은 실제 시간으로 흐른다. fixture가 제어하는 것은
+            환경 사건과 요청 완료 시점이다.
+          </p>
+        </section>
+
+        <ResourceCard card="resource-a" which="a" />
+        <ResourceCard card="resource-b" which="b" />
+
+        <Show when={!drafts().a && !drafts().b}>
+          <section class="card">
+            <h2>draft 값과 변경</h2>
+            <p class="note">아직 분기하지 않았다. 원본을 먼저 편집해 보라.</p>
+          </section>
+        </Show>
+        <Show when={drafts().a} keyed>
+          {draft => <DraftCard card="draft-a" draft={draft} />}
+        </Show>
+        <Show when={drafts().b} keyed>
+          {draft => <DraftCard card="draft-b" draft={draft} />}
+        </Show>
+
+        <section class="card" data-card="live">
+          <h2>{CARD_TITLE.live}</h2>
+          <Show when={!liveDisposed()} fallback={<LiveGone />}>
+            <LiveRows />
+          </Show>
+          <p class="note">
+            원본이 key를 가리키지 않으면 비활성이고 조회 핸들이 없다. key를
+            바꾸면 이전 key의 조회는 마지막 소유자였을 때 취소된다.
+          </p>
+        </section>
+
+        <section class="card" data-card="computed">
+          <h2>{CARD_TITLE.computed}</h2>
+          <Row field="computedValue" value={computedValue()} />
+          <Row field="computedCalculations" value={computedCalculations()} />
+          <Flag field="computedIdentity" on={computedIdentityStable()} />
+          <Row field="computedSubscribed" value={computedSubscribed()} />
+          <p class="note">
+            구독 없는 읽기는 sync() 전에도 최신 값을 본다. 구독 콜백은
+            sync()에서 알림을 받는다.
+          </p>
+        </section>
+
+        <section class="card" data-card="inspect">
+          <h2>{CARD_TITLE.inspect}</h2>
+          <Row field="cacheSize" value={inspect().cacheSize} />
+          <Row field="cacheOwners" value={inspect().cacheOwners} />
+          <Row field="openMutations" value={inspect().openMutations} />
+          <Flag field="inspectSubscribed" on={inspectSubscribed()} />
+          <Row
+            field="observedEvents"
+            value={`${cacheEventsSeen()} / ${mutationEventsSeen()}`}
+          />
+          <Row field="cacheEventFields" value={cacheEventFields()} />
+          <Row field="mutationEventFields" value={mutationEventFields()} />
+          <Row field="envListeners" value={envListeners()} />
+          <table>
+            <thead>
+              <tr>
+                <th>key</th>
+                <th>kind</th>
+                <th>소유자</th>
+                <th>status / fetch</th>
+              </tr>
+            </thead>
+            <tbody>
+              <For each={inspect().cache}>
+                {row => (
+                  <tr data-cache={row.key}>
+                    <td data-cell="key">{row.key}</td>
+                    <td data-cell="kind">{row.kind}</td>
+                    <td data-cell="owners">{row.owners}</td>
+                    <td data-cell="status">{row.status}</td>
+                  </tr>
+                )}
+              </For>
+            </tbody>
+          </table>
+          <Show
+            when={inspect().mutations.length > 0}
+            fallback={<p class="note">미종료 WRITE 없음</p>}
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th>작업</th>
+                  <th>phase</th>
+                  <th>scope</th>
+                  <th>시도</th>
+                  <th>idempotent</th>
+                  <th>연결된 key</th>
+                </tr>
+              </thead>
+              <tbody>
+                <For each={inspect().mutations}>
+                  {row => (
+                    <tr data-mutation={row.id}>
+                      <td data-cell="id">{row.id}</td>
+                      <td data-cell="phase">{row.phase}</td>
+                      <td data-cell="scope">{row.scope}</td>
+                      <td data-cell="attempt">{row.attempt}</td>
+                      <td data-cell="idempotent">{String(row.idempotent)}</td>
+                      <td data-cell="linked">{row.linked}</td>
+                    </tr>
+                  )}
+                </For>
+              </tbody>
+            </table>
+          </Show>
+          <p class="note">
+            모두 client의 공개 관측 표면이다. 이벤트에는 조회 값과 입력 DTO가
+            없고, 구독을 해제하면 이후 이벤트가 오지 않는다.
+          </p>
+        </section>
+
+        <Show when={probe()} keyed>
+          {view => (
+            <section class="card" data-card="probe">
+              <h2>{CARD_TITLE.probe}</h2>
+              <Row field="probeState" value={view.state} />
+              <Row field="status" value={view.status} />
+              <Row field="dirty" value={view.dirty} />
+              <Row field="version" value={view.version} />
+              <Show when={view.city !== null}>
+                <Row field="city" value={view.city} />
+              </Show>
+              <Row field="cacheSize" value={view.cacheSize} />
+              <Row field="cacheOwners" value={view.cacheOwners} />
+              <Row field="observedEvents" value={view.events} />
+              <table>
+                <thead>
+                  <tr>
+                    <th>key</th>
+                    <th>kind</th>
+                    <th>소유자</th>
+                    <th>status / fetch</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <For each={view.cache}>
+                    {row => (
+                      <tr data-cache={row.key}>
+                        <td data-cell="key">{row.key}</td>
+                        <td data-cell="kind">{row.kind}</td>
+                        <td data-cell="owners">{row.owners}</td>
+                        <td data-cell="status">{row.status}</td>
+                      </tr>
+                    )}
+                  </For>
+                </tbody>
+              </table>
+              <p class="note">
+                같은 key를 보지만 캐시가 다르다. 이 client의 편집·기준·요청은
+                패널 두 장과 공유되지 않고, 해제하면 이 client의 환경 listener만
+                사라진다.
+              </p>
+            </section>
+          )}
+        </Show>
+
+        {/*
+          Not `keyed`: `model.share()` answers a fresh object every tick, so a
+          keyed `Show` would tear down and rebuild its children on every
+          operation - including the component whose *subscription* is the thing
+          under test. The probe card can afford that shape because its children
+          are plain strings; here it would quietly make the card prove nothing.
+          The rows stay mounted and read reactively instead, the way the
+          lifetime card does.
+        */}
+        <Show when={share()}>
+          <section class="card" data-card="share">
+            <h2>{CARD_TITLE.share}</h2>
+            <Row field="shareState" value={share()!.state} />
+            <Show
+              when={shareMounted() ? shareWatch() : null}
+              keyed
+              fallback={
+                <>
+                  <Row field="livePhase" value={share()!.phase} />
+                  <Row field="liveCity" value={share()!.city} />
+                </>
+              }
+            >
+              {watch => <ShareRows watch={watch} />}
+            </Show>
+            <p class="note">
+              화면을 닫으면 이 컴포넌트의 구독만 끝나고 공유 view는 남는다.
+              소유자가 줄어드는 것은 view를 해제했을 때뿐이다.
+            </p>
+          </section>
+        </Show>
+
+        <section class="card" data-card="lifetime">
+          <h2>{CARD_TITLE.lifetime}</h2>
+          <Row field="draftCycles" value={lifetime().cycles} />
+          <Row field="draftLive" value={lifetime().live} />
+          <Row field="draftNotices" value={lifetime().notices} />
+          <Row field="retainedBy" value={lifetime().retainedBy} />
+          <Row field="heldRef" value={lifetime().heldRef} />
+          <Row field="serverless" value={lifetime().serverless} />
+          <p class="note">
+            반복이 남긴 것이 없으면 원본을 고쳐도 깨어나는 draft가 0이다. 살려
+            둔 draft가 있으면 그 수만큼 깨어난다 — 0과 2를 가르는 것이 이 행의
+            내용이다.
+          </p>
+        </section>
+
+        <section class="card" data-card="readonly">
+          <h2>{CARD_TITLE.readonly}</h2>
+          <Row
+            field="status"
+            value={`${readonlyPanel().status} / ${readonlyPanel().fetchStatus}`}
+          />
+          <Flag field="dirty" on={readonlyPanel().dirty} />
+          <Row
+            field="version"
+            value={`${readonlyPanel().version} / ${readonlyPanel().conflicts}`}
+          />
+          <Changes rows={readonlyPanel().changes} />
+          <p class="note">
+            검토 목록과 version은 있고 영원히 비어 있다. 쓰기도 제출 고정도
+            거절하므로 여기에 쌓일 것이 없다 — 다른 조회의 항목을 여기로 가져올
+            수도 없다.
+          </p>
+        </section>
+
+        <Show when={boundary()} keyed>
+          {view => (
+            <section class="card" data-card="boundary">
+              <h2>{CARD_TITLE.boundary}</h2>
+              <Row field="boundarySource" value={view.source} />
+              <Row field="boundaryValue" value={view.value} />
+              <Row field="draftDirty" value={view.dirty} />
+              <Row field="version" value={view.version} />
+              <Changes rows={view.changes} />
+              <p class="note">
+                분기도 편집도 어느 원본에서나 된다. 갈리는 것은 적용이다 —
+                부모가 사라진 원본은 missing-source, 타입이 바뀐 원본은
+                conflict, readonly 원본은 readonly로 거절하고, 어느 쪽도 원본을
+                바꾸지 않으며 draft의 입력도 남는다.
+              </p>
+            </section>
+          )}
+        </Show>
+      </div>
+    </main>
+  );
+}

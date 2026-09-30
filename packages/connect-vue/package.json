@@ -1,11 +1,11 @@
 {
   "type": "module",
   "name": "@stateref/connect-vue",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "private": false,
   "description": "Vue connector for state-ref",
   "packageManager": "pnpm@7.6.0",
-  "main": "./dist/stateref-connect-vue.umd.js",
+  "main": "./dist/stateref-connect-vue.cjs",
   "module": "./dist/stateref-connect-vue.mjs",
   "scripts": {
     "dev": "vite",
@@ -15,14 +15,20 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/stateref-connect-vue.mjs",
-      "require": "./dist/stateref-connect-vue.umd.js"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/stateref-connect-vue.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/stateref-connect-vue.cjs"
+      }
     }
   },
   "types": "./dist/index.d.ts",
   "files": [
     "src",
+    "!src/tests",
     "dist"
   ],
   "author": "superlucky84",
@@ -36,13 +42,15 @@
     "state-ref"
   ],
   "peerDependencies": {
-    "state-ref": "^3.0.0",
-    "vue": "^3.0.0"
+    "state-ref": "^3.1.0",
+    "vue": "^3.2.0"
   },
   "devDependencies": {
+    "@stateref/sync": "workspace:^",
     "@testing-library/vue": "^8.1.0",
     "@vitejs/plugin-vue": "^5.1.4",
     "@vue/compiler-sfc": "^3.5.10",
+    "@vue/server-renderer": "^3.5.10",
     "state-ref": "workspace:*",
     "vue": "^3.5.10"
   },

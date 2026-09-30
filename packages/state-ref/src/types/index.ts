@@ -66,7 +66,9 @@ export type StateRefStore<S> = S extends readonly any[]
   : { value: S };
 
 /**
- * Subscribes, or hands back a reference when called with no callback.
+ * Subscribes, or hands back a live reference without subscribing when called
+ * with no callback. Reads and writes through that reference stay current but
+ * do not register a notification path.
  *
  * `cache` (default `true`) de-duplicates by callback identity: calling
  * `watch(fn)` twice with the same `fn` returns the same reference and
@@ -89,6 +91,24 @@ export type RunInfo<A> = {
 export type RenderListSub<A> = Map<PathNode, RunInfo<A>>;
 
 export type StoreRenderList<A> = Map<Run, RenderListSub<A>>;
+
+export type RefPathCursor = {
+  readonly segment: string | symbol;
+  readonly parent: RefPathCursor | null;
+};
+
+/**
+ * An opt-in notification for a successful ref setter, before subscribers run.
+ * The cursor uses the core's stable path nodes; helpers can materialize a
+ * relative path when they record the write, without making every setter copy
+ * a path array.
+ */
+export type RefWrite = Readonly<{
+  parent: RefPathCursor;
+  segment: string | symbol | null;
+  before: unknown;
+  after: unknown;
+}>;
 
 export type Copyable<T, Root = T> = {
   [K in keyof T]: Copyable<T[K], Root>;

@@ -8,6 +8,7 @@ import type {
 } from '@/types';
 import type { Lens } from '@/lens';
 import { lens } from '@/lens';
+import { memoRefs } from './memo';
 
 /**
  * Defaults for `watch(renew, userOption)`.
@@ -253,6 +254,9 @@ function relayTeardown(
  *
  * The subscriber may return `false` or an `AbortSignal` to unsubscribe, the
  * same as a plain `watch` callback.
+ * Without a subscriber, reads reuse the result until a value the calculation
+ * read changes. This needs no source subscription, and reads before a manual
+ * sync still see current inputs. `equals` can retain an equivalent result.
  */
 export function createComputed<W extends readonly Watch<any>[], R>(
   watches: W,
@@ -275,7 +279,9 @@ export function createComputed<W extends readonly Watch<any>[], R>(
      * collision waiting to happen.
      */
     const refs = [] as unknown as StateRefsTuple<W>;
-    const controllers = watches.map(() => new AbortController());
+    const controllers = computedCallback
+      ? watches.map(() => new AbortController())
+      : [];
 
     /**
      * Per subscription, not per computed.
@@ -292,9 +298,10 @@ export function createComputed<W extends readonly Watch<any>[], R>(
      * means one of each per subscription.
      */
     let result: R;
+    let read: (() => R) | undefined;
     const proxy: { value: R } = {
       get value(): R {
-        return result;
+        return read ? read() : result;
       },
       set value(_setter) {
         console.warn('Can not setting');
@@ -302,6 +309,10 @@ export function createComputed<W extends readonly Watch<any>[], R>(
     };
 
     watches.forEach((watch, index) => {
+      if (!computedCallback) {
+        (refs as any)[index] = watch();
+        return;
+      }
       watch((ref, isFirst) => {
         (refs as any)[index] = ref;
 
@@ -323,9 +334,11 @@ export function createComputed<W extends readonly Watch<any>[], R>(
 
         result = next;
 
-        return computedCallback
-          ? relayTeardown(computedCallback(proxy, false), controllers, false)
-          : undefined;
+        return relayTeardown(
+          computedCallback(proxy, false),
+          controllers,
+          false
+        );
       });
     });
 
@@ -334,7 +347,8 @@ export function createComputed<W extends readonly Watch<any>[], R>(
      * because a proxy carries the run it belongs to - it does not matter that
      * this happens outside a run.
      */
-    result = callback(refs);
+    if (!computedCallback) read = memoRefs(refs, callback, equals);
+    result = read ? read() : callback(refs);
 
     if (computedCallback) {
       relayTeardown(computedCallback(proxy, true), controllers, true);
@@ -349,6 +363,7 @@ export function createComputed<W extends readonly Watch<any>[], R>(
  * whenever any of them changes. The callback receives the current
  * StateRefStore values of all watches and a boolean indicating
  * whether this is the first invocation.
+ * Without a callback, the source refs stay live without adding subscriptions.
  */
 export function combineWatch<W extends readonly Watch<any>[]>(
   watches: [...W]
@@ -398,6 +413,10 @@ export function combineWatch<W extends readonly Watch<any>[]>(
 
     watches.forEach((watch, i) => {
       const index = i as keyof RefsTuple;
+      if (!callback) {
+        refs[index] = watch(undefined, userOption) as RefsTuple[number];
+        return;
+      }
       watch((ref, isFirst) => {
         refs[index] = ref as RefsTuple[number];
 
@@ -412,9 +431,11 @@ export function combineWatch<W extends readonly Watch<any>[]>(
           return controllers[i].signal;
         }
 
-        return callback
-          ? relayTeardown(callback(combinedStore, false), controllers, false)
-          : undefined;
+        return relayTeardown(
+          callback(combinedStore, false),
+          controllers,
+          false
+        );
       }, userOption);
     });
 

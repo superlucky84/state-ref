@@ -7,14 +7,15 @@ export const CombineWatchKo = mount(() => {
       <h1>combineWatch</h1>
 
       <p>
-        <code>combineWatch</code>는 여러 <code>Watch</code> 인스턴스를 함께 관찰하고
-        그 결합된 값을 튜플과 같은 구조로 전달하는 새로운 <code>Watch</code>를 생성하는 헬퍼 함수입니다.
+        <code>combineWatch</code>는 여러 <code>Watch</code> 인스턴스를 함께
+        관찰하고 그 결합된 값을 튜플과 같은 구조로 전달하는 새로운{' '}
+        <code>Watch</code>를 생성하는 헬퍼 함수입니다.
       </p>
 
       <p>
         단일 파생 값을 생성하는 <code>createComputed</code>와 달리,
-        <code>combineWatch</code>는 여러 watch를 그룹화하여 단일 구독에서
-        어떤 것이든 변경에 반응할 수 있게 하는 데 초점을 맞춥니다.
+        <code>combineWatch</code>는 여러 watch를 그룹화하여 단일 구독에서 어떤
+        것이든 변경에 반응할 수 있게 하는 데 초점을 맞춥니다.
       </p>
 
       <h2>기본 사용법</h2>
@@ -62,17 +63,18 @@ count.value = 200;
       <h3>반환값</h3>
 
       <p>
-        모든 결합된 스토어에 튜플로 접근할 수 있는 새로운 <code>Watch</code> 함수를 반환합니다.
-        반환된 watch는 다른 watch 함수처럼 사용할 수 있습니다.
+        모든 결합된 스토어에 튜플로 접근할 수 있는 새로운 <code>Watch</code>{' '}
+        함수를 반환합니다. 반환된 watch는 다른 watch 함수처럼 사용할 수
+        있습니다.
       </p>
 
       <h2>구독 해제</h2>
 
       <p>
         여기서 만든 구독도 해제 방법은 같습니다. 콜백에서{' '}
-        <code>AbortSignal</code>을 반환한 뒤 abort하거나, <code>false</code>를 반환해
-        그 실행 이후 구독을 끊습니다. 두 방법 모두 이 헬퍼가 내부적으로 연 구독까지
-        함께 정리합니다.
+        <code>AbortSignal</code>을 반환한 뒤 abort하거나, <code>false</code>를
+        반환해 그 실행 이후 구독을 끊습니다. 두 방법 모두 이 헬퍼가 내부적으로
+        연 구독까지 함께 정리합니다.
       </p>
 
       <CodeBlock
@@ -94,9 +96,7 @@ combinedWatch((refs, isFirst) => {
 
       <h2>결합된 값 접근</h2>
 
-      <p>
-        결합된 스토어는 인덱스로 튜플(배열)처럼 접근합니다:
-      </p>
+      <p>결합된 스토어는 인덱스로 튜플(배열)처럼 접근합니다:</p>
 
       <CodeBlock
         language="typescript"
@@ -121,9 +121,7 @@ combined[1].value = 'world';`}
 
       <h2>변경 사항 구독</h2>
 
-      <p>
-        콜백을 전달하여 결합된 watch 중 어느 것이든 변경을 구독합니다:
-      </p>
+      <p>콜백을 전달하여 결합된 watch 중 어느 것이든 변경을 구독합니다:</p>
 
       <CodeBlock
         language="typescript"
@@ -154,7 +152,8 @@ user.name.value = 'Jane';
       <h2>중첩 결합</h2>
 
       <p>
-        <code>combineWatch</code>를 중첩하여 더 복잡한 구조를 관찰할 수 있습니다:
+        <code>combineWatch</code>를 중첩하여 더 복잡한 구조를 관찰할 수
+        있습니다:
       </p>
 
       <CodeBlock
@@ -181,8 +180,8 @@ combinedAllWatch(([countTextRef, toggleRef], isFirst) => {
       <h2>읽기 전용 루트 값</h2>
 
       <p>
-        결합된 스토어의 루트 <code>.value</code>는 읽기 전용이며 직접 접근하면 경고가 표시됩니다.
-        항상 인덱스로 개별 스토어에 접근하세요:
+        결합된 스토어의 루트 <code>.value</code>는 읽기 전용이며 직접 접근하면
+        경고가 표시됩니다. 항상 인덱스로 개별 스토어에 접근하세요:
       </p>
 
       <CodeBlock
@@ -211,7 +210,8 @@ combined[1].value = 40;`}
       <h2>as const 사용</h2>
 
       <p>
-        더 나은 TypeScript 추론을 위해 watches 배열에 <code>as const</code>를 사용하세요:
+        더 나은 TypeScript 추론을 위해 watches 배열에 <code>as const</code>를
+        사용하세요:
       </p>
 
       <CodeBlock
@@ -233,9 +233,7 @@ combinedWatch(([countRef, textRef]) => {
 
       <h2>프레임워크 연동</h2>
 
-      <p>
-        결합된 watch는 프레임워크 커넥터와 함께 작동합니다:
-      </p>
+      <p>결합된 watch는 프레임워크 커넥터와 함께 작동합니다:</p>
 
       <CodeBlock
         language="typescript"
@@ -264,9 +262,7 @@ function Dashboard() {
 
       <h2>createComputed와 비교</h2>
 
-      <p>
-        필요에 따라 올바른 도구를 선택하세요:
-      </p>
+      <p>필요에 따라 올바른 도구를 선택하세요:</p>
 
       <ul>
         <li>
@@ -353,7 +349,8 @@ formWatch(([name, email, age], isFirst) => {
       <h2>TypeScript 지원</h2>
 
       <p>
-        <code>combineWatch</code>는 튜플의 각 스토어에 대한 타입 정보를 보존합니다:
+        <code>combineWatch</code>는 튜플의 각 스토어에 대한 타입 정보를
+        보존합니다:
       </p>
 
       <CodeBlock
@@ -390,19 +387,26 @@ combinedWatch(([userRef, settingsRef]) => {
 
       <ul>
         <li>
-          <strong>관련 스토어 그룹화에 사용</strong> - 여러 스토어에 함께 반응해야 할 때
+          <strong>관련 스토어 그룹화에 사용</strong> - 여러 스토어에 함께
+          반응해야 할 때
         </li>
         <li>
-          <strong>인덱스로 접근</strong> - 항상 <code>combined[0]</code>, <code>combined[1]</code> 등 사용
+          <strong>인덱스로 접근</strong> - 항상 <code>combined[0]</code>,{' '}
+          <code>combined[1]</code> 등 사용
         </li>
         <li>
-          <strong><code>as const</code> 사용</strong> - 더 나은 TypeScript 튜플 추론을 위해
+          <strong>
+            <code>as const</code> 사용
+          </strong>{' '}
+          - 더 나은 TypeScript 튜플 추론을 위해
         </li>
         <li>
-          <strong>파생 값에는 createComputed 선호</strong> - 개별 스토어 접근이 필요할 때만 combineWatch 사용
+          <strong>파생 값에는 createComputed 선호</strong> - 개별 스토어 접근이
+          필요할 때만 combineWatch 사용
         </li>
         <li>
-          <strong>콜백에서 .value 먼저 접근</strong> - 조건문 전에 구독 수집 보장
+          <strong>콜백에서 .value 먼저 접근</strong> - 조건문 전에 구독 수집
+          보장
         </li>
       </ul>
 
@@ -410,7 +414,8 @@ combinedWatch(([userRef, settingsRef]) => {
 
       <ul>
         <li>
-          <a href="#/ko/guide/computed">createComputed</a> - 스토어에서 단일 값 파생
+          <a href="#/ko/guide/computed">createComputed</a> - 스토어에서 단일 값
+          파생
         </li>
         <li>
           <a href="#/ko/guide/create-store">createStore</a> - 개별 스토어 생성

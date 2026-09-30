@@ -7,6 +7,7 @@
  */
 import { createRoot, createEffect } from 'solid-js';
 import { createStore } from 'state-ref';
+import { batch } from 'state-ref/batch';
 import { connectSolid } from '@/index';
 
 type Board = { title: string; items: number[]; meta: { tag: string } };
@@ -25,6 +26,30 @@ if (import.meta.vitest) {
   const { describe, it, expect } = import.meta.vitest;
 
   describe('Solid signal updates', () => {
+    it('publishes final values once for a mounted signal consumer', () => {
+      inRoot(() => {
+        const watch = createStore<Board>(initial());
+        const ref = watch();
+        const useStore = connectSolid(watch);
+        const [title] = useStore(state => state.title);
+        const [tag] = useStore(state => state.meta.tag);
+        const seen: string[] = [];
+        watch(state => {
+          seen.push(`${state.title.value}:${state.meta.tag.value}`);
+        });
+        seen.length = 0;
+
+        batch(() => {
+          ref.title.value = 'next';
+          ref.meta.tag.value = 'b';
+          expect(seen).toEqual([]);
+        });
+        expect(seen).toEqual(['next:b']);
+        expect(title()).toBe('next');
+        expect(tag()).toBe('b');
+      });
+    });
+
     it('updates only the signal whose path moved', async () => {
       await inRoot(async () => {
         const watch = createStore<Board>(initial());

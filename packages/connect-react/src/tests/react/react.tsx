@@ -121,6 +121,9 @@ if (import.meta.vitest) {
         );
       }
       trender(<Root />);
+      // Two mount renders (DC-CN-03); none after that, because the component
+      // never read `.value`.
+      expect(mockFn1).toHaveBeenCalledTimes(2);
 
       const btnElement = screen.getByTestId('age-increase');
       const displayElement = screen.getByTestId('age-display');
@@ -131,7 +134,7 @@ if (import.meta.vitest) {
       });
 
       expect(displayElement.textContent).toBe('age: 15');
-      expect(mockFn1).toHaveBeenCalledTimes(1);
+      expect(mockFn1).toHaveBeenCalledTimes(2);
     });
     it('Unmounted components should not react.', () => {
       const mockFn1 = vi.fn();
@@ -156,6 +159,8 @@ if (import.meta.vitest) {
         );
       }
       trender(<Root />);
+      // Two mount renders (DC-CN-03).
+      expect(mockFn1).toHaveBeenCalledTimes(2);
 
       const btnUnmoutElement = screen.getByTestId('unmount');
       const btnIncreaseElement = screen.getByTestId('age-increase');
@@ -166,7 +171,7 @@ if (import.meta.vitest) {
       });
 
       expect(displayElement.textContent).toBe('age: 14');
-      expect(mockFn1).toHaveBeenCalledTimes(2);
+      expect(mockFn1).toHaveBeenCalledTimes(3);
 
       act(() => {
         fireEvent.click(btnUnmoutElement);
@@ -174,7 +179,7 @@ if (import.meta.vitest) {
       });
 
       expect(displayElement.textContent).toBe('age: 15');
-      expect(mockFn1).toHaveBeenCalledTimes(2);
+      expect(mockFn1).toHaveBeenCalledTimes(3);
     });
 
     it('When multiple components are subscribing to a single value, they should all reflect the store value and behave normally.', async () => {
