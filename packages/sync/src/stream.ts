@@ -1,0 +1,450 @@
+import { create } from 'state-ref';
+import type { StateRefStore, Watch } from 'state-ref';
+import type { QueryHandle } from './index';
+
+/** Where a push source delivers its messages. */
+export type StreamSink<M> = Readonly<{
+  next: (message: M) => void;
+  error: (reason: unknown) => void;
+  complete: () => void;
+}>;
+
+/**
+ * A server push source: an async iterable (an NDJSON body, an SSE reader) or a
+ * subscribe function (a WebSocket). The subscribe form returns its teardown,
+ * or listens to `signal`.
+ */
+export type StreamSource<M> =
+  | AsyncIterable<M>
+  | ((sink: StreamSink<M>, signal: AbortSignal) => void | (() => void));
+
+/**
+ * What `refetch()` does with the data the previous run left behind.
+ *
+ * - `reset`: start over from `initialValue` (shown at once) or, without one,
+ *   from nothing on the first new message; chunks then stream in again.
+ * - `append`: keep the current baseline and fold the new run onto it.
+ * - `replace`: keep showing the current baseline while the new run is folded
+ *   off-screen, then swap it in once when the run completes.
+ */
+export type StreamRefetchMode = 'reset' | 'append' | 'replace';
+
+export type QueryStreamOptions<T, M> = Readonly<{
+  /** Open the source; called on start and again on every `refetch()`. */
+  source: () => StreamSource<M>;
+  /**
+   * Fold one message into the server value and return the next full value.
+   * `current` is the confirmed server baseline (never local edits), undefined
+   * before the first load. It is frozen for editable data: return a new value.
+   */
+  reduce: (current: T | undefined, message: M) => T;
+  /** The empty value a `reset` or `replace` run folds from. */
+  initialValue?: () => T;
+  /** Defaults to `reset`. The first run always folds onto the current baseline. */
+  refetchMode?: StreamRefetchMode;
+  /** Called when a run fails (source error or a throwing reduce). */
+  onError?: (reason: unknown) => void;
+}>;
+
+export type QueryStreamStatus = Readonly<{
+  /** The current run: `open` until it completes or fails, or `close()`. */
+  state: 'open' | 'complete' | 'error' | 'closed';
+  /** Messages of the current run applied to the query baseline. */
+  received: number;
+  /** Messages held while a linked WRITE is pending on the query. */
+  queued: number;
+  /** Messages of a `replace` run folded off-screen, not yet shown. */
+  buffered: number;
+  error: unknown;
+}>;
+
+export type QueryStream = Readonly<{
+  status: StateRefStore<QueryStreamStatus>;
+  watchStatus: Watch<QueryStreamStatus>;
+  /** Restart the source following `refetchMode`; also revives a finished run. */
+  refetch: () => void;
+  /** Stop listening for good and tear the source down. */
+  close: () => void;
+}>;
+
+/** The part of a query handle a stream needs. */
+type StreamTarget<T> = Pick<
+  QueryHandle<T, any>,
+  'status' | 'watchStatus' | 'serverValue' | 'acceptServer'
+>;
+
+type Step<T, M> =
+  | { kind: 'message'; message: M }
+  | { kind: 'reset' }
+  | { kind: 'set'; value: T; count: number };
+
+/**
+ * Feed server push messages into a query as accepted server values.
+ *
+ * Every message becomes a new baseline through `acceptServer`, so observers
+ * see each intermediate state, local edits are rebased on top of it, and an
+ * overlapping server change shows up in `status.conflicts`. While a linked
+ * WRITE is pending the messages are held and folded in order once it settles,
+ * on top of whatever baseline that WRITE accepted.
+ */
+export function streamQuery<T, M>(
+  query: StreamTarget<T>,
+  options: QueryStreamOptions<T, M>
+): QueryStream {
+  if (typeof options?.source !== 'function')
+    throw new TypeError('streamQuery requires a source function.');
+  if (typeof options.reduce !== 'function')
+    throw new TypeError('streamQuery requires a reduce function.');
+  const mode = options.refetchMode ?? 'reset';
+  if (mode !== 'reset' && mode !== 'append' && mode !== 'replace')
+    throw new TypeError(`Unknown refetchMode: ${String(mode)}.`);
+
+  const store = create<QueryStreamStatus>(
+    Object.freeze({
+      state: 'open',
+      received: 0,
+      queued: 0,
+      buffered: 0,
+      error: null,
+    }),
+    { autoSync: false }
+  );
+  const statusAbort = new AbortController();
+  const status = store.watch(() => statusAbort.signal, { editable: false });
+  let current = status.value;
+  const publish = (patch: Partial<QueryStreamStatus>) => {
+    current = Object.freeze({ ...current, ...patch });
+    store.updateRef.value = current;
+    store.sync();
+  };
+
+  let closed = false;
+  let run = 0;
+  let runAbort: AbortController | null = null;
+  let teardown: (() => void) | null = null;
+  let writeWait: AbortController | null = null;
+  let completing = false;
+  const queue: Step<T, M>[] = [];
+  const waiting = () =>
+    queue.reduce(
+      (total, step) =>
+        total +
+        (step.kind === 'message' ? 1 : step.kind === 'set' ? step.count : 0),
+      0
+    );
+
+  /** Detach the running source; later deliveries from it are ignored. */
+  const endRun = () => {
+    run += 1;
+    completing = false;
+    runAbort?.abort();
+    runAbort = null;
+    const release = teardown;
+    teardown = null;
+    release?.();
+  };
+  const finish = (patch: Partial<QueryStreamStatus>) => {
+    queue.length = 0;
+    writeWait?.abort();
+    writeWait = null;
+    endRun();
+    publish({ ...patch, queued: 0, buffered: 0 });
+  };
+  const fail = (reason: unknown) => {
+    finish({ state: 'error', error: reason });
+    options.onError?.(reason);
+  };
+
+  const waitForWrite = () => {
+    if (writeWait) return;
+    const wait = (writeWait = new AbortController());
+    query.watchStatus((ref, first) => {
+      if (wait.signal.aborted) return false;
+      if (ref.pending.value > 0) return first ? wait.signal : undefined;
+      writeWait = null;
+      wait.abort();
+      // Leave the status pass that reported the settled WRITE before writing.
+      queueMicrotask(drain);
+      return first ? wait.signal : false;
+    });
+  };
+
+  function drain() {
+    if (current.state !== 'open' || queue.length === 0) return;
+    try {
+      if (query.status.pending.value > 0) {
+        publish({ queued: waiting() });
+        waitForWrite();
+        return;
+      }
+      const steps = queue.splice(0);
+      let next = query.serverValue();
+      let applied = 0;
+      for (const step of steps) {
+        if (step.kind === 'reset') next = undefined;
+        else if (step.kind === 'set') {
+          next = step.value;
+          applied += step.count;
+        } else {
+          next = options.reduce(next, step.message);
+          applied += 1;
+        }
+      }
+      // A reset is always queued together with the message that follows it.
+      query.acceptServer(next as T);
+      publish({ received: current.received + applied, queued: 0 });
+      if (completing) finish({ state: 'complete' });
+    } catch (error) {
+      fail(error);
+    }
+  }
+
+  const start = (refetch: boolean) => {
+    const id = run;
+    const replace = refetch && mode === 'replace';
+    let fresh = refetch && mode === 'reset' && !options.initialValue;
+    let shadow: T | undefined;
+    let buffered = 0;
+    if (refetch && mode !== 'append' && options.initialValue) {
+      const initial = options.initialValue();
+      if (replace) shadow = initial;
+      else queue.push({ kind: 'set', value: initial, count: 0 });
+    }
+
+    const sink: StreamSink<M> = Object.freeze({
+      next: (message: M) => {
+        if (id !== run || completing) return;
+        if (replace) {
+          try {
+            shadow = options.reduce(shadow, message);
+          } catch (error) {
+            fail(error);
+            return;
+          }
+          buffered += 1;
+          publish({ buffered });
+          return;
+        }
+        if (fresh) {
+          fresh = false;
+          queue.push({ kind: 'reset' });
+        }
+        queue.push({ kind: 'message', message });
+        drain();
+      },
+      error: (reason: unknown) => {
+        if (id === run) fail(reason);
+      },
+      complete: () => {
+        if (id !== run || completing) return;
+        if (replace && shadow !== undefined) {
+          queue.push({ kind: 'set', value: shadow, count: buffered });
+          publish({ buffered: 0 });
+        }
+        // Steps held for a WRITE are still delivered; drain finishes then.
+        if (queue.length) {
+          completing = true;
+          drain();
+        } else finish({ state: 'complete' });
+      },
+    });
+
+    const abort = (runAbort = new AbortController());
+    try {
+      const source = options.source();
+      if (typeof source === 'function') {
+        const release = source(sink, abort.signal);
+        if (typeof release === 'function') {
+          if (id === run) teardown = release;
+          else release();
+        }
+      } else if (source && typeof source[Symbol.asyncIterator] === 'function') {
+        const iterator = source[Symbol.asyncIterator]();
+        teardown = () =>
+          void Promise.resolve(iterator.return?.()).catch(() => {});
+        void (async () => {
+          try {
+            while (id === run) {
+              const step = await iterator.next();
+              if (step.done) break;
+              sink.next(step.value);
+            }
+            sink.complete();
+          } catch (error) {
+            sink.error(error);
+          }
+        })();
+      } else {
+        throw new TypeError(
+          'streamQuery source must return an async iterable or a subscribe function.'
+        );
+      }
+    } catch (error) {
+      fail(error);
+      if (!refetch) throw error;
+    }
+    drain();
+  };
+
+  start(false);
+
+  return Object.freeze({
+    status,
+    watchStatus: ((renew, userOption) =>
+      store.watch(renew, {
+        ...userOption,
+        editable: false,
+      })) as Watch<QueryStreamStatus>,
+    refetch: () => {
+      if (closed) throw new Error('This stream is closed.');
+      endRun();
+      // Held messages of the old run belong to the data being replaced.
+      if (mode !== 'append') queue.length = 0;
+      publish({
+        state: 'open',
+        received: 0,
+        queued: waiting(),
+        buffered: 0,
+        error: null,
+      });
+      start(true);
+    },
+    close: () => {
+      if (closed) return;
+      closed = true;
+      finish({ state: 'closed' });
+    },
+  });
+}
+
+type NdjsonInput =
+  | Response
+  | ReadableStream<Uint8Array>
+  | null
+  | ((
+      signal: AbortSignal
+    ) =>
+      | Response
+      | ReadableStream<Uint8Array>
+      | null
+      | Promise<Response | ReadableStream<Uint8Array> | null>);
+
+/**
+ * Turn a newline-delimited JSON body into a stream source.
+ *
+ * Each complete line is delivered as soon as it arrives; a trailing line
+ * without a newline is delivered at the end and blank lines are skipped. Pass
+ * a function to start the request lazily: it receives a signal that aborts
+ * when the stream is closed, e.g. `signal => fetch(url, { signal })`.
+ */
+export function ndjsonMessages<M = unknown>(
+  input: NdjsonInput
+): StreamSource<M> {
+  return (sink, signal) => {
+    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+    void (async () => {
+      try {
+        const opened =
+          typeof input === 'function' ? await input(signal) : input;
+        const body = opened instanceof Response ? opened.body : opened;
+        if (!body)
+          throw new TypeError('ndjsonMessages requires a response body.');
+        if (signal.aborted) return void body.cancel().catch(() => {});
+        reader = body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        const emit = (line: string) => {
+          line = line.trim();
+          if (line) sink.next(JSON.parse(line) as M);
+        };
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (signal.aborted) return;
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          let index = buffer.indexOf('\n');
+          while (index >= 0 && !signal.aborted) {
+            emit(buffer.slice(0, index));
+            buffer = buffer.slice(index + 1);
+            index = buffer.indexOf('\n');
+          }
+        }
+        emit(buffer + decoder.decode());
+        sink.complete();
+      } catch (error) {
+        if (!signal.aborted) sink.error(error);
+      }
+    })();
+    // Cancelling settles a pending read, so a closed stream frees the body.
+    return () => void reader?.cancel().catch(() => {});
+  };
+}
+
+/** The WebSocket surface `webSocketMessages` uses; a browser WebSocket fits. */
+export type WebSocketLike = {
+  readonly readyState: number;
+  addEventListener(
+    type: 'message',
+    listener: (event: { data: unknown }) => void
+  ): void;
+  addEventListener(type: 'error', listener: (event: unknown) => void): void;
+  addEventListener(
+    type: 'close',
+    listener: (event: {
+      code: number;
+      reason: string;
+      wasClean: boolean;
+    }) => void
+  ): void;
+  removeEventListener(type: string, listener: (event: any) => void): void;
+  close(code?: number, reason?: string): void;
+};
+
+/**
+ * Turn a WebSocket into a stream source. Messages are JSON-parsed unless
+ * `parse` is given. A clean close completes the stream, anything else fails
+ * it; closing the stream closes the socket.
+ */
+export function webSocketMessages<M = unknown>(
+  socket: WebSocketLike,
+  parse: (data: unknown) => M = data => JSON.parse(String(data)) as M
+): StreamSource<M> {
+  return sink => {
+    const onMessage = (event: { data: unknown }) => {
+      let message: M;
+      try {
+        message = parse(event.data);
+      } catch (error) {
+        sink.error(error);
+        return;
+      }
+      sink.next(message);
+    };
+    const onError = (event: unknown) => sink.error(event);
+    const onClose = (event: {
+      code: number;
+      reason: string;
+      wasClean: boolean;
+    }) => {
+      if (event.wasClean) sink.complete();
+      else
+        sink.error(
+          new Error(
+            `WebSocket closed (${event.code}${
+              event.reason ? `: ${event.reason}` : ''
+            }).`
+          )
+        );
+    };
+    socket.addEventListener('message', onMessage);
+    socket.addEventListener('error', onError);
+    socket.addEventListener('close', onClose);
+    return () => {
+      socket.removeEventListener('message', onMessage);
+      socket.removeEventListener('error', onError);
+      socket.removeEventListener('close', onClose);
+      // CLOSING (2) and CLOSED (3) need nothing more.
+      if (socket.readyState < 2) socket.close(1000);
+    };
+  };
+}

@@ -66,6 +66,16 @@ export {
   restoreLocalSyncSnapshot,
 } from './persistence';
 export { openPersistedLinkedMutation } from './linked-persistence';
+export { streamQuery, ndjsonMessages, webSocketMessages } from './stream';
+export type {
+  QueryStream,
+  QueryStreamOptions,
+  QueryStreamStatus,
+  StreamRefetchMode,
+  StreamSink,
+  StreamSource,
+  WebSocketLike,
+} from './stream';
 export type {
   PersistedLinkedMutation,
   PersistedLinkedMutationJob,
@@ -241,6 +251,8 @@ export type QueryHandle<T, S = T> = Readonly<{
   capture: (ids?: readonly number[]) => ResourceSubmission<T>;
   /** Accept a known server value without a WRITE. */
   acceptServer: (value: T) => void;
+  /** The confirmed server baseline without local edits; undefined before a load. */
+  serverValue: () => T | undefined;
   dispose: () => void;
 }>;
 
@@ -512,6 +524,10 @@ class QueryEntry<T> {
       !this.statusValue.unconfirmed &&
       !this.linked
     );
+  }
+
+  isLoaded() {
+    return !this.removed && this.resource !== null && this.statusValue.loaded;
   }
 
   serverValue(): T {
@@ -1144,6 +1160,10 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
         entry!.invalidate();
         entry!.acceptServer(value);
       },
+      serverValue: () => {
+        assertActive();
+        return entry!.isLoaded() ? entry!.serverValue() : undefined;
+      },
       dispose: () => {
         if (!active) return;
         active = false;
@@ -1220,6 +1240,7 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
       version: () => active().version(),
       capture: (ids?: readonly number[]) => active().capture(ids),
       acceptServer: (value: T) => active().acceptServer(value),
+      serverValue: () => active().serverValue(),
       dispose: cursor.dispose,
     });
   };

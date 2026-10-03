@@ -8,6 +8,9 @@ import {
   saveSyncSnapshot,
   saveLocalSyncSnapshot,
   restoreLocalSyncSnapshot,
+  ndjsonMessages,
+  streamQuery,
+  webSocketMessages,
 } from '@stateref/sync';
 import type {
   AutomaticRefetchPolicy,
@@ -34,6 +37,9 @@ import type {
   PersistedLinkedMutation,
   PersistedLinkedMutationLink,
   SyncSnapshot,
+  QueryStream,
+  QueryStreamStatus,
+  StreamRefetchMode,
 } from '@stateref/sync';
 import { createDraft } from 'state-ref/draft';
 import { create } from 'state-ref';
@@ -516,4 +522,30 @@ createSyncClient().query({
   queryKey: ['bad-automatic-policy'],
   queryFn: () => 1,
   refetchOnFocus: 'stale',
+});
+
+const streamed = createSyncClient().query({
+  queryKey: ['streamed'],
+  queryFn: () => ({ rows: [] as string[] }),
+});
+const baseline: { rows: string[] } | undefined = streamed.serverValue();
+void baseline;
+const mode: StreamRefetchMode = 'replace';
+const stream: QueryStream = streamQuery(streamed, {
+  source: () =>
+    ndjsonMessages<{ row: string }>(signal => fetch('/rows', { signal })),
+  reduce: (current, message) => ({
+    rows: [...(current?.rows ?? []), message.row],
+  }),
+  initialValue: () => ({ rows: [] }),
+  refetchMode: mode,
+});
+const streamState: QueryStreamStatus['state'] = stream.status.state.value;
+void streamState;
+stream.refetch();
+stream.close();
+streamQuery(streamed, {
+  source: () => webSocketMessages<{ row: string }>(new WebSocket('wss://x')),
+  // @ts-expect-error reduce must return the query data shape
+  reduce: (_current, message) => message.row,
 });

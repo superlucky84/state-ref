@@ -109,6 +109,35 @@ switch (result.kind) {
 - Do not call `resolve()` on a query handle; it does not exist. (`resolve` is a
   draft method, and the `resolve` option of a reactive query is a key resolver.)
 
+## Streaming (WebSocket, NDJSON)
+
+```ts
+import { ndjsonMessages, streamQuery, webSocketMessages } from '@stateref/sync';
+
+const stream = streamQuery(report, {
+  source: () => ndjsonMessages<Row>(signal => fetch('/report', { signal })),
+  // or: source: () => webSocketMessages<Row>(new WebSocket(url)),
+  reduce: (current, row) => ({ rows: [...(current?.rows ?? []), row.row] }),
+  initialValue: () => ({ rows: [] }),
+  refetchMode: 'reset', // 'reset' | 'append' | 'replace'
+});
+stream.status.value; // { state, received, queued, buffered, error }
+stream.refetch(); // reopen the source following refetchMode
+stream.close();
+```
+
+- Every message becomes a server baseline via `acceptServer`, so each
+  intermediate state renders; local edits are rebased, overlaps become
+  conflicts. `reduce` gets the server baseline (frozen), never local edits:
+  return a new value.
+- `source` is a factory, called on start and on each `refetch()`.
+- The first run folds onto the current baseline; `refetchMode` applies to
+  `refetch()` only. `replace` swaps in once on completion (`buffered` counts
+  the hidden messages); a failed `replace` run is dropped.
+- Messages arriving while a linked WRITE is pending are held (`queued`) and
+  folded after it settles.
+- `query.refetch()` is a READ through `queryFn`; it does not restart a stream.
+
 ## QueryStatus fields
 
 `status` `'pending' | 'success' | 'error'`, `fetchStatus`

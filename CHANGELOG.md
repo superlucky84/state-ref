@@ -1,5 +1,19 @@
 # Changelog
 
+## @stateref/sync (unreleased)
+
+### Added
+
+- **`streamQuery(query, options)`** - stream server pushes (WebSocket, NDJSON,
+  any async iterable) into a query. Each message is folded by `reduce` and
+  accepted as the server baseline, so intermediate states render; local edits
+  are rebased and messages wait out a pending linked WRITE. `refetch()`
+  reopens the source with `refetchMode` `reset`, `append` or `replace`.
+- **`ndjsonMessages(input)` and `webSocketMessages(socket)`** - ready-made
+  stream sources.
+- **`query.serverValue()`** - the confirmed server baseline without local
+  edits, or `undefined` before a load.
+
 ## state-ref 3.1.0
 
 Additive: nothing that worked on 3.0.x changes meaning. The new entry points

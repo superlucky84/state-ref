@@ -570,3 +570,63 @@ Defaults: `staleTime: 0`, inactive `gcTime: 5 minutes` (infinite for `createSync
 Fixed-key queries require an explicit `load()` call unless a mutation response,
 `acceptServer`, or an active reactive key populates the cache. A successful local
 edit does not save to a server.
+
+Server pushes such as a WebSocket or an NDJSON response are streamed into a
+query with `streamQuery(query, options)`. It feeds a push source into a query. Every message
+is folded by `reduce` onto the confirmed server baseline and accepted with
+`acceptServer`, so each intermediate state renders, local edits are rebased on
+top of it and an overlapping server change becomes a conflict. While a linked
+WRITE is pending, messages are held (`status.queued`) and folded in order once
+it settles.
+
+```ts
+import { createSyncClient, ndjsonMessages, streamQuery, webSocketMessages } from '@stateref/sync';
+
+type Report = { rows: string[] };
+type Row = { row: string };
+
+const client = createSyncClient();
+const report = client.query<Report>({
+  queryKey: ['report'],
+  queryFn: () => ({ rows: [] }),
+});
+
+// NDJSON: one JSON value per line, rendered as each line arrives.
+const stream = streamQuery<Report, Row>(report, {
+  source: () => ndjsonMessages<Row>(signal => fetch('/report', { signal })),
+  reduce: (current, message) => ({ rows: [...(current?.rows ?? []), message.row] }),
+  initialValue: () => ({ rows: [] }),
+  refetchMode: 'reset',
+});
+
+stream.status.value.state; // 'open' | 'complete' | 'error' | 'closed'
+stream.refetch(); // reopen the source following refetchMode
+stream.close(); // stop for good; tears down the request
+
+// WebSocket: the same, with a new socket for every run.
+const live = streamQuery<Report, Row>(report, {
+  source: () => webSocketMessages<Row>(new WebSocket('wss://example.test/report')),
+  reduce: (current, message) => ({ rows: [...(current?.rows ?? []), message.row] }),
+  refetchMode: 'append',
+});
+live.close();
+```
+
+`source` is called on start and again on every `refetch()`. It returns an async
+iterable or a subscribe function `(sink, signal) => teardown`;
+`ndjsonMessages` and `webSocketMessages` build the latter. `refetchMode`
+decides what `refetch()` does with the data already shown:
+
+- `reset` (default): show `initialValue` at once, or keep the old data until
+  the first new message when there is none, then stream the new run in.
+- `append`: fold the new run onto what is shown.
+- `replace`: keep the old data while the new run is folded off-screen
+  (`status.buffered`), then swap it in once on completion. A failed run is
+  dropped.
+
+The first run always folds onto the current baseline, so a hydrated or loaded
+query is not wiped when the stream connects. `query.refetch()` performs a READ
+through `queryFn` and does not restart the stream. A thrown `reduce` or source
+error ends the run with `state: 'error'` and calls `onError`; `refetch()`
+starts a new run. A WebSocket closed cleanly completes the run, any other
+close fails it, and closing the stream closes the socket.
