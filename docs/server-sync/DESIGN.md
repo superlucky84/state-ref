@@ -1,5 +1,37 @@
 # DESIGN — resource 변경 추적과 독립 Draft
 
+## 2026-10-03 추가 — 서버 push 스트림 (`streamQuery`)
+
+**요구 (사용자, 2026-10-03 세션):** WebSocket·NDJSON 같은 서버 push를 query에 연결하고 중간 과정을 화면에 스트림으로 표시한다. 메시지는 리듀서 형태로 접고, 재시작 방식은 `reset | append | replace`로 고르며, 잦은 갱신은 throttle로 묶는다. REQUIREMENTS에는 아직 R2 행으로 옮기지 않았다(사용자 범위: DESIGN·IMPLEMENT만). 아래에서는 이 요구를 **R2-30(가칭)**으로 부른다. 검증은 T2-30~33(IMPLEMENT §2)과 IMPLEMENT Phase 11에 있다.
+
+- [x] **DC2-28 — 기존 query 위의 어댑터로 둔다.** 새 query 종류나 `queryFn` 변형을 만들지 않고 `streamQuery(query, options)`가 기존 handle을 받는다. 메시지마다 `acceptServer`로 서버 기준을 갱신한다. 근거: 서버 기준 교체, 로컬 편집 rebase, 충돌 표시, 진행 READ 배제가 이미 `acceptServer` 한 곳에 있다. 스트림이 같은 경로를 쓰면 편집 가능한 resource와 스트림이 공존한다. 검증: T2-30.
+- [x] **DC2-29 — 메시지 해석은 앱 소유이며, `reduce(current, message) => next`로 한다.** `current`는 로컬 편집이 빠진 확정 서버 기준이다(editable이면 frozen, 로드 전이면 `undefined`). 이를 읽기 위해 `QueryHandle.serverValue()`를 공개 API로 추가했다. 근거: 서버 스키마와 액션 형식이 바뀌어도 라이브러리 변경 없이 source의 `parse`나 `reduce`만 바꾸면 된다. 로컬 편집을 섞으면 rebase가 이중 적용된다. 검증: T2-30, `test/types.ts`.
+- [x] **DC2-30 — source는 매 run마다 호출되는 팩토리다.** `source: () => AsyncIterable<M> | ((sink, signal) => teardown)` 형태다. 기성 source로 `ndjsonMessages(input)`(UTF-8 줄 분할, lazy `signal => fetch(...)`, close 시 reader cancel)와 `webSocketMessages(socket, parse?)`(clean close는 완료, 그 외는 오류, close 시 socket 닫기)를 제공한다. 근거: `refetch()`가 연결을 다시 열 수 있어야 한다. 소켓과 요청의 수명은 run 하나에 묶인다. 검증: T2-31.
+- [x] **DC2-31 — 재시작 방식은 `refetch({ mode })`의 인자다.** 생성 옵션 `refetchMode`는 두었다가 **삭제했다**(사용자 선택, `b264086`). 모드를 주지 않으면 `reset`이다. `reset`은 `initialValue`를 즉시 표시하고, 없으면 새 첫 메시지까지 이전 값을 유지한다. `append`는 표시 중인 값에 이어 붙인다. `replace`는 화면 밖에서 접다가 완료 시 한 번에 교체하고, 실패한 run은 버린다. 근거: run 안에서는 모드와 무관하게 메시지마다 화면이 바뀐다. 모드는 재시작 순간에만 의미가 있어서, 생성 옵션으로 두면 "청크 처리 방식"으로 오해된다. 호출마다 다르게 고를 수 있어야 한다(재연결은 append, 새로고침은 replace). 첫 run은 항상 현재 기준 위에 접어서 hydrate/load된 값을 지우지 않는다. TanStack `streamedQuery`의 `refetchMode`와 어휘는 같지만 위치가 다르다. 검증: T2-32.
+- [x] **DC2-32 — 연결 WRITE 중 도착한 메시지는 보류한다.** `status.queued`로 보이고, WRITE가 끝나면 그 WRITE가 수용한 기준 위에 순서대로 접는다. 근거: `acceptServer`는 연결 작업 중 예외를 던진다. 메시지를 버리지도, WRITE를 앞지르지도 않아야 한다. 검증: T2-30, T2-33.
+- [x] **DC2-33 — throttle은 반영만 묶고 메시지는 버리지 않는다.** `throttle: number(ms) | 'frame'`이고 기본값 0이다. `'frame'`은 `requestAnimationFrame`을 쓰고, 없으면 16ms 타이머로 대신한다. run의 첫 메시지와 조용한 구간 뒤 첫 메시지는 즉시 반영한다. 완료·오류·`close()`·throw는 대기 없이 남은 것을 반영한다. `reset`/`replace` 재시작은 이전 run의 미반영분을 버리고, `append`는 즉시 반영한다. 구독 순간 동기로 보낸 메시지도 throttle을 거친다. 근거: TanStack Query에는 query별 throttle이 없다(전역 `notifyManager.setScheduler`뿐이다). 화면 갱신 비용만 줄이고 데이터 정확성은 throttle 유무와 무관해야 한다. 검증: T2-33.
+- [x] **DC2-34 — run 종료와 데이터 반영을 분리한다.** source의 완료·오류·동기 throw는 즉시 연결을 끊지만(`detachSource`), 이미 받은 메시지는 반영(필요하면 WRITE 이후)한 뒤 `complete`/`error`로 settle한다. `reduce` 실패 시에는 실패 직전까지 접은 값을 반영하고 오류로 끝낸다. `initialValue` 예외도 run 오류다. 근거: 리뷰 2회에서 재현된 유실 6건(IMPLEMENT 11.5). 연결 끊김과 데이터 유실은 다른 사건이다. 검증: T2-33.
+- [x] **DC2-35 — 관찰자 재진입 이후에는 이전 run의 작업을 멈춘다.** `acceptServer`와 상태 publish는 관찰자를 동기로 실행하고, 관찰자는 `refetch()`/`close()`를 부를 수 있다. 그런 호출 지점마다 run ID와 `closed`를 다시 확인하고(`superseded`), 바뀌었으면 이전 run의 남은 작업(settle, 소스 열기, 상태 갱신)을 하지 않는다. 근거: 이전 run의 오류가 새 run을 끝내거나, 닫힌 스트림이 소스를 여는 결함이 재현됐다. 검증: T2-33.
+- [ ] **DC2-36 (TBD) — 자동 재연결·backoff, SSE helper, reducer 편의 형태(액션별 handler map, draft식 변형)는 범위 밖이다.** 지금은 `onError`나 상태 관찰에서 앱이 `refetch()`를 부른다. 결정 전까지는 추가하지 않는다.
+- [ ] **DC2-37 (TBD) — 반응형 key query와 자동 재조회의 조합.** `streamQuery`는 handle의 `serverValue`/`acceptServer`/`status`/`watchStatus`만 쓰므로 반응형 key handle도 받는다. 그러나 key가 바뀌어도 스트림은 다시 열리지 않으며, 활성 key가 없으면 다음 반영이 run 오류가 된다. `query.refetch()`·focus/reconnect 재조회는 `queryFn` READ이고 스트림을 재시작하지 않는다. 스트림의 `acceptServer`는 진행 중인 READ를 배제한다. 권장 패턴과 필요 시 API는 미정이다.
+
+### 계약 요약
+
+```ts
+streamQuery<T, M>(query, {
+  source: () => StreamSource<M>,          // run마다 호출
+  reduce: (current: T | undefined, message: M) => T,
+  initialValue?: () => T,                 // reset/replace 재시작의 시작값
+  throttle?: number | 'frame',            // 기본 0
+  onError?: (reason: unknown) => void,    // run 실패마다 1회
+}): { status, watchStatus, refetch(options?: { mode?: 'reset' | 'append' | 'replace' }), close() }
+```
+
+- `status`: `{ state: 'open' | 'complete' | 'error' | 'closed', received, queued, buffered, error }`. 읽기 전용이다. `received`는 현재 run에서 기준에 반영된 메시지 수다. WRITE 대기 중 종료 신호가 와도, 보류분이 반영될 때까지 `state`는 `open`이다.
+- 내부 큐 단계: `message`·`reset`(첫 메시지 전에 기준을 비움, 단독으로는 반영하지 않음)·`set`(initialValue 또는 replace 결과). `drain`은 큐를 순서대로 접어 `acceptServer`를 한 번 호출한다.
+- 첫 run에서 source를 열다가 예외가 나면 호출자에게 다시 던진다(그 전에 받은 메시지는 반영한다). `refetch` 중 예외는 run 오류로 보고한다. 닫힌 스트림의 `refetch()`와 알 수 없는 모드는 예외를 던진다. 후자는 기존 연결을 끊기 전에 던진다.
+- 비목표: 메시지 순서 재정렬·중복 제거·ack, 서버 쪽 프로토콜, 오프라인 버퍼링, SSR 스트리밍.
+
 ## 2026-09-30 추가 — 사용자 흐름 예제 설계
 
 - [x] **DC2-24:** 작은 쇼핑몰 세 화면을 Preact/Vue에 같은 내용으로 제공한다(사용자 선택). R2-29 / M2-22.

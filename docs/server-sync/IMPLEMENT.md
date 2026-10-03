@@ -1,5 +1,67 @@
 # IMPLEMENT — 독립 Draft와 ref 기반 서버 동기화
 
+## Phase 11 — 서버 push 스트림 `streamQuery` (2026-10-03)
+
+**진입:** 사용자 요구 R2-30(가칭, REQUIREMENTS 미반영)과 DESIGN DC2-28~37. 기준 HEAD `2448bf9`(main 계열). 작업 브랜치 `ccr-f71cbd04-cgvi9s`. 범위는 `packages/sync`의 새 모듈 `src/stream.ts`, `QueryHandle.serverValue()`, sync README, AI 스킬 `server-sync.md`, CHANGELOG이다. `packages/state-ref` 변경은 없다.
+
+### 11.0 요구사항·설계
+
+- [x] 스트림 지원 여부를 조사했다. 기존에는 `queryFn`이 Promise 단발 READ였고, 스트림 처리는 없었다.
+- [x] 어댑터 방식(DC2-28), 앱 소유 reduce(DC2-29), source 팩토리(DC2-30)를 정했다.
+- [x] 사용자 피드백으로 생성 옵션 `refetchMode`를 `refetch({ mode })`로 옮겼다(DC2-31).
+
+**기준 확인 / 종료:** DESIGN의 계약 요약, README 예제, 스킬 문서가 같은 API를 설명한다.
+
+### 11.1 핵심 어댑터
+
+- [x] `streamQuery(query, { source, reduce, initialValue, onError })`, 읽기 전용 `status`/`watchStatus`, `close()`를 구현했다.
+- [x] `QueryHandle.serverValue()`를 고정 key와 반응형 key handle 양쪽에 추가했다.
+- [x] 연결 WRITE 중 보류와 settle 뒤 반영(`watchStatus` 구독, microtask로 publish 밖에서 반영)을 구현했다.
+
+**기준 테스트 / 종료:** T2-30. sync tsc, `test/types.ts` 소비자 타입 검사(잘못된 reduce 반환 `@ts-expect-error`)를 통과한다. 커밋 `c262547`.
+
+### 11.2 기성 source
+
+- [x] `ndjsonMessages(Response | ReadableStream | signal => fetch)`, `webSocketMessages(socket, parse?)`, `WebSocketLike` 타입을 구현했다.
+
+**기준 테스트 / 종료:** T2-31. 커밋 `c262547`.
+
+### 11.3 재시작 모드
+
+- [x] `reset`/`append`/`replace`와 run 세대(run ID)를 구현했다. 이전 run의 sink 호출은 무시한다.
+- [x] 생성 옵션 → 호출 인자로 이동했다(`refetch({ mode })`, 기본 `reset`).
+
+**기준 테스트 / 종료:** T2-32. 커밋 `c262547`(옵션), `b264086`(호출 인자로 이동).
+
+### 11.4 throttle
+
+- [x] `throttle: number | 'frame'`를 구현했다. leading 즉시 반영, 창 끝에 trailing 1회, 완료·오류·close 시 즉시 flush한다. 잘못된 값(음수·`Infinity`·`NaN`·문자열)은 생성 시 예외다.
+
+**기준 테스트 / 종료:** T2-33의 throttle 부분, fake timer와 rAF stub. 커밋 `6ff5a0c`.
+
+### 11.5 Test Hardening
+
+외부 리뷰 2회가 실제 코드를 실행해 결함 6건을 보고했다. 모두 수정 전 실패하는 테스트로 먼저 재현한 뒤 고쳤다.
+
+- [x] **P1** WRITE 대기 중 `sink.error()`가 보류 메시지를 버렸다. → 종료 신호와 큐 처리를 분리했다(`ending`, `detachSource`, `settle`).
+- [x] **P1** `acceptServer` 관찰자가 `refetch()`하면 이전 run의 오류가 새 run을 끝냈다. refetch의 상태 알림에서 `close()`해도 소스가 열렸다. → 관찰자 호출 지점마다 `superseded(id)` 검사를 넣었다.
+- [x] **P2** throttle 중 `reduce` 실패가 앞선 정상 메시지까지 버렸다. → 실패 직전 값을 반영한 뒤 오류로 끝낸다.
+- [x] **P2** `initialValue` 예외가 연결 없이 `open`을 남겼다. → run 오류 처리 범위 안으로 옮겼다.
+- [x] **P1** source 함수의 동기 throw가 `fail()`로 큐를 비웠다(throttle·WRITE 대기 시 유실). → `sink.error()`와 같은 종료 경로로 처리한다.
+- [x] **P2** 구독 중 동기로 보낸 메시지가 `start()` 끝의 `drain()`으로 throttle을 우회했다. → 시작값과 append 잔여분은 소스를 열기 전에 반영한다.
+
+**기준 테스트 / 종료:** `streamQuery review regressions` 6개와 `source edge cases` 5개. 수정 전 코드에서 각각 5개·4개가 실패하고, 수정 후 전부 통과한다. 커밋 `4c55ccd`, `d3b9554`.
+
+### 11.6 Integration Test와 인계
+
+- [x] `pnpm gate` 19단계(build·types·sync-types·sync-consumer-types·doc-examples·lint·test·ssr·bundle·packaging·bench 등)가 PASS다. README의 새 예제 블록은 doc-examples에서 실제로 컴파일된다(sync README ts 블록 15 → 16).
+- [x] sync 패키지 테스트 226개 PASS(기존 186 + 스트림 40). 기존 테스트 회귀는 없다.
+- [ ] 실제 WebSocket·NDJSON 서버를 쓰는 브라우저 E2E, 커넥터(React·Vue 등)로 스트림을 렌더하는 예제, M2 수동 점검 행은 없다(이번 범위 밖, MANUAL_TEST_CHECKLIST 미작성).
+
+**종료:** 자동 검증은 위 범위까지만 주장한다. 실제 네트워크·브라우저 렌더 빈도·rAF 동작은 수동 검증 전까지 미확인이다.
+
+**done:** Phase 11.0~11.6의 구현과 자동 검증, 문서(sync README·AI 스킬·CHANGELOG·DESIGN·본 계획). **next:** (1) R2-30을 REQUIREMENTS에 정식 행으로 옮기고 M2 수동 점검(실제 서버, 렌더 빈도)을 정의한다. (2) DC2-36·37 결정. (3) 필요 시 예제 앱에 스트림 화면을 추가한다. (4) PR을 생성한다(아직 없음). **blockers:** 구현·자동 검증 쪽에는 없다. **최신 구현 commit:** `d3b9554` (`ccr-f71cbd04-cgvi9s`, push 완료). 문서는 별도 커밋이며, 최신 HEAD는 `git log -1`로 확인한다.
+
 ## Phase 10 — 작은 쇼핑몰 사용자 화면 (2026-09-30)
 
 **진입:** 사용자 R2-29와 DC2-24~27 확정. 기존 HEAD `cb6d635`, 최종 gate/E2E 통과 기록은 기존 범위의 증거다.
@@ -100,6 +162,10 @@ T2-29는 R2-29의 자동 확인이며 기존 M2 미수행 항목 전체를 대�
 | T2-26 | changes snapshot readonly, ID 재사용 없음, 오래된 검토/다른 owner로 apply·resolve 시 새 입력 보존 | R2-26 |
 | T2-27 | `watch` 콜백 인자·반환 ref·별도 `watch()` ref에서 쓰기, 최초 callback은 등록당 1회, batch 종료 시 store별 최종 값 구독 알림 1회, 중첩·예외·manual sync·reentrancy·metadata·5종 커넥터와 번들/성능 게이트 | R2-27 |
 | T2-28 | 통합된 조회 표면의 공개 타입·추론과 표시 계약 회귀: select 오류가 그 관찰자만 error로 만들고 query 상태를 바꾸지 않음, placeholder가 캐시·`dehydrate()`에 없음, 표시값 setter 없음(타입 negative), 언마운트가 그 커넥터 구독만 종료, 반응형 key 전환의 abort·늦은 결과 차단, 5종 커넥터 회귀, 번들·구독 수 예산 | R2-28 |
+| T2-30 | 메시지마다 `acceptServer`로 중간 기준이 관찰되고 dirty가 생기지 않음; 빈 query를 스트림만으로 로드; 로컬 편집 rebase와 겹친 서버 변경의 conflict; 연결 WRITE 중 보류(`queued`) 뒤 그 WRITE 결과 위에 순서대로 반영; `serverValue()`는 편집을 제외하고 로드 전에는 `undefined` | R2-30(가칭) |
+| T2-31 | NDJSON: chunk 경계를 넘는 줄·빈 줄·마지막 줄, 잘못된 JSON은 run 오류, lazy 요청의 signal이 close에 abort되고 reader cancel; WebSocket: JSON 파싱, close 시 리스너 제거와 `close(1000)`, clean close는 완료, 비정상 close는 코드가 담긴 오류; async iterable source | R2-30(가칭) |
+| T2-32 | 첫 run은 모드와 무관하게 현재 기준 위에 접음; `reset`은 initialValue 즉시 표시 또는 첫 새 메시지까지 유지; `append`는 이어 붙임; `replace`는 완료 때 1회 교체(`buffered`), 실패 run은 폐기; 호출마다 다른 모드; 이전 run의 늦은 메시지 무시; 닫힌 뒤 `refetch()`·알 수 없는 모드는 예외 | R2-30(가칭) |
+| T2-33 | throttle(ms·`'frame'`·rAF 대체 16ms): 첫 메시지 즉시, 창 안 메시지를 1회로 합침, 완료·오류·close·동기 throw는 즉시 반영, 구독 중 동기 메시지도 throttle; 재진입·실패 회귀: WRITE 중 소스 오류/throw에서 보류분 반영 후 error, 관찰자의 refetch가 새 run을 유지, refetch 상태 알림의 close가 소스를 열지 않음, reduce 실패 전 값 보존(throttle 유무 동일), initialValue 예외는 run 오류 | R2-30(가칭) |
 
 필수 fixture는 (1) 네트워크 없는 core 원본과 draft 2개, (2) 같은 key를 보는 resource 패널 2개와 주소 draft 2개, (3) 조회와 다른 DTO의 mutation, (4) 서버 기준·resource 값·draft 기준·각 changes/dirty/pending을 동시에 관찰하는 패널이다.
 
