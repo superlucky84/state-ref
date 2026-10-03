@@ -1,6 +1,9 @@
 # Changelog
 
-## @stateref/sync (unreleased)
+## @stateref/sync 0.2.0
+
+Additive: code written for 0.1.0 keeps working. Requires `state-ref ^3.1.0`
+(unchanged).
 
 ### Added
 
@@ -15,6 +18,15 @@
   stream sources.
 - **`query.serverValue()`** - the confirmed server baseline without local
   edits, or `undefined` before a load.
+
+## state-ref 3.1.1
+
+Documentation only; no code change.
+
+- The bundled AI skill (`dist/skills/state-ref/reference/server-sync.md`) and
+  the agent add-on describe `@stateref/sync` 0.2 streaming: `streamQuery`,
+  `refetch({ mode })`, `throttle`, and when held messages are kept or
+  discarded.
 
 ## state-ref 3.1.0
 

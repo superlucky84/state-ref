@@ -1,4 +1,4 @@
-# Server Sync (`@stateref/sync` 0.1)
+# Server Sync (`@stateref/sync` 0.2)
 
 Optional package: query cache, editable server resources and mutations on top of
 state-ref. Use it only when `@stateref/sync` is installed. ESM only; requires
