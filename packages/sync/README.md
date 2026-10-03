@@ -636,6 +636,9 @@ milliseconds, or `'frame'` for once per animation frame (a 16ms timer where
 message of a run, and the first after a quiet window, shows at once.
 Completion, a source error and `close()` publish what the window still holds
 without waiting; a `reset` or `replace` refetch discards it with the old run.
+Messages held for a pending WRITE are different: completion and a source
+error still apply them once the WRITE settles, but `close()` and a `reset` or
+`replace` refetch discard them.
 
 Without `refetch()` there is no mode to pick. The first run always folds onto
 the current baseline, so a hydrated or loaded

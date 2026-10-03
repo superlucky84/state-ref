@@ -251,7 +251,7 @@ const phase = q.display.isPlaceholder.value ? 'placeholder' : q.display.status.v
 // QueryStreamOptions<T, M>
 {
   source: () => StreamSource<M>;  // 시작할 때와 refetch()마다 호출
-  reduce: (current: T | undefined, message: M) => T; // current = 서버 값, freeze됨
+  reduce: (current: T | undefined, message: M) => T; // current = 서버 값; 불변으로 다룰 것 (묶음 안의 중간값은 freeze되지 않을 수 있음)
   initialValue?: () => T;         // 'reset' / 'replace' 재시작에만 쓰임(첫 run 제외); 예외면 run 실패
   throttle?: number | 'frame';    // 반영을 묶는다; 기본 0
   onError?: (reason: unknown) => void; // 실패한 run마다 한 번; 첫 run의 동기 source 예외는 다시 던져지기도 함

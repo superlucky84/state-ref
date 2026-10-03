@@ -251,7 +251,7 @@ const phase = q.display.isPlaceholder.value ? 'placeholder' : q.display.status.v
 // QueryStreamOptions<T, M>
 {
   source: () => StreamSource<M>;  // called on start and on every refetch()
-  reduce: (current: T | undefined, message: M) => T; // current = server value, frozen
+  reduce: (current: T | undefined, message: M) => T; // current = server value; treat as immutable (a batched intermediate may not be frozen)
   initialValue?: () => T;         // used by 'reset' / 'replace' restarts, never by the first run; a throw fails the run
   throttle?: number | 'frame';    // coalesce publishes; default 0
   onError?: (reason: unknown) => void; // once per failed run; a first-run sync source throw is also rethrown
