@@ -33,10 +33,142 @@ const client = createSyncClient({ environment });`}
       />
 
       <p>
-        Without an environment there are no focus or reconnect events at all,
-        and polling treats the host as focused and online. An SSR client creates
-        neither event subscriptions nor polling timers.
+        <code>createBrowserSyncEnvironment()</code> builds that environment from
+        the browser for you: it answers &quot;is the tab visible?&quot; and
+        &quot;is it online?&quot;, and turns browser events into the two events
+        the client understands.
       </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>part</th>
+            <th>what the browser adapter uses</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <code>isFocused()</code>
+            </td>
+            <td>
+              <code>document.visibilityState === &apos;visible&apos;</code>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <code>isOnline()</code>
+            </td>
+            <td>
+              <code>navigator.onLine !== false</code>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <code>&apos;focus&apos;</code> event
+            </td>
+            <td>
+              <code>window</code> <code>focus</code> or <code>document</code>{' '}
+              <code>visibilitychange</code>, when the tab is visible
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <code>&apos;reconnect&apos;</code> event
+            </td>
+            <td>
+              <code>window</code> <code>online</code>, when online
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>The client uses the environment for three things:</p>
+
+      <ul>
+        <li>
+          <code>refetchOnFocus</code> / <code>refetchOnReconnect</code> react to
+          the <code>&apos;focus&apos;</code> and{' '}
+          <code>&apos;reconnect&apos;</code> events.
+        </li>
+        <li>
+          Polling skips while <code>isFocused()</code> is false (a background
+          tab), unless <code>refetchIntervalInBackground</code> is{' '}
+          <code>true</code>.
+        </li>
+        <li>
+          With <code>networkMode: &apos;online&apos;</code> (the default), a
+          READ waits while <code>isOnline()</code> is false and starts when the
+          host is online again.
+        </li>
+      </ul>
+
+      <p>
+        Without an environment there are no focus or reconnect events at all,
+        and polling and network mode treat the host as focused and online. That
+        is the usual setup for a server-side client; an SSR client creates
+        neither event subscriptions nor polling timers anyway.
+      </p>
+
+      <h3>Outside the Browser</h3>
+
+      <p>
+        Calling <code>createBrowserSyncEnvironment()</code> where{' '}
+        <code>window</code>, <code>document</code> and <code>navigator</code> do
+        not exist throws{' '}
+        <code>Browser sync environment requires a browser host.</code> Call it
+        only in browser code. You can also pass the three objects yourself:{' '}
+        <code>
+          createBrowserSyncEnvironment(&#123; window, document, navigator
+          &#125;)
+        </code>
+        .
+      </p>
+
+      <p>
+        Anywhere else - a native app, Electron, a test, your own connectivity
+        check - implement <code>SyncEnvironment</code> directly. It is three
+        functions:
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`import type { SyncEnvironment } from '@stateref/sync';
+
+// app and network stand for whatever your host provides
+let online = network.isConnected();
+
+const environment: SyncEnvironment = {
+  isFocused: () => app.isActive(),
+  isOnline: () => online,
+  subscribe: listener => {
+    const offActive = app.onActive(() => listener('focus'));
+    const offNetwork = network.onChange(connected => {
+      const cameBack = !online && connected;
+      online = connected;
+      if (cameBack) listener('reconnect');
+    });
+    return () => {
+      offActive();
+      offNetwork();
+    };
+  },
+};
+
+const client = createSyncClient({ environment });`}
+      />
+
+      <ul>
+        <li>
+          Call <code>listener(&apos;focus&apos;)</code> when the app becomes
+          active and <code>listener(&apos;reconnect&apos;)</code> when it comes
+          back online - not on every network change.
+        </li>
+        <li>
+          <code>subscribe</code> must return a function that removes what it
+          added; the client calls it when no query needs the events any more.
+        </li>
+      </ul>
 
       <h2>Policies</h2>
 

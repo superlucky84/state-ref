@@ -33,10 +33,140 @@ const client = createSyncClient({ environment });`}
       />
 
       <p>
-        environment가 없으면 focus·reconnect 사건 자체가 없고, polling은
-        호스트를 focused·online으로 취급합니다. SSR client는 사건 구독도 polling
-        타이머도 만들지 않습니다.
+        <code>createBrowserSyncEnvironment()</code>는 이 environment를
+        브라우저에 맞게 자동으로 만들어 줍니다. &quot;탭이 보이는가&quot;,
+        &quot;온라인인가&quot;를 답하고, 브라우저 이벤트를 client가 알아듣는 두
+        사건으로 바꿉니다.
       </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>항목</th>
+            <th>브라우저 어댑터가 보는 것</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <code>isFocused()</code>
+            </td>
+            <td>
+              <code>document.visibilityState === &apos;visible&apos;</code>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <code>isOnline()</code>
+            </td>
+            <td>
+              <code>navigator.onLine !== false</code>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <code>&apos;focus&apos;</code> 사건
+            </td>
+            <td>
+              <code>window</code>의 <code>focus</code> 또는{' '}
+              <code>document</code>의 <code>visibilitychange</code>(탭이 보일
+              때)
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <code>&apos;reconnect&apos;</code> 사건
+            </td>
+            <td>
+              <code>window</code>의 <code>online</code>(온라인일 때)
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>client는 environment를 세 군데에 씁니다.</p>
+
+      <ul>
+        <li>
+          <code>refetchOnFocus</code>·<code>refetchOnReconnect</code>가{' '}
+          <code>&apos;focus&apos;</code>·<code>&apos;reconnect&apos;</code>{' '}
+          사건에 반응합니다.
+        </li>
+        <li>
+          polling은 <code>isFocused()</code>가 false(백그라운드 탭)인 동안
+          쉽니다. <code>refetchIntervalInBackground: true</code>면 계속합니다.
+        </li>
+        <li>
+          <code>networkMode: &apos;online&apos;</code>(기본값)인 READ는{' '}
+          <code>isOnline()</code>이 false인 동안 기다렸다가 온라인이 되면
+          시작합니다.
+        </li>
+      </ul>
+
+      <p>
+        environment가 없으면 focus·reconnect 사건 자체가 없고, polling과 network
+        mode는 호스트를 항상 focused·online으로 취급합니다. 서버 쪽 client는
+        보통 이렇게 씁니다. SSR client는 어차피 사건 구독도 polling 타이머도
+        만들지 않습니다.
+      </p>
+
+      <h3>브라우저가 아닌 곳에서</h3>
+
+      <p>
+        <code>window</code>·<code>document</code>·<code>navigator</code>가 없는
+        곳에서 <code>createBrowserSyncEnvironment()</code>를 부르면{' '}
+        <code>Browser sync environment requires a browser host.</code> 예외가
+        납니다. 브라우저 코드에서만 부르세요. 세 객체를 직접 넘길 수도 있습니다:{' '}
+        <code>
+          createBrowserSyncEnvironment(&#123; window, document, navigator
+          &#125;)
+        </code>
+        .
+      </p>
+
+      <p>
+        그 밖의 환경 — 네이티브 앱, Electron, 테스트, 자체 연결 검사 — 에서는{' '}
+        <code>SyncEnvironment</code>를 직접 구현합니다. 함수 세 개입니다.
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`import type { SyncEnvironment } from '@stateref/sync';
+
+// app과 network는 호스트가 제공하는 API를 뜻한다
+let online = network.isConnected();
+
+const environment: SyncEnvironment = {
+  isFocused: () => app.isActive(),
+  isOnline: () => online,
+  subscribe: listener => {
+    const offActive = app.onActive(() => listener('focus'));
+    const offNetwork = network.onChange(connected => {
+      const cameBack = !online && connected;
+      online = connected;
+      if (cameBack) listener('reconnect');
+    });
+    return () => {
+      offActive();
+      offNetwork();
+    };
+  },
+};
+
+const client = createSyncClient({ environment });`}
+      />
+
+      <ul>
+        <li>
+          앱이 활성화될 때 <code>listener(&apos;focus&apos;)</code>를, 다시
+          온라인이 될 때 <code>listener(&apos;reconnect&apos;)</code>를
+          부릅니다. 네트워크가 바뀔 때마다 부르는 것이 아닙니다.
+        </li>
+        <li>
+          <code>subscribe</code>는 자기가 붙인 것을 떼는 함수를 반환해야 합니다.
+          사건이 필요한 조회가 없어지면 client가 이를 호출합니다.
+        </li>
+      </ul>
 
       <h2>정책</h2>
 

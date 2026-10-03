@@ -388,7 +388,15 @@ class MutationRejectedError extends Error {
         language="typescript"
         code={`import { createBrowserSyncEnvironment } from '@stateref/sync';
 
-const environment = createBrowserSyncEnvironment(); // browser globals only`}
+createBrowserSyncEnvironment(host?: BrowserSyncHost): SyncEnvironment
+// without host: reads window / document / navigator; throws
+// 'Browser sync environment requires a browser host.' where they do not exist
+
+type BrowserSyncHost = Readonly<{
+  window: { addEventListener; removeEventListener };   // 'focus', 'online'
+  document: { addEventListener; removeEventListener; visibilityState: string }; // 'visibilitychange'
+  navigator: { onLine: boolean };
+}>;`}
       />
 
       <CodeBlock
@@ -402,7 +410,9 @@ const environment = createBrowserSyncEnvironment(); // browser globals only`}
 
       <p>
         Implement this yourself when the host knows better than browser globals
-        - a native shell, a test, or a custom connectivity probe.
+        - a native shell, a test, or a custom connectivity probe. The browser
+        adapter&apos;s rules and an example are in{' '}
+        <a href="#/guide/sync-refetch">Automatic Refetch</a>.
       </p>
 
       <h2>Persistence</h2>

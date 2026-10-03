@@ -388,7 +388,15 @@ class MutationRejectedError extends Error {
         language="typescript"
         code={`import { createBrowserSyncEnvironment } from '@stateref/sync';
 
-const environment = createBrowserSyncEnvironment(); // browser globals only`}
+createBrowserSyncEnvironment(host?: BrowserSyncHost): SyncEnvironment
+// host 없이 부르면 window / document / navigator를 읽는다; 없는 곳에서는
+// 'Browser sync environment requires a browser host.' 예외
+
+type BrowserSyncHost = Readonly<{
+  window: { addEventListener; removeEventListener };   // 'focus', 'online'
+  document: { addEventListener; removeEventListener; visibilityState: string }; // 'visibilitychange'
+  navigator: { onLine: boolean };
+}>;`}
       />
 
       <CodeBlock
@@ -402,7 +410,9 @@ const environment = createBrowserSyncEnvironment(); // browser globals only`}
 
       <p>
         호스트가 브라우저 전역보다 잘 아는 경우 — 네이티브 셸, 테스트, 자체 연결
-        검사 — 에는 이것을 직접 구현해 주입합니다.
+        검사 — 에는 이것을 직접 구현해 주입합니다. 브라우저 어댑터의 판단 기준과
+        구현 예시는 <a href="#/ko/guide/sync-refetch">자동 재조회</a>에
+        있습니다.
       </p>
 
       <h2>영속화</h2>
