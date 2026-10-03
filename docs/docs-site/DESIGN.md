@@ -29,6 +29,7 @@
 - [x] **DC-DS-12 / 조회 충돌 해소는 새 API를 약속하지 않고, 지금 있는 수단을 측정해서 적는다.** 조회 핸들에는 draft의 `resolve`가 없다. 문서가 "충돌이 난다"만 말하고 멈추면 독자는 막힌다. 현재 소스로 가능한 경로(서버 값을 받는다 / 내 값을 제출한다 / draft를 얹어 사람이 고른다)를 probe로 측정해 그대로 적고, `resolve`가 없다는 사실도 숨기지 않는다. 조회 핸들에 `resolve`를 더할지는 **라이브러리 결정**이며 이 작업의 범위가 아니다.
 - [x] **DC-DS-13 / 새 장의 위치.** `편집의 생애`는 Server Sync 섹션에서 `mutation과 link` 바로 뒤, `무한 조회`는 `표시와 반응형 key` 바로 뒤, `폼 저장 레시피`는 섹션 맨 끝(개념을 다 읽은 뒤 보는 조합 예시)이다. 라우트는 `/guide/sync-lifecycle`, `/guide/sync-infinite`, `/guide/sync-form`이다. DC-DS-08의 배선 셋을 장마다 함께 넣는다.
 - [x] **DC-DS-14 / 두 API의 같은 이름은 모양이 다르면 장마다 명시한다.** `mutation.run`의 `accept`는 객체(`{ kind: 'submitted' }`)이고 `linked.stage`의 `accept`는 문자열(`'submitted'`)이다. 직렬화 가능해야 하는 쪽이 문자열을 받는다. 1차 작업이 둘을 섞어 적었으므로(E1) 두 장 모두에 어느 쪽인지 적는다.
+- [x] **DC-DS-15 / 스트리밍 장의 위치 (2026-10-03).** `스트리밍`(`/guide/sync-stream`)은 Server Sync 섹션에서 `무한 조회` 바로 뒤에 둔다. 둘 다 "query에 데이터가 들어오는 다른 방식"이고, 자동 재조회 장보다 앞에 와야 "`query.refetch()`는 스트림을 재시작하지 않는다"는 구분을 먼저 읽는다. DC-DS-08의 배선 셋(파일 en+ko·라우트 en+ko·사이드바)을 함께 넣었다. 개요(`/guide/sync`)의 장 목록, Sync API 레퍼런스의 `Streaming` 절과 `serverValue()`도 같은 커밋에서 갱신했다. 계약의 근거는 [server-sync DC2-28~37](../server-sync/DESIGN.md)이다.
 
 ## 새 정보 구조
 

@@ -126,6 +126,10 @@ const menuData: MenuSection[] = [
         link: '/guide/sync-infinite',
       },
       {
+        text: { en: 'Streaming', ko: '스트리밍' },
+        link: '/guide/sync-stream',
+      },
+      {
         text: { en: 'Automatic Refetch', ko: '자동 재조회' },
         link: '/guide/sync-refetch',
       },

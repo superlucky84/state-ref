@@ -47,6 +47,8 @@ import { SyncForm } from '@/pages/SyncForm';
 import { SyncFormKo } from '@/pages/SyncForm_ko';
 import { SyncInfinite } from '@/pages/SyncInfinite';
 import { SyncInfiniteKo } from '@/pages/SyncInfinite_ko';
+import { SyncStream } from '@/pages/SyncStream';
+import { SyncStreamKo } from '@/pages/SyncStream_ko';
 import { SyncViewKo } from '@/pages/SyncView_ko';
 import { SyncRefetch } from '@/pages/SyncRefetch';
 import { SyncRefetchKo } from '@/pages/SyncRefetch_ko';
@@ -150,6 +152,8 @@ const routes: Record<string, PageComponent> = {
   '/ko/guide/sync-form': SyncFormKo,
   '/guide/sync-infinite': SyncInfinite,
   '/ko/guide/sync-infinite': SyncInfiniteKo,
+  '/guide/sync-stream': SyncStream,
+  '/ko/guide/sync-stream': SyncStreamKo,
   '/guide/sync-refetch': SyncRefetch,
   '/ko/guide/sync-refetch': SyncRefetchKo,
   '/guide/sync-persistence': SyncPersistence,

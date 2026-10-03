@@ -168,7 +168,8 @@ handle.isDirty()
 handle.changes()
 handle.version()
 handle.capture(ids?)        // ResourceSubmission: frozen value + rows + version
-handle.acceptServer(value)  // cache-only acceptance; sends no WRITE`}
+handle.acceptServer(value)  // cache-only acceptance; sends no WRITE
+handle.serverValue()        // the server baseline without local edits; undefined before a load`}
       />
 
       <h3>QueryStatus</h3>
@@ -240,6 +241,48 @@ const phase = q.display.isPlaceholder.value ? 'placeholder' : q.display.status.v
       />
 
       <p>A fixed key does not start a READ. An active reactive key does.</p>
+
+      <h2>Streaming</h2>
+
+      <CodeBlock
+        language="typescript"
+        code={`streamQuery<T, M>(query, options: QueryStreamOptions<T, M>): QueryStream
+
+// QueryStreamOptions<T, M>
+{
+  source: () => StreamSource<M>;  // called on start and on every refetch()
+  reduce: (current: T | undefined, message: M) => T; // current = server value, frozen
+  initialValue?: () => T;         // what a 'reset' / 'replace' refetch starts from
+  throttle?: number | 'frame';    // coalesce publishes; default 0
+  onError?: (reason: unknown) => void; // once per failed run
+}
+
+// StreamSource<M>
+AsyncIterable<M> | ((sink: StreamSink<M>, signal: AbortSignal) => void | (() => void))
+// StreamSink<M> = { next(message), error(reason), complete() }
+
+// QueryStream
+stream.status       // readonly; QueryStreamStatus
+stream.watchStatus
+stream.refetch(options?: { mode?: 'reset' | 'append' | 'replace' }) // default 'reset'
+stream.close()
+
+// QueryStreamStatus
+{
+  state: 'open' | 'complete' | 'error' | 'closed';
+  received: number;  // messages of this run applied
+  queued: number;    // held while a linked WRITE is pending
+  buffered: number;  // folded off screen by a 'replace' run
+  error: unknown;
+}
+
+ndjsonMessages<M>(input: Response | ReadableStream<Uint8Array> | (signal => Response | ReadableStream | Promise<...>)): StreamSource<M>
+webSocketMessages<M>(socket: WebSocketLike, parse?: (data: unknown) => M): StreamSource<M>`}
+      />
+
+      <p>
+        Guide: <a href="#/guide/sync-stream">Streaming</a>.
+      </p>
 
       <h2>Mutations</h2>
 

@@ -1090,3 +1090,22 @@ describe('streamQuery source edge cases', () => {
     query.dispose();
   });
 });
+
+describe('streamQuery with display', () => {
+  it('a display observes a query that only the stream loads', () => {
+    const query = createSyncClient({ ssr: true }).query<Doc>({
+      queryKey: ['stream-display'],
+      queryFn: () => ({ title: 'never', lines: [] }),
+    });
+    const seen: (string[] | undefined)[] = [];
+    query.watchDisplay(ref => {
+      seen.push(ref.data.value?.lines);
+    });
+    const manual = manualSource<Chunk>();
+    streamQuery(query, { source: () => manual.source, reduce: appendLine });
+    manual.sink.next({ line: 'a' });
+    manual.sink.next({ line: 'b' });
+    expect(seen).toEqual([undefined, ['a'], ['a', 'b']]);
+    query.dispose();
+  });
+});
