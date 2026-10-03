@@ -2,7 +2,7 @@
 
 ## 2026-10-03 추가 — 서버 push 스트림 (`streamQuery`)
 
-**요구 (사용자, 2026-10-03 세션):** WebSocket·NDJSON 같은 서버 push를 query에 연결하고 중간 과정을 화면에 스트림으로 표시한다. 메시지는 리듀서 형태로 접고, 재시작 방식은 `reset | append | replace`로 고르며, 잦은 갱신은 throttle로 묶는다. REQUIREMENTS에는 아직 R2 행으로 옮기지 않았다(사용자 범위: DESIGN·IMPLEMENT만). 아래에서는 이 요구를 **R2-30(가칭)**으로 부른다. 검증은 T2-30~33(IMPLEMENT §2)과 IMPLEMENT Phase 11에 있다.
+**요구 (사용자, 2026-10-03 세션):** WebSocket·NDJSON 같은 서버 push를 query에 연결하고 중간 과정을 화면에 스트림으로 표시한다. 메시지는 리듀서 형태로 접고, 재시작 방식은 `reset | append | replace`로 고르며, 잦은 갱신은 throttle로 묶는다. 요구사항은 [REQUIREMENTS R2-30](./REQUIREMENTS.md), 자동 검증은 T2-30~33(IMPLEMENT §2)과 IMPLEMENT Phase 11, 수동 검증은 [M2-23](./MANUAL_TEST_CHECKLIST.md#m2-23)(미수행)이다.
 
 - [x] **DC2-28 — 기존 query 위의 어댑터로 둔다.** 새 query 종류나 `queryFn` 변형을 만들지 않고 `streamQuery(query, options)`가 기존 handle을 받는다. 메시지마다 `acceptServer`로 서버 기준을 갱신한다. 근거: 서버 기준 교체, 로컬 편집 rebase, 충돌 표시, 진행 READ 배제가 이미 `acceptServer` 한 곳에 있다. 스트림이 같은 경로를 쓰면 편집 가능한 resource와 스트림이 공존한다. 검증: T2-30.
 - [x] **DC2-29 — 메시지 해석은 앱 소유이며, `reduce(current, message) => next`로 한다.** `current`는 로컬 편집이 빠진 확정 서버 기준이다(editable이면 frozen, 로드 전이면 `undefined`). 이를 읽기 위해 `QueryHandle.serverValue()`를 공개 API로 추가했다. 근거: 서버 스키마와 액션 형식이 바뀌어도 라이브러리 변경 없이 source의 `parse`나 `reduce`만 바꾸면 된다. 로컬 편집을 섞으면 rebase가 이중 적용된다. 검증: T2-30, `test/types.ts`.
