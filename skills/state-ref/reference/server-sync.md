@@ -138,6 +138,9 @@ stream.close();
   dropped). The first run folds onto the current baseline.
 - Do not pass `refetchMode` to `streamQuery`; the mode is a `refetch()`
   argument.
+- `throttle: 100` (ms) or `throttle: 'frame'` coalesces screen updates for
+  a busy source. No message is dropped: every one is folded, the first shows
+  at once, and completion, an error or `close()` flush the rest immediately.
 - Messages arriving while a linked WRITE is pending are held (`queued`) and
   folded after it settles.
 - `query.refetch()` is a READ through `queryFn`; it does not restart a stream.

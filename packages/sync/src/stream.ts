@@ -50,6 +50,14 @@ export type QueryStreamOptions<T, M> = Readonly<{
    * always folds onto the current baseline.
    */
   initialValue?: () => T;
+  /**
+   * Show at most one update per window: milliseconds, or `'frame'` for once
+   * per animation frame (a 16ms timer where there is none). Every message is
+   * still folded; only the publishes are coalesced. The first message of a
+   * run shows at once, and completion, an error or `close()` publish what is
+   * left without waiting. Defaults to 0: publish every message.
+   */
+  throttle?: number | 'frame';
   /** Called when a run fails (source error or a throwing reduce). */
   onError?: (reason: unknown) => void;
 }>;
@@ -103,6 +111,12 @@ export function streamQuery<T, M>(
     throw new TypeError('streamQuery requires a source function.');
   if (typeof options.reduce !== 'function')
     throw new TypeError('streamQuery requires a reduce function.');
+  const throttle = options.throttle ?? 0;
+  if (
+    throttle !== 'frame' &&
+    !(typeof throttle === 'number' && throttle >= 0 && throttle < Infinity)
+  )
+    throw new TypeError("throttle must be a nonnegative number or 'frame'.");
 
   const store = create<QueryStreamStatus>(
     Object.freeze({
@@ -138,8 +152,42 @@ export function streamQuery<T, M>(
       0
     );
 
+  let cancelTimer: (() => void) | null = null;
+  let lastFlush = -Infinity;
+  const schedule = (callback: () => void, ms: number | 'frame') => {
+    if (ms === 'frame' && typeof requestAnimationFrame === 'function') {
+      const id = requestAnimationFrame(callback);
+      return () => cancelAnimationFrame(id);
+    }
+    const id = setTimeout(callback, ms === 'frame' ? 16 : ms);
+    return () => clearTimeout(id);
+  };
+  const flushNow = () => {
+    cancelTimer?.();
+    cancelTimer = null;
+    lastFlush = Date.now();
+    drain();
+  };
+  /** Publish now, or once the throttle window allows; nothing is dropped. */
+  const requestFlush = () => {
+    if (!throttle) return drain();
+    if (cancelTimer) return;
+    // The first message of a run never waits.
+    if (lastFlush === -Infinity) return flushNow();
+    const wait =
+      throttle === 'frame' ? 'frame' : lastFlush + throttle - Date.now();
+    if (wait !== 'frame' && wait <= 0) return flushNow();
+    cancelTimer = schedule(() => {
+      cancelTimer = null;
+      flushNow();
+    }, wait);
+  };
+
   /** Detach the running source; later deliveries from it are ignored. */
   const endRun = () => {
+    cancelTimer?.();
+    cancelTimer = null;
+    lastFlush = -Infinity;
     run += 1;
     completing = false;
     runAbort?.abort();
@@ -156,6 +204,7 @@ export function streamQuery<T, M>(
     publish({ ...patch, queued: 0, buffered: 0 });
   };
   const fail = (reason: unknown) => {
+    if (current.state !== 'open') return;
     finish({ state: 'error', error: reason });
     options.onError?.(reason);
   };
@@ -236,10 +285,13 @@ export function streamQuery<T, M>(
           queue.push({ kind: 'reset' });
         }
         queue.push({ kind: 'message', message });
-        drain();
+        requestFlush();
       },
       error: (reason: unknown) => {
-        if (id === run) fail(reason);
+        if (id !== run) return;
+        // Messages that arrived before the failure still count.
+        flushNow();
+        fail(reason);
       },
       complete: () => {
         if (id !== run || completing) return;
@@ -250,7 +302,7 @@ export function streamQuery<T, M>(
         // Steps held for a WRITE are still delivered; drain finishes then.
         if (queue.length) {
           completing = true;
-          drain();
+          flushNow();
         } else finish({ state: 'complete' });
       },
     });
@@ -321,6 +373,8 @@ export function streamQuery<T, M>(
     close: () => {
       if (closed) return;
       closed = true;
+      // A throttled window still holding messages is published first.
+      if (current.state === 'open' && cancelTimer) flushNow();
       finish({ state: 'closed' });
     },
   });

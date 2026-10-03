@@ -607,6 +607,7 @@ stream.close(); // stop for good; tears down the request
 const live = streamQuery<Report, Row>(report, {
   source: () => webSocketMessages<Row>(new WebSocket('wss://example.test/report')),
   reduce: (current, message) => ({ rows: [...(current?.rows ?? []), message.row] }),
+  throttle: 'frame', // at most one screen update per animation frame
 });
 live.refetch({ mode: 'append' }); // reconnect and keep adding to what is shown
 live.close();
@@ -626,6 +627,14 @@ previous run left on screen, so each call can choose:
 - `replace`: keep the old data while the new run is folded off-screen
   (`status.buffered`), then swap it in once on completion. A failed run is
   dropped.
+
+A busy source can render less often with `throttle`: a number of
+milliseconds, or `'frame'` for once per animation frame (a 16ms timer where
+`requestAnimationFrame` does not exist). Every message is still folded by
+`reduce`; only the publishes are coalesced, so nothing is dropped. The first
+message of a run, and the first after a quiet window, shows at once.
+Completion, a source error and `close()` publish what the window still holds
+without waiting; a `reset` or `replace` refetch discards it with the old run.
 
 Without `refetch()` there is no mode to pick. The first run always folds onto
 the current baseline, so a hydrated or loaded

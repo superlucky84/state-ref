@@ -538,6 +538,7 @@ const stream: QueryStream = streamQuery(streamed, {
     rows: [...(current?.rows ?? []), message.row],
   }),
   initialValue: () => ({ rows: [] }),
+  throttle: 'frame',
 });
 const streamState: QueryStreamStatus['state'] = stream.status.state.value;
 void streamState;
@@ -548,6 +549,7 @@ stream.refetch({ mode: 'merge' });
 stream.close();
 streamQuery(streamed, {
   source: () => webSocketMessages<{ row: string }>(new WebSocket('wss://x')),
+  throttle: 100,
   // @ts-expect-error reduce must return the query data shape
   reduce: (_current, message) => message.row,
 });

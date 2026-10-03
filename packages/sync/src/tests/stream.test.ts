@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createSyncClient,
   MutationRejectedError,
@@ -615,6 +615,166 @@ describe('streamQuery refetch modes', () => {
     expect(stream.status.value.state).toBe('open');
     stream.close();
     expect(() => stream.refetch()).toThrow('This stream is closed.');
+    query.dispose();
+  });
+});
+
+describe('streamQuery throttle', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  async function throttled(
+    key: string,
+    throttle: number | 'frame',
+    extra: { onError?: (reason: unknown) => void } = {}
+  ) {
+    const query = createSyncClient({ ssr: true }).query<Doc>({
+      queryKey: [key],
+      queryFn: () => ({ title: 'T', lines: [] }),
+    });
+    await query.load();
+    vi.useFakeTimers();
+    const seen: string[][] = [];
+    query.watch(ref => {
+      seen.push([...ref.lines.value]);
+    });
+    const manual = manualSource<Chunk>();
+    const stream = streamQuery(query, {
+      source: () => manual.source,
+      reduce: appendLine,
+      throttle,
+      ...extra,
+    });
+    return { query, seen, manual, stream };
+  }
+
+  it('shows the first message at once and coalesces the window after it', async () => {
+    const { query, seen, manual, stream } = await throttled('throttle-ms', 100);
+    manual.sink.next({ line: 'a' });
+    expect(seen).toEqual([[], ['a']]);
+
+    vi.advanceTimersByTime(10);
+    manual.sink.next({ line: 'b' });
+    manual.sink.next({ line: 'c' });
+    expect(seen).toEqual([[], ['a']]);
+    expect(stream.status.value.received).toBe(1);
+
+    vi.advanceTimersByTime(89);
+    expect(seen).toHaveLength(2);
+    vi.advanceTimersByTime(1);
+    expect(seen).toEqual([[], ['a'], ['a', 'b', 'c']]);
+    expect(stream.status.value.received).toBe(3);
+
+    // A message after a quiet window shows at once again.
+    vi.advanceTimersByTime(500);
+    manual.sink.next({ line: 'd' });
+    expect(seen.at(-1)).toEqual(['a', 'b', 'c', 'd']);
+    query.dispose();
+  });
+
+  it('publishes what is left on completion without waiting', async () => {
+    const { query, seen, manual, stream } = await throttled(
+      'throttle-done',
+      100
+    );
+    manual.sink.next({ line: 'a' });
+    manual.sink.next({ line: 'b' });
+    manual.sink.complete();
+    expect(seen).toEqual([[], ['a'], ['a', 'b']]);
+    expect(stream.status.value).toMatchObject({
+      state: 'complete',
+      received: 2,
+    });
+    vi.advanceTimersByTime(1000);
+    expect(seen).toHaveLength(3);
+    query.dispose();
+  });
+
+  it('publishes what is left before close() and before an error', async () => {
+    const closing = await throttled('throttle-close', 100);
+    closing.manual.sink.next({ line: 'a' });
+    closing.manual.sink.next({ line: 'b' });
+    closing.stream.close();
+    expect(closing.query.serverValue()!.lines).toEqual(['a', 'b']);
+    expect(closing.stream.status.value.state).toBe('closed');
+    closing.query.dispose();
+    vi.useRealTimers();
+
+    const errors: unknown[] = [];
+    const failing = await throttled('throttle-error', 100, {
+      onError: error => errors.push(error),
+    });
+    failing.manual.sink.next({ line: 'a' });
+    failing.manual.sink.next({ line: 'b' });
+    failing.manual.sink.error(new Error('lost'));
+    expect(failing.query.serverValue()!.lines).toEqual(['a', 'b']);
+    expect(failing.stream.status.value.state).toBe('error');
+    expect(errors).toHaveLength(1);
+    failing.query.dispose();
+  });
+
+  it('a refetch drops the pending window of a reset and keeps it for append', async () => {
+    const { query, manual, stream } = await throttled('throttle-refetch', 100);
+    manual.sink.next({ line: 'a' });
+    manual.sink.next({ line: 'b' });
+    stream.refetch({ mode: 'append' });
+    expect(query.serverValue()!.lines).toEqual(['a', 'b']);
+    manual.sink.next({ line: 'c' });
+    manual.sink.next({ line: 'd' });
+    stream.refetch();
+    vi.advanceTimersByTime(1000);
+    expect(query.serverValue()!.lines).toEqual(['a', 'b', 'c']);
+    query.dispose();
+  });
+
+  it("'frame' uses requestAnimationFrame when there is one", async () => {
+    const frames: (() => void)[] = [];
+    vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    vi.stubGlobal('cancelAnimationFrame', () => {});
+    const { query, seen, manual } = await throttled('throttle-frame', 'frame');
+    manual.sink.next({ line: 'a' });
+    manual.sink.next({ line: 'b' });
+    manual.sink.next({ line: 'c' });
+    expect(seen).toEqual([[], ['a']]);
+    expect(frames).toHaveLength(1);
+    frames[0]();
+    expect(seen).toEqual([[], ['a'], ['a', 'b', 'c']]);
+    query.dispose();
+  });
+
+  it("'frame' falls back to a 16ms timer", async () => {
+    const { query, seen, manual } = await throttled(
+      'throttle-frame-timer',
+      'frame'
+    );
+    manual.sink.next({ line: 'a' });
+    manual.sink.next({ line: 'b' });
+    vi.advanceTimersByTime(15);
+    expect(seen).toHaveLength(2);
+    vi.advanceTimersByTime(1);
+    expect(seen.at(-1)).toEqual(['a', 'b']);
+    query.dispose();
+  });
+
+  it('rejects an invalid throttle', () => {
+    const query = createSyncClient({ ssr: true }).query<Doc>({
+      queryKey: ['throttle-bad'],
+      queryFn: () => ({ title: 'T', lines: [] }),
+    });
+    for (const throttle of [-1, Infinity, NaN, 'soon' as never]) {
+      expect(() =>
+        streamQuery(query, {
+          source: () => manualSource<Chunk>().source,
+          reduce: appendLine,
+          throttle,
+        })
+      ).toThrow("throttle must be a nonnegative number or 'frame'");
+    }
     query.dispose();
   });
 });
