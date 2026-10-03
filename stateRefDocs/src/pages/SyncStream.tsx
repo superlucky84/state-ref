@@ -45,8 +45,12 @@ const stream = streamQuery<Report, Row>(report, {
   }),
 });
 
-report.ref.rows.value; // grows line by line
-stream.status.value;   // { state: 'open', received: 3, queued: 0, buffered: 0, error: null }`}
+// Before the first message the query has no data: ref and watch throw.
+// The display is readable from the start.
+report.display.data.value?.rows ?? []; // [] → ['a'] → ['a', 'b'] → …
+stream.status.value; // { state: 'open', received: 2, queued: 0, buffered: 0, error: null }
+
+// After the first message (or a load), report.ref.rows.value works too.`}
       />
 
       <p>
@@ -60,8 +64,8 @@ stream.status.value;   // { state: 'open', received: 3, queued: 0, buffered: 0, 
       <p>
         <code>source</code> is a function that opens a new connection each time
         it is called. It returns an async iterable or a subscribe function{' '}
-        <code>(sink, signal) =&gt; teardown</code>. Two ready-made sources
-        cover the common cases.
+        <code>(sink, signal) =&gt; teardown</code>. Two ready-made sources cover
+        the common cases.
       </p>
 
       <CodeBlock
@@ -78,19 +82,24 @@ webSocketMessages<Row>(socket, data => decode(data))
 source: () => myAsyncGenerator()
 // ... or a subscribe function
 source: () => (sink, signal) => {
-  const off = feed.on('item', item => sink.next(item));
-  feed.on('end', () => sink.complete());
-  feed.on('fail', error => sink.error(error));
-  return off; // teardown
+  const offItem = feed.on('item', item => sink.next(item));
+  const offEnd = feed.on('end', () => sink.complete());
+  const offFail = feed.on('fail', error => sink.error(error));
+  // teardown: remove every listener this run added
+  return () => {
+    offItem();
+    offEnd();
+    offFail();
+  };
 }`}
       />
 
       <ul>
         <li>
-          <code>ndjsonMessages</code> handles a line split across network
-          chunks (including multi-byte characters), skips blank lines and
-          reads a last line without a newline. Invalid JSON fails the run.
-          Closing the stream aborts the request and cancels the reader.
+          <code>ndjsonMessages</code> handles a line split across network chunks
+          (including multi-byte characters), skips blank lines and reads a last
+          line without a newline. Invalid JSON fails the run. Closing the stream
+          aborts the request and cancels the reader.
         </li>
         <li>
           <code>webSocketMessages</code> completes the run on a clean close and
@@ -127,7 +136,9 @@ streamQuery<State, Action>(todos, {
       case 'snapshot':
         return action.state;
       default:
-        return state!; // ignore actions this client does not know yet
+        // ignore actions this client does not know yet;
+        // state is undefined if the very first message is one of them
+        return state ?? { todos: [] };
     }
   },
 });`}
@@ -136,19 +147,24 @@ streamQuery<State, Action>(todos, {
       <ul>
         <li>
           <code>current</code> is the <strong>server value</strong>, never the
-          user&apos;s local edits. It is <code>undefined</code> before the
-          first load. Read the same value yourself with{' '}
+          user&apos;s local edits. It is <code>undefined</code> before the first
+          load. Read the same value yourself with{' '}
           <code>query.serverValue()</code>.
         </li>
         <li>
-          For editable data <code>current</code> is frozen.{' '}
-          <strong>Return a new value</strong>; <code>current.rows.push()</code>{' '}
-          throws.
+          <strong>
+            Treat <code>current</code> as immutable and return a new value.
+          </strong>{' '}
+          The server value of editable data is frozen, so mutating it throws.
+          But when several messages are folded together (a throttle window, or
+          messages held for a save), <code>current</code> can be the value your
+          previous <code>reduce</code> call returned, which is not frozen -
+          mutating it would not throw, it would silently share state.
         </li>
         <li>
-          TypeScript types are not checked at run time. If the server format
-          may change, validate inside the WebSocket <code>parse</code> function
-          or inside <code>reduce</code>.
+          TypeScript types are not checked at run time. If the server format may
+          change, validate inside the WebSocket <code>parse</code> function or
+          inside <code>reduce</code>.
         </li>
       </ul>
 
@@ -170,17 +186,21 @@ streamQuery<State, Action>(todos, {
           While a linked save on the query is pending, messages are{' '}
           <strong>held</strong> (<code>stream.status.queued</code>). When the
           save settles they are folded, in order, on top of the value the save
-          accepted. Nothing is dropped and nothing overtakes the save.
+          accepted, and nothing overtakes the save. They are only discarded if
+          you cancel first: <code>close()</code>, or a <code>reset</code> /{' '}
+          <code>replace</code> restart (see <em>How a Run Ends</em> below).
         </li>
       </ul>
 
       <h2>Restarting: refetch(&#123; mode &#125;)</h2>
 
       <p>
-        Inside one run, every message updates the screen no matter what. A mode
-        only matters when you <strong>restart</strong> the stream, and it
-        decides what happens to the data the previous run left on screen. You
-        pick it per call.
+        Updating the screen per message is the default inside a run; a{' '}
+        <code>replace</code> run (shown once at the end) and{' '}
+        <code>throttle</code> (coalesced) are the exceptions, and both still
+        fold every message. A mode only matters when you{' '}
+        <strong>restart</strong> the stream, and it decides what happens to the
+        data the previous run left on screen. You pick it per call.
       </p>
 
       <CodeBlock
@@ -195,6 +215,19 @@ stream.refetch();                    // 'reset' (the default)
 stream.refetch({ mode: 'append' });  // e.g. after a reconnect
 stream.refetch({ mode: 'replace' }); // e.g. a "refresh" button`}
       />
+
+      <ul>
+        <li>
+          <code>initialValue</code> is not called on the first run - that run
+          always folds onto the current value. It is called on each{' '}
+          <code>reset</code> or <code>replace</code> restart; if it throws, that
+          run fails.
+        </li>
+        <li>
+          <code>refetch()</code> throws after <code>close()</code>, and for an
+          unknown mode - in that case before the current run is touched.
+        </li>
+      </ul>
 
       <table>
         <thead>
@@ -297,11 +330,99 @@ streamQuery(report, {
 stream.close(); // stop for good: aborts the request / closes the socket`}
       />
 
+      <h3>How a Run Ends</h3>
+
+      <p>
+        A run that ends by itself keeps what it received. A run that you cancel
+        discards what is still waiting.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ending</th>
+            <th>messages not shown yet</th>
+            <th>state</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>source completes</td>
+            <td>applied first (after a pending save, if one holds them)</td>
+            <td>
+              <code>complete</code>
+            </td>
+          </tr>
+          <tr>
+            <td>source error or throw</td>
+            <td>applied first (after a pending save, if one holds them)</td>
+            <td>
+              <code>error</code>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <code>reduce</code> throws
+            </td>
+            <td>what was folded before the bad message is applied</td>
+            <td>
+              <code>error</code>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <code>close()</code>
+            </td>
+            <td>
+              a throttle window is applied; messages held for a pending save are
+              discarded
+            </td>
+            <td>
+              <code>closed</code>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <code>refetch()</code> with <code>reset</code> /{' '}
+              <code>replace</code>
+            </td>
+            <td>discarded with the old run</td>
+            <td>
+              new run, <code>open</code>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <code>refetch(&#123; mode: &apos;append&apos; &#125;)</code>
+            </td>
+            <td>kept and applied in the new run</td>
+            <td>
+              new run, <code>open</code>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              a <code>replace</code> run fails
+            </td>
+            <td>its off-screen result is discarded; the old data stays</td>
+            <td>
+              <code>error</code>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
       <ul>
         <li>
-          A source error, a source that throws, or a <code>reduce</code> that
-          throws ends the run with <code>state: &apos;error&apos;</code>.{' '}
-          <strong>What arrived before the failure is kept.</strong>
+          When the source ends while a save holds messages, <code>state</code>{' '}
+          stays <code>open</code> (with <code>queued &gt; 0</code>) until they
+          are applied; only then does it become <code>complete</code> or{' '}
+          <code>error</code>, and <code>onError</code> is called then.
+        </li>
+        <li>
+          If the source throws synchronously on the <strong>first</strong> run,{' '}
+          <code>onError</code> is called and the error is also rethrown from{' '}
+          <code>streamQuery()</code>. On a restart it is only reported.
         </li>
         <li>
           There is no automatic reconnect. Call <code>stream.refetch()</code>{' '}
@@ -358,8 +479,8 @@ function ReportView() {
         </li>
         <li>
           Automatic refetches (focus, reconnect, polling) run{' '}
-          <code>queryFn</code>; they do not restart the stream. A stream
-          message excludes an older in-flight read.
+          <code>queryFn</code>; they do not restart the stream. A stream message
+          excludes an older in-flight read.
         </li>
       </ul>
 

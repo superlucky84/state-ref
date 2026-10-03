@@ -44,8 +44,12 @@ const stream = streamQuery<Report, Row>(report, {
   }),
 });
 
-report.ref.rows.value; // 줄이 올 때마다 늘어난다
-stream.status.value;   // { state: 'open', received: 3, queued: 0, buffered: 0, error: null }`}
+// 첫 메시지 전에는 query에 데이터가 없어서 ref와 watch가 예외를 던진다.
+// display는 처음부터 읽을 수 있다.
+report.display.data.value?.rows ?? []; // [] → ['a'] → ['a', 'b'] → …
+stream.status.value; // { state: 'open', received: 2, queued: 0, buffered: 0, error: null }
+
+// 첫 메시지(또는 load) 이후에는 report.ref.rows.value도 동작한다.`}
       />
 
       <p>
@@ -76,19 +80,24 @@ webSocketMessages<Row>(socket, data => decode(data))
 source: () => myAsyncGenerator()
 // ... 또는 구독 함수
 source: () => (sink, signal) => {
-  const off = feed.on('item', item => sink.next(item));
-  feed.on('end', () => sink.complete());
-  feed.on('fail', error => sink.error(error));
-  return off; // 정리 함수
+  const offItem = feed.on('item', item => sink.next(item));
+  const offEnd = feed.on('end', () => sink.complete());
+  const offFail = feed.on('fail', error => sink.error(error));
+  // 정리 함수: 이번 run이 붙인 리스너를 모두 뗀다
+  return () => {
+    offItem();
+    offEnd();
+    offFail();
+  };
 }`}
       />
 
       <ul>
         <li>
-          <code>ndjsonMessages</code>는 네트워크 chunk 경계에서 잘린 줄(멀티바이트
-          문자 포함)을 이어 붙이고, 빈 줄은 건너뛰며, 줄바꿈 없는 마지막 줄도
-          읽습니다. 잘못된 JSON은 run을 실패시킵니다. 스트림을 닫으면 요청을
-          중단하고 reader를 취소합니다.
+          <code>ndjsonMessages</code>는 네트워크 chunk 경계에서 잘린
+          줄(멀티바이트 문자 포함)을 이어 붙이고, 빈 줄은 건너뛰며, 줄바꿈 없는
+          마지막 줄도 읽습니다. 잘못된 JSON은 run을 실패시킵니다. 스트림을
+          닫으면 요청을 중단하고 reader를 취소합니다.
         </li>
         <li>
           <code>webSocketMessages</code>는 정상 종료(clean close)면 run을
@@ -100,8 +109,8 @@ source: () => (sink, signal) => {
       <h2>reduce는 리듀서다</h2>
 
       <p>
-        라이브러리는 메시지를 해석하지 않습니다. 메시지 형식은 서버가 정하고,
-        그 메시지가 데이터를 어떻게 바꾸는지는 <code>reduce</code>가 정합니다.
+        라이브러리는 메시지를 해석하지 않습니다. 메시지 형식은 서버가 정하고, 그
+        메시지가 데이터를 어떻게 바꾸는지는 <code>reduce</code>가 정합니다.
         Redux 리듀서와 같은 모양입니다. 서버가 이벤트를 보낸다면 type으로
         나눕니다.
       </p>
@@ -126,7 +135,9 @@ streamQuery<State, Action>(todos, {
       case 'snapshot':
         return action.state;
       default:
-        return state!; // 이 클라이언트가 아직 모르는 액션은 무시
+        // 이 클라이언트가 아직 모르는 액션은 무시한다;
+        // 맨 처음 메시지가 그런 액션이면 state는 undefined다
+        return state ?? { todos: [] };
     }
   },
 });`}
@@ -135,13 +146,19 @@ streamQuery<State, Action>(todos, {
       <ul>
         <li>
           <code>current</code>는 <strong>서버 값</strong>이며, 사용자의 로컬
-          편집은 들어 있지 않습니다. 첫 로드 전에는 <code>undefined</code>입니다.
-          같은 값을 <code>query.serverValue()</code>로 직접 읽을 수 있습니다.
+          편집은 들어 있지 않습니다. 첫 로드 전에는 <code>undefined</code>
+          입니다. 같은 값을 <code>query.serverValue()</code>로 직접 읽을 수
+          있습니다.
         </li>
         <li>
-          편집 가능한 데이터에서 <code>current</code>는 freeze되어 있습니다.{' '}
-          <strong>새 값을 반환하세요.</strong>{' '}
-          <code>current.rows.push()</code>는 예외를 던집니다.
+          <strong>
+            <code>current</code>는 불변 값으로 다루고 새 값을 반환하세요.
+          </strong>{' '}
+          편집 가능한 데이터의 서버 값은 freeze되어 있어 직접 바꾸면 예외가
+          납니다. 하지만 여러 메시지를 한꺼번에 접을 때(throttle 구간, 저장
+          때문에 보류된 메시지)는 <code>current</code>가 직전{' '}
+          <code>reduce</code> 호출이 반환한 값일 수 있고, 이 값은 freeze되어
+          있지 않습니다. 직접 바꿔도 예외 없이 상태가 조용히 공유됩니다.
         </li>
         <li>
           TypeScript 타입은 런타임에 검사되지 않습니다. 서버 형식이 바뀔 수
@@ -164,17 +181,20 @@ streamQuery<State, Action>(todos, {
           <a href="#/ko/guide/sync-lifecycle">편집의 생애</a>를 보세요.
         </li>
         <li>
-          query에 연결된 저장이 진행 중이면 메시지는{' '}
-          <strong>보류됩니다</strong>(<code>stream.status.queued</code>). 저장이
-          끝나면 저장이 수용한 값 위에 순서대로 접힙니다. 버려지는 메시지도,
-          저장을 앞지르는 메시지도 없습니다.
+          query에 연결된 저장이 진행 중이면 메시지는 <strong>보류됩니다</strong>
+          (<code>stream.status.queued</code>). 저장이 끝나면 저장이 수용한 값
+          위에 순서대로 접히고, 저장을 앞지르는 메시지는 없습니다. 먼저 취소한
+          경우에만 버려집니다: <code>close()</code>, 또는 <code>reset</code>/
+          <code>replace</code> 재시작(아래 <em>run이 끝나는 방식</em> 참고).
         </li>
       </ul>
 
       <h2>다시 시작하기: refetch(&#123; mode &#125;)</h2>
 
       <p>
-        한 run 안에서는 항상 메시지마다 화면이 바뀝니다. 모드는 스트림을{' '}
+        run 안에서는 기본적으로 메시지마다 화면이 바뀝니다. 예외는{' '}
+        <code>replace</code> run(끝날 때 한 번 표시)과 <code>throttle</code>
+        (묶어서 표시)이며, 둘 다 메시지는 모두 접습니다. 모드는 스트림을{' '}
         <strong>다시 시작할 때</strong>만 의미가 있고, 이전 run이 화면에 남긴
         데이터를 어떻게 할지 정합니다. 호출할 때마다 고릅니다.
       </p>
@@ -191,6 +211,18 @@ stream.refetch();                    // 'reset' (기본값)
 stream.refetch({ mode: 'append' });  // 예: 재연결 뒤
 stream.refetch({ mode: 'replace' }); // 예: "새로고침" 버튼`}
       />
+
+      <ul>
+        <li>
+          <code>initialValue</code>는 첫 run에서는 호출되지 않습니다. 첫 run은
+          항상 현재 값 위에 접습니다. <code>reset</code>·<code>replace</code>{' '}
+          재시작마다 호출되며, 예외를 던지면 그 run이 실패합니다.
+        </li>
+        <li>
+          <code>refetch()</code>는 <code>close()</code> 뒤에 부르거나 알 수 없는
+          모드를 주면 예외를 던집니다. 후자는 현재 run을 건드리기 전에 던집니다.
+        </li>
+      </ul>
 
       <table>
         <thead>
@@ -239,8 +271,8 @@ stream.refetch({ mode: 'replace' }); // 예: "새로고침" 버튼`}
       <h2>화면 갱신 throttle</h2>
 
       <p>
-        메시지가 몰려오면 렌더가 너무 잦아질 수 있습니다.{' '}
-        <code>throttle</code>로 반영 빈도를 제한합니다.
+        메시지가 몰려오면 렌더가 너무 잦아질 수 있습니다. <code>throttle</code>
+        로 반영 빈도를 제한합니다.
       </p>
 
       <CodeBlock
@@ -292,11 +324,97 @@ streamQuery(report, {
 stream.close(); // 완전히 멈춤: 요청을 중단하고 소켓을 닫는다`}
       />
 
+      <h3>run이 끝나는 방식</h3>
+
+      <p>
+        스스로 끝난 run은 받은 것을 남깁니다. 사용자가 취소한 run은 아직
+        기다리던 것을 버립니다.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>종료</th>
+            <th>아직 표시되지 않은 메시지</th>
+            <th>state</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>source 완료</td>
+            <td>먼저 반영(저장이 보류 중이면 저장 뒤에)</td>
+            <td>
+              <code>complete</code>
+            </td>
+          </tr>
+          <tr>
+            <td>source 오류·예외</td>
+            <td>먼저 반영(저장이 보류 중이면 저장 뒤에)</td>
+            <td>
+              <code>error</code>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <code>reduce</code> 예외
+            </td>
+            <td>잘못된 메시지 직전까지 접은 값을 반영</td>
+            <td>
+              <code>error</code>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <code>close()</code>
+            </td>
+            <td>throttle 구간은 반영; 저장 때문에 보류된 메시지는 버림</td>
+            <td>
+              <code>closed</code>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <code>reset</code>/<code>replace</code>로 <code>refetch()</code>
+            </td>
+            <td>이전 run과 함께 버림</td>
+            <td>
+              새 run, <code>open</code>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <code>refetch(&#123; mode: &apos;append&apos; &#125;)</code>
+            </td>
+            <td>유지하고 새 run에서 반영</td>
+            <td>
+              새 run, <code>open</code>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <code>replace</code> run 실패
+            </td>
+            <td>화면 밖 결과는 버리고 이전 데이터 유지</td>
+            <td>
+              <code>error</code>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
       <ul>
         <li>
-          source 오류, source가 던진 예외, <code>reduce</code>가 던진 예외는 run을{' '}
-          <code>state: &apos;error&apos;</code>로 끝냅니다.{' '}
-          <strong>실패 전에 도착한 것은 남습니다.</strong>
+          저장이 메시지를 보류한 상태에서 source가 끝나면, 보류분이 반영될
+          때까지 <code>state</code>는 <code>open</code>(
+          <code>queued &gt; 0</code>
+          )으로 남습니다. 그 뒤에 <code>complete</code>나 <code>error</code>가
+          되고, <code>onError</code>도 그때 호출됩니다.
+        </li>
+        <li>
+          <strong>첫</strong> run에서 source가 동기로 예외를 던지면{' '}
+          <code>onError</code>가 호출되고, 같은 오류가{' '}
+          <code>streamQuery()</code> 호출자에게도 다시 던져집니다. 재시작에서는
+          보고만 합니다.
         </li>
         <li>
           자동 재연결은 없습니다. 필요하면 <code>onError</code>나 상태 관찰에서{' '}

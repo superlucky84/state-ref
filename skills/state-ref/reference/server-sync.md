@@ -128,10 +128,13 @@ stream.close();
 
 - Every message becomes a server baseline via `acceptServer`, so each
   intermediate state renders; local edits are rebased, overlaps become
-  conflicts. `reduce` gets the server baseline (frozen), never local edits:
-  return a new value.
+  conflicts. `reduce` gets the server baseline, never local edits. Treat
+  `current` as immutable and return a new value (inside a throttled or held
+  batch it can be your previous, unfrozen result).
 - `source` is a factory, called on start and on each `refetch()`.
-- Every message of a run renders as it arrives; `refetch({ mode })` only
+- Every message is folded; it renders as it arrives except in a `replace`
+  run or under `throttle`. `close()` and a `reset`/`replace` restart discard
+  messages still held for a pending WRITE. `refetch({ mode })` only
   decides what a restarted run does with the data already shown: `reset`
   starts from `initialValue`, `append` keeps adding, `replace` swaps in once
   on completion (`buffered` counts the hidden messages; a failed run is

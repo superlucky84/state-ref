@@ -42,7 +42,9 @@ export type QueryStreamOptions<T, M> = Readonly<{
   /**
    * Fold one message into the server value and return the next full value.
    * `current` is the confirmed server baseline (never local edits), undefined
-   * before the first load. It is frozen for editable data: return a new value.
+   * before the first load. Treat it as immutable and return a new value: the
+   * baseline of editable data is frozen, but within one batch (a throttle
+   * window, messages held for a WRITE) it is the previous call's result.
    */
   reduce: (current: T | undefined, message: M) => T;
   /**

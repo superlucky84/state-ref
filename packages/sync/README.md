@@ -617,7 +617,8 @@ live.close();
 iterable or a subscribe function `(sink, signal) => teardown`;
 `ndjsonMessages` and `webSocketMessages` build the latter.
 
-Within a run every message is folded and shown as it arrives. The `mode` of
+Within a run every message is folded; it is shown as it arrives unless the
+run is a `replace` run (shown once at the end) or `throttle` coalesces it. The `mode` of
 `refetch({ mode })` only decides what a restarted run does with the data the
 previous run left on screen, so each call can choose:
 

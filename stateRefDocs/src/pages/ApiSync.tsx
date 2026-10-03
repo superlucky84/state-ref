@@ -252,9 +252,9 @@ const phase = q.display.isPlaceholder.value ? 'placeholder' : q.display.status.v
 {
   source: () => StreamSource<M>;  // called on start and on every refetch()
   reduce: (current: T | undefined, message: M) => T; // current = server value, frozen
-  initialValue?: () => T;         // what a 'reset' / 'replace' refetch starts from
+  initialValue?: () => T;         // used by 'reset' / 'replace' restarts, never by the first run; a throw fails the run
   throttle?: number | 'frame';    // coalesce publishes; default 0
-  onError?: (reason: unknown) => void; // once per failed run
+  onError?: (reason: unknown) => void; // once per failed run; a first-run sync source throw is also rethrown
 }
 
 // StreamSource<M>
@@ -264,8 +264,11 @@ AsyncIterable<M> | ((sink: StreamSink<M>, signal: AbortSignal) => void | (() => 
 // QueryStream
 stream.status       // readonly; QueryStreamStatus
 stream.watchStatus
-stream.refetch(options?: { mode?: 'reset' | 'append' | 'replace' }) // default 'reset'
+stream.refetch(options?: StreamRefetchOptions) // throws after close() or for an unknown mode
 stream.close()
+
+type StreamRefetchMode = 'reset' | 'append' | 'replace';
+type StreamRefetchOptions = { mode?: StreamRefetchMode }; // default 'reset'
 
 // QueryStreamStatus
 {
@@ -277,7 +280,17 @@ stream.close()
 }
 
 ndjsonMessages<M>(input: Response | ReadableStream<Uint8Array> | (signal => Response | ReadableStream | Promise<...>)): StreamSource<M>
-webSocketMessages<M>(socket: WebSocketLike, parse?: (data: unknown) => M): StreamSource<M>`}
+webSocketMessages<M>(socket: WebSocketLike, parse?: (data: unknown) => M): StreamSource<M>
+
+// WebSocketLike — a browser WebSocket fits
+{
+  readonly readyState: number; // 0 CONNECTING, 1 OPEN, 2 CLOSING, 3 CLOSED
+  addEventListener(type: 'message', listener: (event: { data: unknown }) => void): void;
+  addEventListener(type: 'error', listener: (event: unknown) => void): void;
+  addEventListener(type: 'close', listener: (event: { code: number; reason: string; wasClean: boolean }) => void): void;
+  removeEventListener(type: string, listener: (event: any) => void): void;
+  close(code?: number, reason?: string): void;
+}`}
       />
 
       <p>

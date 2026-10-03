@@ -1109,3 +1109,134 @@ describe('streamQuery with display', () => {
     query.dispose();
   });
 });
+
+describe('streamQuery documented endings', () => {
+  async function savingDoc(key: string) {
+    const client = createSyncClient({ ssr: true });
+    const query = client.query<Doc>({
+      queryKey: [key],
+      queryFn: () => ({ title: 'T', lines: [] }),
+    });
+    await query.load();
+    query.ref.title.value = 'Saved';
+    const write = deferred<Doc>();
+    const save = client.mutation({ mutationFn: () => write.promise });
+    const running = save.run(undefined, {
+      links: [
+        {
+          query,
+          submission: query.capture(),
+          accept: { kind: 'response', select: (data: Doc) => data },
+        },
+      ],
+    });
+    const finish = async () => {
+      write.resolve({ title: 'Saved', lines: ['server'] });
+      await running;
+      await tick();
+    };
+    return { query, finish };
+  }
+
+  it('close() during a pending WRITE discards the held messages', async () => {
+    const { query, finish } = await savingDoc('ending-close');
+    const manual = manualSource<Chunk>();
+    const stream = streamQuery(query, {
+      source: () => manual.source,
+      reduce: appendLine,
+    });
+    manual.sink.next({ line: 'held' });
+    stream.close();
+    await finish();
+    expect(query.serverValue()!.lines).toEqual(['server']);
+    expect(stream.status.value).toMatchObject({ state: 'closed', queued: 0 });
+    query.dispose();
+  });
+
+  it('a reset restart discards held messages and an append restart keeps them', async () => {
+    for (const mode of ['reset', 'append'] as const) {
+      const { query, finish } = await savingDoc(`ending-${mode}`);
+      const sinks: StreamSink<Chunk>[] = [];
+      const stream = streamQuery(query, {
+        source: () => (sink: StreamSink<Chunk>) => void sinks.push(sink),
+        reduce: appendLine,
+      });
+      sinks[0].next({ line: 'held' });
+      stream.refetch({ mode });
+      await finish();
+      expect(query.serverValue()!.lines).toEqual(
+        mode === 'reset' ? ['server'] : ['server', 'held']
+      );
+      query.dispose();
+    }
+  });
+
+  it('initialValue is not called on the first run', async () => {
+    const query = createSyncClient({ ssr: true }).query<Doc>({
+      queryKey: ['ending-initial'],
+      queryFn: () => ({ title: 'T', lines: ['cached'] }),
+    });
+    await query.load();
+    let calls = 0;
+    const manual = manualSource<Chunk>();
+    const stream = streamQuery(query, {
+      source: () => manual.source,
+      reduce: appendLine,
+      initialValue: () => {
+        calls += 1;
+        return { title: 'T', lines: [] };
+      },
+    });
+    manual.sink.next({ line: 'a' });
+    expect(calls).toBe(0);
+    expect(query.serverValue()!.lines).toEqual(['cached', 'a']);
+    stream.refetch();
+    expect(calls).toBe(1);
+    query.dispose();
+  });
+
+  it('a first-run synchronous throw calls onError and is rethrown', () => {
+    const query = createSyncClient({ ssr: true }).query<Doc>({
+      queryKey: ['ending-first-throw'],
+      queryFn: () => ({ title: 'T', lines: [] }),
+    });
+    const errors: unknown[] = [];
+    expect(() =>
+      streamQuery(query, {
+        source: () => () => {
+          throw new Error('cannot open');
+        },
+        reduce: appendLine,
+        onError: error => errors.push(error),
+      })
+    ).toThrow('cannot open');
+    expect(errors).toHaveLength(1);
+    query.dispose();
+  });
+
+  it('within one batch, current is the previous unfrozen result', async () => {
+    const query = createSyncClient({ ssr: true }).query<Doc>({
+      queryKey: ['ending-frozen'],
+      queryFn: () => ({ title: 'T', lines: [] }),
+    });
+    await query.load();
+    vi.useFakeTimers();
+    const frozen: boolean[] = [];
+    const manual = manualSource<Chunk>();
+    streamQuery(query, {
+      source: () => manual.source,
+      reduce: (current, chunk) => {
+        frozen.push(Object.isFrozen(current));
+        return appendLine(current, chunk);
+      },
+      throttle: 100,
+    });
+    manual.sink.next({ line: 'a' });
+    manual.sink.next({ line: 'b' });
+    manual.sink.next({ line: 'c' });
+    vi.advanceTimersByTime(100);
+    vi.useRealTimers();
+    expect(frozen).toEqual([true, true, false]);
+    query.dispose();
+  });
+});

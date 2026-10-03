@@ -252,9 +252,9 @@ const phase = q.display.isPlaceholder.value ? 'placeholder' : q.display.status.v
 {
   source: () => StreamSource<M>;  // 시작할 때와 refetch()마다 호출
   reduce: (current: T | undefined, message: M) => T; // current = 서버 값, freeze됨
-  initialValue?: () => T;         // 'reset' / 'replace' refetch의 시작값
+  initialValue?: () => T;         // 'reset' / 'replace' 재시작에만 쓰임(첫 run 제외); 예외면 run 실패
   throttle?: number | 'frame';    // 반영을 묶는다; 기본 0
-  onError?: (reason: unknown) => void; // 실패한 run마다 한 번
+  onError?: (reason: unknown) => void; // 실패한 run마다 한 번; 첫 run의 동기 source 예외는 다시 던져지기도 함
 }
 
 // StreamSource<M>
@@ -264,8 +264,11 @@ AsyncIterable<M> | ((sink: StreamSink<M>, signal: AbortSignal) => void | (() => 
 // QueryStream
 stream.status       // 읽기 전용; QueryStreamStatus
 stream.watchStatus
-stream.refetch(options?: { mode?: 'reset' | 'append' | 'replace' }) // 기본 'reset'
+stream.refetch(options?: StreamRefetchOptions) // close() 뒤나 알 수 없는 모드면 예외
 stream.close()
+
+type StreamRefetchMode = 'reset' | 'append' | 'replace';
+type StreamRefetchOptions = { mode?: StreamRefetchMode }; // 기본 'reset'
 
 // QueryStreamStatus
 {
@@ -277,7 +280,17 @@ stream.close()
 }
 
 ndjsonMessages<M>(input: Response | ReadableStream<Uint8Array> | (signal => Response | ReadableStream | Promise<...>)): StreamSource<M>
-webSocketMessages<M>(socket: WebSocketLike, parse?: (data: unknown) => M): StreamSource<M>`}
+webSocketMessages<M>(socket: WebSocketLike, parse?: (data: unknown) => M): StreamSource<M>
+
+// WebSocketLike — 브라우저 WebSocket이 그대로 맞는다
+{
+  readonly readyState: number; // 0 CONNECTING, 1 OPEN, 2 CLOSING, 3 CLOSED
+  addEventListener(type: 'message', listener: (event: { data: unknown }) => void): void;
+  addEventListener(type: 'error', listener: (event: unknown) => void): void;
+  addEventListener(type: 'close', listener: (event: { code: number; reason: string; wasClean: boolean }) => void): void;
+  removeEventListener(type: string, listener: (event: any) => void): void;
+  close(code?: number, reason?: string): void;
+}`}
       />
 
       <p>

@@ -7,6 +7,7 @@
 > - **새 장 1개(en+ko):** `스트리밍`(`/guide/sync-stream`, `pages/SyncStream{,_ko}.tsx`). 위치는 [DC-DS-15](./DESIGN.md). 내용은 `streamQuery`, source(`ndjsonMessages`·`webSocketMessages`·구독 함수), 리듀서, 편집·저장과의 관계, `refetch({ mode })`, `throttle`, 상태·오류·정리, 컴포넌트 연결, 제한이다.
 > - **함께 바꾼 곳:** 개요 장 목록(en+ko), Sync API의 `Streaming` 절과 `handle.serverValue()`(en+ko), 루트 README의 Server Sync 링크. README의 오래된 링크 이름 `view and liveView`는 DC-DS-10에 맞춰 `display and reactive keys`로 고쳤고, 빠져 있던 `Infinite Queries`도 넣었다.
 > - **검증:** 사이트 `vite build` 통과, 새 페이지의 내부 링크가 모두 등록된 라우트로 해소된다. 컴포넌트 예제의 전제("스트림으로만 로드한 query도 `display`로 보인다")는 sync 테스트 `streamQuery with display`로 고정했다. 사이트 코드 블록은 여전히 gate 밖이다.
+> - **리뷰 반영 (같은 날):** 기본 예제가 로드 전에 `ref`를 읽어 예외가 나던 것을 `display`로 고쳤다. 리듀서 기본 분기는 `state ?? 기본값`으로, custom source 정리 함수는 리스너 셋을 모두 해제하도록 고쳤다. `current`는 "freeze된다"가 아니라 "불변으로 다룬다"로 바꿨다(묶음 안의 중간값은 freeze되지 않음). "run이 끝나는 방식" 표에서 보존되는 종료와 취소되는 종료를 구분했다. `initialValue`·첫 run 예외·`refetch()` 예외·공개 타입(`StreamRefetchMode`·`StreamRefetchOptions`·`WebSocketLike`)도 추가했다. 새로 적은 동작은 sync 테스트 `streamQuery documented endings` 5개로 고정했다.
 > - **headless Chromium으로 렌더를 확인했다.** `vite preview`에서 en/ko 스트리밍 장과 Sync API를 1280px·390px로 열었다. h1이 맞게 나오고, console error·pageerror와 페이지 가로 넘침은 없다. 재시작 모드 표는 390px에서 표 안 가로 스크롤이 되는데, 이는 사이트 공통 표 스타일(`display: block; overflow-x: auto`)이다. **사람이 본 적은 아직 없다.**
 
 > **단계 8 완료 (2026-09-29): 새 기능 설명 보강 (R-DS-06).**
