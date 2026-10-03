@@ -953,3 +953,140 @@ describe('streamQuery review regressions', () => {
     query.dispose();
   });
 });
+
+describe('streamQuery source edge cases', () => {
+  afterEach(() => vi.useRealTimers());
+
+  async function loadedDoc(key: string) {
+    const client = createSyncClient({ ssr: true });
+    const query = client.query<Doc>({
+      queryKey: [key],
+      queryFn: () => ({ title: 'T', lines: [] }),
+    });
+    await query.load();
+    return { client, query };
+  }
+
+  const throwingSource =
+    () =>
+    (sink: StreamSink<Chunk>): never => {
+      sink.next({ line: 'a' });
+      sink.next({ line: 'b' });
+      throw new Error('source threw');
+    };
+
+  it('a source that throws keeps the messages it delivered, throttled or not', async () => {
+    for (const throttle of [0, 100]) {
+      const { query } = await loadedDoc(`edge-throw-${throttle}`);
+      vi.useFakeTimers();
+      const errors: unknown[] = [];
+      // The first run idles; the refetch opens the throwing source, so the
+      // throw is reported through the stream rather than rethrown.
+      let first = true;
+      const restarted = streamQuery(query, {
+        source: () => (first ? () => undefined : throwingSource()),
+        reduce: appendLine,
+        throttle,
+        onError: error => errors.push(error),
+      });
+      first = false;
+      restarted.refetch({ mode: 'append' });
+      vi.advanceTimersByTime(1000);
+      expect(query.serverValue()!.lines).toEqual(['a', 'b']);
+      expect(restarted.status.value).toMatchObject({
+        state: 'error',
+        received: 2,
+      });
+      expect(errors).toHaveLength(1);
+      vi.useRealTimers();
+      query.dispose();
+    }
+  });
+
+  it('a source that throws on the first run applies its messages, then rethrows', async () => {
+    const { query } = await loadedDoc('edge-throw-first');
+    expect(() =>
+      streamQuery(query, {
+        source: throwingSource,
+        reduce: appendLine,
+        throttle: 100,
+      })
+    ).toThrow('source threw');
+    expect(query.serverValue()!.lines).toEqual(['a', 'b']);
+    query.dispose();
+  });
+
+  it('a source that throws during a pending WRITE keeps the held messages', async () => {
+    const { client, query } = await loadedDoc('edge-throw-write');
+    query.ref.title.value = 'Saved';
+    const write = deferred<Doc>();
+    const save = client.mutation({ mutationFn: () => write.promise });
+    const running = save.run(undefined, {
+      links: [
+        {
+          query,
+          submission: query.capture(),
+          accept: { kind: 'response', select: (data: Doc) => data },
+        },
+      ],
+    });
+    const errors: unknown[] = [];
+    let first = true;
+    const stream = streamQuery(query, {
+      source: () => (first ? () => undefined : throwingSource()),
+      reduce: appendLine,
+      onError: error => errors.push(error),
+    });
+    first = false;
+    stream.refetch({ mode: 'append' });
+    expect(stream.status.value).toMatchObject({ state: 'open', queued: 2 });
+
+    write.resolve({ title: 'Saved', lines: ['server'] });
+    expect((await running).kind).toBe('success');
+    await tick();
+    expect(query.serverValue()!.lines).toEqual(['server', 'a', 'b']);
+    expect(stream.status.value.state).toBe('error');
+    expect(errors).toHaveLength(1);
+    query.dispose();
+  });
+
+  it('a source that sends synchronously while subscribing is still throttled', async () => {
+    const { query } = await loadedDoc('edge-sync-throttle');
+    vi.useFakeTimers();
+    const seen: string[][] = [];
+    query.watch(ref => {
+      seen.push([...ref.lines.value]);
+    });
+    streamQuery(query, {
+      source: () => (sink: StreamSink<Chunk>) => {
+        sink.next({ line: 'a' });
+        sink.next({ line: 'b' });
+        sink.next({ line: 'c' });
+      },
+      reduce: appendLine,
+      throttle: 100,
+    });
+    expect(seen).toEqual([[], ['a']]);
+    vi.advanceTimersByTime(100);
+    expect(seen).toEqual([[], ['a'], ['a', 'b', 'c']]);
+    query.dispose();
+  });
+
+  it('a reset refetch still shows initialValue at once under throttle', async () => {
+    const { query } = await loadedDoc('edge-reset-throttle');
+    vi.useFakeTimers();
+    const sinks: StreamSink<Chunk>[] = [];
+    const stream = streamQuery(query, {
+      source: () => (sink: StreamSink<Chunk>) => void sinks.push(sink),
+      reduce: appendLine,
+      initialValue: () => ({ title: 'T', lines: ['empty'] }),
+      throttle: 100,
+    });
+    sinks[0].next({ line: 'a' });
+    stream.refetch();
+    expect(query.serverValue()!.lines).toEqual(['empty']);
+    sinks[1].next({ line: 'x' });
+    expect(query.serverValue()!.lines).toEqual(['empty', 'x']);
+    query.dispose();
+  });
+});

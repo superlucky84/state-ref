@@ -361,6 +361,10 @@ export function streamQuery<T, M>(
         if (replace) shadow = initial;
         else queue.push({ kind: 'set', value: initial, count: 0 });
       }
+      // Show the reset value and an appended run's leftovers now, before the
+      // source can deliver: its own messages go through the throttle.
+      drain();
+      if (superseded(id)) return;
       const source = options.source();
       if (superseded(id)) return;
       if (typeof source === 'function') {
@@ -391,11 +395,10 @@ export function streamQuery<T, M>(
         );
       }
     } catch (error) {
-      if (id === run) fail(error);
+      // Like a source error: what it delivered before throwing still lands.
+      end({ state: 'error', error });
       if (!mode) throw error;
-      return;
     }
-    if (!superseded(id)) drain();
   };
 
   start(null);
