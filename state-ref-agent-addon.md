@@ -161,6 +161,11 @@ CODING GUIDELINES:
       `unknown`, which keeps edits and must not be blindly resent
     - `retry` requires an `idempotencyKey` the server honours
     - "Saving" is `status.pending.value > 0`, not `phase === 'pending'`
+    - Server push (WebSocket/NDJSON, `@stateref/sync` 0.2+):
+      `streamQuery(query, { source: () => ..., reduce })`; `reduce` returns a
+      new value and must not mutate `current`; restart with
+      `stream.refetch({ mode: 'reset' | 'append' | 'replace' })` (there is no
+      `refetchMode` option); bind `query.watchDisplay` before the first message
     - Details: node_modules/state-ref/dist/skills/state-ref/reference/server-sync.md
 
 IMPORT PATHS:

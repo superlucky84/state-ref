@@ -170,6 +170,10 @@ other.query(options).ref.address.city.value; // unaffected`}
           page by page
         </li>
         <li>
+          <a href="#/guide/sync-stream">Streaming</a> - WebSocket and NDJSON
+          pushes shown as they arrive
+        </li>
+        <li>
           <a href="#/guide/sync-refetch">Automatic refetch</a> - focus,
           reconnect, polling, and network mode
         </li>

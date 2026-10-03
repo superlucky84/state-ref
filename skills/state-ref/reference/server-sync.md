@@ -1,4 +1,4 @@
-# Server Sync (`@stateref/sync` 0.1)
+# Server Sync (`@stateref/sync` 0.2)
 
 Optional package: query cache, editable server resources and mutations on top of
 state-ref. Use it only when `@stateref/sync` is installed. ESM only; requires
@@ -108,6 +108,47 @@ switch (result.kind) {
   call `hydrate(snapshot)` before creating query handles.
 - Do not call `resolve()` on a query handle; it does not exist. (`resolve` is a
   draft method, and the `resolve` option of a reactive query is a key resolver.)
+
+## Streaming (WebSocket, NDJSON)
+
+```ts
+import { ndjsonMessages, streamQuery, webSocketMessages } from '@stateref/sync';
+
+const stream = streamQuery(report, {
+  source: () => ndjsonMessages<Row>(signal => fetch('/report', { signal })),
+  // or: source: () => webSocketMessages<Row>(new WebSocket(url)),
+  reduce: (current, row) => ({ rows: [...(current?.rows ?? []), row.row] }),
+  initialValue: () => ({ rows: [] }),
+});
+stream.status.value; // { state, received, queued, buffered, error }
+stream.refetch(); // reopen the source; mode defaults to 'reset'
+stream.refetch({ mode: 'replace' }); // 'reset' | 'append' | 'replace'
+stream.close();
+```
+
+- Every message becomes a server baseline via `acceptServer`, so each
+  intermediate state renders; local edits are rebased, overlaps become
+  conflicts. `reduce` gets the server baseline, never local edits. Treat
+  `current` as immutable and return a new value (inside a throttled or held
+  batch it can be your previous, unfrozen result).
+- `source` is a factory, called on start and on each `refetch()`.
+- Every message is folded; it renders as it arrives except in a `replace`
+  run or under `throttle`. `close()` and a `reset`/`replace` restart discard
+  messages still held for a pending WRITE. `refetch({ mode })` only
+  decides what a restarted run does with the data already shown: `reset`
+  starts from `initialValue`, `append` keeps adding, `replace` swaps in once
+  on completion (`buffered` counts the hidden messages; a failed run is
+  dropped). The first run folds onto the current baseline.
+- Do not pass `refetchMode` to `streamQuery`; the mode is a `refetch()`
+  argument.
+- `throttle: 100` (ms) or `throttle: 'frame'` coalesces screen updates for
+  a busy source. No message is dropped: every one is folded, the first shows
+  at once, and completion, an error or `close()` flush the rest immediately.
+- Messages arriving while a linked WRITE is pending are held (`queued`) and
+  folded after it settles - even if the source errors or completes meanwhile;
+  the run settles (`error`/`complete`) after they land. A throwing `reduce`
+  keeps the messages folded before it.
+- `query.refetch()` is a READ through `queryFn`; it does not restart a stream.
 
 ## QueryStatus fields
 

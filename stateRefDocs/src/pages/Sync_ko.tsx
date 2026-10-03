@@ -169,6 +169,10 @@ other.query(options).ref.address.city.value; // 영향 없음`}
           목록
         </li>
         <li>
+          <a href="#/ko/guide/sync-stream">스트리밍</a> - 도착할 때마다
+          보이는 WebSocket·NDJSON push
+        </li>
+        <li>
           <a href="#/ko/guide/sync-refetch">자동 재조회</a> -
           focus·reconnect·polling·network mode
         </li>

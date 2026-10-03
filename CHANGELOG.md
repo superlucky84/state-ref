@@ -1,5 +1,33 @@
 # Changelog
 
+## @stateref/sync 0.2.0
+
+Additive: code written for 0.1.0 keeps working. Requires `state-ref ^3.1.0`
+(unchanged).
+
+### Added
+
+- **`streamQuery(query, options)`** - stream server pushes (WebSocket, NDJSON,
+  any async iterable) into a query. Each message is folded by `reduce` and
+  accepted as the server baseline, so intermediate states render; local edits
+  are rebased and messages wait out a pending linked WRITE. `refetch()`
+  reopens the source; `refetch({ mode })` picks `reset`, `append` or
+  `replace` per call. `throttle` (milliseconds or `'frame'`) coalesces
+  screen updates without dropping messages.
+- **`ndjsonMessages(input)` and `webSocketMessages(socket)`** - ready-made
+  stream sources.
+- **`query.serverValue()`** - the confirmed server baseline without local
+  edits, or `undefined` before a load.
+
+## state-ref 3.1.1
+
+Documentation only; no code change.
+
+- The bundled AI skill (`dist/skills/state-ref/reference/server-sync.md`) and
+  the agent add-on describe `@stateref/sync` 0.2 streaming: `streamQuery`,
+  `refetch({ mode })`, `throttle`, and when held messages are kept or
+  discarded.
+
 ## state-ref 3.1.0
 
 Additive: nothing that worked on 3.0.x changes meaning. The new entry points

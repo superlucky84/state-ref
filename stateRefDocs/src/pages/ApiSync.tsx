@@ -168,7 +168,8 @@ handle.isDirty()
 handle.changes()
 handle.version()
 handle.capture(ids?)        // ResourceSubmission: frozen value + rows + version
-handle.acceptServer(value)  // cache-only acceptance; sends no WRITE`}
+handle.acceptServer(value)  // cache-only acceptance; sends no WRITE
+handle.serverValue()        // the server baseline without local edits; undefined before a load`}
       />
 
       <h3>QueryStatus</h3>
@@ -240,6 +241,61 @@ const phase = q.display.isPlaceholder.value ? 'placeholder' : q.display.status.v
       />
 
       <p>A fixed key does not start a READ. An active reactive key does.</p>
+
+      <h2>Streaming</h2>
+
+      <CodeBlock
+        language="typescript"
+        code={`streamQuery<T, M>(query, options: QueryStreamOptions<T, M>): QueryStream
+
+// QueryStreamOptions<T, M>
+{
+  source: () => StreamSource<M>;  // called on start and on every refetch()
+  reduce: (current: T | undefined, message: M) => T; // current = server value; treat as immutable (a batched intermediate may not be frozen)
+  initialValue?: () => T;         // used by 'reset' / 'replace' restarts, never by the first run; a throw fails the run
+  throttle?: number | 'frame';    // coalesce publishes; default 0
+  onError?: (reason: unknown) => void; // once per failed run; a first-run sync source throw is also rethrown
+}
+
+// StreamSource<M>
+AsyncIterable<M> | ((sink: StreamSink<M>, signal: AbortSignal) => void | (() => void))
+// StreamSink<M> = { next(message), error(reason), complete() }
+
+// QueryStream
+stream.status       // readonly; QueryStreamStatus
+stream.watchStatus
+stream.refetch(options?: StreamRefetchOptions) // throws after close() or for an unknown mode
+stream.close()
+
+type StreamRefetchMode = 'reset' | 'append' | 'replace';
+type StreamRefetchOptions = { mode?: StreamRefetchMode }; // default 'reset'
+
+// QueryStreamStatus
+{
+  state: 'open' | 'complete' | 'error' | 'closed';
+  received: number;  // messages of this run applied
+  queued: number;    // held while a linked WRITE is pending
+  buffered: number;  // folded off screen by a 'replace' run
+  error: unknown;
+}
+
+ndjsonMessages<M>(input: Response | ReadableStream<Uint8Array> | (signal => Response | ReadableStream | Promise<...>)): StreamSource<M>
+webSocketMessages<M>(socket: WebSocketLike, parse?: (data: unknown) => M): StreamSource<M>
+
+// WebSocketLike — a browser WebSocket fits
+{
+  readonly readyState: number; // 0 CONNECTING, 1 OPEN, 2 CLOSING, 3 CLOSED
+  addEventListener(type: 'message', listener: (event: { data: unknown }) => void): void;
+  addEventListener(type: 'error', listener: (event: unknown) => void): void;
+  addEventListener(type: 'close', listener: (event: { code: number; reason: string; wasClean: boolean }) => void): void;
+  removeEventListener(type: string, listener: (event: any) => void): void;
+  close(code?: number, reason?: string): void;
+}`}
+      />
+
+      <p>
+        Guide: <a href="#/guide/sync-stream">Streaming</a>.
+      </p>
 
       <h2>Mutations</h2>
 

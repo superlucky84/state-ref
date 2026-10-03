@@ -1,5 +1,13 @@
 # 서버 동기화·독립 Draft 현재 인계
 
+> **현재 재개 지점 (2026-10-03): 서버 push 스트림 `streamQuery`를 구현했다 (R2-30).**
+>
+> - **done:** [REQUIREMENTS R2-30](./REQUIREMENTS.md), [DESIGN DC2-28~37](./DESIGN.md), [IMPLEMENT Phase 11](./IMPLEMENT.md), [M2-23](./MANUAL_TEST_CHECKLIST.md#m2-23)을 작성했다. 구현 범위는 `packages/sync/src/stream.ts`의 `streamQuery`·`ndjsonMessages`·`webSocketMessages`, `refetch({ mode })`, `throttle`과 `QueryHandle.serverValue()`다. 외부 리뷰가 보고한 결함 6건은 수정 전 실패하는 테스트로 재현한 뒤 고쳤다.
+> - **검증:** sync 테스트 226 PASS(스트림 40), `pnpm gate` 19단계 PASS. M2-23 수동 점검은 미수행이고, 스트림 예제 화면과 실제 서버 E2E는 없다.
+> - **next:** M2-23용 예제 화면과 로컬 NDJSON/WebSocket 서버를 만들어 수행한다. DC2-36(자동 재연결·SSE·리듀서 편의 형태)과 DC2-37(반응형 key·자동 재조회 조합)을 결정한다. PR을 생성한다.
+> - **blockers:** 구현·자동 검증 쪽에는 없다. `packages/state-ref` 변경은 없다.
+> - **브랜치 / commit:** `ccr-f71cbd04-cgvi9s`, 기준 `2448bf9`. 구현 `c262547`~`d3b9554`, 설계·계획 문서 `46262e3`. 최신 HEAD는 `git log -1`로 확인한다.
+
 > **현재 재개 지점 (2026-09-30): 병합 전 작은 쇼핑몰 예제를 추가하고 두 서버를 띄웠다.**
 >
 > - **done:** 사용자 선택 R2-29 / DC2-24~27 / IMPLEMENT Phase 10. Preact와 Vue의 `/shop.html`에 상품 검색·더 보기, 배송정보·미리보기·주소 draft, 장바구니 batch 비교를 같은 구성으로 제공한다. 가상 서버는 자동 응답하며 실패/지연/충돌 제어는 접혀 있다. 기존 `/` 진단 화면을 보존했다. 라이브러리 소스 변경 0.

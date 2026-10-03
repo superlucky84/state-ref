@@ -168,7 +168,8 @@ handle.isDirty()
 handle.changes()
 handle.version()
 handle.capture(ids?)        // ResourceSubmission: frozen value + rows + version
-handle.acceptServer(value)  // cache-only acceptance; sends no WRITE`}
+handle.acceptServer(value)  // cache-only acceptance; sends no WRITE
+handle.serverValue()        // 로컬 편집을 뺀 서버 기준값; 로드 전에는 undefined`}
       />
 
       <h3>QueryStatus</h3>
@@ -240,6 +241,61 @@ const phase = q.display.isPlaceholder.value ? 'placeholder' : q.display.status.v
       />
 
       <p>고정 key는 READ를 시작하지 않습니다. 활성 반응형 key는 시작합니다.</p>
+
+      <h2>스트리밍</h2>
+
+      <CodeBlock
+        language="typescript"
+        code={`streamQuery<T, M>(query, options: QueryStreamOptions<T, M>): QueryStream
+
+// QueryStreamOptions<T, M>
+{
+  source: () => StreamSource<M>;  // 시작할 때와 refetch()마다 호출
+  reduce: (current: T | undefined, message: M) => T; // current = 서버 값; 불변으로 다룰 것 (묶음 안의 중간값은 freeze되지 않을 수 있음)
+  initialValue?: () => T;         // 'reset' / 'replace' 재시작에만 쓰임(첫 run 제외); 예외면 run 실패
+  throttle?: number | 'frame';    // 반영을 묶는다; 기본 0
+  onError?: (reason: unknown) => void; // 실패한 run마다 한 번; 첫 run의 동기 source 예외는 다시 던져지기도 함
+}
+
+// StreamSource<M>
+AsyncIterable<M> | ((sink: StreamSink<M>, signal: AbortSignal) => void | (() => void))
+// StreamSink<M> = { next(message), error(reason), complete() }
+
+// QueryStream
+stream.status       // 읽기 전용; QueryStreamStatus
+stream.watchStatus
+stream.refetch(options?: StreamRefetchOptions) // close() 뒤나 알 수 없는 모드면 예외
+stream.close()
+
+type StreamRefetchMode = 'reset' | 'append' | 'replace';
+type StreamRefetchOptions = { mode?: StreamRefetchMode }; // 기본 'reset'
+
+// QueryStreamStatus
+{
+  state: 'open' | 'complete' | 'error' | 'closed';
+  received: number;  // 이번 run에서 반영된 메시지 수
+  queued: number;    // 연결된 WRITE를 기다리며 보류 중인 수
+  buffered: number;  // 'replace' run이 화면 밖에서 접은 수
+  error: unknown;
+}
+
+ndjsonMessages<M>(input: Response | ReadableStream<Uint8Array> | (signal => Response | ReadableStream | Promise<...>)): StreamSource<M>
+webSocketMessages<M>(socket: WebSocketLike, parse?: (data: unknown) => M): StreamSource<M>
+
+// WebSocketLike — 브라우저 WebSocket이 그대로 맞는다
+{
+  readonly readyState: number; // 0 CONNECTING, 1 OPEN, 2 CLOSING, 3 CLOSED
+  addEventListener(type: 'message', listener: (event: { data: unknown }) => void): void;
+  addEventListener(type: 'error', listener: (event: unknown) => void): void;
+  addEventListener(type: 'close', listener: (event: { code: number; reason: string; wasClean: boolean }) => void): void;
+  removeEventListener(type: string, listener: (event: any) => void): void;
+  close(code?: number, reason?: string): void;
+}`}
+      />
+
+      <p>
+        가이드: <a href="#/ko/guide/sync-stream">스트리밍</a>.
+      </p>
 
       <h2>mutation</h2>
 

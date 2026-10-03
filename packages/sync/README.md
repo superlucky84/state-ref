@@ -570,3 +570,84 @@ Defaults: `staleTime: 0`, inactive `gcTime: 5 minutes` (infinite for `createSync
 Fixed-key queries require an explicit `load()` call unless a mutation response,
 `acceptServer`, or an active reactive key populates the cache. A successful local
 edit does not save to a server.
+
+Server pushes such as a WebSocket or an NDJSON response are streamed into a
+query with `streamQuery(query, options)`. It feeds a push source into a query. Every message
+is folded by `reduce` onto the confirmed server baseline and accepted with
+`acceptServer`, so each intermediate state renders, local edits are rebased on
+top of it and an overlapping server change becomes a conflict. While a linked
+WRITE is pending, messages are held (`status.queued`) and folded in order once
+it settles.
+
+```ts
+import { createSyncClient, ndjsonMessages, streamQuery, webSocketMessages } from '@stateref/sync';
+
+type Report = { rows: string[] };
+type Row = { row: string };
+
+const client = createSyncClient();
+const report = client.query<Report>({
+  queryKey: ['report'],
+  queryFn: () => ({ rows: [] }),
+});
+
+// NDJSON: one JSON value per line, rendered as each line arrives.
+const stream = streamQuery<Report, Row>(report, {
+  source: () => ndjsonMessages<Row>(signal => fetch('/report', { signal })),
+  reduce: (current, message) => ({ rows: [...(current?.rows ?? []), message.row] }),
+  initialValue: () => ({ rows: [] }),
+});
+
+stream.status.value.state; // 'open' | 'complete' | 'error' | 'closed'
+stream.refetch(); // reopen the source; mode defaults to 'reset'
+stream.refetch({ mode: 'replace' }); // keep the old rows until the new run ends
+stream.close(); // stop for good; tears down the request
+
+// WebSocket: the same, with a new socket for every run.
+const live = streamQuery<Report, Row>(report, {
+  source: () => webSocketMessages<Row>(new WebSocket('wss://example.test/report')),
+  reduce: (current, message) => ({ rows: [...(current?.rows ?? []), message.row] }),
+  throttle: 'frame', // at most one screen update per animation frame
+});
+live.refetch({ mode: 'append' }); // reconnect and keep adding to what is shown
+live.close();
+```
+
+`source` is called on start and again on every `refetch()`. It returns an async
+iterable or a subscribe function `(sink, signal) => teardown`;
+`ndjsonMessages` and `webSocketMessages` build the latter.
+
+Within a run every message is folded; it is shown as it arrives unless the
+run is a `replace` run (shown once at the end) or `throttle` coalesces it. The `mode` of
+`refetch({ mode })` only decides what a restarted run does with the data the
+previous run left on screen, so each call can choose:
+
+- `reset` (default): show `initialValue` at once, or keep the old data until
+  the first new message when there is none, then stream the new run in.
+- `append`: fold the new run onto what is shown.
+- `replace`: keep the old data while the new run is folded off-screen
+  (`status.buffered`), then swap it in once on completion. A failed run is
+  dropped.
+
+A busy source can render less often with `throttle`: a number of
+milliseconds, or `'frame'` for once per animation frame (a 16ms timer where
+`requestAnimationFrame` does not exist). Every message is still folded by
+`reduce`; only the publishes are coalesced, so nothing is dropped. The first
+message of a run, and the first after a quiet window, shows at once.
+Completion, a source error and `close()` publish what the window still holds
+without waiting; a `reset` or `replace` refetch discards it with the old run.
+Messages held for a pending WRITE are different: completion and a source
+error still apply them once the WRITE settles, but `close()` and a `reset` or
+`replace` refetch discard them.
+
+Without `refetch()` there is no mode to pick. The first run always folds onto
+the current baseline, so a hydrated or loaded
+query is not wiped when the stream connects. `query.refetch()` performs a READ
+through `queryFn` and does not restart the stream. A source error or completion
+stops listening at once, but whatever the source delivered still lands first
+(after a pending WRITE, if one holds it), and only then does the run settle.
+A thrown `reduce` keeps the messages folded before it and ends the run with
+`state: 'error'`; both failures call `onError`, and so does a throwing
+`initialValue`; `refetch()`
+starts a new run. A WebSocket closed cleanly completes the run, any other
+close fails it, and closing the stream closes the socket.
