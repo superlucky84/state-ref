@@ -778,3 +778,178 @@ describe('streamQuery throttle', () => {
     query.dispose();
   });
 });
+
+describe('streamQuery review regressions', () => {
+  afterEach(() => vi.useRealTimers());
+
+  async function loadedDoc(key: string) {
+    const client = createSyncClient({ ssr: true });
+    const query = client.query<Doc>({
+      queryKey: [key],
+      queryFn: () => ({ title: 'T', lines: [] }),
+    });
+    await query.load();
+    return { client, query };
+  }
+
+  it('a source error during a pending WRITE still delivers the held messages', async () => {
+    const { client, query } = await loadedDoc('review-error-held');
+    query.ref.title.value = 'Saved';
+    const write = deferred<Doc>();
+    const save = client.mutation({ mutationFn: () => write.promise });
+    const running = save.run(undefined, {
+      links: [
+        {
+          query,
+          submission: query.capture(),
+          accept: { kind: 'response', select: (data: Doc) => data },
+        },
+      ],
+    });
+    const errors: unknown[] = [];
+    const manual = manualSource<Chunk>();
+    const stream = streamQuery(query, {
+      source: () => manual.source,
+      reduce: appendLine,
+      onError: error => errors.push(error),
+    });
+    manual.sink.next({ line: 'held' });
+    expect(stream.status.value.queued).toBe(1);
+    manual.sink.error(new Error('socket lost'));
+    expect(manual.released).toBe(1);
+    expect(errors).toHaveLength(0);
+
+    write.resolve({ title: 'Saved', lines: ['server'] });
+    expect((await running).kind).toBe('success');
+    await tick();
+    expect(query.serverValue()!.lines).toEqual(['server', 'held']);
+    expect(stream.status.value).toMatchObject({
+      state: 'error',
+      received: 1,
+      queued: 0,
+    });
+    expect(errors).toHaveLength(1);
+    query.dispose();
+  });
+
+  it('a refetch from a query observer during an error flush keeps the new run', async () => {
+    const { query } = await loadedDoc('review-observer-refetch');
+    const sinks: StreamSink<Chunk>[] = [];
+    const stream = streamQuery(query, {
+      source: () => (sink: StreamSink<Chunk>) => void sinks.push(sink),
+      reduce: appendLine,
+      throttle: 100,
+    });
+    let restarted = false;
+    query.watch(ref => {
+      if (ref.lines.value.includes('b') && !restarted) {
+        restarted = true;
+        stream.refetch({ mode: 'append' });
+      }
+    });
+    sinks[0].next({ line: 'a' });
+    sinks[0].next({ line: 'b' });
+    sinks[0].error(new Error('old run'));
+    expect(restarted).toBe(true);
+    expect(stream.status.value).toMatchObject({ state: 'open', error: null });
+    sinks[1].next({ line: 'c' });
+    expect(query.serverValue()!.lines).toEqual(['a', 'b', 'c']);
+    query.dispose();
+  });
+
+  it('a completion observed by a query observer does not end the restarted run', async () => {
+    const { query } = await loadedDoc('review-observer-complete');
+    const sinks: StreamSink<Chunk>[] = [];
+    const stream = streamQuery(query, {
+      source: () => (sink: StreamSink<Chunk>) => void sinks.push(sink),
+      reduce: appendLine,
+      throttle: 100,
+    });
+    query.watch(ref => {
+      if (ref.lines.value.length === 2 && sinks.length === 1)
+        stream.refetch({ mode: 'append' });
+    });
+    sinks[0].next({ line: 'a' });
+    sinks[0].next({ line: 'b' });
+    sinks[0].complete();
+    expect(sinks).toHaveLength(2);
+    expect(stream.status.value.state).toBe('open');
+    query.dispose();
+  });
+
+  it('close() from a status observer during refetch does not open a source', async () => {
+    const { query } = await loadedDoc('review-close-in-refetch');
+    let opened = 0;
+    const stream = streamQuery(query, {
+      source: () => (sink: StreamSink<Chunk>) => {
+        opened += 1;
+        // The first run finishes at once, so the refetch revives it.
+        if (opened === 1) sink.complete();
+      },
+      reduce: appendLine,
+    });
+    expect(stream.status.value.state).toBe('complete');
+    let armed = false;
+    stream.watchStatus(ref => {
+      // Read first: a ref subscribes only to the values it reads.
+      const state = ref.state.value;
+      if (armed && state === 'open') stream.close();
+    });
+    expect(opened).toBe(1);
+    armed = true;
+    stream.refetch();
+    expect(opened).toBe(1);
+    expect(stream.status.value.state).toBe('closed');
+    query.dispose();
+  });
+
+  it('a throwing reduce keeps the messages folded before it, throttled or not', async () => {
+    for (const throttle of [0, 100]) {
+      const { query } = await loadedDoc(`review-reduce-${throttle}`);
+      vi.useFakeTimers();
+      const manual = manualSource<Chunk>();
+      const stream = streamQuery(query, {
+        source: () => manual.source,
+        reduce: (current, chunk) => {
+          if (chunk.line === 'bad') throw new Error('bad chunk');
+          return appendLine(current, chunk);
+        },
+        throttle,
+      });
+      manual.sink.next({ line: 'a' });
+      manual.sink.next({ line: 'b' });
+      manual.sink.next({ line: 'bad' });
+      vi.advanceTimersByTime(1000);
+      expect(query.serverValue()!.lines).toEqual(['a', 'b']);
+      expect(stream.status.value).toMatchObject({
+        state: 'error',
+        received: 2,
+      });
+      vi.useRealTimers();
+      query.dispose();
+    }
+  });
+
+  it('a throwing initialValue fails the refetch instead of leaving it open', async () => {
+    const { query } = await loadedDoc('review-initial-throws');
+    const manual = manualSource<Chunk>();
+    let calls = 0;
+    const errors: unknown[] = [];
+    const stream = streamQuery(query, {
+      source: () => manual.source,
+      reduce: appendLine,
+      initialValue: () => {
+        calls += 1;
+        throw new Error('no initial');
+      },
+      onError: error => errors.push(error),
+    });
+    expect(() => stream.refetch()).not.toThrow();
+    expect(calls).toBe(1);
+    expect(stream.status.value.state).toBe('error');
+    expect((stream.status.value.error as Error).message).toBe('no initial');
+    expect(errors).toHaveLength(1);
+    expect(manual.released).toBe(1);
+    query.dispose();
+  });
+});

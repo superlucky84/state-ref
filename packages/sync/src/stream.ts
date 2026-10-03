@@ -142,7 +142,14 @@ export function streamQuery<T, M>(
   let runAbort: AbortController | null = null;
   let teardown: (() => void) | null = null;
   let writeWait: AbortController | null = null;
-  let completing = false;
+  /**
+   * How the run ends once the queue is empty. The source is already detached:
+   * held messages still land (after a pending WRITE) before the run settles.
+   */
+  let ending:
+    | { state: 'complete' }
+    | { state: 'error'; error: unknown }
+    | null = null;
   const queue: Step<T, M>[] = [];
   const waiting = () =>
     queue.reduce(
@@ -151,6 +158,12 @@ export function streamQuery<T, M>(
         (step.kind === 'message' ? 1 : step.kind === 'set' ? step.count : 0),
       0
     );
+  /**
+   * Observers run synchronously inside `acceptServer` and `publish`, and may
+   * call `refetch()` or `close()`. After any such call, work for the old run
+   * must stop.
+   */
+  const superseded = (id: number) => closed || id !== run;
 
   let cancelTimer: (() => void) | null = null;
   let lastFlush = -Infinity;
@@ -162,9 +175,12 @@ export function streamQuery<T, M>(
     const id = setTimeout(callback, ms === 'frame' ? 16 : ms);
     return () => clearTimeout(id);
   };
-  const flushNow = () => {
+  const cancelFlush = () => {
     cancelTimer?.();
     cancelTimer = null;
+  };
+  const flushNow = () => {
+    cancelFlush();
     lastFlush = Date.now();
     drain();
   };
@@ -183,18 +199,21 @@ export function streamQuery<T, M>(
     }, wait);
   };
 
-  /** Detach the running source; later deliveries from it are ignored. */
-  const endRun = () => {
-    cancelTimer?.();
-    cancelTimer = null;
-    lastFlush = -Infinity;
-    run += 1;
-    completing = false;
+  /** Stop listening to the source without ending the run's queued work. */
+  const detachSource = () => {
     runAbort?.abort();
     runAbort = null;
     const release = teardown;
     teardown = null;
     release?.();
+  };
+  /** End the run: later deliveries from its source are ignored. */
+  const endRun = () => {
+    cancelFlush();
+    lastFlush = -Infinity;
+    run += 1;
+    ending = null;
+    detachSource();
   };
   const finish = (patch: Partial<QueryStreamStatus>) => {
     queue.length = 0;
@@ -207,6 +226,13 @@ export function streamQuery<T, M>(
     if (current.state !== 'open') return;
     finish({ state: 'error', error: reason });
     options.onError?.(reason);
+  };
+  /** Settle an ending run once nothing it received is left to apply. */
+  const settle = () => {
+    if (!ending || queue.length || current.state !== 'open') return;
+    const end = ending;
+    if (end.state === 'complete') finish({ state: 'complete' });
+    else fail(end.error);
   };
 
   const waitForWrite = () => {
@@ -224,33 +250,63 @@ export function streamQuery<T, M>(
   };
 
   function drain() {
-    if (current.state !== 'open' || queue.length === 0) return;
+    if (current.state !== 'open' || queue.length === 0) return settle();
+    const id = run;
+    let next: T | undefined;
     try {
       if (query.status.pending.value > 0) {
         publish({ queued: waiting() });
-        waitForWrite();
+        if (!superseded(id)) waitForWrite();
         return;
       }
-      const steps = queue.splice(0);
-      let next = query.serverValue();
-      let applied = 0;
-      for (const step of steps) {
-        if (step.kind === 'reset') next = undefined;
-        else if (step.kind === 'set') {
-          next = step.value;
-          applied += step.count;
-        } else {
-          next = options.reduce(next, step.message);
-          applied += 1;
-        }
-      }
-      // A reset is always queued together with the message that follows it.
-      query.acceptServer(next as T);
-      publish({ received: current.received + applied, queued: 0 });
-      if (completing) finish({ state: 'complete' });
+      next = query.serverValue();
     } catch (error) {
       fail(error);
+      return;
     }
+    const steps = queue.splice(0);
+    let applied = 0;
+    let changed = false;
+    let failure: { reason: unknown } | null = null;
+    for (const step of steps) {
+      if (step.kind === 'reset') {
+        // Always queued with the message after it; alone it shows nothing.
+        next = undefined;
+        changed = false;
+      } else if (step.kind === 'set') {
+        next = step.value;
+        applied += step.count;
+        changed = true;
+      } else {
+        try {
+          next = options.reduce(next, step.message);
+        } catch (reason) {
+          // Keep what was folded before the bad message, as an unthrottled
+          // stream would have shown it already.
+          failure = { reason };
+          break;
+        }
+        applied += 1;
+        changed = true;
+      }
+    }
+    if (changed) {
+      try {
+        query.acceptServer(next as T);
+      } catch (reason) {
+        failure ??= { reason };
+        applied = 0;
+      }
+      if (superseded(id)) return;
+      publish({
+        received: current.received + applied,
+        queued: 0,
+        buffered: 0,
+      });
+      if (superseded(id)) return;
+    }
+    if (failure) fail(failure.reason);
+    else settle();
   }
 
   /** `mode` is null for the first run, which folds onto the current baseline. */
@@ -260,15 +316,21 @@ export function streamQuery<T, M>(
     let fresh = mode === 'reset' && !options.initialValue;
     let shadow: T | undefined;
     let buffered = 0;
-    if ((mode === 'reset' || replace) && options.initialValue) {
-      const initial = options.initialValue();
-      if (replace) shadow = initial;
-      else queue.push({ kind: 'set', value: initial, count: 0 });
-    }
+
+    /** The source is done; apply what it delivered, then end the run. */
+    const end = (how: NonNullable<typeof ending>) => {
+      if (id !== run || ending) return;
+      ending = how;
+      detachSource();
+      if (how.state === 'complete' && replace && shadow !== undefined)
+        queue.push({ kind: 'set', value: shadow, count: buffered });
+      flushNow();
+      if (!superseded(id)) settle();
+    };
 
     const sink: StreamSink<M> = Object.freeze({
       next: (message: M) => {
-        if (id !== run || completing) return;
+        if (id !== run || ending) return;
         if (replace) {
           try {
             shadow = options.reduce(shadow, message);
@@ -287,33 +349,24 @@ export function streamQuery<T, M>(
         queue.push({ kind: 'message', message });
         requestFlush();
       },
-      error: (reason: unknown) => {
-        if (id !== run) return;
-        // Messages that arrived before the failure still count.
-        flushNow();
-        fail(reason);
-      },
-      complete: () => {
-        if (id !== run || completing) return;
-        if (replace && shadow !== undefined) {
-          queue.push({ kind: 'set', value: shadow, count: buffered });
-          publish({ buffered: 0 });
-        }
-        // Steps held for a WRITE are still delivered; drain finishes then.
-        if (queue.length) {
-          completing = true;
-          flushNow();
-        } else finish({ state: 'complete' });
-      },
+      // Messages that arrived before the failure still count.
+      error: (reason: unknown) => end({ state: 'error', error: reason }),
+      complete: () => end({ state: 'complete' }),
     });
 
     const abort = (runAbort = new AbortController());
     try {
+      if ((mode === 'reset' || replace) && options.initialValue) {
+        const initial = options.initialValue();
+        if (replace) shadow = initial;
+        else queue.push({ kind: 'set', value: initial, count: 0 });
+      }
       const source = options.source();
+      if (superseded(id)) return;
       if (typeof source === 'function') {
         const release = source(sink, abort.signal);
         if (typeof release === 'function') {
-          if (id === run) teardown = release;
+          if (id === run && !ending) teardown = release;
           else release();
         }
       } else if (source && typeof source[Symbol.asyncIterator] === 'function') {
@@ -322,7 +375,7 @@ export function streamQuery<T, M>(
           void Promise.resolve(iterator.return?.()).catch(() => {});
         void (async () => {
           try {
-            while (id === run) {
+            while (id === run && !ending) {
               const step = await iterator.next();
               if (step.done) break;
               sink.next(step.value);
@@ -338,10 +391,11 @@ export function streamQuery<T, M>(
         );
       }
     } catch (error) {
-      fail(error);
+      if (id === run) fail(error);
       if (!mode) throw error;
+      return;
     }
-    drain();
+    if (!superseded(id)) drain();
   };
 
   start(null);
@@ -359,6 +413,7 @@ export function streamQuery<T, M>(
       if (mode !== 'reset' && mode !== 'append' && mode !== 'replace')
         throw new TypeError(`Unknown refetch mode: ${String(mode)}.`);
       endRun();
+      const id = run;
       // Held messages of the old run belong to the data being replaced.
       if (mode !== 'append') queue.length = 0;
       publish({
@@ -368,13 +423,19 @@ export function streamQuery<T, M>(
         buffered: 0,
         error: null,
       });
+      // A status observer may have closed or restarted the stream.
+      if (superseded(id)) return;
       start(mode);
     },
     close: () => {
       if (closed) return;
-      closed = true;
       // A throttled window still holding messages is published first.
-      if (current.state === 'open' && cancelTimer) flushNow();
+      if (current.state === 'open' && cancelTimer) {
+        flushNow();
+        // An observer of that publish may have closed the stream already.
+        if (closed) return;
+      }
+      closed = true;
       finish({ state: 'closed' });
     },
   });

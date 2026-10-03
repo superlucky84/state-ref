@@ -142,7 +142,9 @@ stream.close();
   a busy source. No message is dropped: every one is folded, the first shows
   at once, and completion, an error or `close()` flush the rest immediately.
 - Messages arriving while a linked WRITE is pending are held (`queued`) and
-  folded after it settles.
+  folded after it settles - even if the source errors or completes meanwhile;
+  the run settles (`error`/`complete`) after they land. A throwing `reduce`
+  keeps the messages folded before it.
 - `query.refetch()` is a READ through `queryFn`; it does not restart a stream.
 
 ## QueryStatus fields

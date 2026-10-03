@@ -639,7 +639,11 @@ without waiting; a `reset` or `replace` refetch discards it with the old run.
 Without `refetch()` there is no mode to pick. The first run always folds onto
 the current baseline, so a hydrated or loaded
 query is not wiped when the stream connects. `query.refetch()` performs a READ
-through `queryFn` and does not restart the stream. A thrown `reduce` or source
-error ends the run with `state: 'error'` and calls `onError`; `refetch()`
+through `queryFn` and does not restart the stream. A source error or completion
+stops listening at once, but whatever the source delivered still lands first
+(after a pending WRITE, if one holds it), and only then does the run settle.
+A thrown `reduce` keeps the messages folded before it and ends the run with
+`state: 'error'`; both failures call `onError`, and so does a throwing
+`initialValue`; `refetch()`
 starts a new run. A WebSocket closed cleanly completes the run, any other
 close fails it, and closing the stream closes the socket.
