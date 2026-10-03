@@ -47,8 +47,9 @@ const client = createSyncClient({ environment });`}
   queryFn: ({ signal }) => api.readAccount(1, { signal }),
   staleTime: 30_000,
 
-  refetchOnFocus: true,          // default: stale data only
-  refetchOnReconnect: 'always',  // include fresh data
+  // each event has its own option, so the values can differ
+  refetchOnFocus: true,          // on focus: only if stale (true is the default)
+  refetchOnReconnect: 'always',  // on reconnect: even if fresh
   refetchInterval: 60_000,       // opt-in polling
   refetchIntervalInBackground: false, // default
 });
@@ -56,12 +57,54 @@ const client = createSyncClient({ environment });`}
 await account.load(); // the policies start here`}
       />
 
+      <p>
+        <code>refetchOnFocus</code> and <code>refetchOnReconnect</code> are
+        independent options. The example means &quot;on focus, only if stale; on
+        reconnect, always&quot; - two different values on purpose. Both options
+        take the same three values:
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>value</th>
+            <th>when that event happens</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <code>true</code>
+            </td>
+            <td>
+              refetch only if the data is stale (past <code>staleTime</code>, or{' '}
+              <code>invalidate()</code>d)
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <code>&apos;always&apos;</code>
+            </td>
+            <td>refetch even fresh data</td>
+          </tr>
+          <tr>
+            <td>
+              <code>false</code>
+            </td>
+            <td>do not refetch</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        The defaults are <code>refetchOnFocus: true</code> and{' '}
+        <code>refetchOnReconnect: true</code>, except that a query with{' '}
+        <code>networkMode: &apos;always&apos;</code> does not depend on
+        connectivity, so its <code>refetchOnReconnect</code> defaults to{' '}
+        <code>false</code>.
+      </p>
+
       <ul>
-        <li>
-          <code>true</code> refetches only when the data is stale;{' '}
-          <code>'always'</code> refetches even fresh data; <code>false</code>{' '}
-          disables the policy.
-        </li>
         <li>
           Events run only while the environment is focused. Online modes also
           require connectivity.

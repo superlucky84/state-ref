@@ -47,8 +47,9 @@ const client = createSyncClient({ environment });`}
   queryFn: ({ signal }) => api.readAccount(1, { signal }),
   staleTime: 30_000,
 
-  refetchOnFocus: true,          // 기본값: stale일 때만
-  refetchOnReconnect: 'always',  // 신선한 데이터도 다시 읽는다
+  // 옵션마다 따로 정한다: 사건(focus / 재연결)별로 값이 다를 수 있다
+  refetchOnFocus: true,          // focus될 때: stale일 때만 다시 읽는다 (true가 기본값)
+  refetchOnReconnect: 'always',  // 재연결될 때: 신선해도 다시 읽는다
   refetchInterval: 60_000,       // opt-in polling
   refetchIntervalInBackground: false, // 기본값
 });
@@ -56,11 +57,54 @@ const client = createSyncClient({ environment });`}
 await account.load(); // 정책은 여기서 시작한다`}
       />
 
+      <p>
+        <code>refetchOnFocus</code>와 <code>refetchOnReconnect</code>는 서로
+        독립된 옵션입니다. 위 예제는 &quot;focus 때는 stale일 때만, 재연결 때는
+        무조건&quot;이라는 뜻이며, 두 값이 다른 것은 의도한 조합입니다. 두 옵션
+        모두 같은 세 값을 받습니다.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>값</th>
+            <th>그 사건이 일어나면</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <code>true</code>
+            </td>
+            <td>
+              데이터가 stale일 때만 다시 읽는다(<code>staleTime</code>이
+              지났거나 <code>invalidate()</code>된 경우)
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <code>&apos;always&apos;</code>
+            </td>
+            <td>신선해도 다시 읽는다</td>
+          </tr>
+          <tr>
+            <td>
+              <code>false</code>
+            </td>
+            <td>다시 읽지 않는다</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>
+        기본값은 <code>refetchOnFocus: true</code>,{' '}
+        <code>refetchOnReconnect: true</code>입니다. 단{' '}
+        <code>networkMode: &apos;always&apos;</code>인 조회는 연결 상태와
+        무관하게 동작하므로 <code>refetchOnReconnect</code>의 기본값이{' '}
+        <code>false</code>입니다.
+      </p>
+
       <ul>
-        <li>
-          <code>true</code>는 데이터가 stale일 때만, <code>'always'</code>는
-          신선해도 다시 읽습니다. <code>false</code>는 그 정책을 끕니다.
-        </li>
         <li>
           사건은 environment가 focused인 동안에만 돕니다. online 모드는 연결까지
           필요합니다.
