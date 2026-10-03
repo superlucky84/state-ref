@@ -19,7 +19,9 @@ export type StreamSource<M> =
   | ((sink: StreamSink<M>, signal: AbortSignal) => void | (() => void));
 
 /**
- * What `refetch()` does with the data the previous run left behind.
+ * What `refetch({ mode })` does with the data the previous run left behind.
+ * Within a run every message is folded and shown as it arrives; the mode only
+ * decides how a restarted run treats what is already shown.
  *
  * - `reset`: start over from `initialValue` (shown at once) or, without one,
  *   from nothing on the first new message; chunks then stream in again.
@@ -28,6 +30,11 @@ export type StreamSource<M> =
  *   off-screen, then swap it in once when the run completes.
  */
 export type StreamRefetchMode = 'reset' | 'append' | 'replace';
+
+export type StreamRefetchOptions = Readonly<{
+  /** Defaults to `reset`. */
+  mode?: StreamRefetchMode;
+}>;
 
 export type QueryStreamOptions<T, M> = Readonly<{
   /** Open the source; called on start and again on every `refetch()`. */
@@ -38,10 +45,11 @@ export type QueryStreamOptions<T, M> = Readonly<{
    * before the first load. It is frozen for editable data: return a new value.
    */
   reduce: (current: T | undefined, message: M) => T;
-  /** The empty value a `reset` or `replace` run folds from. */
+  /**
+   * The empty value a `reset` or `replace` refetch folds from. The first run
+   * always folds onto the current baseline.
+   */
   initialValue?: () => T;
-  /** Defaults to `reset`. The first run always folds onto the current baseline. */
-  refetchMode?: StreamRefetchMode;
   /** Called when a run fails (source error or a throwing reduce). */
   onError?: (reason: unknown) => void;
 }>;
@@ -61,8 +69,8 @@ export type QueryStreamStatus = Readonly<{
 export type QueryStream = Readonly<{
   status: StateRefStore<QueryStreamStatus>;
   watchStatus: Watch<QueryStreamStatus>;
-  /** Restart the source following `refetchMode`; also revives a finished run. */
-  refetch: () => void;
+  /** Reopen the source as a new run; also revives a finished one. */
+  refetch: (options?: StreamRefetchOptions) => void;
   /** Stop listening for good and tear the source down. */
   close: () => void;
 }>;
@@ -95,9 +103,6 @@ export function streamQuery<T, M>(
     throw new TypeError('streamQuery requires a source function.');
   if (typeof options.reduce !== 'function')
     throw new TypeError('streamQuery requires a reduce function.');
-  const mode = options.refetchMode ?? 'reset';
-  if (mode !== 'reset' && mode !== 'append' && mode !== 'replace')
-    throw new TypeError(`Unknown refetchMode: ${String(mode)}.`);
 
   const store = create<QueryStreamStatus>(
     Object.freeze({
@@ -199,13 +204,14 @@ export function streamQuery<T, M>(
     }
   }
 
-  const start = (refetch: boolean) => {
+  /** `mode` is null for the first run, which folds onto the current baseline. */
+  const start = (mode: StreamRefetchMode | null) => {
     const id = run;
-    const replace = refetch && mode === 'replace';
-    let fresh = refetch && mode === 'reset' && !options.initialValue;
+    const replace = mode === 'replace';
+    let fresh = mode === 'reset' && !options.initialValue;
     let shadow: T | undefined;
     let buffered = 0;
-    if (refetch && mode !== 'append' && options.initialValue) {
+    if ((mode === 'reset' || replace) && options.initialValue) {
       const initial = options.initialValue();
       if (replace) shadow = initial;
       else queue.push({ kind: 'set', value: initial, count: 0 });
@@ -281,12 +287,12 @@ export function streamQuery<T, M>(
       }
     } catch (error) {
       fail(error);
-      if (!refetch) throw error;
+      if (!mode) throw error;
     }
     drain();
   };
 
-  start(false);
+  start(null);
 
   return Object.freeze({
     status,
@@ -295,8 +301,11 @@ export function streamQuery<T, M>(
         ...userOption,
         editable: false,
       })) as Watch<QueryStreamStatus>,
-    refetch: () => {
+    refetch: (refetchOptions?: StreamRefetchOptions) => {
       if (closed) throw new Error('This stream is closed.');
+      const mode = refetchOptions?.mode ?? 'reset';
+      if (mode !== 'reset' && mode !== 'append' && mode !== 'replace')
+        throw new TypeError(`Unknown refetch mode: ${String(mode)}.`);
       endRun();
       // Held messages of the old run belong to the data being replaced.
       if (mode !== 'append') queue.length = 0;
@@ -307,7 +316,7 @@ export function streamQuery<T, M>(
         buffered: 0,
         error: null,
       });
-      start(true);
+      start(mode);
     },
     close: () => {
       if (closed) return;

@@ -441,7 +441,7 @@ describe('webSocketMessages', () => {
   });
 });
 
-describe('streamQuery refetchMode', () => {
+describe('streamQuery refetch modes', () => {
   function runs() {
     const sinks: StreamSink<Chunk>[] = [];
     let released = 0;
@@ -481,7 +481,6 @@ describe('streamQuery refetchMode', () => {
     streamQuery(query, {
       source: source.source,
       reduce: appendLine,
-      refetchMode: 'reset',
       initialValue: () => ({ title: 'T', lines: [] }),
     });
     source.sink(0).next({ line: 'a' });
@@ -530,12 +529,11 @@ describe('streamQuery refetchMode', () => {
     const stream = streamQuery(query, {
       source: source.source,
       reduce: appendLine,
-      refetchMode: 'append',
     });
     source.sink(0).next({ line: 'a' });
     source.sink(0).complete();
     expect(stream.status.value.state).toBe('complete');
-    stream.refetch();
+    stream.refetch({ mode: 'append' });
     expect(stream.status.value).toMatchObject({ state: 'open', received: 0 });
     source.sink(1).next({ line: 'b' });
     expect(query.serverValue()!.lines).toEqual(['cached', 'a', 'b']);
@@ -548,10 +546,9 @@ describe('streamQuery refetchMode', () => {
     const stream = streamQuery(query, {
       source: source.source,
       reduce: appendLine,
-      refetchMode: 'replace',
       initialValue: () => ({ title: 'T', lines: [] }),
     });
-    stream.refetch();
+    stream.refetch({ mode: 'replace' });
     source.sink(1).next({ line: 'x' });
     source.sink(1).next({ line: 'y' });
     expect(query.serverValue()!.lines).toEqual(['cached']);
@@ -572,9 +569,8 @@ describe('streamQuery refetchMode', () => {
     const stream = streamQuery(query, {
       source: source.source,
       reduce: appendLine,
-      refetchMode: 'replace',
     });
-    stream.refetch();
+    stream.refetch({ mode: 'replace' });
     source.sink(1).next({ line: 'x' });
     source.sink(1).error(new Error('lost'));
     expect(query.serverValue()!.lines).toEqual(['cached']);
@@ -585,6 +581,26 @@ describe('streamQuery refetchMode', () => {
     query.dispose();
   });
 
+  it('picks the mode per refetch call', async () => {
+    const { query, seen } = await loaded('mode-per-call');
+    const source = runs();
+    const stream = streamQuery(query, {
+      source: source.source,
+      reduce: appendLine,
+      initialValue: () => ({ title: 'T', lines: [] }),
+    });
+    stream.refetch({ mode: 'append' });
+    source.sink(1).next({ line: 'a' });
+    stream.refetch({ mode: 'replace' });
+    source.sink(2).next({ line: 'b' });
+    expect(query.serverValue()!.lines).toEqual(['cached', 'a']);
+    source.sink(2).complete();
+    stream.refetch();
+    source.sink(3).next({ line: 'c' });
+    expect(seen).toEqual([['cached'], ['cached', 'a'], ['b'], [], ['c']]);
+    query.dispose();
+  });
+
   it('refetch after close throws and an unknown mode is rejected', async () => {
     const { query } = await loaded('mode-closed');
     const source = runs();
@@ -592,15 +608,13 @@ describe('streamQuery refetchMode', () => {
       source: source.source,
       reduce: appendLine,
     });
+    expect(() => stream.refetch({ mode: 'merge' as never })).toThrow(
+      'Unknown refetch mode'
+    );
+    expect(source.count).toBe(1);
+    expect(stream.status.value.state).toBe('open');
     stream.close();
     expect(() => stream.refetch()).toThrow('This stream is closed.');
-    expect(() =>
-      streamQuery(query, {
-        source: source.source,
-        reduce: appendLine,
-        refetchMode: 'merge' as never,
-      })
-    ).toThrow('Unknown refetchMode');
     query.dispose();
   });
 });

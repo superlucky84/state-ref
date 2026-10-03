@@ -596,26 +596,29 @@ const stream = streamQuery<Report, Row>(report, {
   source: () => ndjsonMessages<Row>(signal => fetch('/report', { signal })),
   reduce: (current, message) => ({ rows: [...(current?.rows ?? []), message.row] }),
   initialValue: () => ({ rows: [] }),
-  refetchMode: 'reset',
 });
 
 stream.status.value.state; // 'open' | 'complete' | 'error' | 'closed'
-stream.refetch(); // reopen the source following refetchMode
+stream.refetch(); // reopen the source; mode defaults to 'reset'
+stream.refetch({ mode: 'replace' }); // keep the old rows until the new run ends
 stream.close(); // stop for good; tears down the request
 
 // WebSocket: the same, with a new socket for every run.
 const live = streamQuery<Report, Row>(report, {
   source: () => webSocketMessages<Row>(new WebSocket('wss://example.test/report')),
   reduce: (current, message) => ({ rows: [...(current?.rows ?? []), message.row] }),
-  refetchMode: 'append',
 });
+live.refetch({ mode: 'append' }); // reconnect and keep adding to what is shown
 live.close();
 ```
 
 `source` is called on start and again on every `refetch()`. It returns an async
 iterable or a subscribe function `(sink, signal) => teardown`;
-`ndjsonMessages` and `webSocketMessages` build the latter. `refetchMode`
-decides what `refetch()` does with the data already shown:
+`ndjsonMessages` and `webSocketMessages` build the latter.
+
+Within a run every message is folded and shown as it arrives. The `mode` of
+`refetch({ mode })` only decides what a restarted run does with the data the
+previous run left on screen, so each call can choose:
 
 - `reset` (default): show `initialValue` at once, or keep the old data until
   the first new message when there is none, then stream the new run in.
@@ -624,7 +627,8 @@ decides what `refetch()` does with the data already shown:
   (`status.buffered`), then swap it in once on completion. A failed run is
   dropped.
 
-The first run always folds onto the current baseline, so a hydrated or loaded
+Without `refetch()` there is no mode to pick. The first run always folds onto
+the current baseline, so a hydrated or loaded
 query is not wiped when the stream connects. `query.refetch()` performs a READ
 through `queryFn` and does not restart the stream. A thrown `reduce` or source
 error ends the run with `state: 'error'` and calls `onError`; `refetch()`

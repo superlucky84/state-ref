@@ -538,11 +538,13 @@ const stream: QueryStream = streamQuery(streamed, {
     rows: [...(current?.rows ?? []), message.row],
   }),
   initialValue: () => ({ rows: [] }),
-  refetchMode: mode,
 });
 const streamState: QueryStreamStatus['state'] = stream.status.state.value;
 void streamState;
 stream.refetch();
+stream.refetch({ mode });
+// @ts-expect-error the mode is one of reset, append or replace
+stream.refetch({ mode: 'merge' });
 stream.close();
 streamQuery(streamed, {
   source: () => webSocketMessages<{ row: string }>(new WebSocket('wss://x')),

@@ -8,7 +8,8 @@
   any async iterable) into a query. Each message is folded by `reduce` and
   accepted as the server baseline, so intermediate states render; local edits
   are rebased and messages wait out a pending linked WRITE. `refetch()`
-  reopens the source with `refetchMode` `reset`, `append` or `replace`.
+  reopens the source; `refetch({ mode })` picks `reset`, `append` or
+  `replace` per call.
 - **`ndjsonMessages(input)` and `webSocketMessages(socket)`** - ready-made
   stream sources.
 - **`query.serverValue()`** - the confirmed server baseline without local

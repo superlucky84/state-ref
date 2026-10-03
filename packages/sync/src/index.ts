@@ -72,6 +72,7 @@ export type {
   QueryStreamOptions,
   QueryStreamStatus,
   StreamRefetchMode,
+  StreamRefetchOptions,
   StreamSink,
   StreamSource,
   WebSocketLike,
