@@ -186,6 +186,10 @@ function CityDisplay() {
 
       <ul>
         <li>
+          <a href="#/guide/shared">Shared Across Bundles</a> - one store for
+          separately built bundles
+        </li>
+        <li>
           <a href="#/guide/create-store">createStore</a> - store creation
         </li>
         <li>

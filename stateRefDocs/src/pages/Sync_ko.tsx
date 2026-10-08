@@ -149,6 +149,10 @@ other.query(options).ref.address.city.value; // 영향 없음`}
 
       <ul>
         <li>
+          <a href="#/ko/guide/shared">번들 간 공유</a> - 따로 빌드된 번들들이{' '}
+          <code>ensureShared</code>로 클라이언트 하나, 캐시 하나를 쓰기
+        </li>
+        <li>
           <a href="#/ko/guide/sync-query">query와 resource</a> - 로드·편집·변경
           읽기
         </li>
@@ -169,8 +173,8 @@ other.query(options).ref.address.city.value; // 영향 없음`}
           목록
         </li>
         <li>
-          <a href="#/ko/guide/sync-stream">스트리밍</a> - 도착할 때마다
-          보이는 WebSocket·NDJSON push
+          <a href="#/ko/guide/sync-stream">스트리밍</a> - 도착할 때마다 보이는
+          WebSocket·NDJSON push
         </li>
         <li>
           <a href="#/ko/guide/sync-refetch">자동 재조회</a> -

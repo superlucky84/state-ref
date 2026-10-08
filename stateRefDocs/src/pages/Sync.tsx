@@ -150,6 +150,10 @@ other.query(options).ref.address.city.value; // unaffected`}
 
       <ul>
         <li>
+          <a href="#/guide/shared">Shared Across Bundles</a> - one client and
+          one cache for separately built bundles, with <code>ensureShared</code>
+        </li>
+        <li>
           <a href="#/guide/sync-query">query and resource</a> - loading,
           editing, and reading changes
         </li>

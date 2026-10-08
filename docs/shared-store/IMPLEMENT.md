@@ -68,8 +68,10 @@
 - [x] 루트 `README.md`의 패키지 표, `CLAUDE.md`의 Key Files.
 - [x] 문서 사이트 가이드 `Shared.tsx`, `Shared_ko.tsx`와 사이드바·라우트 등록. 사이트 빌드 성공.
 - [ ] M-SH-01, M-SH-02, M-SH-04 수행.
-- [ ] 문서 사이트의 API 레퍼런스 페이지와 AI 애드온 문서에 `state-ref/shared` 추가.
-- [ ] 버전과 릴리스 노트. 사용자 확인 후 진행한다.
+- [x] AI 스킬(`skills/state-ref/reference/shared-across-bundles.md`, `SKILL.md`, `core-rules.md`)과 agent add-on(`state-ref-agent-addon.md`, 사이트의 `AIAgentAddon` 페이지)에 추가.
+- [x] 사이트의 Sync·Preact·batch 페이지에서 새 가이드로 가는 링크.
+- [x] 버전 3.1.1 → 3.2.0, `CHANGELOG.md`, [배포 절차](../release/2026-10-08.md). **배포(npm publish, 태그, gh-pages)는 하지 않았다.**
+- [ ] 사이트의 API 레퍼런스 묶음(`ApiCore` 등)에 shared용 페이지. 가이드 페이지 끝의 API 표로 대신하고 있다.
 
 ## 단계 7 — 2차 개정 (sharedWatch와 가드) ✅
 
@@ -99,6 +101,12 @@
 - **가이드 예제 검증:** 새로 넣은 세 코드 블록을 실제 타입에 대해 한 번 컴파일해 확인했다. 일회성이다.
 
 ## 인계
+
+### 2026-10-08 — 릴리스 준비
+
+- 완료: AI 문서, 페이지 간 링크, 버전 3.2.0, CHANGELOG, 배포 절차 문서. `pnpm gate` 21단계와 `pnpm check:packaging` 통과. publish dry run: 94 파일, 186.7 kB.
+- 다음: 배포 여부 결정 → [배포 절차](../release/2026-10-08.md) 실행.
+- 막힌 것: 없음. 배포는 사용자가 실행한다.
 
 ### 2026-10-08 — 3차 개정
 

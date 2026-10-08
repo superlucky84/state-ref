@@ -184,6 +184,10 @@ function CityDisplay() {
 
       <ul>
         <li>
+          <a href="#/ko/guide/shared">번들 간 공유</a> - 따로 빌드된 번들이 같은
+          스토어를 쓰기
+        </li>
+        <li>
           <a href="#/ko/guide/create-store">createStore</a> - 스토어 생성
         </li>
         <li>

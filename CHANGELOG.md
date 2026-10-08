@@ -1,5 +1,47 @@
 # Changelog
 
+## state-ref 3.2.0
+
+Additive: nothing that worked on 3.1.x changes. The new entry point is not
+loaded by importing `state-ref`, and the core bundle is byte-for-byte the same
+size.
+
+### Added
+
+- **`state-ref/shared`** - one store, or one `@stateref/sync` client, for
+  separately built bundles on a page. It works when each bundle carries its own
+  copy of state-ref, and in any load order. The entry imports nothing from the
+  core at runtime.
+  - **`ensureShared(name, create)`** - for a value no bundle owns. Every
+    bundle calls it with the same arguments; the first call creates the value
+    and the rest receive it. With a sync client, every bundle keeps the
+    ordinary sync API and a key is read once.
+  - **`provideShared(name, watch, { ready })`** - for a store one bundle
+    fills. `ready` states when its data can be used.
+  - **`sharedWatch(name)`** - a watch over a provided store, usable before the
+    provider has loaded. Its ref has no paths until a guard has run: skipping
+    the guard is a compile error in TypeScript and a thrown error in
+    JavaScript.
+  - **`isProvided(ref)` / `isReady(ref)`** - the guards. The first tells that
+    the store exists, the second that the provider's `ready` condition holds
+    too. `sharedWatch<T, R>` narrows to `R` after `isReady`.
+  - **`whenReady(source, callback)`** - runs a callback once when a store is
+    ready, then unsubscribes.
+  - **`getShared`, `onShared`, `pendingShared`** - look up a registered value,
+    wait for one, and list names nobody has provided.
+- The bundled AI skill gains `reference/shared-across-bundles.md`, and the
+  agent add-on a section on sharing across bundles.
+
+### Known limits
+
+- `batch` from `state-ref/batch` coalesces writes only for stores made by the
+  same copy of state-ref.
+- A shared watch goes through a connector's view form
+  (`connectPreactView`); only the Preact connector is covered by tests.
+- Bundles built by a real bundler, and bundles carrying different versions of
+  state-ref, have not been exercised - the two-copy tests evaluate one UMD
+  build twice.
+
 ## @stateref/sync 0.2.0
 
 Additive: code written for 0.1.0 keeps working. Requires `state-ref ^3.1.0`

@@ -14,6 +14,7 @@
 - React/Preact connectors render a component twice on mount (the second render collects dependencies).
 - `createDraft(ref)` (`state-ref/draft`) edits a local copy; `apply()` returns `{ ok, ... }` and reports conflicts instead of overwriting.
 - `batch(fn)` (`state-ref/batch`) groups notifications of synchronous writes; it does not roll back and cannot span `await`.
+- `state-ref/shared` is only for separately built bundles on one page. A ref from `sharedWatch` has no paths until `isProvided(ref)` or `isReady(ref)` has run; reading one first throws. Use `ensureShared` for a value no bundle owns, `provideShared` for a store one bundle fills, and never both on one name.
 - With `@stateref/sync`: edits to `query.ref` are local; saving is `capture()` then `mutation.run(dto, { links })`.
 - Use `combineWatch([watch1, watch2] as const)` to observe multiple stores together.
 - Use `createComputed([watches], callback)` to derive read-only computed values.

@@ -149,6 +149,10 @@ batch(() => {
 
       <ul>
         <li>
+          <a href="#/guide/shared">Shared Across Bundles</a> - batch does not
+          cross copies of state-ref
+        </li>
+        <li>
           <a href="#/guide/manual-sync">Manual Sync (Flux)</a> - the other way
           to control when subscribers run
         </li>

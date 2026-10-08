@@ -145,6 +145,10 @@ batch(() => {
 
       <ul>
         <li>
+          <a href="#/ko/guide/shared">번들 간 공유</a> - batch는 state-ref
+          사본을 넘지 못합니다
+        </li>
+        <li>
           <a href="#/ko/guide/manual-sync">수동 동기화 (Flux)</a> - 구독자 실행
           시점을 제어하는 다른 방법
         </li>

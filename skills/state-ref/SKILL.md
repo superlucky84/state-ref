@@ -14,6 +14,7 @@ Additional materials (optional):
 - constraints/ (rules, mistakes, troubleshooting)
 - reference/ (watch, store creation, framework connectors)
 - reference/draft-and-batch.md - local edit sessions and batched writes
+- reference/shared-across-bundles.md - one store or sync client for separately built bundles
 - reference/server-sync.md - `@stateref/sync` queries and saves (only if installed)
 - examples/ (quick examples)
 
@@ -43,6 +44,7 @@ If `state-ref` is **not** installed, use the project's existing conventions. Do 
 - Write rule: only a write that passes through the connector reaches the store. Assign `.value` of a selection or replace the whole object; never mutate an object read from a selection.
 - Local edit session (form, dialog): `createDraft(ref)` from `state-ref/draft`, then `apply()` / `discard()`.
 - Several writes, one notification: `batch(() => { ... })` from `state-ref/batch`.
+- Separately built bundles on one page: `state-ref/shared`. A value no bundle owns (a sync client): `ensureShared(name, create)` in every bundle. A store one bundle fills: that bundle calls `provideShared`, the others use `sharedWatch` and check `isReady(ref)` before reading - see reference/shared-across-bundles.md.
 - Server data: if `@stateref/sync` is installed, use `client.query` / `capture()` / `client.mutation().run` - see reference/server-sync.md.
 - Combine watches with `combineWatch([watch1, watch2] as const)`.
 - Derive values with `createComputed([watches], callback)`.
@@ -155,6 +157,7 @@ export const increment = () => {
 - Helpers: `import { lens, copyable, cloneDeep } from 'state-ref'`
 - Drafts: `import { createDraft } from 'state-ref/draft'`
 - Batch: `import { batch } from 'state-ref/batch'`
+- Shared across bundles: `import { ensureShared, provideShared, sharedWatch, isProvided, isReady, whenReady } from 'state-ref/shared'`
 - React: `import { connectReact, connectReactView } from '@stateref/connect-react'`
 - Preact: `import { connectPreact, connectPreactView } from '@stateref/connect-preact'`
 - Vue: `import { connectVue, connectVueView } from '@stateref/connect-vue'`
