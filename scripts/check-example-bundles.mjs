@@ -82,6 +82,7 @@ const LIBRARY_DIST = [
   'packages/state-ref/dist/state-ref.mjs',
   'packages/state-ref/dist/state-ref.draft.mjs',
   'packages/state-ref/dist/state-ref.batch.mjs',
+  'packages/state-ref/dist/state-ref.shared.mjs',
   'packages/state-ref/dist/plugin.mjs',
 ];
 for (const file of LIBRARY_DIST) {

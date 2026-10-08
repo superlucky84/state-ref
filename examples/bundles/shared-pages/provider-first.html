@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>state-ref/shared — 제공 번들 먼저</title>
+  </head>
+  <body>
+    <h1>번들 간 공유 — 제공 번들 먼저</h1>
+    <p>제공 번들을 먼저 로드하고 소비 번들을 나중에 로드한다.</p>
+    <p>두 번들은 따로 빌드됐고 각자 state-ref와 @stateref/sync 사본을 품고 있다.</p>
+    <nav><a href="/">← 조합 목록</a></nav>
+    <section>
+      <h2>제공 번들</h2>
+      <div id="provider"></div>
+    </section>
+    <section>
+      <h2>소비 번들</h2>
+      <p>Preact 배지: <span id="consumer-badge"></span></p>
+      <div id="consumer"></div>
+    </section>
+    <script type="module" src="/shared/provider.js"></script>
+    <script type="module" src="/shared/consumer.js"></script>
+  </body>
+</html>

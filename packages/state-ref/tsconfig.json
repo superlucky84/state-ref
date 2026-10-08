@@ -25,7 +25,8 @@
     "paths": {
       "@/*": ["src/*"],
       "state-ref": ["src/index.ts"],
-      "state-ref/batch": ["src/batch/index.ts"]
+      "state-ref/batch": ["src/batch/index.ts"],
+      "state-ref/shared": ["src/shared/index.ts"]
     }
   },
   "include": ["src"],

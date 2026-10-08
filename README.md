@@ -122,7 +122,7 @@ A shared query cache with an editable resource ref, from the separate `@stateref
 
 | Package | What it is |
 | --- | --- |
-| [`state-ref`](https://www.npmjs.com/package/state-ref) | The core. Also ships `state-ref/batch`, `state-ref/draft` and `state-ref/plugin` as separate entry points. |
+| [`state-ref`](https://www.npmjs.com/package/state-ref) | The core. Also ships `state-ref/batch`, `state-ref/draft`, `state-ref/shared` and `state-ref/plugin` as separate entry points. |
 | [`@stateref/sync`](https://www.npmjs.com/package/@stateref/sync) | Optional query cache, editable resource and mutations. |
 | [`@stateref/connect-react`](https://www.npmjs.com/package/@stateref/connect-react) | React connector |
 | [`@stateref/connect-preact`](https://www.npmjs.com/package/@stateref/connect-preact) | Preact connector |

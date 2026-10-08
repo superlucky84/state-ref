@@ -121,11 +121,29 @@ CODING GUIDELINES:
     - "Saving" is \`status.pending.value > 0\`, not \`phase === 'pending'\`
     - Details: node_modules/state-ref/dist/skills/state-ref/reference/server-sync.md
 
+13. SHARING ACROSS BUNDLES (state-ref 3.2, \`state-ref/shared\`)
+    - Only for separately built bundles on one page; inside one bundle,
+      export and import the watch
+    - A value no bundle owns (a \`@stateref/sync\` client, UI state with a
+      fixed initial value): \`ensureShared(name, create)\` with the same
+      arguments in every bundle; it is always there, no guard
+    - A store one bundle fills: that bundle calls
+      \`provideShared(name, watch, { ready })\`; other bundles use
+      \`sharedWatch(name)\`
+    - A ref from \`sharedWatch\` has no paths until a guard has run:
+      \`if (!isReady(ref)) return;\` (or \`isProvided(ref)\` to read loading and
+      error state). Reading first throws; do not cast around it
+    - Run once when ready: \`whenReady(name, callback)\`
+    - With a connector use the view form: \`connectPreactView(sharedWatch(name))\`
+    - One way per name; only the owner fetches into a provided store
+    - Details: node_modules/state-ref/dist/skills/state-ref/reference/shared-across-bundles.md
+
 IMPORT PATHS:
 - Core: \`import { createStore, createStoreManualSync, combineWatch, createComputed } from 'state-ref'\`
 - Helpers: \`import { lens, copyable, cloneDeep } from 'state-ref'\`
 - Drafts: \`import { createDraft } from 'state-ref/draft'\`
 - Batch: \`import { batch } from 'state-ref/batch'\`
+- Shared across bundles: \`import { ensureShared, provideShared, sharedWatch, isProvided, isReady, whenReady } from 'state-ref/shared'\`
 - React: \`import { connectReact, connectReactView } from '@stateref/connect-react'\`
 - Preact: \`import { connectPreact, connectPreactView } from '@stateref/connect-preact'\`
 - Vue: \`import { connectVue, connectVueView } from '@stateref/connect-vue'\`

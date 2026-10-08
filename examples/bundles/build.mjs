@@ -12,11 +12,15 @@
  */
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { cpSync, rmSync } from 'node:fs';
 import { build } from 'vite';
 import {
   COMBINATIONS,
   ESM_OUT_DIR,
   PAGES_OUT_DIR,
+  SHARED_BUNDLES,
+  SHARED_OUT_DIR,
+  SHARED_PAGES_DIR,
   UMD_PAGES,
 } from './boundary.config.mjs';
 import { recordModuleGraph } from './plugins/record-module-graph.mjs';
@@ -60,3 +64,28 @@ await build({
   },
 });
 console.log(`  built pages (hub + ${UMD_PAGES.length} UMD)`);
+
+// The shared-store pages: every bundle is its own build, served under
+// `/shared/`, next to static pages that are copied rather than built.
+const sharedDir = resolve(root, SHARED_OUT_DIR, 'shared');
+rmSync(resolve(root, SHARED_OUT_DIR), { recursive: true, force: true });
+for (const bundle of SHARED_BUNDLES) {
+  await build({
+    root,
+    configFile: false,
+    logLevel: 'warn',
+    define: { 'process.env.NODE_ENV': '"production"' },
+    build: {
+      outDir: sharedDir,
+      emptyOutDir: false,
+      copyPublicDir: false,
+      lib: {
+        entry: resolve(root, bundle.entry),
+        formats: ['es'],
+        fileName: () => `${bundle.name}.js`,
+      },
+    },
+  });
+}
+cpSync(resolve(root, SHARED_PAGES_DIR), sharedDir, { recursive: true });
+console.log(`  built shared (${SHARED_BUNDLES.length} separate bundles)`);

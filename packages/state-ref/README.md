@@ -82,6 +82,53 @@ editor.discard(); // releases subscriptions and closes the draft
 
 Draft editing supports acyclic plain data and dense arrays. Arrays are merged as one atomic field. Functions, Date, Map, core-reserved payload keys, and direct mutation of an object obtained through draft `.value` are rejected. The UMD build is a companion script: load `state-ref.umd.js` before `state-ref.draft.umd.js`, then use the `stateRefDraft` global.
 
+### Optional shared stores across bundles
+
+Import from `state-ref/shared` when separately built bundles on one page need the same store. One bundle provides a watch under a name; any other bundle follows it by that name, even when each bundle carries its own copy of state-ref and whichever loads first.
+
+```typescript
+import { createStore } from 'state-ref';
+import { provideShared, sharedWatch, isProvided, isReady } from 'state-ref/shared';
+
+type Subs = { loaded: boolean; mySubs: string[] | null };
+type LoadedSubs = Subs & { loaded: true; mySubs: string[] };
+
+// Provider bundle: owns the data, and says when it can be used
+const store = createStore<Subs>({ loaded: false, mySubs: null });
+provideShared('subs', store, { ready: ref => ref.loaded.value });
+
+// Consumer bundle: a watch right away, whether or not the provider has loaded
+const subsWatch = sharedWatch<Subs, LoadedSubs>('subs');
+
+subsWatch(ref => {
+  if (!isProvided(ref)) return; // no bundle has provided 'subs' yet
+  if (!isReady(ref)) return; // the store exists, its data is still loading
+  console.log(ref.mySubs.value.length); // an ordinary ref from here on
+});
+
+// Later, in the provider: the subscriber above runs again
+const subs = store();
+subs.mySubs.value = ['a', 'b'];
+subs.loaded.value = true;
+```
+
+That is the shape for a store one bundle owns and fills. A value with no single owner - a `@stateref/sync` client, or UI state with a fixed initial value - is simpler: every bundle calls `ensureShared(name, create)` with the same arguments, the first call creates it, and the value is always there, so there is nothing to guard.
+
+```typescript
+import { createStore } from 'state-ref';
+import { ensureShared } from 'state-ref/shared';
+
+// The same line in every bundle that needs it
+const modalWatch = ensureShared('ui.modal', () => createStore({ open: false }));
+
+modalWatch(ref => console.log(ref.open.value)); // an ordinary watch
+modalWatch().open.value = true;
+```
+
+A shared ref has no paths until a guard has run: skipping the guard is a compile error in TypeScript and a thrown error in JavaScript. `whenReady(name, callback)` runs a callback once when the store is ready and then unsubscribes. `provideShared` also accepts a value that is not a watch, which other bundles fetch with `getShared` or `onShared`; `pendingShared()` lists names nobody has provided.
+
+The first registration of a name stays; providing something else under it warns and returns the first. The registry lives on `globalThis`, so on a server it is shared between requests - do not provide per-request state there. `batch` from `state-ref/batch` coalesces writes only for stores created by the same copy of state-ref.
+
 ### Optional server query package
 
 `@stateref/sync` is a separate ESM package for shared query caching, editable resource refs and mutations. It is installed and imported only by apps that need it. Direct resource edits are local; saving is explicit - capture the edits and run a mutation linked to the query. See [the sync package guide](../sync/README.md) for its API and supported scope.

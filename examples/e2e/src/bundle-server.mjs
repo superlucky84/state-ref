@@ -31,6 +31,8 @@ const ROOTS = [
   join(dist, 'esm', 'draft-only'),
   join(dist, 'esm', 'sync-only'),
   join(dist, 'esm', 'combined'),
+  // The shared-store bundles and their static pages, all under `/shared/`.
+  join(dist, 'shared'),
 ];
 
 const port = Number(process.argv[2] ?? 4190);

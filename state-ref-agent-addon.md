@@ -168,10 +168,28 @@ CODING GUIDELINES:
       `refetchMode` option); bind `query.watchDisplay` before the first message
     - Details: node_modules/state-ref/dist/skills/state-ref/reference/server-sync.md
 
+13. SHARING ACROSS BUNDLES (state-ref 3.2, `state-ref/shared`)
+    - Only for separately built bundles on one page; inside one bundle,
+      export and import the watch
+    - A value no bundle owns (a `@stateref/sync` client, UI state with a
+      fixed initial value): `ensureShared(name, create)` with the same
+      arguments in every bundle; it is always there, no guard
+    - A store one bundle fills: that bundle calls
+      `provideShared(name, watch, { ready })`; other bundles use
+      `sharedWatch(name)`
+    - A ref from `sharedWatch` has no paths until a guard has run:
+      `if (!isReady(ref)) return;` (or `isProvided(ref)` to read loading and
+      error state). Reading first throws; do not cast around it
+    - Run once when ready: `whenReady(name, callback)`
+    - With a connector use the view form: `connectPreactView(sharedWatch(name))`
+    - One way per name; only the owner fetches into a provided store
+    - Details: node_modules/state-ref/dist/skills/state-ref/reference/shared-across-bundles.md
+
 IMPORT PATHS:
 - Core: `import { createStore, createStoreManualSync, combineWatch, createComputed } from 'state-ref'`
 - Helpers: `import { lens, copyable, cloneDeep } from 'state-ref'`
 - Drafts: `import { createDraft } from 'state-ref/draft'`
+- Shared across bundles: `import { ensureShared, provideShared, sharedWatch, isProvided, isReady, whenReady } from 'state-ref/shared'`
 - Batch: `import { batch } from 'state-ref/batch'`
 - React: `import { connectReact, connectReactView } from '@stateref/connect-react'`
 - Preact: `import { connectPreact, connectPreactView } from '@stateref/connect-preact'`
@@ -251,6 +269,16 @@ This section provides minimal context to help agents locate and use state-ref fu
 - **connectSvelteRunes** - Svelte 5 runes (`@stateref/connect-svelte/runes`)
 - **connectSolid** - Solid signal connector, takes a selector (`@stateref/connect-solid`)
 - **connect*View** - Readonly display of a `@stateref/sync` query
+
+### Shared Across Bundles (3.2, separate entry point)
+- **ensureShared** (`state-ref/shared`) - The value under a name, created on
+  first call; for a value with no single owner, such as a sync client
+- **provideShared** - Register a watch as its owner, with an optional `ready`
+  condition
+- **sharedWatch** - Follow a provided store from another bundle, before or
+  after it is provided
+- **isProvided / isReady** - Guards a shared ref must pass before it is read
+- **whenReady** - Run a callback once when a store is ready
 
 ### Server Sync (`@stateref/sync`, optional package)
 - **createSyncClient** - Query cache and mutation client

@@ -83,6 +83,7 @@ try {
     'state-ref',
     'state-ref/draft',
     'state-ref/batch',
+    'state-ref/shared',
     '@stateref/connect-react',
     '@stateref/connect-preact',
     '@stateref/connect-vue',
@@ -128,12 +129,13 @@ try {
     import { create } from 'state-ref';
     import { createDraft } from 'state-ref/draft';
     import { batch } from 'state-ref/batch';
+    import { provideShared } from 'state-ref/shared';
     import { createSyncClient } from '@stateref/sync';
     const plugin = await import('state-ref/plugin');
     const { connectSvelteRunes } = await import('@stateref/connect-svelte/runes');
     if (typeof connectSvelteRunes !== 'function')
       throw new Error('@stateref/connect-svelte/runes did not export connectSvelteRunes');
-    if ([create, createDraft, batch, createSyncClient].some(value => typeof value !== 'function'))
+    if ([create, createDraft, batch, provideShared, createSyncClient].some(value => typeof value !== 'function'))
       throw new Error('an ESM entry did not export its function');
     if (Object.keys(plugin).length === 0) throw new Error('state-ref/plugin exported nothing');
   `;
@@ -147,7 +149,8 @@ try {
     import { create } from 'state-ref';
     import { createDraft } from 'state-ref/draft';
     import { batch } from 'state-ref/batch';
-    export const entries = [create, createDraft, batch].length;
+    import { provideShared } from 'state-ref/shared';
+    export const entries = [create, createDraft, batch, provideShared].length;
   `;
   for (const [folder, type] of [
     ['esm', 'module'],

@@ -78,6 +78,10 @@ const menuData: MenuSection[] = [
         link: '/guide/manual-sync',
       },
       { text: { en: 'batch', ko: 'batch' }, link: '/guide/batch' },
+      {
+        text: { en: 'Shared Across Bundles', ko: '번들 간 공유' },
+        link: '/guide/shared',
+      },
     ],
   },
   {

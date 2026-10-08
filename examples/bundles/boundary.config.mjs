@@ -90,3 +90,18 @@ export const VENDOR_FILES = {
 export const ESM_OUT_DIR = 'dist/esm';
 export const PAGES_OUT_DIR = 'dist/pages';
 export const GRAPH_FILE = 'module-graph.json';
+
+/**
+ * Two bundles built separately on purpose (docs/shared-store, M-SH-01). Each
+ * inlines its own copy of state-ref and of @stateref/sync, which is the
+ * arrangement `state-ref/shared` exists for. They are library-mode builds with
+ * fixed file names, so the static pages in `shared-pages/` can load them with
+ * plain script tags in whatever order a page wants - a page vite built would
+ * hoist the two copies into one shared chunk and prove nothing.
+ */
+export const SHARED_OUT_DIR = 'dist/shared';
+export const SHARED_BUNDLES = [
+  { name: 'provider', entry: 'src/shared/provider.ts' },
+  { name: 'consumer', entry: 'src/shared/consumer.ts' },
+];
+export const SHARED_PAGES_DIR = 'shared-pages';

@@ -19,6 +19,7 @@ export default defineConfig({
     alias: {
       '@': resolve(__dirname, './src'),
       'state-ref/batch': resolve(__dirname, './src/batch/index.ts'),
+      'state-ref/shared': resolve(__dirname, './src/shared/index.ts'),
       'state-ref': resolve(__dirname, './src/index.ts'),
     },
   },

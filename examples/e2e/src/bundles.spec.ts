@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { BUNDLE_RUNS, bundleUrl } from './bundles';
 import type { RowMatch } from './bundles';
+import { SHARED_RUNS } from './shared-bundles';
 
 /**
  * The bundle combination pages, in a real browser (M2-01, M2-02's core half).
@@ -37,7 +38,9 @@ const readRows = (page: Page) =>
       )
     ) as Promise<Record<string, string>>;
 
-for (const run of BUNDLE_RUNS) {
+// The shared-store pages ride the same runner: rows, buttons, and no console
+// errors (docs/shared-store, M-SH-01 and M-SH-02).
+for (const run of [...BUNDLE_RUNS, ...SHARED_RUNS]) {
   test(`${run.name} — ${run.path}`, async ({ page }) => {
     const noise: string[] = [];
     page.on('pageerror', error => noise.push(`pageerror: ${error}`));
