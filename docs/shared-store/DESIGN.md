@@ -118,7 +118,7 @@ import {
 
 | 항목 | 내용 | 추적 |
 |---|---|---|
-| 두 사본 | 소비 사본이 제공 사본의 스토어를 읽고 쓰고 구독한다. 한 사본의 ref를 다른 사본의 가드가 판별한다. **확인됨** | T-SH-10 |
+| 두 사본 | 소비 사본이 제공 사본의 스토어를 읽고 쓰고 구독한다. 한 사본의 ref를 다른 사본의 가드가 판별한다. **확인됨** — jsdom의 UMD 두 사본, 그리고 실제 번들러로 따로 빌드한 두 번들을 실제 Chromium에서 | T-SH-10, T-SH-25 |
 | Preact | `connectPreactView(sharedWatch(...))`로 만든 훅이 제공 전 → 로딩 → 데이터를 스스로 다시 렌더링한다. **확인됨** | T-SH-10 |
 | 다른 커넥터 | view 형태가 있지만 공유 watch와의 조합은 테스트하지 않았다 | — |
 | `connectPreact`의 타입 | `Watch<T>`만 받아 공유 watch가 타입에 맞지 않는다. `connectPreactView`를 쓴다. 런타임 구현은 같다 | N-SH-08 |
@@ -128,11 +128,13 @@ import {
 | sync의 데이터 watch | query의 `watch`는 첫 load 전에 읽으면 예외다. load 뒤에 제공한다. 소비 쪽의 쓰기는 query의 로컬 편집이 된다. **확인됨** | T-SH-22 |
 | sync 클라이언트 공유 | `ensureShared`로 얻은 클라이언트에서 같은 key를 여러 곳이 동시에 load해도 `queryFn`은 한 번 호출된다. 한 곳의 mutation과 invalidate가 다른 곳의 query에 반영된다. **확인됨**(같은 사본 안에서) | T-SH-24 |
 | `ensureShared`와 두 사본 | 두 사본이 각자의 `create`로 요청하면 먼저 요청한 사본의 것만 실행되고 양쪽이 같은 객체를 받는다. **확인됨**(스토어로) | T-SH-23 |
-| 사본이 다른 sync | sync는 ESM 빌드만 있어 UMD 두 사본 테스트에 넣지 못했다. state-ref 사본이 다른 번들이 다른 사본의 sync 클라이언트를 쓰는 조합, 특히 소비 쪽의 state-ref 값을 클라이언트에 넘기는 경우(반응형 query key 등)는 실행해 보지 않았다 | — |
+| 사본이 다른 sync | 따로 빌드한 두 번들이 각자의 sync 사본으로 `ensureShared`를 부르면 클라이언트는 하나다. 다른 사본이 만든 클라이언트로 query·mutation·invalidate·refetch를 실행하고 양쪽 query가 같은 캐시 항목을 본다. **확인됨**(실제 Chromium). 소비 쪽의 state-ref 값을 클라이언트에 넘기는 경우(반응형 query key, `links` 등)는 실행해 보지 않았다 | T-SH-25 |
+| 순차 load | 이미 로드된 key를 다른 번들이 나중에 `load()`하면 READ가 한 번 더 나간다. "같은 key는 한 번만 읽는다"는 겹쳐서 진행 중인 load에만 해당한다. 가이드의 표현을 이에 맞게 고쳤다 | T-SH-25 |
 | 먼저 온 `create`의 옵션 | `createSyncClient(options)`를 번들마다 다르게 주면 뒤의 것은 조용히 버려진다. 비교하거나 경고하지 않는다. 가이드에 공용 모듈에 두라고 적었다 | — |
 | 읽기 전용 watch의 타입 | display watch는 읽기 전용인데 `sharedWatch`의 ref 타입은 쓰기 가능으로 보인다. 쓰면 제공 쪽 watch의 규칙대로 런타임에서 거부된다 | — |
 | 서버 렌더 | 레지스트리가 요청 사이에 공유된다. 가이드와 README에 경고를 적었다 | T-SH-15 |
-| 버전이 다른 사본 | 실행해 보지 않았다. 근거는 산출물에 코어 import가 없다는 것뿐이다 | T-SH-13 |
+| 버전이 다른 사본 | 실행해 보지 않았다. 두 번들은 같은 버전의 state-ref를 각자 품었다. 근거는 산출물에 코어 import가 없다는 것뿐이다 | T-SH-13 |
+| 의존 경로는 누적된다 | 구독이 한 번이라도 읽은 경로는 이후 실행에서 읽지 않아도 계속 깨운다(코어의 기존 동작). 그래서 준비됐다가 다시 로딩이 된 구독은 데이터 쓰기에도 실행된다. 값은 올바르고 실행 횟수만 늘어난다 | T-SH-25 |
 
 ## 5. 파일 구성
 
@@ -145,10 +147,18 @@ import {
 | `packages/state-ref/test/shared-types.ts` | 타입 테스트 (게이트 `shared-types`) |
 | `packages/connect-preact/src/tests/preact/shared.tsx` | 공유 watch로 만든 Preact 훅 |
 | `packages/sync/src/tests/shared.test.ts` | sync query·클라이언트 공유 |
+| `examples/bundles/src/shared/`, `shared-pages/` | 따로 빌드하는 제공·소비 번들과 정적 페이지 3개 |
+| `examples/e2e/src/shared-bundles.ts` | 위 페이지의 Playwright 기대값 |
 | `stateRefDocs/src/pages/Shared.tsx`, `Shared_ko.tsx` | 사용자 가이드 |
 | `packages/state-ref/vite.shared.config.js`, `package.json`, `scripts/*.mjs` | 빌드·export·검사 등록 |
 
 ## 6. 인계
+
+### 2026-10-08 — 실제 번들 E2E
+
+- 완료: 실제 번들러로 따로 빌드한 두 번들 예제와 Playwright 스펙. `pnpm test:e2e` 103개 통과(기존 100 + 3).
+- 구현 결함은 나오지 않았다. 페이지에서 측정한 값이 설계에서 예상한 값과 모두 일치했다.
+- 다음: [IMPLEMENT](./IMPLEMENT.md)의 남은 항목.
 
 ### 2026-10-08 — 3차 개정 구현
 

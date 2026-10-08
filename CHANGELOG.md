@@ -15,7 +15,7 @@ size.
   - **`ensureShared(name, create)`** - for a value no bundle owns. Every
     bundle calls it with the same arguments; the first call creates the value
     and the rest receive it. With a sync client, every bundle keeps the
-    ordinary sync API and a key is read once.
+    ordinary sync API on one cache.
   - **`provideShared(name, watch, { ready })`** - for a store one bundle
     fills. `ready` states when its data can be used.
   - **`sharedWatch(name)`** - a watch over a provided store, usable before the
@@ -38,9 +38,10 @@ size.
   same copy of state-ref.
 - A shared watch goes through a connector's view form
   (`connectPreactView`); only the Preact connector is covered by tests.
-- Bundles built by a real bundler, and bundles carrying different versions of
-  state-ref, have not been exercised - the two-copy tests evaluate one UMD
-  build twice.
+- Bundles carrying different versions of state-ref have not been exercised.
+  Two separately built bundles of the same version are covered by the
+  browser tests (`pnpm test:e2e`), including a sync client created by one
+  bundle's copy and used from the other's.
 
 ## @stateref/sync 0.2.0
 

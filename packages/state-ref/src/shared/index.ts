@@ -158,8 +158,8 @@ export function provideShared(
  *
  * This is for a value that needs no single owner - one where it does not
  * matter which bundle creates it. A `@stateref/sync` client is the usual
- * case: it starts empty, and its cache already makes sure a key is read once
- * however many bundles ask for it.
+ * case: it starts empty, and its cache holds one entry per key, so every
+ * bundle sees the same data and loads that overlap share one read.
  *
  *   const client = ensureShared('sync', () => createSyncClient());
  *

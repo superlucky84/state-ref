@@ -1,7 +1,7 @@
 # IMPLEMENT — 번들 간 이름 기반 공유 스토어
 
 - 작성일: 2026-10-08 (같은 날 2차·3차 개정)
-- 상태: 단계 0~4와 7, 8 완료. 단계 5·6은 일부 완료이며 남은 항목은 `[ ]`로 표시했다.
+- 상태: 단계 0~4와 7, 8, 9 완료. 단계 5·6은 일부 완료이며 남은 항목은 `[ ]`로 표시했다.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 모든 단계의 공통 완료 조건: `pnpm test:core` 통과, C-SH-01 대상 경로의 `git diff main`이 비어 있음. 테스트는 `pnpm` 스크립트 또는 `pnpm exec vitest`로 실행한다(CLAUDE.md의 주의 사항).
@@ -35,11 +35,12 @@
 | T-SH-21 | 가드 전 경로 접근은 컴파일 오류, `isProvided` 뒤는 원래 타입, `isReady` 뒤는 준비 타입. 등록된 이름의 타입 강제 | `types` | 통과 |
 | T-SH-22 | sync의 display watch와 load 뒤의 데이터 watch를 `sharedWatch`로 소비 | `packages/sync/src/tests/shared.test.ts` | 통과 (주 2) |
 | T-SH-23 | `ensureShared`: 한 번만 생성, 중복 호출에 경고 없음, 대기 연결, `provideShared`와의 선후 관계, `create` 실패와 재진입, 두 사본에서 양쪽 순서 | `unit/registry.ts`, `bundle`, `types` | 통과 |
+| T-SH-25 | 실제 번들러로 따로 빌드한 제공·소비 번들(각자 state-ref와 sync 사본 포함)을 실제 Chromium에서: 양쪽 로드 순서, 제공 번들의 지연 주입, 세 단계 전환, Preact 훅, 가드 없는 읽기의 오류 문구, 중복 제공, `pendingShared`, 사본을 넘는 sync 클라이언트의 query·mutation | `examples/e2e/src/shared-bundles.ts` (`pnpm test:e2e`) | 통과 |
 | T-SH-24 | `ensureShared`로 얻은 sync 클라이언트: 한 클라이언트, 같은 key는 한 번의 read, 한 곳의 mutation이 다른 곳의 query를 갱신 | `packages/sync/src/tests/shared.test.ts` | 통과 (주 2) |
 
-주 1 — 두 사본은 **같은 버전의 UMD 빌드를 한 창에서 두 번 평가**해 만들었다. 실제 번들러로 따로 빌드한 번들과 서로 다른 state-ref 버전의 조합은 실행해 보지 않았다.
+주 1 — 이 항목의 두 사본은 **같은 버전의 UMD 빌드를 한 창에서 두 번 평가**해 만들었다. 실제 번들러로 따로 빌드한 번들은 T-SH-25가 확인한다. 서로 다른 state-ref 버전의 조합은 실행해 보지 않았다.
 
-주 2 — sync 테스트는 한 사본 안에서 실행했다. sync 클라이언트를 사본이 다른 번들에서 받아 쓰는 조합은 실행해 보지 않았다.
+주 2 — 이 sync 테스트는 한 사본 안에서 실행했다. 사본이 다른 번들 사이의 클라이언트 공유는 T-SH-25가 확인한다.
 
 ## 단계 0 — 기준선 ✅
 
@@ -58,8 +59,8 @@
 - [x] 두 사본의 양쪽 로드 순서와 사본을 넘는 가드(T-SH-10).
 - [x] Preact 훅(`connect-preact` 8 파일 · 32 테스트 통과).
 - [x] sync 연동(`sync` 21 파일 · 236 테스트 통과).
-- [ ] 실제 번들러로 제공 번들과 소비 번들을 따로 빌드하는 예제 페이지. M-SH-01의 대상이다.
-- [ ] 저장소의 기존 브라우저 검증 구성에 그 예제를 포함할지 결정.
+- [x] 실제 번들러로 제공 번들과 소비 번들을 따로 빌드하는 예제 페이지(단계 9).
+- [x] 저장소의 기존 브라우저 검증 구성(`examples/e2e`)에 포함했다.
 - [ ] React·Vue·Svelte·Solid 커넥터의 view 형태에 공유 watch를 넘기는 테스트.
 
 ## 단계 6 — 문서와 릴리스 준비 — 일부 완료
@@ -90,6 +91,18 @@
   - sync query의 `watch`는 첫 load 전에 읽으면 예외다. 가이드에 "load 뒤에 제공"으로 적었다.
 - **가이드 예제 검증:** 가이드의 코드 블록을 실제 타입에 대해 한 번 컴파일해 오류가 없음을 확인했다. 일회성 확인이며 게이트에 넣지 않았다. README의 예제만 게이트(`doc-examples`)로 검사된다.
 
+## 단계 9 — 실제 번들 E2E ✅
+
+- 시작 조건: MANUAL_TEST_CHECKLIST의 M-SH-01·02가 미수행이고, 저장소에 Playwright 구성(`examples/e2e`)이 있다.
+- [x] `examples/bundles`에 제공 번들과 소비 번들을 추가했다. vite 라이브러리 모드로 각각 따로 빌드하고 파일명을 고정한다. 한 페이지로 함께 빌드하면 vite가 두 사본을 공통 청크로 합쳐 버려 증명이 되지 않기 때문이다. 두 산출물 모두 import 문이 없고 코어를 각자 품고 있음을 확인했다.
+- [x] 정적 페이지 3개: 제공 번들 먼저, 소비 번들 먼저, 제공 번들을 버튼으로 나중에 주입.
+- [x] `examples/e2e`의 번들 서버에 루트를 추가하고, 기존 번들 runner(행 읽기, 버튼 누르기, 콘솔 오류는 실패)에 3개 실행을 붙였다.
+- [x] 기대값은 저장소의 관례대로 페이지에서 먼저 측정한 뒤 옮겼다. 측정값은 설계에서 예상한 값과 모두 일치했다.
+- [x] `examples/bundles`에 `preact`, `@stateref/connect-preact` 의존성을 추가했다(`pnpm-lock.yaml` 6줄).
+- **결과:** `pnpm test:e2e` 103개 통과(5.8분). `pnpm gate` 21단계, `pnpm check:examples` 통과.
+- **E2E가 알려 준 것:** 순차 load는 READ가 두 번 나간다(DESIGN 4절 "순차 load"). 가이드와 README의 "같은 key는 한 번만 읽는다"를 "겹친 load는 한 번만 읽는다"로 고쳤다.
+- **남은 것:** 동시 load의 중복 제거를 사본이 다른 번들에서 확인하는 것, `async`/`defer` 스크립트, 개발자 도구에서의 ref 표시.
+
 ## 단계 8 — 3차 개정 (ensureShared) ✅
 
 - 시작 조건: REQUIREMENTS의 U-SH-11, U-SH-12.
@@ -102,9 +115,15 @@
 
 ## 인계
 
+### 2026-10-08 — 실제 번들 E2E
+
+- 완료: 단계 9. M-SH-01·02의 [E2E] 항목 통과.
+- 다음: 배포 여부 결정. 남은 수동 항목은 MANUAL_TEST_CHECKLIST에 [사람]·[미확인]으로 표시했다.
+- 막힌 것: 없음.
+
 ### 2026-10-08 — 릴리스 준비
 
-- 완료: AI 문서, 페이지 간 링크, 버전 3.2.0, CHANGELOG, 배포 절차 문서. `pnpm gate` 21단계와 `pnpm check:packaging` 통과. publish dry run: 94 파일, 186.7 kB.
+- 완료: AI 문서, 페이지 간 링크, 버전 3.2.0, CHANGELOG, 배포 절차 문서. `pnpm gate` 21단계와 `pnpm check:packaging` 통과. publish dry run: 94 파일, 186.8 kB.
 - 다음: 배포 여부 결정 → [배포 절차](../release/2026-10-08.md) 실행.
 - 막힌 것: 없음. 배포는 사용자가 실행한다.
 

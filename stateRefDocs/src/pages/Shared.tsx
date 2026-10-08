@@ -111,7 +111,7 @@ subs.watchDisplay(ref => {
   if (!list) return showSpinner();
   renderBadge(list.length);
 });
-subs.load(); // every bundle may call it; the key is read once
+subs.load(); // every bundle may call it; loads that overlap share one read
 
 const subscribe = client.mutation({
   mutationFn: input => api.subscribe(input),
@@ -121,8 +121,10 @@ const subscribe = client.mutation({
       <p>
         There is no provider and no consumer here, and nothing new to learn
         beyond that one line. Which bundle fetches does not need deciding: the
-        client's cache holds one entry per key, so a key is read once however
-        many bundles ask for it.
+        client's cache holds one entry per key, so every bundle sees the same
+        data, and loads that overlap share a single read. A <code>load()</code>{' '}
+        made later, once the first has finished, reads again - the same as
+        inside one bundle.
       </p>
       <p>
         A plain store works the same way when its initial value is fixed and no

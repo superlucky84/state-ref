@@ -107,7 +107,7 @@ subs.watchDisplay(ref => {
   if (!list) return showSpinner();
   renderBadge(list.length);
 });
-subs.load(); // 모든 번들이 불러도 된다. 같은 key는 한 번만 읽는다
+subs.load(); // 모든 번들이 불러도 된다. 겹친 load는 한 번의 read를 나눠 쓴다
 
 const subscribe = client.mutation({
   mutationFn: input => api.subscribe(input),
@@ -117,8 +117,9 @@ const subscribe = client.mutation({
       <p>
         여기에는 제공 쪽도 소비 쪽도 없고, 그 한 줄 말고는 새로 배울 것이
         없습니다. 어느 번들이 fetch할지도 정할 필요가 없습니다. 클라이언트의
-        캐시는 key마다 항목이 하나라서, 몇 개의 번들이 요청하든 같은 key는 한
-        번만 읽습니다.
+        캐시는 key마다 항목이 하나라서 모든 번들이 같은 데이터를 보고, 겹쳐서
+        진행 중인 load는 한 번의 read를 나눠 씁니다. 앞선 load가 끝난 뒤에 다시
+        부른 <code>load()</code>는 한 번 더 읽습니다. 한 번들 안에서와 같습니다.
       </p>
       <p>
         초기값이 고정돼 있고 어느 번들도 무언가를 불러와 채울 필요가 없는 일반

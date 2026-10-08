@@ -43,8 +43,9 @@ export const modalWatch = ensureShared('ui.modal', () =>
 - The value always exists after the call: no callback, no `await`, no guard.
 - Only the first `create` runs. Give every bundle the same one; options that
   differ between bundles are silently dropped.
-- With a shared sync client, the same `queryKey` is read once however many
-  bundles query it.
+- With a shared sync client every bundle sees one cache entry per
+  `queryKey`. Loads that overlap share one read; a `load()` made after the
+  first has finished reads again, as it does inside one bundle.
 
 ## One owner: `provideShared` + `sharedWatch`
 
