@@ -1,7 +1,7 @@
 # DESIGN — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: **결정 완료** (2026-10-08 IMPLEMENT 단계 0 재검증 + 검증 에이전트 교차 검토 2회 반영). 미결 `[ ]` 없음. 구현 전. PR #16은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`).
+- 상태: **결정 완료** (2026-10-08 IMPLEMENT 단계 0 재검증 + 검증 에이전트 교차 검토 2회 반영). 미결 `[ ]` 없음. 단계 1·2 완료(2026-10-09 리뷰 반영·전체 게이트 통과, 진행 상태는 IMPLEMENT 기준). PR #16은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`).
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 ## 1. 현재 구조 (기준 `6e462ed`, 2026-10-08 코드로 재확인)
@@ -61,7 +61,7 @@
   - `ssr: true` client에서는 콜백 구독도 붙지 않고 peek를 구독한다(DC-QH-15).
   - 마지막 구독 해제: DC-QH-11.
   - 커넥터가 붙잡는 watch는 이 함수 하나이고, key가 바뀌어도 바뀌지 않는다(DC-QH-14).
-  - 옵션 오류: `observe`·`matches`·`peek`·`watch()`는 잘못된 key(`undefined`, ref 같은 평범하지 않은 객체)나 boolean이 아닌 `enabled`로 렌더에서 던지지 않고, 커서와 같은 `status: 'error'`, `errorSource: 'source'` 표시를 돌려준다(`live-key.ts:111-121`과 같은 모양, R-QH-15). key에는 `undefined`를 쓸 수 없으므로 의존 조회는 `queryKey: ['user', id ?? null], enabled: id != null`로 쓴다(가이드). 쿼리를 열 때 거절될 옵션(다른 query 종류의 key, 편집 가능·읽기 전용 혼용, 잘못된 `initialUpdatedAt`·`staleTime` 등, 편집 가능 query의 평범하지 않은 `initialData`)도 열 때와 같은 검사로 같은 오류 표시를 보인다(단계 1 리뷰 반영, 첫 렌더와 붙은 뒤가 어긋나지 않게).
+  - 옵션 오류: `observe`·`matches`·`peek`·`watch()`는 잘못된 key(`undefined`, ref 같은 평범하지 않은 객체)나 boolean이 아닌 `enabled`로 렌더에서 던지지 않고, 커서와 같은 `status: 'error'`, `errorSource: 'source'` 표시를 돌려준다(`live-key.ts:111-121`과 같은 모양, R-QH-15). key에는 `undefined`를 쓸 수 없으므로 의존 조회는 `queryKey: ['user', id ?? null], enabled: id != null`로 쓴다(가이드). 관찰자는 READ를 시작하기 전에 `retry`를 기존 `load()`의 비음수 검사와 같은 규칙으로 검사한다(기존 `client.query`의 검사 시점은 바꾸지 않음). peek와 구독은 `enabled` → key → 열 때 옵션 검사 → `retry` → 캐시 호환성 → 초기값 검사 순서로 같은 오류를 표시한다. 쿼리를 열 때 거절될 옵션(다른 query 종류의 key, 편집 가능·읽기 전용 혼용, 잘못된 `initialUpdatedAt`·`staleTime` 등, 편집 가능 query의 평범하지 않은 `initialData`)도 열 때와 같은 검사로 같은 오류 표시를 보인다(단계 1 리뷰 반영, 첫 렌더와 붙은 뒤가 어긋나지 않게).
   - **key 안의 state-ref ref는 `hashQueryKey`가 거절한다(단계 1 리뷰 반영, 기존 동작 변경).** ref는 평범한 객체를 대상으로 하는 프록시라 평범한 객체 검사를 통과하고, 숫자 ref는 key가 없어 `{}`로 해시됐다. 그래서 `.value`를 빠뜨린 `['user', idRef]`가 오류 없이 모든 id에서 같은 항목을 나눠 썼다. 이제 `client.query`·`fetch` 등도 이런 key에 `read a ref with \`.value\``가 든 `TypeError`를 던진다. 예약 심볼 `Symbol.for('state-ref.ref-link')`로 판별한다(DESIGN server-sync 2절의 예약 키). CHANGELOG에 적는다. 비교할 때 잘못된 옵션은 key hash 자리에 고정 표지(`'invalid'`)와 오류 문구를 둔다. 확정 옵션과 렌더 옵션이 같은 표지·문구면 `matches`는 true, `setOptions`는 false를 돌려주고 옵션 store에 다시 쓰지 않는다. 유효 여부나 오류 문구가 바뀔 때만 쓴다. 오류 표시도 DC-QH-29의 메모를 따른다(입력: 표지·문구·`enabled`·표시 옵션 identity). 그러지 않으면 React·Preact가 커밋마다 다시 렌더하거나 `getSnapshot`이 매번 새 객체를 돌려준다.
   - 관찰자는 처음 받은 client에 묶인다. 진입점이 첫 호출과 다른 `client`를 받으면 `This query observer is bound to another client.`로 던진다(DC-QH-25).
   - 그 밖의 멤버: `peek(options)`·`matches(options)`·`setOptions(options)`(DC-QH-14·28), `controls`(DC-QH-23). 모양은 3절.
@@ -117,7 +117,7 @@ DC-QH-20·21·24·25·26·28(렌더 +1)·31·33·35는 단계 0 보고의 추천
 - [x] **DC-QH-23 명령·편집 접근 — 반환을 둘로 나눈다** (사용자, U-QH-08) — 반환의 두 번째 값 `q`(관찰자의 `controls`, 관찰자 수명 동안 같은 객체):
   - `q.refetch(): Promise<T>` — 붙어 있고 key가 활성이면 지금 key 핸들의 `refetch()`. 붙지 않았거나(커밋 전, SSR, 해제 뒤) `enabled: false`면 `This query observer is not attached.`로 reject한다.
   - `q.invalidate(): void` — `client.invalidate(지금 확정 key)`. 붙어 있고 `enabled`면 이어서 `void handle.load().catch(() => {})`로 다시 불러온다(TanStack `invalidateQueries`의 활성 관찰자 재조회와 같음, 저자 결정). 실패는 표시의 `status: 'error'`로 보이고 거부는 삼킨다(`live-key.ts:147-150`과 같음). 연결 WRITE가 진행 중이면 `load()`가 거부되므로 무효화만 하고 READ는 하지 않으며, 그 WRITE의 `accept` 규칙이 이후를 정한다. 붙지 않았으면 무효화만 한다. 다른 곳에서 부른 `client.invalidate(key)`는 기존 sync 규칙대로 다시 불러오지 않는다(다음 focus·reconnect·polling·재마운트에서 stale 규칙으로 READ, sync README).
-  - `q.handle(): QueryHandleCore<T> | null` — 지금 key의, `openQuery`가 만든 **원래 핸들 객체 그 자체**(client `handles`에 등록된 것, 위임 래퍼 아님). `QueryHandleCore<T> = Omit<QueryHandle<T>, 'dispose' | 'display' | 'watchDisplay'>`로 표시·해제 멤버는 **타입에서만** 뺀다(런타임 객체에는 있으며, 캐스팅해 `dispose`를 부르는 것은 지원하지 않는다). mutation `links`(`mutation.ts:44`)와 연결 제출 영속화의 `links`·`queries`(`linked-persistence.ts:45`, `:84`, `:397`)가 받는 타입을 `QueryHandleCore<any>`로 넓혀 `q.handle()`을 그대로 넣을 수 있게 한다. 이 API들은 `queryKey`·`status`·`capture`·`version`과 `handles` 등록 여부만 쓰므로 동작은 같고, 기존 `QueryHandle`도 그대로 대입된다(넓히기만 하는 공개 타입 변경, CHANGELOG). `streamQuery`는 이미 필요한 멤버만 받는다(`stream.ts:88-92`). 붙기 전·`enabled: false`·SSR·해제 뒤에는 `null`. key가 바뀌면 다른 핸들을 돌려준다. 편집용 `ref`가 로드 전에 던지는 등의 규칙은 `QueryHandle` 계약 그대로다. 해제(`dispose`)는 내놓지 않는다(관찰자 소유 핸들은 관찰자만 놓는다). 표시는 관찰자 표시(반환의 첫 값)로 읽는다.
+  - `q.handle(): QueryHandleCore<T> | null` — 지금 key의, `openQuery`가 만든 **원래 핸들 객체 그 자체**(client `handles`에 등록된 것, 위임 래퍼 아님). `QueryHandleCore<T> = Omit<QueryHandle<T>, 'dispose' | 'display' | 'watchDisplay'>`로 표시·해제 멤버는 **타입에서만** 뺀다(런타임 객체에는 있으며, 캐스팅해 `dispose`를 부르는 것은 지원하지 않는다). mutation `links`(`mutation.ts:44`)와 연결 제출 영속화의 `links`·`queries`(`linked-persistence.ts:45`, `:84`, `:397`)가 받는 타입을 `QueryHandleCore<any>`로 넓혀 `q.handle()`을 그대로 넣을 수 있게 한다. 이 API들은 `queryKey`·`status`·`capture`·`version`과 `handles` 등록 여부만 쓰므로 동작은 같고, 기존 `QueryHandle`도 그대로 대입된다(넘기는 쪽에는 넓힘이지만 읽는 쪽·구현자에는 표시·해제 멤버가 빠지는 좁힘이므로 CHANGELOG에 양쪽 영향 기록). `streamQuery`는 이미 필요한 멤버만 받는다(`stream.ts:88-92`). 붙기 전·`enabled: false`·SSR·해제 뒤에는 `null`. key가 바뀌면 다른 핸들을 돌려준다. 편집용 `ref`가 로드 전에 던지는 등의 규칙은 `QueryHandle` 계약 그대로다. 해제(`dispose`)는 내놓지 않는다(관찰자 소유 핸들은 관찰자만 놓는다). 표시는 관찰자 표시(반환의 첫 값)로 읽는다.
   - 근거: 표시 프록시에 메서드를 섞으면 상태 키와 충돌할 수 있다. 편집 ref는 로드 여부와 key에 따라 달라지므로 "지금 핸들"을 함수로 꺼내 쓰게 한다.
   - 버린 후보: `{ display, query }` 같은 객체 반환(읽기가 한 단계 깊어짐), 별도 훅 `useSyncQueryHandle`(같은 관찰자를 두 훅이 나눠야 함, `7a08107`의 후보 ②), 표시 프록시나 반환 함수에 메서드(상태 키 충돌), 명령은 client로만(편집 ref 접근 불가).
   - 검증: T-QH-18.
@@ -128,7 +128,7 @@ DC-QH-20·21·24·25·26·28(렌더 +1)·31·33·35는 단계 0 보고의 추천
   1. **함수 옵션 `queryFn`·`retryDelay`**: 관찰자는 **key hash마다 칸 하나**(`slot = { queryFn, retryDelay }`)를 둔다. 같은 key로 핸들을 다시 열면(원시값 옵션 변경, 해제 일정 안의 재구독) 그 key의 칸을 그대로 쓰고, key hash가 바뀔 때만 새 칸을 만든다. 칸의 값은 옵션 store가 아니라 관찰자가 마지막으로 받은 옵션(처음에는 `observe` 인자)에서 채우고, `setOptions`는 확정 key hash가 칸의 key와 같을 때만 칸을 최신 함수로 바꾼다. 핸들에는 `ctx => slot.queryFn(ctx)`와 **항상** `n => (slot.retryDelay ?? 기본값)(n)`을 넘긴다(기본값은 `index.ts:767-769`와 같은 `Math.min(1000 * 2 ** n, 30_000)`). 그래서 나중에 `retryDelay`를 더하거나 빼도 다음 재시도에 반영되고 `undefined`를 부르지 않는다. 같은 key 핸들 교체 뒤 진행 중 READ의 재시도도 같은 칸을 부른다. key가 바뀐 뒤 이전 key의 칸은 마지막 값으로 고정된다. 그래서 항목 옵션(`index.ts:390-394`)에 래퍼가 남아도 이전 key의 다른 핸들의 `refetch`, 진행 중 READ의 재시도, mutation `accept: 'refetch'`가 새 key의 `queryFn`을 부르지 않는다(TanStack이 query마다 옵션을 따로 두는 것과 같은 결과). 함수가 바뀌어도 핸들을 다시 열지 않는다.
   2. **표시 옵션 `select`·`placeholderData`·`equals`**: 관찰자 display는 이 셋을 생성 때 고정하지 않고(`display.ts:103-104`) 계산할 때마다 관찰자의 최신 옵션에서 읽는다. `setOptions`가 `select` 또는 `placeholderData` identity 변화를 보면 display의 비공개 `reproject()`를 불러 다시 투영한다(React·Preact는 커밋 뒤 effect 안이므로 렌더 중 쓰기가 아니다). 재투영 결과는 먼저 이전 `data`와 **구조 공유**한다(평범한 객체·배열이 깊게 같으면 이전 객체 유지, TanStack의 structural sharing). 그다음 `equals`를 적용하고, 같으면 publish하지 않는다. 그래서 인라인 `select: d => d.items.filter(...)`나 인라인 `placeholderData` 리터럴도 커밋마다 publish하지 않는다. 구조 공유는 순환 구조를 만나면 그 값을 그대로 쓴다(무한 재귀 방지). 옵션을 객체로 넘긴 기존 display는 예전처럼 `select`·`equals`를 생성 때 고정하고 `placeholderData`만 그때그때 읽는다(넘긴 객체를 나중에 바꿔도 이미 만든 display는 그대로, 단계 1 리뷰 반영). 재투영이 `select` 오류를 내고 지금 표시도 `errorSource: 'select'`이며 오류의 생성자와 `message`가 같으면, 이전 표시(같은 error 객체)를 그대로 두고 publish하지 않는다. `Date`는 `getTime()` 값으로 비교한다. 그 밖의 값(Map·Set·클래스 인스턴스·함수를 담은 결과)은 구조 공유되지 않아 인라인 `select`면 커밋마다 publish되고 다시 렌더된다. 이런 `select`는 메모하거나 `equals`를 주어야 한다(가이드). 구조 공유는 이 재투영 경로에만 두고, 기존 `client.query`의 display는 옵션이 고정이라 동작이 같다(C-QH-02). key가 같고 `select`만 바뀐 렌더는 `matches`가 true라 이전 투영을 보이고 커밋 뒤 맞춰진다(R-QH-09의 예외).
   3. **원시값 핸들 옵션** `staleTime`, `gcTime`, `retry`, `networkMode`, `editable`, `refetchOnFocus`, `refetchOnReconnect`, `refetchInterval`, `refetchIntervalInBackground`: 필드별 `Object.is`로 비교해 다르면 비공개 store에 쓴다. 커서가 같은 key의 **새 핸들을 먼저 열고** 이전 것을 미뤄서 닫으므로 소유자 수가 0이 되지 않는다. 이때 커서가 부르는 `load()`(`live-key.ts:147-150`)는 기존 `staleTime` 규칙을 따른다(`staleTime` 0이면 READ 1회). 자동 재조회 옵션은 핸들을 열 때 고정되므로(`index.ts:1045-1050`) 바꾸려면 핸들을 다시 열어야 한다.
-  4. **`initialData`·`initialUpdatedAt`**: 기준값이 없는 항목에만 심기므로(`seedInitial`) 비교하지 않는다. 다음 open과 peek 합성(DC-QH-33)에서 최신 값을 쓴다.
+  4. **`initialData`·`initialUpdatedAt`**: 기준값이 없는 항목에만 심기므로(`seedInitial`) 값의 identity는 비교하지 않는다. 단, 열 때 검사(`checkOpenOptions`, `retry` 검사, 실제로 초기값을 심을 때의 `assertEditable`)의 성공·오류 문구가 바뀌면 커서를 다시 연다. 무효↔유효 전환에서 peek와 구독 표시가 같아야 한다. 이미 로드된 항목이 무시하는 `initialData`는 검사하지 않는다. 다음 open과 peek 합성(DC-QH-33)에서 최신 값을 쓴다.
   - `queryKey` hash·`enabled`가 다르면 비공개 store에 쓴다(key 전환).
   - 검증: T-QH-13, T-QH-19.
 - [x] **DC-QH-27 React concurrent 렌더와 peek** (저자) — 끼어든 쓰기를 잡는 장치가 렌더 종류마다 다르다.
@@ -238,9 +238,14 @@ type QueryObserver<T, S = T> = Readonly<{
   }>;
 }>;
 
-// client.observe(options, internal?: { scheduleRelease?: (release: () => void) => () => void })
-// 둘째 인자는 진입점용 내부 옵션: 핸들 해제 일정(기본 setTimeout(0), Preact는 DC-QH-11)
-// mutation links·연결 제출 영속화의 query 타입은 QueryHandleCore<any>로 넓힌다(DC-QH-23)
+type ObserverSettings = Readonly<{
+  scheduleRelease?: (release: () => void) => void;
+}>;
+// client.observe(options, settings?: ObserverSettings)
+// 둘째 인자는 진입점용 내부 옵션: 핸들 해제 일정(기본 setTimeout(0), Preact는 DC-QH-11).
+// 예약된 해제는 취소하지 않는다. 새 구독은 새 핸들을 먼저 붙인다(DC-QH-11).
+// mutation links·연결 제출 영속화의 query 타입은 호출자에게는 넓힘,
+// 읽는 쪽·구현자에게는 표시·해제 멤버가 빠지는 좁힘이다(DC-QH-23).
 ```
 
 ## 4. 수명 (관찰자 하나)
@@ -256,7 +261,7 @@ type QueryObserver<T, S = T> = Readonly<{
 
 | 대상 | 변경 |
 |---|---|
-| `packages/sync` | `client.observe`(관찰자, 비공개 옵션 store, peek 메모, 해제 일정, 구독 계수, key별 함수 칸, controls, 옵션 오류 표시), `QueryHandleCore` 타입과 `MutationLink.query`·연결 제출 영속화 `links`·`queries` 타입 넓힘, `display.ts`의 `calculate` 공유·최신 표시 옵션 읽기·`reproject()`·재투영 구조 공유, `QueryDisplayRef` 타입. `live-key.ts` 무변경 |
+| `packages/sync` | `client.observe`(관찰자, 비공개 옵션 store, peek 메모, 해제 일정, 구독 계수, key별 함수 칸, controls, 옵션 오류 표시), `QueryHandleCore` 타입과 `MutationLink.query`·연결 제출 영속화 `links`·`queries` 타입 변경(호출자에 넓힘, 읽는 쪽·구현자에 좁힘), `display.ts`의 `calculate` 공유·최신 표시 옵션 읽기·`reproject()`·재투영 구조 공유, `QueryDisplayRef` 타입. `live-key.ts` 무변경 |
 | 커넥터 패키지 | 새 진입점 파일(`src/sync.ts`)과 `exports`·빌드 설정·선택적 peer 의존 추가만. 기존 `src/index.ts`(Svelte는 `runes.ts` 포함) 무변경(C-QH-01) |
 | `scripts/check-packaging.mjs` | 새 하위 경로 다섯 개 확인 |
 | `packages/sync/test/sync-bundle.mjs` | sync 산출물에 UI 프레임워크 import가 없음을 확인(C-QH-04) |

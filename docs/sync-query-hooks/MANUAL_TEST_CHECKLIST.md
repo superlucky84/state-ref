@@ -1,7 +1,7 @@
 # MANUAL_TEST_CHECKLIST — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08 (단계 0 재검증 결정과 교차 검토 반영)
-- 상태: 미수행(구현 전).
+- 상태: 미수행. sync 기반·관찰자 구현과 별개로, 단계 3·4의 프레임워크 진입점 및 단계 6의 데모가 준비된 뒤 수행한다.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md).
 
 자동 테스트가 확인하지 못하는 것만 둔다. 각 항목에 수행일, 브라우저, 결과(통과/실패), commit을 적는다.

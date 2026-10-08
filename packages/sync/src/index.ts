@@ -5,7 +5,7 @@ import { hashQueryKey } from './key';
 import type { QueryKey } from './key';
 import { ResourceStore } from './resource';
 import type { ResourceChange, ResourceSubmission } from './resource';
-import { frozenCopy } from './tree';
+import { assertEditable, frozenCopy } from './tree';
 import { createMutation } from './mutation';
 import type {
   MutationHandle,
@@ -27,7 +27,7 @@ import type {
   QueryDisplayWatch,
 } from './display';
 import { createLiveQuery } from './live-key';
-import { createPeekReader } from './peek';
+import { checkObserverRetry, createPeekReader } from './peek';
 import type { PeekEntry, PeekOptions } from './peek';
 import { withInternals } from './internal';
 import { createObserver, defaultRetryDelay } from './observe';
@@ -1528,6 +1528,22 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
             {
               ssr: options.ssr ?? false,
               peek: peekReader,
+              validate: queryOptions => {
+                checkOpenOptions(queryOptions);
+                checkObserverRetry(queryOptions.retry);
+                const entry = entries.get(hashQueryKey(queryOptions.queryKey));
+                if (entry) {
+                  if (entry.kind !== 'query')
+                    throw new TypeError('A query key cannot mix query kinds.');
+                  entry.assertCompatible(queryOptions);
+                }
+                if (
+                  queryOptions.initialData !== undefined &&
+                  (queryOptions.editable ?? true) &&
+                  (!entry || entry.canSeedInitial())
+                )
+                  assertEditable(queryOptions.initialData);
+              },
               open: queryOptions => openQuery(queryOptions, 'query', true),
               invalidate: key => client.invalidate(key),
             },

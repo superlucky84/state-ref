@@ -78,6 +78,8 @@ export type ObserverClient = Readonly<{
   ssr: boolean;
   peek: <T, S>(readOptions: () => PeekOptions<T, S>) => PeekReader<S>;
   open: <T>(options: QueryOptions<T>) => QueryHandle<T>;
+  /** Opening checks without creating, configuring or owning an entry. */
+  validate: (options: QueryOptions<any>) => void;
   invalidate: (key: QueryKey) => void;
 }>;
 
@@ -192,6 +194,16 @@ export function createObserver<T, S = T>(
   let rendered = initial;
   const confirmedPeek = client.peek<T, S>(() => latest);
   const renderedPeek = client.peek<T, S>(() => rendered);
+  const openingReason = (options: ObserveOptions<T, S>): string | null => {
+    if (!markerOf(options).ok || !enabledOf(options)) return null;
+    try {
+      client.validate(options);
+      return null;
+    } catch (error) {
+      return reasonOf(error);
+    }
+  };
+  let confirmedOpeningReason = openingReason(initial);
 
   /**
    * The functions a key's handles call (DC-QH-26 item 1). One slot per key:
@@ -214,7 +226,12 @@ export function createObserver<T, S = T>(
   const resolve = (): LiveQueryOptions<T> => {
     const options = latest;
     // An invalid key throws here, and the cursor shows it as a source error.
+    if (options.enabled !== undefined && typeof options.enabled !== 'boolean')
+      throw new TypeError('enabled must be a boolean.');
     const current = slotFor(hashQueryKey(options.queryKey));
+    if (options.enabled !== false) {
+      client.validate(options);
+    }
     return {
       ...options,
       queryFn: context => current.queryFn(context),
@@ -289,20 +306,22 @@ export function createObserver<T, S = T>(
       ref: QueryDisplayRef<QueryDisplayState<S>>,
       first: boolean
     ) => {
+      // A throwing first run may already have collected paths in the core.
+      // Retire that leftover without calling or counting it again.
+      if (record.ended && !first) return false;
       const result = renew(ref, first);
       if (first) firstResult = result;
       else if (result === false) end();
       return result;
     };
-    const target = attach();
+    // A first run may end another subscription synchronously.
+    count += 1;
     try {
-      record.ref = target.watch(callback, option);
+      record.ref = attach().watch(callback, option);
     } catch (error) {
-      // A first run that throws never counted, and may leave nobody behind.
-      if (count === 0) detach();
+      end();
       throw error;
     }
-    count += 1;
     if (option?.cache !== false) records.set(renew, record);
     if (firstResult instanceof AbortSignal) {
       if (firstResult.aborted) end();
@@ -390,6 +409,8 @@ export function createObserver<T, S = T>(
     latest = next;
     const before = markerOf(previous);
     const after = markerOf(next);
+    const previousOpeningReason = confirmedOpeningReason;
+    confirmedOpeningReason = openingReason(next);
     if (slot && after.ok && after.hash === slot.hash) {
       slot.queryFn = next.queryFn;
       slot.retryDelay = next.retryDelay;
@@ -398,7 +419,9 @@ export function createObserver<T, S = T>(
       !sameMarker(before, after) || enabledOf(previous) !== enabledOf(next);
     if (
       switched ||
-      HANDLE_OPTIONS.some(key => !Object.is(previous[key], next[key]))
+      (after.ok &&
+        (previousOpeningReason !== confirmedOpeningReason ||
+          HANDLE_OPTIONS.some(key => !Object.is(previous[key], next[key]))))
     ) {
       reopen();
     } else if (

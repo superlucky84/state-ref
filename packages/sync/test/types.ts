@@ -21,6 +21,7 @@ import type {
   InFlightDehydration,
   LocalSyncSnapshot,
   MutationResult,
+  MutationLink,
   NetworkMode,
   QueryDisplayRef,
   QueryKey,
@@ -679,6 +680,23 @@ void displayLeafPaths;
 async function observerTypes(journal: PersistedLinkedMutation) {
   type Account = { name: string; age: number };
   const client = createSyncClient();
+  const inferred = client.observe({
+    queryKey: ['inferred'],
+    queryFn: () => ({ name: 'Lee', age: 3 }),
+    select: account => ({ label: account.name }),
+  });
+  exact<typeof inferred, QueryObserver<Account, { label: string }>>(true);
+  exact<ReturnType<typeof inferred.controls.refetch>, Promise<Account>>(true);
+  exact<
+    ReturnType<typeof inferred.watch>['data']['label']['value'],
+    string | undefined
+  >(true);
+  const unselected = client.observe({
+    queryKey: ['unselected'],
+    queryFn: () => ({ name: 'Lee', age: 3 }),
+  });
+  exact<typeof unselected, QueryObserver<Account, Account>>(true);
+  exact<MutationLink<unknown>['query'], QueryHandleCore<any>>(true);
   const settings: ObserverSettings = {
     scheduleRelease: release => {
       setTimeout(release, 0);

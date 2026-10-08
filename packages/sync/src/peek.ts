@@ -45,6 +45,7 @@ export type PeekOptions<T, S = T> = QueryDisplayOptions<T, S> &
     editable?: boolean;
     initialData?: T;
     initialUpdatedAt?: number;
+    retry?: number;
   }>;
 
 export type PeekReader<S> = Readonly<{
@@ -101,6 +102,12 @@ export const reasonOf = (error: unknown): string =>
   error instanceof Error
     ? `${error.name}: ${error.message}`
     : `invalid: ${String(error)}`;
+
+/** Match load's retry check, before an observer starts its READ. */
+export function checkObserverRetry(retry: number | undefined) {
+  if (retry !== undefined && (retry < 0 || Number.isNaN(retry)))
+    throw new RangeError('retry must be nonnegative.');
+}
 
 /**
  * A display ref that reads the cache without taking part in it (DC-QH-12,
@@ -174,6 +181,7 @@ export function createPeekReader<T, S = T>(
     )
       return;
     validate(options);
+    checkObserverRetry(options.retry);
     if (entry) {
       if (entry.kind !== 'query')
         throw new TypeError('A query key cannot mix query kinds.');

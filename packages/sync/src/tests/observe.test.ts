@@ -200,6 +200,19 @@ describe("the confirmed options' state (T-QH-02)", () => {
         queryFn: lee,
         enabled: 'yes' as unknown as boolean,
       },
+      {
+        queryKey: ['account', undefined],
+        queryFn: lee,
+        enabled: 'yes' as unknown as boolean,
+      },
+      { queryKey: ['account'], queryFn: lee, retry: -1 },
+      { queryKey: ['account'], queryFn: lee, retry: NaN },
+      {
+        queryKey: ['account'],
+        queryFn: lee,
+        retry: -1,
+        initialData: new Date(0) as unknown as Account,
+      },
     ];
     const failed = {
       status: 'error',
@@ -216,6 +229,9 @@ describe("the confirmed options' state (T-QH-02)", () => {
       expect(observer.setOptions({ ...options })).toBe(false);
       const subscription = subscribe(observer);
       expect(subscription.ref.value).toMatchObject(failed);
+      expect((subscription.ref.error.value as Error).message).toBe(
+        (observer.watch().error.value as Error).message
+      );
       subscription.end();
     }
     expect(client.size()).toBe(0);
@@ -223,6 +239,41 @@ describe("the confirmed options' state (T-QH-02)", () => {
     const observer = client.observe<Account>(cases[0]);
     expect(observer.matches(cases[2])).toBe(false);
     expect(observer.setOptions(cases[2])).toBe(true);
+  });
+
+  it('keeps an unchanged invalid key stable when handle options change', () => {
+    const client = createSyncClient();
+    const options = { queryKey: ['account', undefined], queryFn: lee };
+    const observer = client.observe<Account>(options);
+    const subscription = subscribe(observer);
+    const error = subscription.ref.error.value;
+    const runs = subscription.seen.length;
+    for (let index = 1; index <= 3; index += 1) {
+      expect(observer.setOptions({ ...options, staleTime: index })).toBe(false);
+      expect(subscription.ref.error.value).toBe(error);
+      expect(subscription.seen).toHaveLength(runs);
+    }
+    subscription.end();
+  });
+
+  it('checks retry only for enabled observers and leaves query validation deferred', () => {
+    const client = createSyncClient();
+    const options = { queryKey: ['account'], queryFn: lee, retry: -1 };
+    const observer = client.observe<Account>({ ...options, enabled: false });
+    const subscription = subscribe(observer);
+    expect(observer.watch().errorSource.value).toBeNull();
+    expect(subscription.ref.enabled.value).toBe(false);
+    expect(observer.setOptions({ ...options, enabled: true })).toBe(true);
+    expect(subscription.ref.errorSource.value).toBe('source');
+    observer.setOptions({ ...options, retry: 0 });
+    expect(observer.controls.handle()).not.toBeNull();
+    subscription.end();
+    const explicit = client.query<Account>({
+      ...options,
+      queryKey: ['explicit'],
+    });
+    expect(() => explicit.load()).toThrow('retry must be nonnegative.');
+    explicit.dispose();
   });
 });
 
@@ -581,6 +632,27 @@ describe('automatic refetch (T-QH-11)', () => {
 });
 
 describe('a server client (T-QH-12)', () => {
+  it('refreshes the server subscription state when subscribing again', async () => {
+    const client = createSyncClient({ ssr: true });
+    const options = { queryKey: ['account'], queryFn: lee };
+    await client.prefetch(options);
+    const read = vi.fn(lee);
+    const observer = client.observe<Account>({ ...options, queryFn: read });
+    const first = subscribe(observer);
+    expect(first.ref.data.name.value).toBe('Lee');
+    first.end();
+    await client.fetch({
+      ...options,
+      queryFn: () => ({ name: 'Kim', age: 4 }),
+    });
+    const second = subscribe(observer);
+    expect(second.ref.data.name.value).toBe('Kim');
+    expect(second.seen).toHaveLength(1);
+    expect(ownersOf(client, ['account'])).toBe(0);
+    expect(read).not.toHaveBeenCalled();
+    second.end();
+  });
+
   it('never attaches, and subscribes to what the cache holds', async () => {
     const server = createSyncClient({ ssr: true });
     await server.prefetch({ queryKey: ['account'], queryFn: lee });
@@ -617,6 +689,94 @@ describe('a server client (T-QH-12)', () => {
 });
 
 describe('option identity on one key (T-QH-13)', () => {
+  it.each([
+    ['staleTime', 0],
+    ['gcTime', 60_000],
+    ['retry', 0],
+    ['networkMode', 'always'],
+    ['refetchOnFocus', false],
+    ['refetchOnReconnect', false],
+    ['refetchInterval', 1000],
+    ['refetchIntervalInBackground', true],
+  ] as const)('reopens for %s without an owner gap', async (key, value) => {
+    vi.useFakeTimers();
+    const client = createSyncClient();
+    const read = reads(lee);
+    const options = {
+      queryKey: ['account'],
+      queryFn: read.fn,
+      staleTime: Infinity,
+      gcTime: Infinity,
+    };
+    const observer = client.observe<Account>(options);
+    const subscription = subscribe(observer);
+    await vi.advanceTimersByTimeAsync(0);
+    const before = observer.controls.handle();
+    const trail = ownerTrail(client, ['account']);
+    expect(observer.setOptions({ ...options, [key]: value })).toBe(false);
+    expect(observer.controls.handle() === before).toBe(false);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(trail).not.toContain(0);
+    expect(ownersOf(client, ['account'])).toBe(1);
+    expect(read.fn).toHaveBeenCalledTimes(key === 'staleTime' ? 2 : 1);
+    subscription.end();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(ownersOf(client, ['account'])).toBe(0);
+  });
+
+  it('reports changing editable mode as a source error', async () => {
+    const client = createSyncClient();
+    const options = {
+      queryKey: ['account'],
+      queryFn: lee,
+      staleTime: Infinity,
+    };
+    const observer = client.observe<Account>(options);
+    const subscription = subscribe(observer);
+    await tick();
+    observer.setOptions({ ...options, editable: false });
+    expect(subscription.ref.errorSource.value).toBe('source');
+    expect(observer.controls.handle()).toBeNull();
+    observer.setOptions(options);
+    expect(subscription.ref.data.name.value).toBe('Lee');
+    subscription.end();
+  });
+
+  it('reprojects attached placeholder data without reopening or switching', async () => {
+    const client = createSyncClient();
+    const answer = deferred<Account>();
+    const options = {
+      queryKey: ['account'],
+      queryFn: () => answer.promise,
+      placeholderData: { name: 'First', age: 1 },
+    };
+    const observer = client.observe<Account>(options);
+    const subscription = subscribe(observer);
+    const handle = observer.controls.handle();
+    expect(subscription.ref.data.name.value).toBe('First');
+    expect(
+      observer.setOptions({
+        ...options,
+        placeholderData: { name: 'Next', age: 2 },
+      })
+    ).toBe(false);
+    expect(subscription.ref.data.name.value).toBe('Next');
+    expect(subscription.ref.isPlaceholder.value).toBe(true);
+    expect(observer.controls.handle() === handle).toBe(true);
+    const runs = subscription.seen.length;
+    expect(
+      observer.setOptions({
+        ...options,
+        placeholderData: { name: 'Next', age: 2 },
+      })
+    ).toBe(false);
+    expect(subscription.seen).toHaveLength(runs);
+    answer.resolve(lee());
+    await tick();
+    expect(subscription.ref.data.name.value).toBe('Lee');
+    expect(subscription.ref.isPlaceholder.value).toBe(false);
+    subscription.end();
+  });
   it('uses a new queryFn and retryDelay without reopening', async () => {
     vi.useFakeTimers();
     const client = createSyncClient();
@@ -743,10 +903,10 @@ describe('option identity on one key (T-QH-13)', () => {
     const shown = subscription.ref.data.value;
     expect(shown).toEqual([1, 3]);
     const runs = subscription.seen.length;
-    observer.setOptions(render('a'));
+    expect(observer.setOptions(render('a'))).toBe(false);
     expect(subscription.seen).toHaveLength(runs);
     expect(subscription.ref.data.value).toBe(shown);
-    observer.setOptions(render('b'));
+    expect(observer.setOptions(render('b'))).toBe(false);
     expect(subscription.ref.data.value).toEqual([2]);
     expect(subscription.seen).toHaveLength(runs + 1);
     subscription.end();
@@ -888,6 +1048,77 @@ describe('a live, stable peek (T-QH-15)', () => {
 });
 
 describe('counting subscriptions (T-QH-16, T-QH-43)', () => {
+  it('keeps the other subscriber when one returns false', async () => {
+    const client = createSyncClient();
+    const observer = client.observe<Account>({
+      queryKey: ['account'],
+      queryFn: lee,
+    });
+    let stop = false;
+    observer.watch(current => {
+      void current.value;
+      if (stop) return false;
+    });
+    const remaining = subscribe(observer);
+    stop = true;
+    await tick();
+    expect(ownersOf(client, ['account'])).toBe(1);
+    await expect(observer.controls.refetch()).resolves.toEqual(lee());
+    expect(remaining.ref.data.name.value).toBe('Lee');
+    remaining.end();
+    await tick();
+    expect(ownersOf(client, ['account'])).toBe(0);
+  });
+
+  it('retires a throwing first run even after it collected paths', async () => {
+    const client = createSyncClient();
+    const observer = client.observe<Account>({
+      queryKey: ['account'],
+      queryFn: lee,
+    });
+    const remaining = subscribe(observer);
+    const throwing = vi.fn(
+      (current: ReturnType<typeof observer.watch>, first: boolean) => {
+        void current.value;
+        if (first) throw new Error('render');
+        return false;
+      }
+    );
+    expect(() => observer.watch(throwing)).toThrow('render');
+    await tick();
+    expect(throwing).toHaveBeenCalledTimes(1);
+    expect(ownersOf(client, ['account'])).toBe(1);
+    await expect(observer.controls.refetch()).resolves.toEqual(lee());
+    expect(remaining.ref.data.name.value).toBe('Lee');
+    remaining.end();
+    await tick();
+    expect(ownersOf(client, ['account'])).toBe(0);
+  });
+
+  it('counts the new subscriber before its first run ends the old one', async () => {
+    const client = createSyncClient();
+    const observer = client.observe<Account>({
+      queryKey: ['account'],
+      queryFn: lee,
+    });
+    const previous = subscribe(observer);
+    const controller = new AbortController();
+    const ref = observer.watch((current, first) => {
+      void current.value;
+      if (first) {
+        previous.end();
+        return controller.signal;
+      }
+    });
+    await tick();
+    expect(ownersOf(client, ['account'])).toBe(1);
+    expect(ref.data.name.value).toBe('Lee');
+    await expect(observer.controls.refetch()).resolves.toEqual(lee());
+    controller.abort();
+    await tick();
+    expect(ownersOf(client, ['account'])).toBe(0);
+  });
+
   it('ends a subscription whose later run returns false', async () => {
     const client = createSyncClient();
     const answer = deferred<Account>();
@@ -967,6 +1198,67 @@ describe('counting subscriptions (T-QH-16, T-QH-43)', () => {
 });
 
 describe('initialData (T-QH-17)', () => {
+  it.each([
+    ['timestamp', { initialData: lee(), initialUpdatedAt: -1 }],
+    ['missing initialData', { initialUpdatedAt: 100 }],
+    ['editable data', { initialData: new Date(0) as unknown as Account }],
+  ])(
+    'recovers from invalid %s and reports it again when restored',
+    async (_, invalid) => {
+      const client = createSyncClient();
+      const read = vi.fn(lee);
+      const base = {
+        queryKey: ['account'],
+        queryFn: read,
+        staleTime: Infinity,
+      };
+      const observer = client.observe<Account>({ ...base, ...invalid });
+      const subscription = subscribe(observer);
+      expect(subscription.ref.errorSource.value).toBe('source');
+      expect(observer.controls.handle()).toBeNull();
+      const valid = { ...base, initialData: lee(), initialUpdatedAt: 100 };
+      expect(observer.setOptions(valid)).toBe(false);
+      expect(subscription.ref.status.value).toBe('success');
+      expect(subscription.ref.data.name.value).toBe('Lee');
+      expect(observer.controls.handle()).not.toBeNull();
+      expect(read).not.toHaveBeenCalled();
+      // A seeded entry ignores subsequent initialData, including non-plain data.
+      // Timing validation still runs whenever a handle opens.
+      const badAgain = { ...base, initialData: lee(), initialUpdatedAt: -2 };
+      expect(observer.setOptions(badAgain)).toBe(false);
+      expect(subscription.ref.errorSource.value).toBe('source');
+      expect(observer.watch().errorSource.value).toBe('source');
+      expect(observer.controls.handle()).toBeNull();
+      await expect(observer.controls.refetch()).rejects.toThrow('not attached');
+      observer.setOptions(valid);
+      expect(subscription.ref.status.value).toBe('success');
+      subscription.end();
+    }
+  );
+
+  it('does not reopen over initialData that an already loaded entry ignores', async () => {
+    const client = createSyncClient();
+    const options = {
+      queryKey: ['account'],
+      queryFn: lee,
+      staleTime: Infinity,
+    };
+    const observer = client.observe<Account>(options);
+    const subscription = subscribe(observer);
+    await tick();
+    const handle = observer.controls.handle();
+    expect(
+      observer.setOptions({
+        ...options,
+        initialData: new Date(0) as unknown as Account,
+      })
+    ).toBe(false);
+    expect(observer.controls.handle() === handle).toBe(true);
+    expect(observer.watch().data.name.value).toBe('Lee');
+    expect(subscription.ref.data.name.value).toBe('Lee');
+    subscription.end();
+  });
+
   it('shows it before attaching and seeds it on attach', async () => {
     const client = createSyncClient();
     const read = reads(() => ({ name: 'Server', age: 9 }));
@@ -1032,6 +1324,27 @@ describe('initialData (T-QH-17)', () => {
 });
 
 describe('controls (T-QH-18)', () => {
+  it('invalidates a cached key while subscribed but disabled, without a READ', async () => {
+    const client = createSyncClient();
+    const read = reads(lee);
+    const options = {
+      queryKey: ['account'],
+      queryFn: read.fn,
+      staleTime: Infinity,
+    };
+    await client.prefetch(options);
+    const observer = client.observe<Account>({ ...options, enabled: false });
+    const subscription = subscribe(observer);
+    expect(client.inspectCache()[0].status.invalidated).toBe(false);
+    observer.controls.invalidate();
+    expect(client.inspectCache()[0].status.invalidated).toBe(true);
+    await tick();
+    expect(read.fn).toHaveBeenCalledTimes(1);
+    expect(ownersOf(client, ['account'])).toBe(0);
+    expect(observer.controls.handle()).toBeNull();
+    subscription.end();
+  });
+
   it('refetch and handle work only while attached and enabled', async () => {
     const client = createSyncClient();
     const read = reads(lee);
@@ -1157,8 +1470,18 @@ describe('controls (T-QH-18)', () => {
       .mutation({ mutationFn: () => write.promise })
       .run(null, { links: [{ query: observer.controls.handle()! }] });
     await tick();
+    // Beginning a linked WRITE already invalidates. A fresh cache event
+    // proves that this call still invalidates instead of merely skipping READ.
+    const events: SyncCacheEvent[] = [];
+    const stop = client.subscribeCache(event => events.push(event));
     observer.controls.invalidate();
     await tick();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      type: 'updated',
+      entry: { queryKey: ['account'], status: { invalidated: true } },
+    });
+    stop();
     expect(read.fn).toHaveBeenCalledTimes(1);
     write.resolve('ok');
     await running;
