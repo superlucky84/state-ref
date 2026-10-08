@@ -26,6 +26,8 @@ import { CombineWatch } from '@/pages/CombineWatch';
 import { CombineWatchKo } from '@/pages/CombineWatch_ko';
 import { Batch } from '@/pages/Batch';
 import { BatchKo } from '@/pages/Batch_ko';
+import { Shared } from '@/pages/Shared';
+import { SharedKo } from '@/pages/Shared_ko';
 import { Draft } from '@/pages/Draft';
 import { DraftKo } from '@/pages/Draft_ko';
 import { DraftApply } from '@/pages/DraftApply';
@@ -130,6 +132,8 @@ const routes: Record<string, PageComponent> = {
   '/ko/guide/manual-sync': ManualSyncKo,
   '/guide/batch': Batch,
   '/ko/guide/batch': BatchKo,
+  '/guide/shared': Shared,
+  '/ko/guide/shared': SharedKo,
   '/guide/draft': Draft,
   '/ko/guide/draft': DraftKo,
   '/guide/draft-apply': DraftApply,
