@@ -20,14 +20,9 @@
  * `act` would flush the whole render synchronously and hide the interleaving,
  * so these drive a root directly with real timers.
  *
- * Known gap - mount. Before `subscribe` runs, render reads through a ref that
- * registers nothing, so a write between that render and the subscription does
- * not move the version counter. React's pre-commit consistency check compares
- * snapshots, sees none change, and commits the mixed frame; `subscribe` then
- * bumps the counter and the next render repairs it. The final screen is right,
- * one committed frame is torn. A plain `useSyncExternalStore` store passes the
- * same scenario, so the gap is the connector's. The mount cases are `it.fails`
- * until that is fixed; when they start passing, turn them back into `it`.
+ * Mount is the case the connector has to work for: before `subscribe` the
+ * version counter cannot move, so the snapshot there is the store root
+ * (`src/index.ts`). A plain `useSyncExternalStore` store passes all four.
  */
 import {
   type ComponentType,
@@ -169,29 +164,25 @@ if (import.meta.vitest) {
       expectNoTearing();
     }, 20000);
 
-    it.fails(
-      'on mount (known gap, see top of file)',
-      async () => {
-        const { Item, writeWhile, settle, expectNoTearing } = setup();
-        let show = () => {};
-        function App() {
-          const [visible, setVisible] = useState(false);
-          show = () => setVisible(true);
-          return <div>{visible ? items(Item, 0) : null}</div>;
-        }
-        flushSync(() => root.render(<App />));
+    it('on mount', async () => {
+      const { Item, writeWhile, settle, expectNoTearing } = setup();
+      let show = () => {};
+      function App() {
+        const [visible, setVisible] = useState(false);
+        show = () => setVisible(true);
+        return <div>{visible ? items(Item, 0) : null}</div>;
+      }
+      flushSync(() => root.render(<App />));
 
-        startTransition(() => show());
-        const mid = await writeWhile(
-          () => container.querySelectorAll('[data-item]').length === ITEMS
-        );
-        await settle();
+      startTransition(() => show());
+      const mid = await writeWhile(
+        () => container.querySelectorAll('[data-item]').length === ITEMS
+      );
+      await settle();
 
-        expect(mid).toBeGreaterThan(0);
-        expectNoTearing();
-      },
-      20000
-    );
+      expect(mid).toBeGreaterThan(0);
+      expectNoTearing();
+    }, 20000);
   });
 
   describe('no tearing with useDeferredValue', () => {
@@ -220,29 +211,25 @@ if (import.meta.vitest) {
       expectNoTearing();
     }, 20000);
 
-    it.fails(
-      'on mount (known gap, see top of file)',
-      async () => {
-        const { Item, writeWhile, settle, expectNoTearing } = setup();
-        let show = () => {};
-        function App() {
-          const [visible, setVisible] = useState(false);
-          const deferred = useDeferredValue(visible);
-          show = () => setVisible(true);
-          return <div>{deferred ? items(Item, 0) : null}</div>;
-        }
-        flushSync(() => root.render(<App />));
+    it('on mount', async () => {
+      const { Item, writeWhile, settle, expectNoTearing } = setup();
+      let show = () => {};
+      function App() {
+        const [visible, setVisible] = useState(false);
+        const deferred = useDeferredValue(visible);
+        show = () => setVisible(true);
+        return <div>{deferred ? items(Item, 0) : null}</div>;
+      }
+      flushSync(() => root.render(<App />));
 
-        show();
-        const mid = await writeWhile(
-          () => container.querySelectorAll('[data-item]').length === ITEMS
-        );
-        await settle();
+      show();
+      const mid = await writeWhile(
+        () => container.querySelectorAll('[data-item]').length === ITEMS
+      );
+      await settle();
 
-        expect(mid).toBeGreaterThan(0);
-        expectNoTearing();
-      },
-      20000
-    );
+      expect(mid).toBeGreaterThan(0);
+      expectNoTearing();
+    }, 20000);
   });
 }

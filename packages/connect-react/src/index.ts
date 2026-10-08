@@ -23,6 +23,16 @@ export type ViewWatch<R> = (
  * renders once more, this time through the subscribed ref, which is how the
  * paths get collected. That is one extra render per mount (DC-CN-03).
  *
+ * Until `subscribe` runs, the counter cannot move, so it cannot tell React
+ * about a write that lands between a concurrent mount render and its commit -
+ * React would commit that frame with some components on the old value and
+ * some on the new. So before the subscription the snapshot is the root value
+ * of the live ref instead. Every write copies the path up to a new root, so
+ * its identity changes on any write and stays put otherwise, which is what
+ * React's pre-commit consistency check compares. It is coarse - any path
+ * counts - but only for the short window before `subscribe`. A view whose
+ * root has no `.value` reads `undefined` there and keeps the old behavior.
+ *
  * `<StrictMode>` subscribes, unsubscribes and subscribes again. Each
  * `subscribe` makes a new subscription with its own AbortSignal, so the
  * simulated unmount ends the first one for good and the remount starts clean
@@ -31,14 +41,16 @@ export type ViewWatch<R> = (
  */
 type Link<R> = {
   ref: R | null;
+  live: R;
   version: number;
   subscribe: (onChange: () => void) => () => void;
-  getSnapshot: () => number;
+  getSnapshot: () => unknown;
 };
 
 function createLink<R>(watch: ViewWatch<R>): Link<R> {
   const link: Link<R> = {
     ref: null,
+    live: watch(),
     version: 0,
     subscribe: onChange => {
       const controller = new AbortController();
@@ -58,7 +70,8 @@ function createLink<R>(watch: ViewWatch<R>): Link<R> {
         link.ref = null;
       };
     },
-    getSnapshot: () => link.version,
+    getSnapshot: () =>
+      link.ref ? link.version : (link.live as { value?: unknown }).value,
   };
   return link;
 }
@@ -66,10 +79,10 @@ function createLink<R>(watch: ViewWatch<R>): Link<R> {
 function connectWatch<R>(watch: ViewWatch<R>) {
   return (): R => {
     const [link] = useState(() => createLink(watch));
-    // The server snapshot is the same counter: a server render never
-    // subscribes, so it reads through a ref that registers nothing.
+    // The server snapshot is the same function: a server render never
+    // subscribes, so it reads the root through a ref that registers nothing.
     useSyncExternalStore(link.subscribe, link.getSnapshot, link.getSnapshot);
-    return link.ref ?? watch();
+    return link.ref ?? link.live;
   };
 }
 
