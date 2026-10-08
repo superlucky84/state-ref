@@ -8,12 +8,17 @@ const packageDirs = fs.readdirSync(packagesDir).filter(dir => {
   return fs.statSync(path.join(packagesDir, dir)).isDirectory(); // 디렉토리인 경우만 필터링
 });
 
+// 원격 태그를 먼저 받아옵니다. 로컬에 없는 원격 태그를 "없는 태그"로 보고
+// 지금 커밋에 다시 만들면, 푸시가 거부되고 로컬에는 잘못된 태그가 남습니다.
+execSync('git fetch origin --tags', { stdio: 'inherit' });
+
 // 현재 Git 태그 목록을 가져옵니다.
 const existingTags = execSync('git tag', { encoding: 'utf-8' })
   .split('\n')
   .filter(tag => tag);
 
 // 각 패키지에 대해 태그를 생성합니다.
+const createdTags = [];
 packageDirs.forEach(packageName => {
   const pkgPath = path.join(packagesDir, packageName, 'package.json');
   const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
@@ -31,8 +36,15 @@ packageDirs.forEach(packageName => {
   // 태그 생성
   console.log(`Creating tag: ${tagName}`);
   execSync(`git tag ${tagName}`);
+  createdTags.push(tagName);
 });
 
-// 모든 새 태그를 원격 저장소에 푸시
-execSync('git push origin --tags');
-console.log('All new tags pushed to origin.');
+// 이번에 만든 태그만 원격 저장소에 푸시합니다.
+if (createdTags.length === 0) {
+  console.log('No new tags to push.');
+} else {
+  execSync(`git push origin ${createdTags.map(tag => `"${tag}"`).join(' ')}`, {
+    stdio: 'inherit',
+  });
+  console.log(`Pushed ${createdTags.length} new tag(s) to origin.`);
+}
