@@ -1,6 +1,6 @@
 import { create } from 'state-ref';
 import type { StateRefStore, Watch } from 'state-ref';
-import type { QueryHandle, QueryKey } from './index';
+import type { QueryHandleCore, QueryKey } from './index';
 import type { ResourceSubmission } from './resource';
 import { guardRef, guardedWatch } from './ref-guard';
 
@@ -41,7 +41,7 @@ export type MutationStatus = Readonly<{
 }>;
 
 export type MutationLink<T> = Readonly<{
-  query: QueryHandle<any>;
+  query: QueryHandleCore<any>;
   submission?: ResourceSubmission<any>;
   accept?:
     | Readonly<{ kind: 'none' | 'refetch' | 'submitted' }>

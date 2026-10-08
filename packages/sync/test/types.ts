@@ -41,6 +41,12 @@ import type {
   QueryStream,
   QueryStreamStatus,
   StreamRefetchMode,
+  ObserveOptions,
+  ObserverSettings,
+  QueryHandle,
+  QueryHandleCore,
+  QueryObserver,
+  QueryObserverControls,
 } from '@stateref/sync';
 import { createDraft } from 'state-ref/draft';
 import { create } from 'state-ref';
@@ -664,3 +670,76 @@ async function displayLeafPaths() {
 }
 
 void displayLeafPaths;
+
+/**
+ * The observer for connector entries (docs/sync-query-hooks T-QH-08, 단계 2):
+ * its exported types, and the handle it lends, which goes wherever a linked
+ * query does.
+ */
+async function observerTypes(journal: PersistedLinkedMutation) {
+  type Account = { name: string; age: number };
+  const client = createSyncClient();
+  const settings: ObserverSettings = {
+    scheduleRelease: release => {
+      setTimeout(release, 0);
+    },
+  };
+  const options: ObserveOptions<Account, string> = {
+    queryKey: ['account', 1],
+    queryFn: (): Account => ({ name: 'Lee', age: 3 }),
+    select: account => account.name,
+    enabled: true,
+  };
+  const observer: QueryObserver<Account, string> = client.observe(
+    options,
+    settings
+  );
+  exact<typeof options.select, ((data: Account) => string) | undefined>(true);
+  exact<ReturnType<typeof observer.setOptions>, boolean>(true);
+  exact<ReturnType<typeof observer.matches>, boolean>(true);
+  const shown = observer.watch();
+  exact<typeof shown.data.value, string | undefined>(true);
+  exact<ReturnType<typeof observer.peek>, typeof shown>(true);
+  const controls: QueryObserverControls<Account> = observer.controls;
+  const refetched: Account = await controls.refetch();
+  void refetched;
+  const handle = controls.handle();
+  exact<typeof handle, QueryHandleCore<Account> | null>(true);
+  if (!handle) return;
+  const name: string = handle.ref.name.value;
+  handle.ref.name.value = name;
+  await client
+    .mutation({ mutationFn: (input: { name: string }) => input })
+    .run(
+      { name },
+      {
+        links: [
+          {
+            query: handle,
+            submission: handle.capture(),
+            accept: { kind: 'submitted' },
+          },
+        ],
+      }
+    );
+  // An existing handle still goes everywhere a lent one does.
+  const query: QueryHandle<Account> = client.query<Account>({
+    queryKey: ['account', 2],
+    queryFn: options.queryFn,
+  });
+  const core: QueryHandleCore<Account> = query;
+  void core;
+  await journal.stage(client, {
+    id: 'observer',
+    input: { name },
+    idempotencyKey: 'observer-key',
+    links: [{ query: handle, accept: 'submitted' }],
+  });
+  const mutation = client.mutation({
+    mutationFn: (input: { name: string }) => input.name,
+  });
+  void (await journal.send(client, [handle, query], mutation));
+  query.dispose();
+}
+
+void observerTypes;

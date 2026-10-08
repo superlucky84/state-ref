@@ -69,4 +69,18 @@ void looseKey;
 // @ts-expect-error the client has no peek
 void client.peek;
 
+// An observer lends its handle but keeps releasing and showing it to itself:
+// the type has no `dispose`, `display` or `watchDisplay` (DC-QH-23).
+const lent = client
+  .observe({ queryKey: ['lent'], queryFn: () => ({ n: 1 }) })
+  .controls.handle();
+if (lent) {
+  // @ts-expect-error the observer releases its own handle
+  lent.dispose();
+  // @ts-expect-error the observer's display is the first value, not this
+  void lent.display;
+  // @ts-expect-error the observer's display is the first value, not this
+  void lent.watchDisplay;
+}
+
 export const negative = true;

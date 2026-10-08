@@ -30,6 +30,12 @@ import { createLiveQuery } from './live-key';
 import { createPeekReader } from './peek';
 import type { PeekEntry, PeekOptions } from './peek';
 import { withInternals } from './internal';
+import { createObserver, defaultRetryDelay } from './observe';
+import type {
+  ObserveOptions,
+  ObserverSettings,
+  QueryObserver,
+} from './observe';
 import type { LiveQueryOptions, OpenedQuery } from './live-key';
 import {
   checkAutomaticRefetchOptions,
@@ -122,6 +128,12 @@ export type {
   QueryDisplayWatch,
 } from './display';
 export type { LiveQueryOptions } from './live-key';
+export type {
+  ObserveOptions,
+  ObserverSettings,
+  QueryObserver,
+  QueryObserverControls,
+} from './observe';
 export type {
   AutomaticRefetchOptions,
   AutomaticRefetchPolicy,
@@ -260,6 +272,16 @@ export type QueryHandle<T, S = T> = Readonly<{
   dispose: () => void;
 }>;
 
+/**
+ * A query handle without the members that show or release it: what an
+ * observer lends out (`controls.handle()`) and what mutation links need.
+ * The object still has them at run time; releasing it is its owner's job.
+ */
+export type QueryHandleCore<T> = Omit<
+  QueryHandle<T>,
+  'dispose' | 'display' | 'watchDisplay'
+>;
+
 export type SyncClient = Readonly<{
   /**
    * One observer on a query, with an optional display projection.
@@ -279,6 +301,15 @@ export type SyncClient = Readonly<{
     options: InfiniteQueryOptions<Page, Param> &
       QueryDisplayOptions<InfiniteData<Page, Param>, S>
   ) => InfiniteQueryHandle<Page, Param, S>;
+  /**
+   * One observer of a query that attaches only while subscribed: a building
+   * block for framework hooks, not a query to use directly. Making it, and
+   * reading it without a callback, leave the cache as it was.
+   */
+  observe: <T, S = T>(
+    options: ObserveOptions<T, S>,
+    settings?: ObserverSettings
+  ) => QueryObserver<T, S>;
   /** Return a fresh cached baseline or perform a READ. */
   fetch: <T>(options: QueryOptions<T>) => Promise<T>;
   /** Best-effort fetch that caches success and swallows load rejections. */
@@ -787,9 +818,7 @@ class QueryEntry<T> {
     const mode = options.networkMode ?? 'online';
     const retry = options.retry ?? (this.ssr ? 0 : 3);
     checkDuration(retry, 'retry');
-    const delay =
-      options.retryDelay ??
-      ((attempt: number) => Math.min(1000 * 2 ** attempt, 30_000));
+    const delay = options.retryDelay ?? defaultRetryDelay;
     this.publish({
       fetchStatus:
         mode === 'online' && !this.network.isOnline() ? 'paused' : 'fetching',
@@ -1467,6 +1496,12 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
     });
     return { query, entry, queryOptions, handle };
   };
+  const peekReader = <T, S = T>(readOptions: () => PeekOptions<T, S>) =>
+    createPeekReader<T, S>(
+      hash => entries.get(hash) as PeekEntry<T> | undefined,
+      readOptions,
+      checkOpenOptions
+    );
   const client: SyncClient = Object.freeze(
     withInternals<SyncClient>(
       {
@@ -1484,6 +1519,21 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
           if (options.placeholderData !== undefined)
             checkInfiniteData(options.placeholderData, options.maxPages);
           return openInfinite<Page, Param, S>(options, true, options).handle;
+        },
+        observe<T, S = T>(
+          observeOptions: ObserveOptions<T, S>,
+          settings?: ObserverSettings
+        ): QueryObserver<T, S> {
+          return createObserver<T, S>(
+            {
+              ssr: options.ssr ?? false,
+              peek: peekReader,
+              open: queryOptions => openQuery(queryOptions, 'query', true),
+              invalidate: key => client.invalidate(key),
+            },
+            observeOptions,
+            settings
+          );
         },
         async fetch<T>(queryOptions: QueryOptions<T>): Promise<T> {
           const entry = getOrCreate(queryOptions, false);
@@ -1777,14 +1827,7 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
           };
         },
       },
-      {
-        peek: <T, S = T>(readOptions: () => PeekOptions<T, S>) =>
-          createPeekReader<T, S>(
-            hash => entries.get(hash) as PeekEntry<T> | undefined,
-            readOptions,
-            checkOpenOptions
-          ),
-      }
+      { peek: peekReader }
     )
   );
   return client;

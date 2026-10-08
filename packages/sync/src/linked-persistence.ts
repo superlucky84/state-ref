@@ -1,4 +1,4 @@
-import type { QueryHandle, SyncClient } from './index';
+import type { QueryHandleCore, SyncClient } from './index';
 import type { QueryKey } from './key';
 import { hashQueryKey } from './key';
 import type { MutationHandle, MutationResult } from './mutation';
@@ -42,7 +42,7 @@ export type PersistedLinkedMutationJob = Readonly<{
 }>;
 
 export type StageLinkedMutationLink = Readonly<{
-  query: QueryHandle<any>;
+  query: QueryHandleCore<any>;
   ids?: readonly number[];
   accept?: Acceptance;
   onReject?: 'keep' | 'remove';
@@ -81,7 +81,7 @@ export type PersistedLinkedMutation = Readonly<{
    */
   send: <I, T>(
     client: SyncClient,
-    queries: readonly QueryHandle<any>[],
+    queries: readonly QueryHandleCore<any>[],
     mutation: MutationHandle<I, T>
   ) => Promise<MutationResult<T> | null>;
   discard: () => Promise<void>;
@@ -394,7 +394,7 @@ export async function openPersistedLinkedMutation(
       }),
     send: <I, T>(
       client: SyncClient,
-      queries: readonly QueryHandle<any>[],
+      queries: readonly QueryHandleCore<any>[],
       mutation: MutationHandle<I, T>
     ) =>
       serialize(async (): Promise<MutationResult<T> | null> => {

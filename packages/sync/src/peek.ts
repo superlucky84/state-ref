@@ -55,6 +55,11 @@ export type PeekReader<S> = Readonly<{
   ref: QueryDisplayRef<QueryDisplayState<S>>;
   /** The current display state, read-only, recomputed the same way. */
   state: () => QueryDisplayState<S>;
+  /**
+   * The same state as the frozen object the reader keeps, for a store that
+   * re-serves it (`observe.ts`, server subscriptions). Not handed to users.
+   */
+  raw: () => QueryDisplayState<S>;
 }>;
 
 type Inputs<T, S> =
@@ -92,7 +97,7 @@ const sameInputs = <T, S>(a: Inputs<T, S>, b: Inputs<T, S>): boolean => {
 };
 
 /** The fixed marker an invalid option compares by (DC-QH-13). */
-const reasonOf = (error: unknown): string =>
+export const reasonOf = (error: unknown): string =>
   error instanceof Error
     ? `${error.name}: ${error.message}`
     : `invalid: ${String(error)}`;
@@ -356,6 +361,10 @@ export function createPeekReader<T, S = T>(
     state: () => {
       refresh();
       return snapshotValue(current, snapshots) as QueryDisplayState<S>;
+    },
+    raw: () => {
+      refresh();
+      return current;
     },
   });
 }
