@@ -1,7 +1,7 @@
 # REQUIREMENTS — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: 요구사항 확정. 설계 결정 완료(2026-10-08 단계 0 재검증, DESIGN에 미결 `[ ]` 없음). 구현 전.
+- 상태: 요구사항 확정. 설계 결정 완료(2026-10-08 단계 0 재검증과 검증 에이전트 교차 검토 반영, DESIGN에 미결 `[ ]` 없음). 구현 전.
 - 기준 commit: `6e462ed` (`main`), `@stateref/sync@0.2.0`, `@stateref/connect-react@19.0.0`. 작업 브랜치 `claude/sync-query-hooks`.
 - 연계: [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 - 문서 위치: `docs/sync-query-hooks/`. 관련 코드는 `packages/sync/src/`(`index.ts`의 `openQuery`·`QueryEntry`, `display.ts`, `live-key.ts`, `ref-guard.ts`)와 각 커넥터 패키지의 새 진입점이다. sync 전체 설계는 [server-sync](../server-sync/README.md)에 있다.
@@ -40,29 +40,31 @@
 
 ### 단계 0 재검증 뒤 확정 (2026-10-08 대화)
 
-- **U-QH-08** 명령·편집 접근은 **반환을 둘로 나눈다**: `const [account, q] = useSyncQuery(...)`. 표시는 `account.data.name.value` 그대로 읽고, 명령은 `q.refetch()`·`q.invalidate()`·`q.handle()`로 한다(DC-QH-23 ②).
+- **U-QH-08** 명령·편집 접근은 **반환을 둘로 나눈다**: `const [account, q] = useSyncQuery(...)`. 표시는 `account.data.name.value` 그대로 읽고, 명령은 `q.refetch()`·`q.invalidate()`·`q.handle()`로 한다(DC-QH-23. 단계 0 보고의 1번 질문에서 사용자가 고른 "반환을 둘로 나눈다"이며, `7a08107`의 DC-QH-23 후보 번호와는 다르다).
 - **U-QH-09** 첫 렌더(구독 전)의 `fetchStatus`는 캐시 그대로 보여 준다. 곧 불러올 예정이어도 미리 `fetching`으로 표시하지 않는다(DC-QH-32).
 - **U-QH-10** Svelte runes 진입점은 이번 범위에서 뺀다. Svelte는 store API(`$store`) 진입점만 제공한다(DC-QH-34).
-- **U-QH-11** 나머지 결정은 재검증 보고의 추천대로 한다: 진입점 위치(DC-QH-20), 이름(DC-QH-21), peek 비공개(DC-QH-24), client 첫 인자(DC-QH-25), 옵션 동일성(DC-QH-26), key 전환 해제도 한 매크로태스크 미룸(DC-QH-31), key 변경마다 렌더 +1 수용(DC-QH-28), `initialData` peek 합성(DC-QH-33), PR [superlucky84/state-ref#16](https://github.com/superlucky84/state-ref/pull/16) 선병합(DC-QH-35).
+- **U-QH-11** 나머지 결정은 재검증 보고의 추천대로 한다: 진입점 위치(DC-QH-20), 이름(DC-QH-21), peek 비공개(DC-QH-24), client 첫 인자(DC-QH-25), 옵션 동일성(DC-QH-26), key 전환 해제도 한 매크로태스크 미룸(DC-QH-31), key 변경마다 렌더 +1 수용(DC-QH-28), `initialData` peek 합성(DC-QH-33), PR [superlucky84/state-ref#16](https://github.com/superlucky84/state-ref/pull/16) 선병합(DC-QH-35). DC-QH-22·27은 사용자 결정 목록에 없던 기술 항목으로, 저자가 설계에서 닫았다.
 
 ## 3. 요구사항
 
 ### 기능
 
 - **R-QH-01** 각 프레임워크에서 컴포넌트 함수 안에서 query 옵션을 넘겨 반응형 표시 상태를 얻는다. React·Preact는 렌더마다 호출하는 훅, Vue·Solid·Svelte(store API)는 setup에서 한 번 호출하는 함수다.
-- **R-QH-02** 렌더(또는 setup) 중에는 캐시 소유권을 만들지 않고, 관찰자의 store에도 쓰지 않는다. 렌더가 몇 번 실행되거나 버려져도 캐시 상태(항목 수, `owners`, gc 타이머, 진행 중 READ)가 바뀌지 않고, React가 렌더 중 갱신 경고(`Cannot update a component while rendering ...`)를 내지 않는다.
+- **R-QH-02** 관찰자 생성·peek·렌더만으로는 캐시 소유권을 만들지 않고, 구독자가 있는 관찰자 store(옵션 store·커서·display)에도 쓰지 않는다. React·Preact에서는 렌더가 몇 번 실행되거나 버려져도 캐시 상태(항목 수, `owners`, gc 타이머, 진행 중 READ)가 바뀌지 않고, React가 렌더 중 갱신 경고(`Cannot update a component while rendering ...`)를 내지 않는다. Vue·Solid·Svelte는 setup 안의 커넥터 구독이 첫 구독이며 그때 붙는다(R-QH-03).
 - **R-QH-03** 첫 구독 시점(React·Preact는 커밋 뒤, Vue·Solid·Svelte는 setup의 구독)에 그 관찰자가 캐시에 붙고 `load()`와 같은 규칙으로 불러온다: 신선하면 READ 없음, 진행 중이면 공유.
 - **R-QH-04** 마지막 구독이 끊기면 그 관찰자만 떨어진다. 같은 key의 다른 관찰자와 캐시는 영향받지 않는다. 마지막 소유자가 떨어지면 기존 규칙대로 `gcTime` 뒤 정리된다.
-- **R-QH-05** 구독이 끊긴 직후 같은 작업 단위 안에서 다시 구독되면(StrictMode, 라우트 교체) 떨어졌다 다시 붙지 않는다. 요청이 취소·재발행되지 않는다. key 전환으로 이전 key에서 떨어질 때도 같은 규칙이다.
-- **R-QH-06** key가 바뀌면 렌더에서 새 key의 상태를 보여 주고(U-QH-05), 커밋 뒤 이전 key에서 떨어지고 새 key에 붙어 불러온다. 이전 key의 캐시는 남는다.
+- **R-QH-05** 구독이 끊긴 직후 다시 구독되면 캐시 소유자 수가 0을 거치지 않고, 요청이 취소·재발행되지 않는다. 대상: React StrictMode, React의 같은 커밋 안 라우트 교체, Vue·Solid·Svelte의 같은 patch 안 교체, Preact의 라우트 교체(새 구독이 다음 프레임 뒤라서 해제를 그보다 늦춘다, DESIGN DC-QH-11). key 전환으로 이전 key에서 떨어질 때도 같은 규칙이다.
+- **R-QH-06** key가 바뀌면 렌더에서 새 key의 상태를 보여 주고(U-QH-05), 커밋 뒤(Vue·Solid·Svelte는 렌더 전 반응에서) 새 key에 붙어 불러오며, 이전 key에서는 미룬 해제 뒤 떨어진다(DC-QH-11). 이전 key의 캐시는 남는다.
 - **R-QH-07** `enabled: false`면 붙지 않고 불러오지 않는다. 표시 상태는 대기(idle)다.
 - **R-QH-08** focus·reconnect·polling 자동 재조회는 관찰자가 붙어 있는 동안 기존 정책(DC5-06)대로 동작한다.
-- **R-QH-09** 관찰자별 `select`·`placeholderData`·`equals`가 기존 display와 같게 적용된다. 렌더 중 미리 읽기(R-QH-06)에도 같게 적용된다.
+- **R-QH-09** 관찰자별 `select`·`placeholderData`·`equals`가 기존 display와 같게 적용된다. 렌더 중 미리 읽기(DC-QH-12, 첫 렌더와 key 전환 렌더)에도 같게 적용된다. 예외: key가 같고 `select`·`placeholderData`만 바뀐 렌더는 이전 투영을 보이고, 커밋 뒤 다시 투영된다(DC-QH-26).
 - **R-QH-10** 표시 상태의 `data` 아래 경로를 타입 오류 없이 `.value`로 읽을 수 있다(U-QH-06). 로드 전에는 `undefined`를 읽는다. 지금은 `QueryDisplayRef<S | undefined>`가 유니언으로 갈라져 `display.data.name`이 TS2339 오류다(2026-10-08 두 번 확인). 런타임은 이미 `undefined`를 돌려주고 읽은 경로만 구독한다(확인).
-- **R-QH-11** 편집·명령 수단에 컴포넌트에서 접근할 수 있다. 반환의 두 번째 값 `q`가 `refetch()`·`invalidate()`·`handle()`(지금 key의 `QueryHandle` 또는 `null`)을 제공한다(U-QH-08). 편집용 `ref`·`changes` 등은 `q.handle()`이 돌려준 핸들의 기존 계약을 따른다.
+- **R-QH-11** 편집·명령 수단에 컴포넌트에서 접근할 수 있다. 반환의 두 번째 값 `q`가 `refetch()`·`invalidate()`·`handle()`(지금 key의 원래 핸들 또는 `null`, 표시·해제 멤버 없음)을 제공한다(U-QH-08, DC-QH-23). 편집용 `ref`·`changes`·`capture` 등은 그 핸들의 기존 계약을 따르고, 그 핸들은 mutation `links`에 그대로 쓸 수 있다.
 - **R-QH-12** 서버 렌더에서는 붙지 않고 불러오지 않는다. 캐시(사전 `await` 또는 hydrate)의 값만 보여 준다.
 - **R-QH-13** key가 바뀐 뒤에도 컴포넌트가 읽는 모든 경로의 변경이 화면에 반영된다. 새 key 화면에서 처음 읽은 경로도 포함한다(2026-10-08 실험 E3의 반례).
 - **R-QH-14** 구독 전 렌더 값은 React `useSyncExternalStore`의 스냅샷 계약(바뀐 게 없으면 같은 값)과 Vue 서버 렌더의 지연 읽기(`onServerPrefetch` 뒤의 캐시)를 모두 만족한다(2026-10-08 실험 E4, DC-QH-29).
+- **R-QH-15** 옵션 오류(잘못된 `queryKey`, boolean이 아닌 `enabled`)는 렌더에서 던지지 않고 `status: 'error'`, `errorSource: 'source'` 표시로 보인다(기존 반응형 key 커서와 같음, DC-QH-13).
+- **R-QH-16** `state-ref/shared`로 공유한 sync client를 `observe`가 없는 sync 사본이 만들었으면, 진입점은 버전을 맞추라는 명확한 오류로 실패한다(DC-QH-37).
 
 ### 제약
 
@@ -91,9 +93,9 @@
 
 ## 5. 수용 기준
 
-- R-QH-01~14와 C-QH-01~05가 [IMPLEMENT](./IMPLEMENT.md)의 테스트 ID에 연결되고 통과한다.
+- R-QH-01~16은 [IMPLEMENT](./IMPLEMENT.md)의 테스트 ID에 연결되고 통과한다. C-QH-01·03은 IMPLEMENT의 공통 완료 조건, C-QH-02는 T-QH-14, C-QH-04는 T-QH-27, C-QH-05는 단계 6의 명령으로 확인한다.
 - React StrictMode에서 마운트 → 요청 1회, 언마운트 → 소유자 0이 실제 컴포넌트로 확인된다.
 - 다섯 프레임워크(Svelte는 store API)에서 같은 시나리오(마운트 load, key 변경, 언마운트 해제)가 통과한다.
 - React에서 key 변경 시 렌더 중 갱신 경고가 없고, 새 key 화면에서 처음 읽은 경로의 이후 변경이 화면에 반영된다.
 - PR #16이 병합된 React 커넥터에서 concurrent 마운트·갱신 tearing 테스트가 관찰자 훅으로도 통과한다.
-- [server-sync DESIGN](../server-sync/DESIGN.md) 6절 F2-02에 mount 재조회의 경로가 기록된다.
+- [server-sync DESIGN](../server-sync/DESIGN.md) 6절과 [PHASE8_6](../server-sync/PHASE8_6.md)의 F2-02 행·절에 mount 재조회의 경로(관찰자 훅 구독 시 `load()`)가 기록되고, PHASE8_6 행이 `packages/sync/src/tests/observe.test.ts`를 인용한다(`pnpm gate`의 support-table 단계로 확인).

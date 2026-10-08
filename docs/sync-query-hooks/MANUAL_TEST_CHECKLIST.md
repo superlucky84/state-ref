@@ -1,6 +1,6 @@
 # MANUAL_TEST_CHECKLIST — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
-- 작성일: 2026-10-08 (단계 0 재검증 결정 반영)
+- 작성일: 2026-10-08 (단계 0 재검증 결정과 교차 검토 반영)
 - 상태: 미수행(구현 전).
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md).
 
@@ -50,6 +50,7 @@ SSR 예제(`examples/react/src/ssr` 등)에서 관찰자 훅을 쓰는 화면을
 M-QH-02의 상세 화면에 새로고침 버튼, 무효화 버튼, 이름 편집 입력을 둔다(`[account, q]`의 `q`, DC-QH-23).
 
 - [ ] 새로고침(`q.refetch()`)을 누르면 READ가 한 번 나가고 화면이 갱신된다.
-- [ ] 무효화(`q.invalidate()`)를 누르면 지금 key가 stale이 되어 다음 READ 조건에서 다시 불러온다.
+- [ ] 무효화(`q.invalidate()`)를 누르면 화면이 열려 있는 동안 READ가 즉시 한 번 더 나간다(DC-QH-23). 첫 로드 중에 눌러도 화면이 `pending`에 멈추지 않고 새 READ의 결과를 보인다.
 - [ ] 이름 편집(`q.handle()?.ref`)이 같은 key를 보는 다른 컴포넌트에도 바로 보이고, 항목을 바꾸면 편집 대상도 새 항목으로 바뀐다.
+- [ ] 이름 편집 뒤 저장 버튼(`q.handle()`을 mutation `links`에 넣은 제출)이 동작하고, 저장 뒤 편집 표시가 사라진다.
 - [ ] 콘솔에 오류가 없다.
