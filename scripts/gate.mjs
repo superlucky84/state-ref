@@ -96,6 +96,25 @@ const steps = [
     ],
   },
   {
+    name: 'shared-types',
+    cmd: 'pnpm',
+    args: [
+      '--filter',
+      'state-ref',
+      'exec',
+      'tsc',
+      '--noEmit',
+      '--strict',
+      '--target',
+      'es2020',
+      '--module',
+      'esnext',
+      '--moduleResolution',
+      'bundler',
+      'test/shared-types.ts',
+    ],
+  },
+  {
     name: 'sync-types',
     cmd: 'pnpm',
     args: ['--filter', '@stateref/sync', 'exec', 'tsc', '--noEmit'],
@@ -194,6 +213,11 @@ const steps = [
     name: 'batch-bundle',
     cmd: 'node',
     args: ['packages/state-ref/test/batch-bundle.mjs'],
+  },
+  {
+    name: 'shared-bundle',
+    cmd: 'node',
+    args: ['packages/state-ref/test/shared-bundle.mjs'],
   },
   {
     name: 'sync-bundle',

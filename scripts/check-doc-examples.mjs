@@ -70,6 +70,7 @@ const MODULES = {
   'state-ref': 'packages/state-ref/dist/index.d.ts',
   'state-ref/draft': 'packages/state-ref/dist/draft/index.d.ts',
   'state-ref/batch': 'packages/state-ref/dist/batch/index.d.ts',
+  'state-ref/shared': 'packages/state-ref/dist/shared/index.d.ts',
   'state-ref/plugin': 'packages/state-ref/dist/plugin/index.d.ts',
   '@stateref/sync': 'packages/sync/dist/index.d.ts',
   '@stateref/connect-react': 'packages/connect-react/dist/index.d.ts',

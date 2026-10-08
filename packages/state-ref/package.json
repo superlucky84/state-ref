@@ -9,7 +9,7 @@
   "module": "./dist/state-ref.mjs",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && vite build --config vite.plugin.config.js && vite build --config vite.draft.config.js && vite build --config vite.batch.config.js",
+    "build": "vite build && vite build --config vite.plugin.config.js && vite build --config vite.draft.config.js && vite build --config vite.batch.config.js && vite build --config vite.shared.config.js",
     "watch": "vite build --watch",
     "test": "vitest run --reporter verbose",
     "test:dev": "vitest"
@@ -50,6 +50,16 @@
         "types": "./dist/batch/index.d.cts",
         "default": "./dist/state-ref.batch.cjs"
       }
+    },
+    "./shared": {
+      "import": {
+        "types": "./dist/shared/index.d.ts",
+        "default": "./dist/state-ref.shared.mjs"
+      },
+      "require": {
+        "types": "./dist/shared/index.d.cts",
+        "default": "./dist/state-ref.shared.cjs"
+      }
     }
   },
   "types": "./dist/index.d.ts",
@@ -57,6 +67,9 @@
     "*": {
       "batch": [
         "dist/batch/index.d.ts"
+      ],
+      "shared": [
+        "dist/shared/index.d.ts"
       ]
     }
   },

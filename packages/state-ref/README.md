@@ -82,6 +82,36 @@ editor.discard(); // releases subscriptions and closes the draft
 
 Draft editing supports acyclic plain data and dense arrays. Arrays are merged as one atomic field. Functions, Date, Map, core-reserved payload keys, and direct mutation of an object obtained through draft `.value` are rejected. The UMD build is a companion script: load `state-ref.umd.js` before `state-ref.draft.umd.js`, then use the `stateRefDraft` global.
 
+### Optional shared stores across bundles
+
+Import from `state-ref/shared` when separately built bundles on one page need the same store. A bundle provides a watch under a name; any other bundle looks it up by that name, even when each bundle carries its own copy of state-ref and whichever loads first.
+
+```typescript
+import { createStore } from 'state-ref';
+import { provideShared, onShared, whenReady } from 'state-ref/shared';
+
+// Provider bundle
+const watch = provideShared('subs', createStore({ ready: false, count: 0 }));
+
+// Consumer bundle - runs now if 'subs' is there, otherwise when it is provided
+onShared<{ ready: boolean; count: number }>('subs', subs => {
+  subs(ref => console.log(ref.count.value));
+});
+
+// Runs once, when the store exists and is ready, then unsubscribes
+whenReady<{ ready: boolean; count: number }>(
+  'subs',
+  ref => console.log('ready with', ref.count.value),
+  { select: ref => ref.ready.value }
+);
+
+watch().ready.value = true;
+```
+
+`getShared(name)` returns the watch if it is registered right now, and `pendingShared()` lists names something is waiting for that no bundle has provided. `whenReady` also takes a watch directly, and treats a truthy root value as ready when `select` is omitted. `onShared` and `whenReady` accept `{ signal }` to cancel.
+
+The first registration of a name stays; providing a different watch under it warns and returns the first. The registry lives on `globalThis`, so on a server it is shared between requests - do not provide per-request state there. `batch` from `state-ref/batch` coalesces writes only for stores created by the same copy of state-ref.
+
 ### Optional server query package
 
 `@stateref/sync` is a separate ESM package for shared query caching, editable resource refs and mutations. It is installed and imported only by apps that need it. Direct resource edits are local; saving is explicit - capture the edits and run a mutation linked to the query. See [the sync package guide](../sync/README.md) for its API and supported scope.
