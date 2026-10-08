@@ -1,7 +1,7 @@
 # IMPLEMENT — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: **단계 1(sync 기반) 완료.** 다음은 단계 2. PR [superlucky84/state-ref#16](https://github.com/superlucky84/state-ref/pull/16)은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`). 단계 3의 진입 조건 중 PR 병합은 충족됐다(DC-QH-35).
+- 상태: **단계 2(관찰자) 구현·push됨, 리뷰 반영 전에 중단(2026-10-08, 진행 기록 참고).** 다음은 단계 2 리뷰 반영과 게이트 재실행. PR [superlucky84/state-ref#16](https://github.com/superlucky84/state-ref/pull/16)은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`). 단계 3의 진입 조건 중 PR 병합은 충족됐다(DC-QH-35).
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 모든 단계의 공통 완료 조건:
@@ -91,14 +91,17 @@
 ## 단계 2 — 관찰자 (`client.observe`)
 
 - 진입: 단계 1 완료.
-- [ ] `client.observe(options, internal?)`가 `QueryObserver`를 돌려준다(DESIGN 3절): 콜백 없는 `watch()` = peek, `peek(options)`, `matches(options)`.
-- [ ] 첫 콜백 구독 = 비공개 옵션 store를 source로 `createLiveQuery` 커서 생성(DC-QH-22). `open`은 원래 핸들 + 관찰자 display, 커서에는 `dispose`만 미루는 위임 래퍼(getter 위임, 펼치기 금지), 래퍼→원래 핸들 대응. 마지막 해제 = 커서 dispose, 핸들은 해제 일정 뒤(DC-QH-11·31, 기본 `setTimeout(0)`, `scheduleRelease`로 교체 가능).
-- [ ] 구독 계수: `AbortSignal` abort와 `false` 반환, 같은 `renew` 재사용, 첫 실행에서 던진 구독은 세지 않음(DC-QH-30).
-- [ ] `setOptions`: key·`enabled`·원시값 핸들 옵션 변경 때만 옵션 store에 쓰기, key별 함수 칸(`queryFn`, 항상 래핑하는 `retryDelay`), 표시 옵션은 `reproject()`(오류·`Date` 비교 포함), 잘못된 옵션의 고정 표지 비교(DC-QH-13·26). 반환값(DC-QH-28).
-- [ ] `ssr: true` client: 붙지 않고 peek 값을 구독(DC-QH-15).
-- [ ] `controls`(DC-QH-23): `refetch` reject 문구, `invalidate`의 붙은 상태 재조회(`load()` 거부는 삼킴), `handle()`은 원래 핸들 객체.
-- [ ] 타입 export: `QueryObserver`, `ObserveOptions`, `QueryHandleCore`. `MutationLink.query`와 연결 제출 영속화의 `links`·`queries` 타입을 `QueryHandleCore<any>`로 넓힌다(DC-QH-23).
+- [x] `client.observe(options, internal?)`가 `QueryObserver`를 돌려준다(DESIGN 3절): 콜백 없는 `watch()` = peek, `peek(options)`, `matches(options)`.
+- [x] 첫 콜백 구독 = 비공개 옵션 store를 source로 `createLiveQuery` 커서 생성(DC-QH-22). `open`은 원래 핸들 + 관찰자 display, 커서에는 `dispose`만 미루는 위임 래퍼(getter 위임, 펼치기 금지), 래퍼→원래 핸들 대응. 마지막 해제 = 커서 dispose, 핸들은 해제 일정 뒤(DC-QH-11·31, 기본 `setTimeout(0)`, `scheduleRelease`로 교체 가능).
+- [x] 구독 계수: `AbortSignal` abort와 `false` 반환, 같은 `renew` 재사용, 첫 실행에서 던진 구독은 세지 않음(DC-QH-30).
+- [x] `setOptions`: key·`enabled`·원시값 핸들 옵션 변경 때만 옵션 store에 쓰기, key별 함수 칸(`queryFn`, 항상 래핑하는 `retryDelay`), 표시 옵션은 `reproject()`(오류·`Date` 비교 포함), 잘못된 옵션의 고정 표지 비교(DC-QH-13·26). 반환값(DC-QH-28).
+- [x] `ssr: true` client: 붙지 않고 peek 값을 구독(DC-QH-15).
+- [x] `controls`(DC-QH-23): `refetch` reject 문구, `invalidate`의 붙은 상태 재조회(`load()` 거부는 삼킴), `handle()`은 원래 핸들 객체.
+- [x] 타입 export: `QueryObserver`, `ObserveOptions`, `QueryHandleCore`. `MutationLink.query`와 연결 제출 영속화의 `links`·`queries` 타입을 `QueryHandleCore<any>`로 넓힌다(DC-QH-23).
+  - 결과(위 항목 전체): `packages/sync/src/observe.ts`의 `createObserver`(마커·`HANDLE_OPTIONS`·key별 칸·`releaseLater` 위임 래퍼·구독 계수·서버 구독·`controls`), `index.ts`의 `SyncClient.observe`·`QueryHandleCore`·`defaultRetryDelay`(`load()`도 사용), `peek.ts`의 `raw()`, `ObserveOptions`·`ObserverSettings`·`QueryObserver`·`QueryObserverControls` export. 둘째 인자는 `settings?: ObserverSettings`이고 `scheduleRelease`는 `(release) => void`(취소 함수를 돌려받지 않음, DESIGN 3절 수정 필요). commit `83718d8`, 서식 `3aaf5cf`.
+- [ ] 리뷰 반영(진행 기록 "단계 2 구현, 리뷰 반영 전 중단"의 확인된 결함 목록).
 - 기준 테스트: T-QH-01~19(08은 단계 2 부분), 46.
+  - 위치: `packages/sync/src/tests/observe.test.ts`(43개), `packages/sync/test/types.ts`의 `observerTypes`, `packages/sync/test/negative-types.ts`의 빌려준 핸들.
 - 완료: 위 테스트와 기존 sync 테스트 통과, `pnpm build:sync`.
 
 ## 단계 3 — React·Preact 진입점
@@ -177,4 +180,22 @@
 - 검증: sync 테스트 273개(23개 파일), sync 타입 검사, 소비자 타입·부정 타입 테스트, 번들 검사 통과. 리뷰 반영(`8149271`) 뒤 `pnpm gate` 21단계 전부 통과(`bench`의 "1000 live index nodes" 4.9ms).
 - `bench` 기록: core 측정 "1000 live index nodes"(기준 5ms)가 게이트 안에서 5.3~6.5ms로 실패했다. `packages/state-ref`는 `main`과 같고, 두 작업 공간의 `dist/state-ref.mjs`는 sha256이 같다. 같은 기계에서 번갈아 재면 이 브랜치 6.5·4.1·5.5·5.3·7.3ms, `main` 4.8·5.1·5.0·5.0·4.9ms로 `main`도 기준을 넘는다. `main` 게이트는 4.8ms로 통과했다. 같은 바이트를 재는 측정의 흔들림이며 이 작업과 무관하다(인계 메모의 7.6ms 기록과 같은 현상). 기준 자체를 고칠지는 이 작업 범위 밖이다.
 - 다음: 단계 2(`client.observe`).
+- 막힌 점: 없음.
+
+### 2026-10-08 — 단계 2 구현, 리뷰 반영 전 중단
+
+- 완료: `client.observe`(위 단계 2 체크리스트의 "결과"). commit `83718d8`(구현·테스트), `3aaf5cf`(lint 서식).
+- 검증: sync 테스트 316개(24개 파일, `observe.test.ts` 43개), sync 타입 검사, 소비자 타입·부정 타입 테스트 통과. 결함 주입 17가지 중 16가지를 테스트가 잡았다. 놓친 하나(서버 구독 store를 `autoSync: true`로)는 `guardedWatch`가 `readonly`로 `editable: false`를 넘겨 결과가 같은 동등 변이다. `pnpm gate`는 `83718d8`에서 `lint`(prettier 서식)로 멈췄고, `3aaf5cf`로 서식을 고친 뒤 **게이트를 다시 돌리지 않았다.**
+- 리뷰(중단 전 부분 결과): 4개 관점(수명·사양·테스트·API) 리뷰와 관점별 반박 검증. 테스트 관점의 검증은 끝나기 전에 사용자 요청으로 멈췄다. 반박 검증을 통과한(확인된) 결함:
+  1. (낮음) 붙은 관찰자에서 `initialData`·`initialUpdatedAt`만으로 옵션이 무효↔유효로 바뀌면 `setOptions`가 store에 쓰지 않아, 구독은 `errorSource: 'source'`에 머물고(`handle()` null, `refetch` reject) `watch()`는 성공을 보인다. 반대 방향도 어긋난다. 고칠 방향: 열 때 검사(`checkOpenOptions` + 편집 가능 `initialData`의 `assertEditable`) 결과를 오류 문구로 비교해 바뀌면 `reopen()`. 관찰자 테스트 두 방향 추가.
+  2. (낮음) 첫 실행에서 던진 구독이 경로를 읽은 뒤라면 코어에 남고, 이후 실행이 `false`를 돌려주면 세지 않은 구독을 빼서 다른 구독이 살아 있는데 커서가 해제되고 계수가 음수가 되어 영영 해제되지 않는다.
+  3. (낮음) 계수를 첫 실행 뒤에 올려서, 새 구독의 첫 실행 안에서 다른 구독이 끝나면 커서가 해제된 채 계수 1이 된다. 2·3을 함께 고칠 방향: `count += 1`을 `target.watch` 전에 두고 catch에서 `end()`, `callback` 맨 앞에 `if (record.ended && !first) return false;`. 두 경우의 테스트 추가.
+  4. (사소) 잘못된 key가 그대로인데 원시값 핸들 옵션만 바뀌면 `reopen()`해 새 오류 객체로 다시 publish한다 → `!after.ok && !switched`면 건너뜀.
+  5. (사소) 잘못된 `retry`는 커서 `load()`에서야 던져 `watch(renew)`가 던지고 peek는 정상으로 보인다 → 관찰자의 `resolve`와 peek 검사에 `retry` 검사 추가(`checkOpenOptions`는 그대로, C-QH-02).
+  6. (사소) 잘못된 key와 boolean이 아닌 `enabled`가 함께면 붙기 전·뒤 오류 문구가 다르다 → `resolve`에서 `enabled` 검사를 key 해시보다 먼저.
+  7. (사소, 문서) DESIGN 3절 `scheduleRelease`의 `() => void` 반환과 `internal?` 이름 → `settings?: ObserverSettings`, `(release) => void`, "예약된 해제는 취소하지 않는다(DC-QH-11)".
+  8. (낮음, 문서) `MutationLink.query`·`StageLinkedMutationLink.query`·`send(queries)`를 `QueryHandleCore<any>`로 바꾼 것은 넘기는 쪽에는 넓힘이지만 읽거나 구현하는 쪽(`link.query.dispose()`, 명시 타입의 `send` 가짜 구현)에는 좁힘이다 → DESIGN DC-QH-23과 단계 7 CHANGELOG 문구 정정. 코드 변경 없음. 선택: `exact<MutationLink<unknown>['query'], QueryHandleCore<any>>(true)`.
+  9. (사소, 테스트) 결과 주석 없는 인라인 옵션에서 `client.observe`의 T·S 추론을 확인하는 타입 테스트가 없다 → `observerTypes`에 추가.
+- 검증 전에 멈춘 테스트 관점 지적(반영 권장): `false` 반환 종료를 구독 둘로 확인(T-QH-16), 서버 구독의 재구독 시 상태 갱신(T-QH-12), 붙은 관찰자의 `placeholderData` 재투영과 표시 옵션만 바뀐 `setOptions`의 false 반환(T-QH-13), 붙어 있고 `enabled: false`일 때 `invalidate`와 연결 WRITE 중 무효화 자체 확인(T-QH-18), `HANDLE_OPTIONS` 각 항목과 `staleTime` 0의 재오픈 READ(T-QH-13, `editable`은 항목 혼용 거절로 제외).
+- 다음: 위 결함 1~9와 테스트 보강 반영 → 결함 주입으로 새 테스트 판정력 확인 → `pnpm gate` 전체 → 리뷰 한 번 더(선택) → 단계 2 완료 기록. 그 뒤 단계 3(React·Preact).
 - 막힌 점: 없음.
