@@ -1,6 +1,6 @@
 # DESIGN — 번들 간 이름 기반 공유 스토어
 
-- 작성일: 2026-10-08 (같은 날 2차 개정)
+- 작성일: 2026-10-08 (같은 날 2차·3차 개정)
 - 상태: 결정 완료, 구현 반영. 미결 결정 없음.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
@@ -32,6 +32,16 @@
   - 근거: 힌트를 watch를 만들 때 한 번만 준다(U-SH-09). 검증되지 않는 약속임을 가이드에 적는다(N-SH-07).
   - 검증: T-SH-21.
 
+- [x] **DC-SH-19 주인 없는 값은 `ensureShared` (3차 개정)** — `ensureShared(name, create)`는 값이 있으면 그것을, 없으면 `create()`로 만들어 등록하고 돌려준다. 중복 호출은 정상이므로 경고하지 않는다.
+  - 근거: sync 클라이언트는 초기 데이터가 없고, 같은 key의 read를 캐시가 한 번으로 정리하므로 주인을 정할 필요가 없다. 모든 번들이 동기적으로 클라이언트를 얻어 평소의 sync API를 쓴다(U-SH-11).
+  - `provideShared`와 합치지 않는 이유: 중복 호출의 뜻이 반대다(`provideShared`는 실수라 경고, `ensureShared`는 정상). watch가 함수라서 인자 모양으로 "값"과 "만드는 함수"를 구별할 수도 없다.
+  - 채택하지 않은 대안 ①: 클라이언트를 `onShared` 콜백으로 받는다(2차 구현). 사용 코드가 콜백 안에 갇힌다.
+  - 채택하지 않은 대안 ②: 클라이언트에 가드를 둔다. 가드는 다시 실행되는 구독·컴포넌트 안에서만 뜻이 있고, 모듈 최상위 코드는 한 번만 실행된다. `client.query()`는 호출 즉시 진짜 핸들을 돌려줘야 해서 껍데기를 미리 줄 수도 없다.
+  - 채택하지 않은 대안 ③: 소비 쪽에 `sharedActions`를 둔다. 소비 쪽만의 사용법이 하나 더 생긴다(U-SH-11).
+  - 2차에서 스토어에 대해 접었던 "양쪽이 같이 만든다"(DC-SH-02 대안 ①)와의 차이: 그때의 문제는 데이터를 채우는 주인이 흐려지는 것이었다. `ensureShared`는 주인이 필요 없는 값에만 쓰도록 안내한다.
+  - 검증: T-SH-23, T-SH-24.
+- [x] **DC-SH-20 방식을 고르는 기준** — "이 값을 채우는 번들이 하나로 정해져 있는가". 아니면 `ensureShared`, 그러면 `provideShared` + `sharedWatch`. sync 여부가 기준이 아니다: sync를 쓰더라도 query의 watch만 내주려면 `provideShared`이고, sync가 아니어도 초기값이 고정된 UI 상태는 `ensureShared`다. 가이드는 이 질문으로 시작하고 sync에는 `ensureShared`를 기본 경로로 안내한다(U-SH-12).
+
 ### 설계에서 닫은 결정
 
 - [x] **DC-SH-05 레지스트리** — `globalThis[Symbol.for('state-ref.shared')]`에 `{ v: 1, entries: Map<이름, { value, ready? }>, waiters: Map }`. 열거되지 않는 속성이다. `v`가 1이 아니면 오류를 던진다. 릴리스 전이라 1차 구현의 `stores`를 `entries`로 바꾸면서 `v`는 올리지 않았다.
@@ -56,14 +66,15 @@
 
 ```ts
 import {
-  provideShared, sharedWatch, isProvided, isReady, whenReady,
+  ensureShared, provideShared, sharedWatch, isProvided, isReady, whenReady,
   getShared, onShared, pendingShared,
 } from 'state-ref/shared';
 ```
 
 | 함수 | 동작 |
 |---|---|
-| `provideShared(name, value, { ready? })` | 이름으로 등록하고 대기 중인 것을 연결한다. 등록된 값을 반환한다 |
+| `ensureShared(name, create)` | 그 이름의 값. 없으면 `create()`로 만들어 등록한다. 주인이 필요 없는 값에 쓴다 |
+| `provideShared(name, value, { ready? })` | 주인으로서 이름에 등록하고 대기 중인 것을 연결한다. 등록된 값을 반환한다 |
 | `sharedWatch<T, R>(name)` | 그 이름의 스토어를 따라가는 watch. `.shared`에 이름이 있다 |
 | `isProvided(ref)` | 스토어가 있는가. ref를 일반 ref로 좁힌다 |
 | `isReady(ref)` | 스토어가 있고 제공 쪽의 `ready`가 참인가. ref를 `StateRefStore<R>`로 좁힌다 |
@@ -83,6 +94,15 @@ import {
 - **제공 전에 구독**: 콜백을 pending ref와 `isFirst === true`로 즉시 실행한다. 스토어가 도착하면 실제 watch를 구독하고 콜백을 `isFirst === false`로 실행한다.
 - **해제**: 사용자 콜백 입장의 규칙은 일반 watch와 같다. 첫 실행이 반환한 `AbortSignal`은 도착 전이면 대기를, 도착 후면 구독을 끝낸다. 도착 실행을 포함한 이후 실행의 `false`는 구독을 끝낸다. 코어는 구독의 첫 실행이 반환한 신호만 등록하므로, 도착 시 실행에서는 내부 컨트롤러의 신호를 코어에 넘기고 사용자의 `false`는 구독 호출이 끝난 뒤 그 컨트롤러를 중단해 반영한다.
 - **캐시**: 일반 watch처럼 콜백 동일성으로 구독을 한 번만 만든다. `cache: false`면 매번 새 구독이다.
+
+### `ensureShared`
+
+- 값이 있으면 `create`를 호출하지 않는다. `provideShared`로 등록된 값도 그대로 돌려준다.
+- `create`가 던지거나 `null`/`undefined`를 돌려주면 아무것도 등록하지 않는다.
+- `create` 안에서 같은 이름을 다시 ensure하면 안쪽 값이 유지된다.
+- 등록 시 대기 중인 `onShared`·`sharedWatch`를 `provideShared`와 같은 순서 규칙으로 연결한다.
+- 준비 조건 옵션은 없다. `ensureShared`로 만든 스토어를 `sharedWatch`로 따라가면 제공 즉시 준비다.
+- 같은 이름에 두 방식을 섞으면 먼저 실행된 쪽이 이긴다. 나중의 `provideShared`는 경고와 함께 무시된다.
 
 ### 가드와 재실행
 
@@ -106,7 +126,10 @@ import {
 | `createComputed`, `combineWatch` | 소비 사본의 헬퍼에 제공 사본의 watch(`getShared`로 얻은 것)를 넘겨도 동작한다. 공유 watch를 직접 넘기는 조합은 테스트하지 않았다 | T-SH-09 |
 | sync의 display watch | `watchDisplay`를 제공하면 상태와 데이터가 한 트리라 `ready: ref => ref.loaded.value`로 충분하다. **확인됨** | T-SH-22 |
 | sync의 데이터 watch | query의 `watch`는 첫 load 전에 읽으면 예외다. load 뒤에 제공한다. 소비 쪽의 쓰기는 query의 로컬 편집이 된다. **확인됨** | T-SH-22 |
-| sync 클라이언트 공유 | 같은 key를 양쪽에서 동시에 load해도 `queryFn`은 한 번 호출된다. 소비 쪽의 mutation과 invalidate가 제공 쪽 query에 반영된다. **확인됨**(같은 사본 안에서) | T-SH-22 |
+| sync 클라이언트 공유 | `ensureShared`로 얻은 클라이언트에서 같은 key를 여러 곳이 동시에 load해도 `queryFn`은 한 번 호출된다. 한 곳의 mutation과 invalidate가 다른 곳의 query에 반영된다. **확인됨**(같은 사본 안에서) | T-SH-24 |
+| `ensureShared`와 두 사본 | 두 사본이 각자의 `create`로 요청하면 먼저 요청한 사본의 것만 실행되고 양쪽이 같은 객체를 받는다. **확인됨**(스토어로) | T-SH-23 |
+| 사본이 다른 sync | sync는 ESM 빌드만 있어 UMD 두 사본 테스트에 넣지 못했다. state-ref 사본이 다른 번들이 다른 사본의 sync 클라이언트를 쓰는 조합, 특히 소비 쪽의 state-ref 값을 클라이언트에 넘기는 경우(반응형 query key 등)는 실행해 보지 않았다 | — |
+| 먼저 온 `create`의 옵션 | `createSyncClient(options)`를 번들마다 다르게 주면 뒤의 것은 조용히 버려진다. 비교하거나 경고하지 않는다. 가이드에 공용 모듈에 두라고 적었다 | — |
 | 읽기 전용 watch의 타입 | display watch는 읽기 전용인데 `sharedWatch`의 ref 타입은 쓰기 가능으로 보인다. 쓰면 제공 쪽 watch의 규칙대로 런타임에서 거부된다 | — |
 | 서버 렌더 | 레지스트리가 요청 사이에 공유된다. 가이드와 README에 경고를 적었다 | T-SH-15 |
 | 버전이 다른 사본 | 실행해 보지 않았다. 근거는 산출물에 코어 import가 없다는 것뿐이다 | T-SH-13 |
@@ -126,6 +149,12 @@ import {
 | `packages/state-ref/vite.shared.config.js`, `package.json`, `scripts/*.mjs` | 빌드·export·검사 등록 |
 
 ## 6. 인계
+
+### 2026-10-08 — 3차 개정 구현
+
+- 완료: `ensureShared`, 가이드를 "주인이 있는가" 질문으로 시작하도록 재구성, sync 절을 클라이언트 공유 기본으로 재작성. `pnpm gate` 21단계 통과.
+- 다음: [IMPLEMENT](./IMPLEMENT.md)의 남은 항목.
+- 막힌 것: 없음.
 
 ### 2026-10-08 — 2차 개정 구현
 

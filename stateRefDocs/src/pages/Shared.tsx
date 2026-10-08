@@ -31,7 +31,115 @@ export const Shared = mount(() => {
           it.
         </li>
       </ul>
-      <h2>Provide a store</h2>
+      <h2>Two ways to share</h2>
+      <p>
+        Ask one question about the value:{' '}
+        <strong>is there one bundle whose job is to fill it?</strong>
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>No owner</th>
+            <th>One owner</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Function</td>
+            <td>
+              <code>ensureShared</code>
+            </td>
+            <td>
+              <code>provideShared</code> + <code>sharedWatch</code>
+            </td>
+          </tr>
+          <tr>
+            <td>Who creates it</td>
+            <td>Whichever bundle asks first</td>
+            <td>The owning bundle</td>
+          </tr>
+          <tr>
+            <td>Other bundles write</td>
+            <td>The same ensureShared line</td>
+            <td>sharedWatch and a guard</td>
+          </tr>
+          <tr>
+            <td>Guards</td>
+            <td>None - the value is always there</td>
+            <td>isProvided / isReady</td>
+          </tr>
+          <tr>
+            <td>Typical value</td>
+            <td>
+              A @stateref/sync client. UI state with a fixed initial value.
+            </td>
+            <td>A createStore store that one bundle fetches data into.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        With <code>@stateref/sync</code>, start with the left column: share the
+        client and use sync as usual in every bundle.
+      </p>
+      <h2>A value nobody owns: ensureShared</h2>
+      <p>
+        <code>ensureShared(name, create)</code> returns the value under the
+        name, creating it if no bundle has yet. Every bundle calls it with the
+        same arguments, so put the call in one module they all import.
+      </p>
+      <CodeBlock
+        language="typescript"
+        code={`// shared/sync.js - one module every bundle imports
+import { createSyncClient } from '@stateref/sync';
+import { ensureShared } from 'state-ref/shared';
+
+// Whichever bundle runs this first creates the client; the rest receive it.
+export const client = ensureShared('sync', () => createSyncClient());
+
+export const subsQuery = () =>
+  client.query({ queryKey: ['subs'], queryFn: fetchMySubs });`}
+      />
+      <CodeBlock
+        language="typescript"
+        code={`// any bundle - the ordinary @stateref/sync API, nothing to wait for
+import { client, subsQuery } from './shared/sync';
+
+const subs = subsQuery();
+subs.watchDisplay(ref => {
+  const list = ref.data.value;
+  if (!list) return showSpinner();
+  renderBadge(list.length);
+});
+subs.load(); // every bundle may call it; the key is read once
+
+const subscribe = client.mutation({
+  mutationFn: input => api.subscribe(input),
+  onSuccess: () => client.invalidate(['subs']),
+});`}
+      />
+      <p>
+        There is no provider and no consumer here, and nothing new to learn
+        beyond that one line. Which bundle fetches does not need deciding: the
+        client's cache holds one entry per key, so a key is read once however
+        many bundles ask for it.
+      </p>
+      <p>
+        A plain store works the same way when its initial value is fixed and no
+        bundle has to load anything into it.
+      </p>
+      <CodeBlock
+        language="typescript"
+        code={`import { createStore } from 'state-ref';
+import { ensureShared } from 'state-ref/shared';
+
+// The same line in every bundle that needs it.
+const modalWatch = ensureShared('ui.modal', () => createStore({ open: false }));
+
+modalWatch(ref => toggleModal(ref.open.value)); // an ordinary watch, no guard
+modalWatch().open.value = true;`}
+      />
+      <h2>A store with an owner: provideShared</h2>
       <p>
         The provider is the bundle that owns the data. It makes the store any
         way it likes and registers the watch with <code>provideShared</code>.
@@ -253,10 +361,13 @@ declare module 'state-ref/shared' {
 provideShared('subs', createStore('nope')); // compile error: not a Subs store
 sharedWatch('subs'); // SharedWatch<Subs>, no type argument`}
       />
-      <h2>When the provider uses @stateref/sync</h2>
+      <h2>Sharing one query instead of the client</h2>
       <p>
-        A consumer does not care how the provider built its store. With a sync
-        query there are three things worth sharing.
+        Sharing the client with <code>ensureShared</code> is the usual way with
+        sync. When one bundle should keep its queries to itself and hand the
+        others only a result, it can provide a query's watch instead. Consumers
+        follow it with <code>sharedWatch</code> and the guards, exactly as with
+        a createStore store.
       </p>
       <h3>The display watch</h3>
       <p>Status and data in one tree. Use this when consumers only read.</p>
@@ -299,42 +410,29 @@ const subsWatch = sharedWatch('subs');
 const ref = subsWatch();
 if (isProvided(ref)) ref.value = [...ref.value, newSub]; // a local edit on the query`}
       />
-      <h3>The client itself</h3>
-      <p>
-        To let a consumer run its own queries and mutations against the same
-        cache, share the client. It is not a watch, so fetch it with{' '}
-        <code>onShared</code> or <code>getShared</code> instead of{' '}
-        <code>sharedWatch</code>.
-      </p>
-      <CodeBlock
-        language="typescript"
-        code={`// Provider
-const client = provideShared('sync', createSyncClient());
-
-// Consumer - one cache for the page, so the same key is read once
-import { onShared } from 'state-ref/shared';
-
-onShared('sync', client => {
-  const subs = client.query({ queryKey: ['subs'], queryFn: fetchMySubs });
-
-  const subscribe = client.mutation({
-    mutationFn: input => api.subscribe(input),
-    onSuccess: () => client.invalidate(['subs']),
-  });
-});`}
-      />
       <h2>Rules</h2>
       <ul>
         <li>
-          <strong>One provider per name.</strong> The first registration stays.
+          <strong>One way per name.</strong> A name is either ensured by every
+          bundle or provided by one. Mixing them means whichever ran first wins,
+          and a later provideShared is ignored with a warning.
+        </li>
+        <li>
+          <strong>One provider per name.</strong> The first provideShared stays.
           Providing something else under the same name logs a warning and
           returns the first, so a provider module that ends up in two bundles
           does not break the page.
         </li>
         <li>
-          <strong>The provider fetches.</strong> Keep loading in the bundle that
-          calls provideShared. A consumer that also fetches and writes will race
-          with it.
+          <strong>An owned store is filled by its owner.</strong> Keep loading
+          in the bundle that calls provideShared. A consumer that also fetches
+          and writes will race with it. If no bundle should own the loading,
+          share a sync client with ensureShared instead.
+        </li>
+        <li>
+          <strong>The first ensureShared decides.</strong> Its create function
+          runs; the others are never called. Give every bundle the same one -
+          client options that differ between bundles are silently dropped.
         </li>
         <li>
           <strong>Guard before reading.</strong> In JavaScript nothing stops you
@@ -403,10 +501,19 @@ pendingShared(); // ['subs'] - something waits for it and no bundle provided it`
         <tbody>
           <tr>
             <td>
+              <code>ensureShared(name, create)</code>
+            </td>
+            <td>
+              The value under the name, created by create if no bundle has yet.
+              For a value with no single owner.
+            </td>
+          </tr>
+          <tr>
+            <td>
               <code>provideShared(name, value, options?)</code>
             </td>
             <td>
-              Registers a watch (or any value) under a name. options.ready says
+              Registers a watch (or any value) as its owner. options.ready says
               when a store's data can be used.
             </td>
           </tr>

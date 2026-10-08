@@ -1,7 +1,7 @@
 # IMPLEMENT — 번들 간 이름 기반 공유 스토어
 
-- 작성일: 2026-10-08 (같은 날 2차 개정)
-- 상태: 단계 0~4와 7 완료. 단계 5·6은 일부 완료이며 남은 항목은 `[ ]`로 표시했다.
+- 작성일: 2026-10-08 (같은 날 2차·3차 개정)
+- 상태: 단계 0~4와 7, 8 완료. 단계 5·6은 일부 완료이며 남은 항목은 `[ ]`로 표시했다.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 모든 단계의 공통 완료 조건: `pnpm test:core` 통과, C-SH-01 대상 경로의 `git diff main`이 비어 있음. 테스트는 `pnpm` 스크립트 또는 `pnpm exec vitest`로 실행한다(CLAUDE.md의 주의 사항).
@@ -33,7 +33,9 @@
 | T-SH-19 | 제공 전 ref의 경로 읽기·쓰기는 가드 이름이 적힌 오류다. 런타임이 묻는 키에는 조용하다 | `unit/shared-watch.ts` | 통과 |
 | T-SH-20 | `whenReady`가 공유 watch·이름에 대해 제공 → 준비 조건 → `select` 순으로 기다린다 | `unit/shared-watch.ts`, `unit/ready.ts` | 통과 |
 | T-SH-21 | 가드 전 경로 접근은 컴파일 오류, `isProvided` 뒤는 원래 타입, `isReady` 뒤는 준비 타입. 등록된 이름의 타입 강제 | `types` | 통과 |
-| T-SH-22 | sync의 display watch, load 뒤의 데이터 watch, 클라이언트 공유(한 캐시, 한 번의 read, 소비 쪽 mutation) | `packages/sync/src/tests/shared.test.ts` | 통과 (주 2) |
+| T-SH-22 | sync의 display watch와 load 뒤의 데이터 watch를 `sharedWatch`로 소비 | `packages/sync/src/tests/shared.test.ts` | 통과 (주 2) |
+| T-SH-23 | `ensureShared`: 한 번만 생성, 중복 호출에 경고 없음, 대기 연결, `provideShared`와의 선후 관계, `create` 실패와 재진입, 두 사본에서 양쪽 순서 | `unit/registry.ts`, `bundle`, `types` | 통과 |
+| T-SH-24 | `ensureShared`로 얻은 sync 클라이언트: 한 클라이언트, 같은 key는 한 번의 read, 한 곳의 mutation이 다른 곳의 query를 갱신 | `packages/sync/src/tests/shared.test.ts` | 통과 (주 2) |
 
 주 1 — 두 사본은 **같은 버전의 UMD 빌드를 한 창에서 두 번 평가**해 만들었다. 실제 번들러로 따로 빌드한 번들과 서로 다른 state-ref 버전의 조합은 실행해 보지 않았다.
 
@@ -86,7 +88,24 @@
   - sync query의 `watch`는 첫 load 전에 읽으면 예외다. 가이드에 "load 뒤에 제공"으로 적었다.
 - **가이드 예제 검증:** 가이드의 코드 블록을 실제 타입에 대해 한 번 컴파일해 오류가 없음을 확인했다. 일회성 확인이며 게이트에 넣지 않았다. README의 예제만 게이트(`doc-examples`)로 검사된다.
 
+## 단계 8 — 3차 개정 (ensureShared) ✅
+
+- 시작 조건: REQUIREMENTS의 U-SH-11, U-SH-12.
+- [x] `ensureShared(name, create)`. 등록 로직은 `provideShared`와 공유한다.
+- [x] 테스트 T-SH-23, T-SH-24. sync 클라이언트 테스트를 `onShared` 기반에서 `ensureShared` 기반으로 바꿨다.
+- [x] 가이드 재구성: "공유하는 두 가지 방식" 표로 시작, `ensureShared` 절 추가, sync 절을 "클라이언트 대신 query 하나만 공유하기"로 축소, 규칙에 "이름 하나에 방식 하나"와 "첫 ensureShared가 결정한다" 추가.
+- [x] README에 `ensureShared` 예제 추가.
+- **결과:** `pnpm test:core` 24 파일 · 402 테스트, `sync` 238 테스트 통과. `pnpm gate` 21단계 통과. ESM 산출물 6,569 B(gzip 2,253 B).
+- **가이드 예제 검증:** 새로 넣은 세 코드 블록을 실제 타입에 대해 한 번 컴파일해 확인했다. 일회성이다.
+
 ## 인계
+
+### 2026-10-08 — 3차 개정
+
+- 완료: 단계 8.
+- 다음: 실제 번들러 예제 → M-SH-01·02·04 → 다른 커넥터 테스트 → API 레퍼런스 페이지 → 릴리스 결정.
+- 막힌 것: 없음.
+- commit: 3차 구현 `9d7c6e0`.
 
 ### 2026-10-08 — 2차 개정
 

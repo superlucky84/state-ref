@@ -29,7 +29,113 @@ export const SharedKo = mount(() => {
           한 번들 안에서는 필요 없습니다. watch를 export하고 import하면 됩니다.
         </li>
       </ul>
-      <h2>스토어 제공하기</h2>
+      <h2>공유하는 두 가지 방식</h2>
+      <p>
+        공유하려는 값에 대해 질문 하나를 던집니다.{' '}
+        <strong>이 값을 채우는 일을 맡은 번들이 하나로 정해져 있는가?</strong>
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>주인 없음</th>
+            <th>주인 하나</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>함수</td>
+            <td>
+              <code>ensureShared</code>
+            </td>
+            <td>
+              <code>provideShared</code> + <code>sharedWatch</code>
+            </td>
+          </tr>
+          <tr>
+            <td>누가 만드나</td>
+            <td>먼저 요청한 번들</td>
+            <td>주인 번들</td>
+          </tr>
+          <tr>
+            <td>다른 번들이 쓰는 코드</td>
+            <td>같은 ensureShared 한 줄</td>
+            <td>sharedWatch와 가드</td>
+          </tr>
+          <tr>
+            <td>가드</td>
+            <td>없음 - 값이 항상 있다</td>
+            <td>isProvided / isReady</td>
+          </tr>
+          <tr>
+            <td>대표적인 값</td>
+            <td>@stateref/sync 클라이언트. 초기값이 고정된 UI 상태.</td>
+            <td>한 번들이 fetch해서 채우는 createStore 스토어.</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        <code>@stateref/sync</code>를 쓴다면 왼쪽부터 시작합니다. 클라이언트를
+        공유하고, 모든 번들에서 sync를 평소대로 씁니다.
+      </p>
+      <h2>주인이 없는 값: ensureShared</h2>
+      <p>
+        <code>ensureShared(name, create)</code>는 그 이름의 값을 돌려주고, 아직
+        어느 번들도 만들지 않았다면 만듭니다. 모든 번들이 같은 인자로 부르므로,
+        이 호출을 모두가 import하는 모듈 하나에 둡니다.
+      </p>
+      <CodeBlock
+        language="typescript"
+        code={`// shared/sync.js - 모든 번들이 import하는 모듈 하나
+import { createSyncClient } from '@stateref/sync';
+import { ensureShared } from 'state-ref/shared';
+
+// 이 줄을 먼저 실행한 번들이 클라이언트를 만들고, 나머지는 그것을 받는다.
+export const client = ensureShared('sync', () => createSyncClient());
+
+export const subsQuery = () =>
+  client.query({ queryKey: ['subs'], queryFn: fetchMySubs });`}
+      />
+      <CodeBlock
+        language="typescript"
+        code={`// 어느 번들에서든 - 평소의 @stateref/sync API 그대로, 기다릴 것이 없다
+import { client, subsQuery } from './shared/sync';
+
+const subs = subsQuery();
+subs.watchDisplay(ref => {
+  const list = ref.data.value;
+  if (!list) return showSpinner();
+  renderBadge(list.length);
+});
+subs.load(); // 모든 번들이 불러도 된다. 같은 key는 한 번만 읽는다
+
+const subscribe = client.mutation({
+  mutationFn: input => api.subscribe(input),
+  onSuccess: () => client.invalidate(['subs']),
+});`}
+      />
+      <p>
+        여기에는 제공 쪽도 소비 쪽도 없고, 그 한 줄 말고는 새로 배울 것이
+        없습니다. 어느 번들이 fetch할지도 정할 필요가 없습니다. 클라이언트의
+        캐시는 key마다 항목이 하나라서, 몇 개의 번들이 요청하든 같은 key는 한
+        번만 읽습니다.
+      </p>
+      <p>
+        초기값이 고정돼 있고 어느 번들도 무언가를 불러와 채울 필요가 없는 일반
+        스토어도 같은 방식으로 씁니다.
+      </p>
+      <CodeBlock
+        language="typescript"
+        code={`import { createStore } from 'state-ref';
+import { ensureShared } from 'state-ref/shared';
+
+// 필요한 번들마다 같은 한 줄.
+const modalWatch = ensureShared('ui.modal', () => createStore({ open: false }));
+
+modalWatch(ref => toggleModal(ref.open.value)); // 일반 watch, 가드 없음
+modalWatch().open.value = true;`}
+      />
+      <h2>주인이 있는 스토어: provideShared</h2>
       <p>
         제공 번들은 데이터를 소유하는 번들입니다. 스토어는 원하는 방식으로
         만들고, 그 watch를 <code>provideShared</code>로 등록합니다.
@@ -249,10 +355,12 @@ declare module 'state-ref/shared' {
 provideShared('subs', createStore('nope')); // 컴파일 오류: Subs 스토어가 아니다
 sharedWatch('subs'); // SharedWatch<Subs>, 타입 인자 없이`}
       />
-      <h2>제공 쪽이 @stateref/sync를 쓸 때</h2>
+      <h2>클라이언트 대신 query 하나만 공유하기</h2>
       <p>
-        소비 쪽은 제공 쪽이 스토어를 어떻게 만들었는지 신경 쓰지 않습니다. sync
-        query에서 공유할 만한 것은 세 가지입니다.
+        sync에서는 <code>ensureShared</code>로 클라이언트를 공유하는 것이
+        기본입니다. 한 번들이 query를 자기 안에 두고 다른 번들에는 결과만 내주고
+        싶다면, query의 watch를 제공할 수 있습니다. 소비 쪽은 createStore
+        스토어와 똑같이 <code>sharedWatch</code>와 가드로 따라갑니다.
       </p>
       <h3>display watch</h3>
       <p>상태와 데이터가 한 트리에 있습니다. 소비 쪽이 읽기만 할 때 씁니다.</p>
@@ -295,40 +403,28 @@ const subsWatch = sharedWatch('subs');
 const ref = subsWatch();
 if (isProvided(ref)) ref.value = [...ref.value, newSub]; // query에 대한 로컬 편집`}
       />
-      <h3>클라이언트 자체</h3>
-      <p>
-        소비 쪽이 같은 캐시를 대상으로 자기 query와 mutation을 실행하게 하려면
-        클라이언트를 공유합니다. 클라이언트는 watch가 아니므로{' '}
-        <code>sharedWatch</code> 대신 <code>onShared</code>나{' '}
-        <code>getShared</code>로 받습니다.
-      </p>
-      <CodeBlock
-        language="typescript"
-        code={`// 제공 쪽
-const client = provideShared('sync', createSyncClient());
-
-// 소비 쪽 - 페이지에 캐시가 하나이므로 같은 key는 한 번만 읽는다
-import { onShared } from 'state-ref/shared';
-
-onShared('sync', client => {
-  const subs = client.query({ queryKey: ['subs'], queryFn: fetchMySubs });
-
-  const subscribe = client.mutation({
-    mutationFn: input => api.subscribe(input),
-    onSuccess: () => client.invalidate(['subs']),
-  });
-});`}
-      />
       <h2>규칙</h2>
       <ul>
         <li>
-          <strong>이름 하나에 제공자 하나.</strong> 첫 등록이 유지됩니다. 같은
-          이름으로 다른 것을 제공하면 경고를 남기고 첫 등록을 돌려줍니다. 제공
-          모듈이 두 번들에 들어가도 페이지가 깨지지 않습니다.
+          <strong>이름 하나에 방식 하나.</strong> 한 이름은 모든 번들이
+          ensure하거나, 한 번들이 provide하거나 둘 중 하나입니다. 섞으면 먼저
+          실행된 쪽이 이기고, 나중의 provideShared는 경고와 함께 무시됩니다.
         </li>
         <li>
-          <strong>fetch는 제공 쪽이 한다.</strong> 로딩은 provideShared를
-          호출하는 번들에 둡니다. 소비 쪽도 fetch해서 쓰면 서로 경쟁합니다.
+          <strong>이름 하나에 제공자 하나.</strong> 첫 provideShared가
+          유지됩니다. 같은 이름으로 다른 것을 제공하면 경고를 남기고 첫 등록을
+          돌려줍니다. 제공 모듈이 두 번들에 들어가도 페이지가 깨지지 않습니다.
+        </li>
+        <li>
+          <strong>주인이 있는 스토어는 주인이 채운다.</strong> 로딩은
+          provideShared를 호출하는 번들에 둡니다. 소비 쪽도 fetch해서 쓰면 서로
+          경쟁합니다. 로딩의 주인을 두고 싶지 않다면 ensureShared로 sync
+          클라이언트를 공유하세요.
+        </li>
+        <li>
+          <strong>첫 ensureShared가 결정한다.</strong> 그 create 함수만 실행되고
+          나머지는 호출되지 않습니다. 모든 번들에 같은 함수를 주세요. 번들마다
+          다른 클라이언트 옵션은 조용히 버려집니다.
         </li>
         <li>
           <strong>읽기 전에 가드.</strong> JavaScript에서는 가드를 건너뛰는 것을
@@ -395,10 +491,19 @@ pendingShared(); // ['subs'] - 기다리는 곳은 있는데 제공한 번들이
         <tbody>
           <tr>
             <td>
+              <code>ensureShared(name, create)</code>
+            </td>
+            <td>
+              그 이름의 값. 아직 없으면 create로 만듭니다. 주인이 필요 없는 값에
+              씁니다.
+            </td>
+          </tr>
+          <tr>
+            <td>
               <code>provideShared(name, value, options?)</code>
             </td>
             <td>
-              watch(또는 임의의 값)를 이름으로 등록합니다. options.ready로
+              watch(또는 임의의 값)를 주인으로서 등록합니다. options.ready로
               스토어의 데이터를 써도 되는 시점을 알립니다.
             </td>
           </tr>
