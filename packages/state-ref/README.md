@@ -112,7 +112,20 @@ subs.mySubs.value = ['a', 'b'];
 subs.loaded.value = true;
 ```
 
-A shared ref has no paths until a guard has run: skipping the guard is a compile error in TypeScript and a thrown error in JavaScript. `whenReady(name, callback)` runs a callback once when the store is ready and then unsubscribes. `provideShared` also accepts a value that is not a watch, such as a `@stateref/sync` client, which consumers fetch with `getShared` or `onShared`; `pendingShared()` lists names nobody has provided.
+That is the shape for a store one bundle owns and fills. A value with no single owner - a `@stateref/sync` client, or UI state with a fixed initial value - is simpler: every bundle calls `ensureShared(name, create)` with the same arguments, the first call creates it, and the value is always there, so there is nothing to guard.
+
+```typescript
+import { createStore } from 'state-ref';
+import { ensureShared } from 'state-ref/shared';
+
+// The same line in every bundle that needs it
+const modalWatch = ensureShared('ui.modal', () => createStore({ open: false }));
+
+modalWatch(ref => console.log(ref.open.value)); // an ordinary watch
+modalWatch().open.value = true;
+```
+
+A shared ref has no paths until a guard has run: skipping the guard is a compile error in TypeScript and a thrown error in JavaScript. `whenReady(name, callback)` runs a callback once when the store is ready and then unsubscribes. `provideShared` also accepts a value that is not a watch, which other bundles fetch with `getShared` or `onShared`; `pendingShared()` lists names nobody has provided.
 
 The first registration of a name stays; providing something else under it warns and returns the first. The registry lives on `globalThis`, so on a server it is shared between requests - do not provide per-request state there. `batch` from `state-ref/batch` coalesces writes only for stores created by the same copy of state-ref.
 

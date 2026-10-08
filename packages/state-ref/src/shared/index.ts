@@ -136,7 +136,7 @@ export function provideShared(
     );
   }
 
-  const { entries, waiters } = registry();
+  const { entries } = registry();
   const existing = entries.get(name);
   if (existing) {
     if (existing.value !== value) {
@@ -147,7 +147,57 @@ export function provideShared(
     return existing.value;
   }
 
-  const entry: Entry = { value, ready: options.ready };
+  return register(name, { value, ready: options.ready });
+}
+
+/**
+ * The shared value under `name`, made by `create` if no bundle has made it
+ * yet. Every bundle that needs the value calls this with the same arguments;
+ * whichever runs first creates it and the rest receive that one. It is always
+ * there, so nothing has to wait and no guard is needed.
+ *
+ * This is for a value that needs no single owner - one where it does not
+ * matter which bundle creates it. A `@stateref/sync` client is the usual
+ * case: it starts empty, and its cache already makes sure a key is read once
+ * however many bundles ask for it.
+ *
+ *   const client = ensureShared('sync', () => createSyncClient());
+ *
+ * A store that one bundle fills with data does have an owner: that bundle
+ * should `provideShared` it, and the others follow it with `sharedWatch`.
+ */
+export function ensureShared<N extends string, V>(
+  name: N,
+  create: () => V &
+    (N extends keyof SharedStores
+      ? (...args: any[]) => { readonly value: SharedStores[N] }
+      : unknown)
+): V;
+export function ensureShared(name: string, create: () => unknown): unknown {
+  checkName(name);
+  if (typeof create !== 'function') {
+    throw new TypeError(
+      `state-ref/shared: ensureShared("${name}") needs a function that creates the value.`
+    );
+  }
+
+  const { entries } = registry();
+  const existing = entries.get(name);
+  if (existing) return existing.value;
+
+  const value = create();
+  if (value === undefined || value === null) {
+    throw new TypeError(
+      `state-ref/shared: ensureShared("${name}") created nothing to share.`
+    );
+  }
+  // `create` may itself have ensured or provided this name.
+  const nested = entries.get(name);
+  return nested ? nested.value : register(name, { value });
+}
+
+function register(name: string, entry: Entry) {
+  const { entries, waiters } = registry();
   entries.set(name, entry);
 
   const waiting = waiters.get(name);
@@ -162,7 +212,7 @@ export function provideShared(
     });
   }
 
-  return value;
+  return entry.value;
 }
 
 /**

@@ -1,6 +1,7 @@
 import { createStore } from 'state-ref';
 import type { StateRefStore, Watch } from 'state-ref';
 import {
+  ensureShared,
   getShared,
   isProvided,
   isReady,
@@ -24,7 +25,11 @@ declare module 'state-ref/shared' {
 }
 
 // --- provider ---------------------------------------------------------------
-const subsStore = createStore<Subs>({ loaded: false, error: null, mySubs: null });
+const subsStore = createStore<Subs>({
+  loaded: false,
+  error: null,
+  mySubs: null,
+});
 const provided: Watch<Subs> = provideShared('subs', subsStore, {
   ready: ref => ref.loaded.value,
 });
@@ -36,6 +41,23 @@ provideShared('other', createStore({ a: 1 }), { ready: ref => ref.missing });
 // A value that is not a watch is shared as it is.
 const client = provideShared('client', { query: (key: string) => key.length });
 const size: number = client.query('a');
+
+// --- a value nobody owns ----------------------------------------------------
+const ensured = ensureShared('sync', () => ({
+  query: (key: string) => key.length,
+}));
+const ensuredSize: number = ensured.query('a');
+const modal: Watch<{ open: boolean }> = ensureShared('ui.modal', () =>
+  createStore({ open: false })
+);
+const counter: Watch<{ count: number }> = ensureShared('listed', () =>
+  createStore({ count: 0 })
+);
+// @ts-expect-error a listed name rejects a store of another type
+ensureShared('listed', () => createStore('no'));
+// @ts-expect-error it takes a function that creates the value, not the value
+ensureShared('sync', { query: () => 1 });
+void [ensuredSize, modal, counter];
 
 // --- consumer: guards -------------------------------------------------------
 const subsWatch = sharedWatch<Subs, LoadedSubs>('subs');

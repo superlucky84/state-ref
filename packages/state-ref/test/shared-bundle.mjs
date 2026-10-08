@@ -127,6 +127,35 @@ for (const [label, scripts] of [
   browser.window.close();
 }
 
+// T-SH-23: a value nobody owns. Each copy asks with its own factory; the first
+// one creates it and the other copy gets that same object, in either order.
+for (const [first, second] of [
+  ['A', 'B'],
+  ['B', 'A'],
+]) {
+  const browser = page();
+  const { window } = browser;
+  const result = plain(
+    window.eval(`
+      var made = [];
+      var make = function (copy) {
+        return function () {
+          made.push(copy);
+          return window['core' + copy].createStore({ open: false });
+        };
+      };
+      var one = shared${first}.ensureShared('ui.modal', make('${first}'));
+      var two = shared${second}.ensureShared('ui.modal', make('${second}'));
+      var seen = [];
+      two(function (ref) { seen.push(ref.open.value); });
+      one().open.value = true;
+      ({ same: one === two, made: made, seen: seen });
+    `)
+  );
+  assert.deepEqual(result, { same: true, made: [first], seen: [false, true] });
+  browser.window.close();
+}
+
 // T-SH-09: the consumer's own helpers over the provider's watch.
 {
   const browser = page();

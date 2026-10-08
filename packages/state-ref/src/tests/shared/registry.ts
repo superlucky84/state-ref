@@ -1,4 +1,5 @@
 import {
+  ensureShared,
   getShared,
   onShared,
   pendingShared,
@@ -229,6 +230,83 @@ if (import.meta.vitest) {
       expect(provideShared('client', client)).toBe(client);
       expect(getShared<typeof client>('client')!.query()).toBe('data');
       expect(seen).toEqual([client]);
+    });
+
+    describe('ensureShared', () => {
+      it('creates the value once and hands every caller the same one', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const create = vi.fn(() => ({ id: Math.random() }));
+
+        const first = ensureShared('client', create);
+        const second = ensureShared('client', create);
+        expect(second).toBe(first);
+        expect(create).toHaveBeenCalledTimes(1);
+        expect(getShared('client')).toBe(first);
+        // A second caller is the expected case, not a mistake.
+        expect(warn).not.toHaveBeenCalled();
+      });
+
+      it('connects what was waiting for the name', () => {
+        const seen: unknown[] = [];
+        onShared('client', value => seen.push(value));
+        expect(pendingShared()).toEqual(['client']);
+
+        const client = ensureShared('client', () => ({ query: () => 1 }));
+        expect(seen).toEqual([client]);
+        expect(pendingShared()).toEqual([]);
+      });
+
+      it('returns what a bundle already provided, without creating', () => {
+        const watch = provideShared('n', createStore(1));
+        const create = vi.fn(() => createStore(2));
+        expect(ensureShared('n', create)).toBe(watch);
+        expect(create).not.toHaveBeenCalled();
+      });
+
+      it('stays when a bundle provides the same name afterwards', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const ensured = ensureShared('n', () => createStore(1));
+        expect(provideShared('n', createStore(2))).toBe(ensured);
+        expect(warn).toHaveBeenCalledTimes(1);
+      });
+
+      it('shares a store nobody owns, usable at once in every bundle', () => {
+        const make = () => createStore({ open: false });
+        const a = ensureShared('ui.modal', make);
+        const b = ensureShared('ui.modal', make);
+
+        const seen: boolean[] = [];
+        b(ref => {
+          seen.push(ref.open.value);
+        });
+        a().open.value = true;
+        expect(seen).toEqual([false, true]);
+      });
+
+      it('registers nothing when create throws or returns nothing', () => {
+        expect(() =>
+          ensureShared('n', () => {
+            throw new Error('boom');
+          })
+        ).toThrow('boom');
+        expect(() => ensureShared('n', () => undefined as any)).toThrow(
+          TypeError
+        );
+        expect(() => ensureShared('n', 1 as any)).toThrow(TypeError);
+        expect(getShared('n')).toBeUndefined();
+
+        expect(ensureShared('n', () => 'value')).toBe('value');
+      });
+
+      it('keeps the inner value when create ensures the same name', () => {
+        const inner = { who: 'inner' };
+        const result = ensureShared('n', () => {
+          ensureShared('n', () => inner);
+          return { who: 'outer' };
+        });
+        expect(result).toBe(inner);
+        expect(getShared('n')).toBe(inner);
+      });
     });
 
     it('does not show the registry when the global object is enumerated', () => {

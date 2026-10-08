@@ -4,6 +4,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  ensureShared,
   getShared,
   isProvided,
   isReady,
@@ -13,7 +14,7 @@ import {
   whenReady,
 } from 'state-ref/shared';
 import { createSyncClient } from '../index';
-import type { QueryDisplayState, QueryHandle, SyncClient } from '../index';
+import type { QueryDisplayState, SyncClient } from '../index';
 
 type Sub = { id: number };
 
@@ -82,50 +83,69 @@ describe('a sync query behind a shared name', () => {
 });
 
 describe('a sync client behind a shared name', () => {
-  it('gives every bundle one cache, so one read serves both', async () => {
+  // What each bundle writes, once, in a module of its own.
+  const sharedClient = () =>
+    ensureShared('sync', () => createSyncClient({ ssr: true }));
+
+  it('gives every bundle one client, whichever asks first', () => {
+    const create = vi.fn(() => createSyncClient({ ssr: true }));
+    const a = ensureShared('sync', create);
+    const b = ensureShared('sync', create);
+    expect(b).toBe(a);
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads a key once however many bundles query it', async () => {
     const queryFn = vi.fn(async (): Promise<Sub[]> => [{ id: 1 }]);
     const options = { queryKey: ['subs'], queryFn };
 
-    // Consumer bundle, loaded first: it queries as soon as the client exists.
-    let consumer!: QueryHandle<Sub[]>;
-    onShared<SyncClient>('sync', client => {
-      consumer = client.query(options);
-    });
+    // Two bundles, the same lines, no provider and no consumer.
+    const a = sharedClient().query(options);
+    const b = sharedClient().query(options);
 
-    // Provider bundle.
-    const provider = provideShared(
-      'sync',
-      createSyncClient({ ssr: true })
-    ).query(options);
-
-    await Promise.all([provider.load(), consumer.load()]);
+    await Promise.all([a.load(), b.load()]);
     expect(queryFn).toHaveBeenCalledTimes(1);
-    expect(consumer.ref.value).toEqual([{ id: 1 }]);
+    expect(b.ref.value).toEqual([{ id: 1 }]);
+    expect(b.status.loaded.value).toBe(true);
 
-    provider.ref.value = [{ id: 9 }];
-    expect(consumer.ref.value).toEqual([{ id: 9 }]);
+    a.ref.value = [{ id: 9 }];
+    expect(b.ref.value).toEqual([{ id: 9 }]);
   });
 
-  it('lets a consumer run a mutation and refresh the provider query', async () => {
+  it('lets any bundle run a mutation that refreshes another bundle query', async () => {
     let server: Sub[] = [{ id: 1 }];
-    const client = provideShared('sync', createSyncClient({ ssr: true }));
-    const subs = client.query({
+
+    // One bundle shows the list.
+    const subs = sharedClient().query({
       queryKey: ['subs'],
       queryFn: async () => server,
     });
     await subs.load();
+    const shown: number[] = [];
+    subs.watch(ref => {
+      shown.push(ref.value.length);
+    });
 
-    // Consumer bundle.
-    const shared = getShared<SyncClient>('sync')!;
-    const subscribe = shared.mutation({
+    // Another bundle subscribes, with the same API and no guard.
+    const client = sharedClient();
+    const subscribe = client.mutation({
       mutationFn: async (input: Sub) => {
         server = [...server, input];
         return input;
       },
-      onSuccess: () => shared.invalidate(['subs']),
+      onSuccess: () => client.invalidate(['subs']),
     });
     expect((await subscribe.run({ id: 2 })).kind).toBe('success');
     await subs.refetch();
     expect(subs.ref.value).toEqual([{ id: 1 }, { id: 2 }]);
+    expect(shown).toEqual([1, 2]);
+  });
+
+  it('still reaches a client through onShared and getShared', () => {
+    const seen: SyncClient[] = [];
+    onShared<SyncClient>('sync', client => seen.push(client));
+    const client = sharedClient();
+    expect(seen).toEqual([client]);
+    expect(getShared<SyncClient>('sync')).toBe(client);
   });
 });
