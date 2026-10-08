@@ -6,9 +6,12 @@ import { JSDOM } from 'jsdom';
 import { createStore } from 'state-ref';
 import {
   getShared,
+  isProvided,
+  isReady,
   onShared,
   pendingShared,
   provideShared,
+  sharedWatch,
   whenReady,
 } from 'state-ref/shared';
 
@@ -23,13 +26,20 @@ const plain = value => JSON.parse(JSON.stringify(value));
 assert.equal(typeof window, 'undefined');
 {
   const opened = [];
+  const stages = [];
   whenReady('node.ready', ref => opened.push(ref.value));
+  sharedWatch('node.ready')(ref => {
+    stages.push(!isProvided(ref) ? 'pending' : isReady(ref) ? 'ready' : 'wait');
+  });
   assert.deepEqual(pendingShared(), ['node.ready']);
-  const ref = provideShared('node.ready', createStore(0))();
+  const ref = provideShared('node.ready', createStore(0), {
+    ready: store => store.value > 0,
+  })();
   assert.equal(getShared('node.ready')().value, 0);
   ref.value = 7;
   ref.value = 8;
   assert.deepEqual(opened, [7]);
+  assert.deepEqual(stages, ['pending', 'wait', 'ready', 'ready']);
   onShared('node.ready', watch => assert.equal(watch().value, 8));
 }
 
@@ -63,15 +73,21 @@ function page() {
 
 const PROVIDE = `
   var watchA = coreA.createStore({ ready: false, count: 0 });
-  sharedA.provideShared('subs', watchA);
+  sharedA.provideShared('subs', watchA, {
+    ready: function (ref) { return ref.ready.value; }
+  });
 `;
+// The consumer's guards come from the provider's copy on purpose: a ref made
+// by one copy has to answer a guard from another.
 const CONSUME = `
   var log = [];
-  sharedB.onShared('subs', function (watch) {
-    watch(function (ref) { log.push('count:' + ref.count.value); });
+  var subsWatch = sharedB.sharedWatch('subs');
+  subsWatch(function (ref) {
+    if (!sharedA.isProvided(ref)) return log.push('pending');
+    log.push('count:' + ref.count.value);
   });
-  sharedB.whenReady('subs', function () { log.push('ready'); }, {
-    select: function (ref) { return ref.ready.value; }
+  sharedB.whenReady(subsWatch, function (ref) {
+    log.push('ready:' + ref.count.value);
   });
 `;
 
@@ -84,21 +100,27 @@ for (const [label, scripts] of [
   const { window } = browser;
   scripts.forEach(script => window.eval(script));
 
-  assert.deepEqual(plain(window.eval('log')), ['count:0'], label);
+  assert.deepEqual(
+    plain(window.eval('log')),
+    label === 'consumer first' ? ['pending', 'count:0'] : ['count:0'],
+    label
+  );
   assert.deepEqual(plain(window.eval('sharedA.pendingShared()')), [], label);
+  assert.equal(window.eval('sharedA.isReady(subsWatch())'), false, label);
   assert.equal(window.eval("sharedB.getShared('subs') === watchA"), true);
 
   // The provider writes, the consumer's subscription hears it.
   window.eval('watchA().count.value = 1; watchA().ready.value = true;');
+  assert.equal(window.eval('sharedA.isReady(subsWatch())'), true, label);
   // The consumer writes through the provider's store, and the gate stays shut.
   window.eval(`
-    sharedB.getShared('subs')().count.value = 2;
+    subsWatch().count.value = 2;
     watchA().ready.value = false;
     watchA().ready.value = true;
   `);
   assert.deepEqual(
-    plain(window.eval('log')),
-    ['count:0', 'count:1', 'ready', 'count:2'],
+    plain(window.eval('log')).slice(-4),
+    ['count:0', 'count:1', 'ready:1', 'count:2'],
     label
   );
   assert.equal(window.eval('watchA().count.value'), 2, label);
@@ -177,7 +199,7 @@ for (const [label, scripts] of [
   const browser = page();
   const { window } = browser;
   window.eval(`
-    var foreign = { v: 2, stores: new Map(), waiters: new Map() };
+    var foreign = { v: 2, entries: new Map(), waiters: new Map() };
     globalThis[Symbol.for('state-ref.shared')] = foreign;
   `);
   assert.throws(() => window.eval("sharedA.getShared('subs')"), /protocol 2/);

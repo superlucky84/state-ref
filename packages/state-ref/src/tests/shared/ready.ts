@@ -126,16 +126,33 @@ if (import.meta.vitest) {
       whenReady('subs.ready', callback);
       expect(pendingShared()).toEqual(['subs.ready']);
 
-      const ref = provideShared('subs.ready', createStore(false))();
+      const ref = provideShared('subs.ready', createStore(false), {
+        ready: store => store.value,
+      })();
+      expect(pendingShared()).toEqual([]);
       expect(callback).not.toHaveBeenCalled();
+      ref.value = true;
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback.mock.calls[0][0].value).toBe(true);
+
+      ref.value = false;
       ref.value = true;
       expect(callback).toHaveBeenCalledTimes(1);
     });
 
     it('opens at once for a named store that is provided and ready', () => {
-      provideShared('subs.ready', createStore(true));
+      provideShared('subs.ready', createStore(true), {
+        ready: store => store.value,
+      });
       const callback = vi.fn();
       whenReady('subs.ready', callback);
+      expect(callback).toHaveBeenCalledTimes(1);
+    });
+
+    it('treats a named store with no ready condition as ready once provided', () => {
+      const callback = vi.fn();
+      whenReady('n', callback);
+      provideShared('n', createStore(0));
       expect(callback).toHaveBeenCalledTimes(1);
     });
 

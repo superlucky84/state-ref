@@ -1,6 +1,14 @@
-import type { Watch } from '@/types';
+export type Waiter = (entry: Entry) => void;
 
-export type Waiter = (watch: Watch<any>) => void;
+/**
+ * One shared name. `value` is whatever the provider handed over - usually a
+ * watch, sometimes an object such as a sync client. `ready` is the provider's
+ * own statement of when a watch's data can be used.
+ */
+export type Entry = {
+  value: unknown;
+  ready?: (ref: any) => unknown;
+};
 
 /**
  * What every bundle on the page agrees on. Only functions and plain
@@ -12,7 +20,7 @@ export type Waiter = (watch: Watch<any>) => void;
  */
 export type Registry = {
   v: number;
-  stores: Map<string, Watch<any>>;
+  entries: Map<string, Entry>;
   waiters: Map<string, Set<Waiter>>;
 };
 
@@ -26,7 +34,7 @@ export function registry(): Registry {
   if (found === undefined) {
     const created: Registry = {
       v: PROTOCOL,
-      stores: new Map(),
+      entries: new Map(),
       waiters: new Map(),
     };
     Object.defineProperty(host, KEY, {
@@ -47,4 +55,27 @@ export function registry(): Registry {
   }
 
   return found;
+}
+
+/**
+ * Runs `waiter` with the entry under `name` - now if it is there, otherwise
+ * when it is provided. The returned function stops waiting.
+ */
+export function await_(name: string, waiter: Waiter): () => void {
+  const { entries, waiters } = registry();
+  const existing = entries.get(name);
+  if (existing) {
+    waiter(existing);
+    return () => {};
+  }
+
+  let waiting = waiters.get(name);
+  if (!waiting) waiters.set(name, (waiting = new Set()));
+  const queue = waiting;
+  queue.add(waiter);
+
+  return () => {
+    queue.delete(waiter);
+    if (queue.size === 0 && waiters.get(name) === queue) waiters.delete(name);
+  };
 }

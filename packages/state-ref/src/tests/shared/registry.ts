@@ -27,7 +27,7 @@ if (import.meta.vitest) {
       const watch = createStore({ count: 0 });
       expect(provideShared('counter', watch)).toBe(watch);
 
-      const found = getShared<{ count: number }>('counter')!;
+      const found = getShared<Watch<{ count: number }>>('counter')!;
       expect(found).toBe(watch);
 
       const seen: number[] = [];
@@ -48,7 +48,7 @@ if (import.meta.vitest) {
       provideShared('tick', watch);
 
       const seen: number[] = [];
-      getShared<number>('tick')!(ref => {
+      getShared<Watch<number>>('tick')!(ref => {
         seen.push(ref.value);
       });
       updateRef.value = 1;
@@ -61,11 +61,11 @@ if (import.meta.vitest) {
     it('runs callbacks that came first when the store is provided, in order', () => {
       const order: string[] = [];
       const received: Watch<boolean>[] = [];
-      onShared<boolean>('ready', watch => {
+      onShared<Watch<boolean>>('ready', watch => {
         order.push('a');
         received.push(watch);
       });
-      onShared<boolean>('ready', () => order.push('b'));
+      onShared('ready', () => order.push('b'));
       expect(order).toEqual([]);
 
       const watch = createStore(false);
@@ -88,7 +88,7 @@ if (import.meta.vitest) {
 
     it('lets a waiting callback see a write made right after provide', () => {
       const seen: number[] = [];
-      onShared<number>('n', watch => {
+      onShared<Watch<number>>('n', watch => {
         watch(ref => {
           seen.push(ref.value);
         });
@@ -124,7 +124,11 @@ if (import.meta.vitest) {
       expect(() => provideShared('', watch)).toThrow(TypeError);
       expect(() => getShared(1 as any)).toThrow(TypeError);
       expect(() => onShared(undefined as any, () => {})).toThrow(TypeError);
-      expect(() => provideShared('n', {} as any)).toThrow(TypeError);
+      expect(() => provideShared('n', undefined as any)).toThrow(TypeError);
+      expect(() => provideShared('n', null as any)).toThrow(TypeError);
+      expect(() => provideShared('n', watch, { ready: true as any })).toThrow(
+        TypeError
+      );
       expect(getShared('n')).toBeUndefined();
     });
 
@@ -208,13 +212,23 @@ if (import.meta.vitest) {
 
     // T-SH-11
     it('refuses a registry at a protocol it does not know, and leaves it alone', () => {
-      const foreign = { v: 2, stores: new Map(), waiters: new Map() };
+      const foreign = { v: 2, entries: new Map(), waiters: new Map() };
       (globalThis as any)[KEY] = foreign;
 
       expect(() => provideShared('n', createStore(0))).toThrow(/protocol 2/);
       expect(() => getShared('n')).toThrow(/protocol 2/);
       expect((globalThis as any)[KEY]).toBe(foreign);
-      expect(foreign.stores.size).toBe(0);
+      expect(foreign.entries.size).toBe(0);
+    });
+
+    it('shares a value that is not a watch', () => {
+      const client = { query: () => 'data' };
+      const seen: unknown[] = [];
+      onShared<typeof client>('client', value => seen.push(value));
+
+      expect(provideShared('client', client)).toBe(client);
+      expect(getShared<typeof client>('client')!.query()).toBe('data');
+      expect(seen).toEqual([client]);
     });
 
     it('does not show the registry when the global object is enumerated', () => {

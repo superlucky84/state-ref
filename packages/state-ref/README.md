@@ -84,33 +84,37 @@ Draft editing supports acyclic plain data and dense arrays. Arrays are merged as
 
 ### Optional shared stores across bundles
 
-Import from `state-ref/shared` when separately built bundles on one page need the same store. A bundle provides a watch under a name; any other bundle looks it up by that name, even when each bundle carries its own copy of state-ref and whichever loads first.
+Import from `state-ref/shared` when separately built bundles on one page need the same store. One bundle provides a watch under a name; any other bundle follows it by that name, even when each bundle carries its own copy of state-ref and whichever loads first.
 
 ```typescript
 import { createStore } from 'state-ref';
-import { provideShared, onShared, whenReady } from 'state-ref/shared';
+import { provideShared, sharedWatch, isProvided, isReady } from 'state-ref/shared';
 
-// Provider bundle
-const watch = provideShared('subs', createStore({ ready: false, count: 0 }));
+type Subs = { loaded: boolean; mySubs: string[] | null };
+type LoadedSubs = Subs & { loaded: true; mySubs: string[] };
 
-// Consumer bundle - runs now if 'subs' is there, otherwise when it is provided
-onShared<{ ready: boolean; count: number }>('subs', subs => {
-  subs(ref => console.log(ref.count.value));
+// Provider bundle: owns the data, and says when it can be used
+const store = createStore<Subs>({ loaded: false, mySubs: null });
+provideShared('subs', store, { ready: ref => ref.loaded.value });
+
+// Consumer bundle: a watch right away, whether or not the provider has loaded
+const subsWatch = sharedWatch<Subs, LoadedSubs>('subs');
+
+subsWatch(ref => {
+  if (!isProvided(ref)) return; // no bundle has provided 'subs' yet
+  if (!isReady(ref)) return; // the store exists, its data is still loading
+  console.log(ref.mySubs.value.length); // an ordinary ref from here on
 });
 
-// Runs once, when the store exists and is ready, then unsubscribes
-whenReady<{ ready: boolean; count: number }>(
-  'subs',
-  ref => console.log('ready with', ref.count.value),
-  { select: ref => ref.ready.value }
-);
-
-watch().ready.value = true;
+// Later, in the provider: the subscriber above runs again
+const subs = store();
+subs.mySubs.value = ['a', 'b'];
+subs.loaded.value = true;
 ```
 
-`getShared(name)` returns the watch if it is registered right now, and `pendingShared()` lists names something is waiting for that no bundle has provided. `whenReady` also takes a watch directly, and treats a truthy root value as ready when `select` is omitted. `onShared` and `whenReady` accept `{ signal }` to cancel.
+A shared ref has no paths until a guard has run: skipping the guard is a compile error in TypeScript and a thrown error in JavaScript. `whenReady(name, callback)` runs a callback once when the store is ready and then unsubscribes. `provideShared` also accepts a value that is not a watch, such as a `@stateref/sync` client, which consumers fetch with `getShared` or `onShared`; `pendingShared()` lists names nobody has provided.
 
-The first registration of a name stays; providing a different watch under it warns and returns the first. The registry lives on `globalThis`, so on a server it is shared between requests - do not provide per-request state there. `batch` from `state-ref/batch` coalesces writes only for stores created by the same copy of state-ref.
+The first registration of a name stays; providing something else under it warns and returns the first. The registry lives on `globalThis`, so on a server it is shared between requests - do not provide per-request state there. `batch` from `state-ref/batch` coalesces writes only for stores created by the same copy of state-ref.
 
 ### Optional server query package
 
