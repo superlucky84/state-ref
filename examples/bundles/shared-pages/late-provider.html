@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>state-ref/shared — 제공 번들을 나중에</title>
+  </head>
+  <body>
+    <h1>번들 간 공유 — 제공 번들을 나중에</h1>
+    <p>소비 번들만 로드된 상태로 시작하고, 버튼을 누르면 제공 번들을 로드한다.</p>
+    <p>두 번들은 따로 빌드됐고 각자 state-ref와 @stateref/sync 사본을 품고 있다.</p>
+    <nav><a href="/">← 조합 목록</a></nav>
+    <section>
+      <h2>제공 번들</h2>
+      <div id="provider"></div>
+    </section>
+    <section>
+      <h2>소비 번들</h2>
+      <p>Preact 배지: <span id="consumer-badge"></span></p>
+      <div id="consumer"></div>
+    </section>
+    <p><button type="button" data-action="load-provider-bundle">제공 번들 로드</button></p>
+    <script type="module" src="/shared/consumer.js"></script>
+    <script>
+      document
+        .querySelector("[data-action=load-provider-bundle]")
+        .addEventListener("click", function () {
+          var script = document.createElement("script");
+          script.type = "module";
+          script.src = "/shared/provider.js";
+          document.body.append(script);
+        });
+    </script>
+  </body>
+</html>

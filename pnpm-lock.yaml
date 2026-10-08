@@ -59,9 +59,15 @@ importers:
 
   examples/bundles:
     dependencies:
+      '@stateref/connect-preact':
+        specifier: workspace:*
+        version: link:../../packages/connect-preact
       '@stateref/sync':
         specifier: workspace:*
         version: link:../../packages/sync
+      preact:
+        specifier: ^10.24.1
+        version: 10.24.1
       state-ref:
         specifier: workspace:*
         version: link:../../packages/state-ref
