@@ -87,6 +87,7 @@
   - 근거: 사용자에게 익숙한 모양. setup이 한 번 실행되는 프레임워크에서 props 변화를 따라가려면 각 프레임워크가 추적하는 형태가 필요하다.
   - 검증: T-QH-31, T-QH-32, T-QH-33.
 - [x] **DC-QH-18 `QueryDisplayRef`의 `undefined` 처리 수정** — `S | undefined`를 유니언으로 가르지 않고(비분배 `[S] extends [...]`) 하위 경로를 열며, 끝 값의 타입에 `| undefined`를 더한다(R-QH-10). 런타임 변경은 없다. 기존 `display` 사용에도 적용되므로 sync 공개 타입의 변경이다(0.x의 minor로 기록).
+  - 구현(단계 1)에서 같은 규칙을 두 경우로 넓혔다. `null`일 수 있는 부모(`address: { city } | null`)도 하위 경로를 열고 끝 값에 `| undefined`를 더한다(런타임에 `null`을 지나 읽으면 `undefined`). 선택적 필드(`nickname?: string`)는 선택적이지 않은 ref가 되고 그 값에 `| undefined`가 더해진다(런타임에 하위 ref는 항상 있다. 예전 타입은 ref 자체를 `undefined`일 수 있다고 해 `?.`를 요구했다). 있는 타입끼리의 유니언(판별 유니언)은 예전처럼 나눠진다. 노드 자신의 `.value`는 원래 타입(`null`·`undefined` 포함) 그대로다.
   - 검증: T-QH-08(타입 테스트).
 - [x] **DC-QH-19 mount 재조회의 문서 정정** — [server-sync DESIGN](../server-sync/DESIGN.md) 6절과 gate가 확인하는 지원 표 [PHASE8_6](../server-sync/PHASE8_6.md)의 F2-02 행·절 모두에 "mount 재조회 = 관찰자 훅 구독 시 `load()`"를 적고, PHASE8_6 행에 `packages/sync/src/tests/observe.test.ts`를 인용한다(`scripts/check-support-table.mjs`가 인용 파일의 실재를 확인, IMPLEMENT 단계 7).
 

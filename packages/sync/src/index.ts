@@ -27,6 +27,9 @@ import type {
   QueryDisplayWatch,
 } from './display';
 import { createLiveQuery } from './live-key';
+import { createPeekReader } from './peek';
+import type { PeekEntry, PeekOptions } from './peek';
+import { withInternals } from './internal';
 import type { LiveQueryOptions, OpenedQuery } from './live-key';
 import {
   checkAutomaticRefetchOptions,
@@ -531,6 +534,32 @@ class QueryEntry<T> {
     return !this.removed && this.resource !== null && this.statusValue.loaded;
   }
 
+  /** The current status, read without subscribing to it (`peek.ts`). */
+  peekStatus(): QueryStatus {
+    return this.statusValue;
+  }
+
+  /** What observers see, local edits included, read without subscribing. */
+  peekValue(): T {
+    return this.getResource().value();
+  }
+
+  /** Whether displays hand `select` read-only snapshots of the value. */
+  peekEditable(): boolean {
+    return this.resource?.editable ?? this.options.editable ?? true;
+  }
+
+  /** The condition `seedInitial` checks, so a peek can show what it seeds. */
+  canSeedInitial(): boolean {
+    return (
+      !this.removed &&
+      !this.resource &&
+      !this.pending &&
+      !this.linked &&
+      !this.statusValue.unconfirmed
+    );
+  }
+
   serverValue(): T {
     const value = this.getResource().serverValue();
     return this.options.editable ?? true ? (frozenCopy(value) as T) : value;
@@ -644,13 +673,7 @@ class QueryEntry<T> {
   }
 
   seedInitial(value: T, updatedAt: number) {
-    if (
-      this.resource ||
-      this.pending ||
-      this.linked ||
-      this.statusValue.unconfirmed
-    )
-      return;
+    if (!this.canSeedInitial()) return;
     this.seedBaseline(value, updatedAt, false);
   }
 
@@ -1426,309 +1449,324 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
     });
     return { query, entry, queryOptions, handle };
   };
-  const client: SyncClient = Object.freeze({
-    query(options: any): any {
-      // The two forms are told apart by the source, not by a flag: a reactive
-      // key has no `queryKey` of its own to check.
-      return 'source' in options
-        ? openLiveQuery(options)
-        : openQuery(options, 'query', true, options);
-    },
-    infiniteQuery<Page, Param, S = InfiniteData<Page, Param>>(
-      options: InfiniteQueryOptions<Page, Param> &
-        QueryDisplayOptions<InfiniteData<Page, Param>, S>
-    ): InfiniteQueryHandle<Page, Param, S> {
-      if (options.placeholderData !== undefined)
-        checkInfiniteData(options.placeholderData, options.maxPages);
-      return openInfinite<Page, Param, S>(options, true, options).handle;
-    },
-    async fetch<T>(queryOptions: QueryOptions<T>): Promise<T> {
-      const entry = getOrCreate(queryOptions, false);
-      entry.attach();
-      try {
-        return await entry.load(false, undefined, false, queryOptions);
-      } finally {
-        entry.detach();
-      }
-    },
-    async prefetch<T>(queryOptions: QueryOptions<T>): Promise<void> {
-      const entry = getOrCreate(queryOptions, false);
-      entry.attach();
-      try {
-        await entry.load(false, undefined, false, queryOptions);
-      } catch {
-        // Prefetch is best-effort; a later fetch still observes the error.
-      } finally {
-        entry.detach();
-      }
-    },
-    async ensure<T>(queryOptions: QueryOptions<T>): Promise<T> {
-      const entry = getOrCreate(queryOptions, false);
-      entry.attach();
-      try {
-        if (entry.hasConfirmedBaseline()) return entry.serverValue();
-        return await entry.load(false, undefined, false, queryOptions);
-      } finally {
-        entry.detach();
-      }
-    },
-    async fetchInfinite<Page, Param>(
-      infiniteOptions: InfiniteQueryOptions<Page, Param>
-    ): Promise<InfiniteData<Page, Param>> {
-      const { entry, queryOptions, handle } = openInfinite(
-        infiniteOptions,
-        false
-      );
-      try {
-        return await entry.load(false, undefined, false, queryOptions);
-      } finally {
-        handle.dispose();
-      }
-    },
-    async prefetchInfinite<Page, Param>(
-      infiniteOptions: InfiniteQueryOptions<Page, Param>
-    ): Promise<void> {
-      const { entry, queryOptions, handle } = openInfinite(
-        infiniteOptions,
-        false
-      );
-      try {
-        await entry.load(false, undefined, false, queryOptions);
-      } catch {
-        // Prefetch is best-effort; a later fetch still observes the error.
-      } finally {
-        handle.dispose();
-      }
-    },
-    async ensureInfinite<Page, Param>(
-      infiniteOptions: InfiniteQueryOptions<Page, Param>
-    ): Promise<InfiniteData<Page, Param>> {
-      const { entry, queryOptions, handle } = openInfinite(
-        infiniteOptions,
-        false
-      );
-      try {
-        if (entry.hasConfirmedBaseline()) return entry.serverValue();
-        return await entry.load(false, undefined, false, queryOptions);
-      } finally {
-        handle.dispose();
-      }
-    },
-    mutation<I, T>(mutationOptions: MutationOptions<I, T>) {
-      return createMutation(
-        mutationOptions,
-        () => nextOperationId++,
-        links => {
-          const seen = new Set<QueryEntry<any>>();
-          const prepared = links.map((link: MutationLink<T>) => {
-            const entry = handles.get(link.query);
-            if (!entry)
-              throw new TypeError('Linked query belongs to another client.');
-            link.query.version(); // Disposed handles fail before the WRITE starts.
-            entry.canLink();
-            if (seen.has(entry))
-              throw new TypeError(
-                'A query may be linked only once per operation.'
-              );
-            seen.add(entry);
-            const submission = link.submission;
-            const onReject = link.onReject;
-            const resource = submission ? entry.getResource() : null;
-            if (submission) resource!.assertSubmission(submission);
-            if (submission && resource!.version() !== submission.version) {
-              throw new Error(
-                'Submission is stale. Capture the current edits again.'
-              );
-            }
-            const accept = link.accept ?? { kind: 'none' as const };
-            if (accept.kind === 'submitted' && !submission) {
-              throw new TypeError(
-                'Submitted acceptance requires a submission.'
-              );
-            }
-            if (onReject === 'remove' && !submission) {
-              throw new TypeError(
-                'Removing rejected edits requires a submission.'
-              );
-            }
-            return {
-              queryKey: entry.key(),
-              begin: () => {
-                if (submission) resource!.beginSubmission(submission);
-                try {
-                  entry.beginLink();
-                } catch (error) {
-                  if (submission) resource!.endSubmission(submission);
-                  throw error;
-                }
-              },
-              success: async (data: T) => {
-                if (accept.kind === 'submitted')
-                  entry.acceptSubmitted(submission!);
-                else if (accept.kind === 'response')
-                  entry.acceptServer(accept.select(data), submission);
-                else if (accept.kind === 'refetch')
-                  await entry.load(true, submission, true);
-                else entry.markUnconfirmed();
-              },
-              reject: () => {
-                if (onReject === 'remove') entry.removeSubmission(submission!);
-              },
-              uncertain: () => entry.markUnconfirmed(),
-              end: () => {
-                if (submission) entry.getResource().endSubmission(submission);
-                entry.endLink();
-              },
-            };
-          });
-          return prepared;
+  const client: SyncClient = Object.freeze(
+    withInternals<SyncClient>(
+      {
+        query(options: any): any {
+          // The two forms are told apart by the source, not by a flag: a reactive
+          // key has no `queryKey` of its own to check.
+          return 'source' in options
+            ? openLiveQuery(options)
+            : openQuery(options, 'query', true, options);
         },
-        schedule,
-        observeMutation
-      );
-    },
-    dehydrate(): SyncSnapshot {
-      const queries: HydratedQuery[] = [];
-      for (const entry of entries.values()) {
-        const seed = entry.dehydrate();
-        if (seed) queries.push(seed);
-      }
-      return Object.freeze({
-        schemaVersion: 1 as const,
-        capturedAt: Date.now(),
-        queries: Object.freeze(queries),
-      });
-    },
-    hydrate(snapshot: SyncSnapshot) {
-      if (entries.size) {
-        throw new Error(
-          'Hydrate an empty client before creating query handles.'
-        );
-      }
-      const seeds = parseSnapshot(snapshot);
-      const prepared: Array<[string, QueryEntry<any>]> = [];
-      try {
-        for (const seed of seeds) {
-          const hash = hashQueryKey(seed.queryKey);
-          const entry = new QueryEntry(
-            hash,
-            {
-              queryKey: seed.queryKey,
-              editable: seed.editable,
-              queryFn: () => {
-                throw new Error(
-                  'Attach a query function before loading hydrated data.'
-                );
-              },
-            },
-            options.ssr ?? false,
-            evict,
-            network,
-            changed,
-            seed.kind ?? 'query'
+        infiniteQuery<Page, Param, S = InfiniteData<Page, Param>>(
+          options: InfiniteQueryOptions<Page, Param> &
+            QueryDisplayOptions<InfiniteData<Page, Param>, S>
+        ): InfiniteQueryHandle<Page, Param, S> {
+          if (options.placeholderData !== undefined)
+            checkInfiniteData(options.placeholderData, options.maxPages);
+          return openInfinite<Page, Param, S>(options, true, options).handle;
+        },
+        async fetch<T>(queryOptions: QueryOptions<T>): Promise<T> {
+          const entry = getOrCreate(queryOptions, false);
+          entry.attach();
+          try {
+            return await entry.load(false, undefined, false, queryOptions);
+          } finally {
+            entry.detach();
+          }
+        },
+        async prefetch<T>(queryOptions: QueryOptions<T>): Promise<void> {
+          const entry = getOrCreate(queryOptions, false);
+          entry.attach();
+          try {
+            await entry.load(false, undefined, false, queryOptions);
+          } catch {
+            // Prefetch is best-effort; a later fetch still observes the error.
+          } finally {
+            entry.detach();
+          }
+        },
+        async ensure<T>(queryOptions: QueryOptions<T>): Promise<T> {
+          const entry = getOrCreate(queryOptions, false);
+          entry.attach();
+          try {
+            if (entry.hasConfirmedBaseline()) return entry.serverValue();
+            return await entry.load(false, undefined, false, queryOptions);
+          } finally {
+            entry.detach();
+          }
+        },
+        async fetchInfinite<Page, Param>(
+          infiniteOptions: InfiniteQueryOptions<Page, Param>
+        ): Promise<InfiniteData<Page, Param>> {
+          const { entry, queryOptions, handle } = openInfinite(
+            infiniteOptions,
+            false
           );
-          prepared.push([hash, entry]);
-          entry.hydrate(seed);
-        }
-      } catch (error) {
-        prepared.forEach(([, entry]) => entry.expire());
-        throw error;
-      }
-      prepared.forEach(([hash, entry]) => entries.set(hash, entry));
-      prepared.forEach(([, entry]) => emit('added', entry));
-    },
-    dehydrateLocal(options: LocalDehydrateOptions = {}): LocalSyncSnapshot {
-      const inFlight = options.inFlight ?? 'reject';
-      if (inFlight !== 'reject' && inFlight !== 'unconfirmed')
-        throw new TypeError('Unsupported in-flight dehydration mode.');
-      const queries: LocalHydratedQuery[] = [];
-      for (const entry of entries.values()) {
-        const seed = entry.dehydrateLocal(inFlight);
-        if (seed) queries.push(seed);
-      }
-      return Object.freeze({
-        schemaVersion: 2 as const,
-        capturedAt: Date.now(),
-        queries: Object.freeze(queries),
-      });
-    },
-    hydrateLocal(snapshot: LocalSyncSnapshot) {
-      if (entries.size)
-        throw new Error(
-          'Hydrate an empty client before creating query handles.'
-        );
-      const seeds = parseLocalSnapshot(snapshot);
-      const prepared: Array<[string, QueryEntry<any>]> = [];
-      try {
-        for (const seed of seeds) {
-          const hash = hashQueryKey(seed.queryKey);
-          const entry = new QueryEntry(
-            hash,
-            {
-              queryKey: seed.queryKey,
-              editable: seed.editable,
-              queryFn: () => {
-                throw new Error(
-                  'Attach a query function before loading hydrated data.'
-                );
-              },
-            },
-            options.ssr ?? false,
-            evict,
-            network,
-            changed,
-            seed.kind ?? 'query'
+          try {
+            return await entry.load(false, undefined, false, queryOptions);
+          } finally {
+            handle.dispose();
+          }
+        },
+        async prefetchInfinite<Page, Param>(
+          infiniteOptions: InfiniteQueryOptions<Page, Param>
+        ): Promise<void> {
+          const { entry, queryOptions, handle } = openInfinite(
+            infiniteOptions,
+            false
           );
-          prepared.push([hash, entry]);
-          entry.hydrateLocal(seed);
-        }
-      } catch (error) {
-        prepared.forEach(([, entry]) => entry.expire());
-        throw error;
+          try {
+            await entry.load(false, undefined, false, queryOptions);
+          } catch {
+            // Prefetch is best-effort; a later fetch still observes the error.
+          } finally {
+            handle.dispose();
+          }
+        },
+        async ensureInfinite<Page, Param>(
+          infiniteOptions: InfiniteQueryOptions<Page, Param>
+        ): Promise<InfiniteData<Page, Param>> {
+          const { entry, queryOptions, handle } = openInfinite(
+            infiniteOptions,
+            false
+          );
+          try {
+            if (entry.hasConfirmedBaseline()) return entry.serverValue();
+            return await entry.load(false, undefined, false, queryOptions);
+          } finally {
+            handle.dispose();
+          }
+        },
+        mutation<I, T>(mutationOptions: MutationOptions<I, T>) {
+          return createMutation(
+            mutationOptions,
+            () => nextOperationId++,
+            links => {
+              const seen = new Set<QueryEntry<any>>();
+              const prepared = links.map((link: MutationLink<T>) => {
+                const entry = handles.get(link.query);
+                if (!entry)
+                  throw new TypeError(
+                    'Linked query belongs to another client.'
+                  );
+                link.query.version(); // Disposed handles fail before the WRITE starts.
+                entry.canLink();
+                if (seen.has(entry))
+                  throw new TypeError(
+                    'A query may be linked only once per operation.'
+                  );
+                seen.add(entry);
+                const submission = link.submission;
+                const onReject = link.onReject;
+                const resource = submission ? entry.getResource() : null;
+                if (submission) resource!.assertSubmission(submission);
+                if (submission && resource!.version() !== submission.version) {
+                  throw new Error(
+                    'Submission is stale. Capture the current edits again.'
+                  );
+                }
+                const accept = link.accept ?? { kind: 'none' as const };
+                if (accept.kind === 'submitted' && !submission) {
+                  throw new TypeError(
+                    'Submitted acceptance requires a submission.'
+                  );
+                }
+                if (onReject === 'remove' && !submission) {
+                  throw new TypeError(
+                    'Removing rejected edits requires a submission.'
+                  );
+                }
+                return {
+                  queryKey: entry.key(),
+                  begin: () => {
+                    if (submission) resource!.beginSubmission(submission);
+                    try {
+                      entry.beginLink();
+                    } catch (error) {
+                      if (submission) resource!.endSubmission(submission);
+                      throw error;
+                    }
+                  },
+                  success: async (data: T) => {
+                    if (accept.kind === 'submitted')
+                      entry.acceptSubmitted(submission!);
+                    else if (accept.kind === 'response')
+                      entry.acceptServer(accept.select(data), submission);
+                    else if (accept.kind === 'refetch')
+                      await entry.load(true, submission, true);
+                    else entry.markUnconfirmed();
+                  },
+                  reject: () => {
+                    if (onReject === 'remove')
+                      entry.removeSubmission(submission!);
+                  },
+                  uncertain: () => entry.markUnconfirmed(),
+                  end: () => {
+                    if (submission)
+                      entry.getResource().endSubmission(submission);
+                    entry.endLink();
+                  },
+                };
+              });
+              return prepared;
+            },
+            schedule,
+            observeMutation
+          );
+        },
+        dehydrate(): SyncSnapshot {
+          const queries: HydratedQuery[] = [];
+          for (const entry of entries.values()) {
+            const seed = entry.dehydrate();
+            if (seed) queries.push(seed);
+          }
+          return Object.freeze({
+            schemaVersion: 1 as const,
+            capturedAt: Date.now(),
+            queries: Object.freeze(queries),
+          });
+        },
+        hydrate(snapshot: SyncSnapshot) {
+          if (entries.size) {
+            throw new Error(
+              'Hydrate an empty client before creating query handles.'
+            );
+          }
+          const seeds = parseSnapshot(snapshot);
+          const prepared: Array<[string, QueryEntry<any>]> = [];
+          try {
+            for (const seed of seeds) {
+              const hash = hashQueryKey(seed.queryKey);
+              const entry = new QueryEntry(
+                hash,
+                {
+                  queryKey: seed.queryKey,
+                  editable: seed.editable,
+                  queryFn: () => {
+                    throw new Error(
+                      'Attach a query function before loading hydrated data.'
+                    );
+                  },
+                },
+                options.ssr ?? false,
+                evict,
+                network,
+                changed,
+                seed.kind ?? 'query'
+              );
+              prepared.push([hash, entry]);
+              entry.hydrate(seed);
+            }
+          } catch (error) {
+            prepared.forEach(([, entry]) => entry.expire());
+            throw error;
+          }
+          prepared.forEach(([hash, entry]) => entries.set(hash, entry));
+          prepared.forEach(([, entry]) => emit('added', entry));
+        },
+        dehydrateLocal(options: LocalDehydrateOptions = {}): LocalSyncSnapshot {
+          const inFlight = options.inFlight ?? 'reject';
+          if (inFlight !== 'reject' && inFlight !== 'unconfirmed')
+            throw new TypeError('Unsupported in-flight dehydration mode.');
+          const queries: LocalHydratedQuery[] = [];
+          for (const entry of entries.values()) {
+            const seed = entry.dehydrateLocal(inFlight);
+            if (seed) queries.push(seed);
+          }
+          return Object.freeze({
+            schemaVersion: 2 as const,
+            capturedAt: Date.now(),
+            queries: Object.freeze(queries),
+          });
+        },
+        hydrateLocal(snapshot: LocalSyncSnapshot) {
+          if (entries.size)
+            throw new Error(
+              'Hydrate an empty client before creating query handles.'
+            );
+          const seeds = parseLocalSnapshot(snapshot);
+          const prepared: Array<[string, QueryEntry<any>]> = [];
+          try {
+            for (const seed of seeds) {
+              const hash = hashQueryKey(seed.queryKey);
+              const entry = new QueryEntry(
+                hash,
+                {
+                  queryKey: seed.queryKey,
+                  editable: seed.editable,
+                  queryFn: () => {
+                    throw new Error(
+                      'Attach a query function before loading hydrated data.'
+                    );
+                  },
+                },
+                options.ssr ?? false,
+                evict,
+                network,
+                changed,
+                seed.kind ?? 'query'
+              );
+              prepared.push([hash, entry]);
+              entry.hydrateLocal(seed);
+            }
+          } catch (error) {
+            prepared.forEach(([, entry]) => entry.expire());
+            throw error;
+          }
+          prepared.forEach(([hash, entry]) => entries.set(hash, entry));
+          prepared.forEach(([, entry]) => emit('added', entry));
+        },
+        invalidate(key: QueryKey) {
+          entries.get(hashQueryKey(key))?.invalidate();
+        },
+        remove(key: QueryKey) {
+          const hash = hashQueryKey(key);
+          const entry = entries.get(hash);
+          if (
+            !entry ||
+            entry.owners > 0 ||
+            entry.isDirty() ||
+            entry.isUnconfirmed() ||
+            entry.statusValuePending()
+          )
+            return false;
+          evict(hash, entry);
+          return true;
+        },
+        size: () => entries.size,
+        inspectCache: () =>
+          Object.freeze(Array.from(entries.values(), entry => entry.inspect())),
+        subscribeCache(listener: (event: SyncCacheEvent) => void) {
+          const subscription = { listener };
+          listeners.add(subscription);
+          return () => {
+            listeners.delete(subscription);
+            dropQueued();
+          };
+        },
+        inspectMutations: () =>
+          Object.freeze(
+            Array.from(operations.values(), record => inspectMutation(record))
+          ),
+        subscribeMutations(listener: (event: SyncMutationEvent) => void) {
+          const subscription = { listener };
+          mutationListeners.add(subscription);
+          return () => {
+            mutationListeners.delete(subscription);
+            dropQueued();
+          };
+        },
+      },
+      {
+        peek: <T, S = T>(readOptions: () => PeekOptions<T, S>) =>
+          createPeekReader<T, S>(
+            hash => entries.get(hash) as PeekEntry<T> | undefined,
+            readOptions
+          ),
       }
-      prepared.forEach(([hash, entry]) => entries.set(hash, entry));
-      prepared.forEach(([, entry]) => emit('added', entry));
-    },
-    invalidate(key: QueryKey) {
-      entries.get(hashQueryKey(key))?.invalidate();
-    },
-    remove(key: QueryKey) {
-      const hash = hashQueryKey(key);
-      const entry = entries.get(hash);
-      if (
-        !entry ||
-        entry.owners > 0 ||
-        entry.isDirty() ||
-        entry.isUnconfirmed() ||
-        entry.statusValuePending()
-      )
-        return false;
-      evict(hash, entry);
-      return true;
-    },
-    size: () => entries.size,
-    inspectCache: () =>
-      Object.freeze(Array.from(entries.values(), entry => entry.inspect())),
-    subscribeCache(listener: (event: SyncCacheEvent) => void) {
-      const subscription = { listener };
-      listeners.add(subscription);
-      return () => {
-        listeners.delete(subscription);
-        dropQueued();
-      };
-    },
-    inspectMutations: () =>
-      Object.freeze(
-        Array.from(operations.values(), record => inspectMutation(record))
-      ),
-    subscribeMutations(listener: (event: SyncMutationEvent) => void) {
-      const subscription = { listener };
-      mutationListeners.add(subscription);
-      return () => {
-        mutationListeners.delete(subscription);
-        dropQueued();
-      };
-    },
-  });
+    )
+  );
   return client;
 }

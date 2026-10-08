@@ -20,6 +20,16 @@ const bundle = await readFile(
 assert.match(bundle, /from ["']state-ref["']/);
 assert.match(bundle, /from ["']state-ref\/plugin["']/);
 assert.doesNotMatch(bundle, /state-ref\/draft|@tanstack/);
+// The connectors import sync, never the other way (docs/sync-query-hooks
+// C-QH-04): no UI framework reaches the sync bundle.
+assert.doesNotMatch(
+  bundle,
+  /from\s*["'](?:react|react-dom|preact|vue|svelte|solid-js)(?:\/[^"']*)?["']/
+);
+assert.doesNotMatch(
+  bundle,
+  /import\(\s*["'](?:react|react-dom|preact|vue|svelte|solid-js)(?:\/[^"']*)?["']\s*\)/
+);
 
 const query = createSyncClient({ ssr: true }).query({
   queryKey: ['bundle'],

@@ -1,5 +1,47 @@
 import type { Renew, StateRefStore, Watch } from 'state-ref';
 
+/**
+ * A read-only view of a plain object or array, reused for the same value.
+ *
+ * Shared by `guardRef` and the peek (`peek.ts`), which hands a `select` the
+ * same protection a display does without going through a ref.
+ */
+export function snapshotValue(
+  value: unknown,
+  snapshots: WeakMap<object, object>
+): unknown {
+  if (value === null || typeof value !== 'object') return value;
+  const prototype = Object.getPrototypeOf(value);
+  if (
+    !Array.isArray(value) &&
+    prototype !== null &&
+    prototype !== Object.prototype
+  ) {
+    return value;
+  }
+  const cached = snapshots.get(value);
+  if (cached) return cached;
+  const copy = Array.isArray(value)
+    ? [...value]
+    : Object.assign(Object.create(Object.getPrototypeOf(value)), value);
+  const guarded = new Proxy(copy, {
+    get(target, key, receiver) {
+      return snapshotValue(Reflect.get(target, key, receiver), snapshots);
+    },
+    set() {
+      throw new Error('Resource snapshots cannot be modified directly.');
+    },
+    deleteProperty() {
+      throw new Error('Resource snapshots cannot be modified directly.');
+    },
+    defineProperty() {
+      throw new Error('Resource snapshots cannot be modified directly.');
+    },
+  });
+  snapshots.set(value, guarded);
+  return guarded;
+}
+
 /** The editable payload must only be changed through ref setters. */
 export function guardRef<T>(
   source: StateRefStore<T>,
@@ -17,39 +59,8 @@ export function guardRef<T>(
    */
   readonly = false
 ): StateRefStore<T> {
-  const snapshot = (value: unknown): unknown => {
-    if (!snapshotValues) return value;
-    if (value === null || typeof value !== 'object') return value;
-    const prototype = Object.getPrototypeOf(value);
-    if (
-      !Array.isArray(value) &&
-      prototype !== null &&
-      prototype !== Object.prototype
-    ) {
-      return value;
-    }
-    const cached = snapshots.get(value);
-    if (cached) return cached;
-    const copy = Array.isArray(value)
-      ? [...value]
-      : Object.assign(Object.create(Object.getPrototypeOf(value)), value);
-    const guarded = new Proxy(copy, {
-      get(target, key, receiver) {
-        return snapshot(Reflect.get(target, key, receiver));
-      },
-      set() {
-        throw new Error('Resource snapshots cannot be modified directly.');
-      },
-      deleteProperty() {
-        throw new Error('Resource snapshots cannot be modified directly.');
-      },
-      defineProperty() {
-        throw new Error('Resource snapshots cannot be modified directly.');
-      },
-    });
-    snapshots.set(value, guarded);
-    return guarded;
-  };
+  const snapshot = (value: unknown): unknown =>
+    snapshotValues ? snapshotValue(value, snapshots) : value;
 
   const wrap = (ref: object): object => {
     const cached = refs.get(ref);

@@ -553,3 +553,68 @@ streamQuery(streamed, {
   // @ts-expect-error reduce must return the query data shape
   reduce: (_current, message) => message.row,
 });
+
+// Missing data keeps its paths open (docs/sync-query-hooks DC-QH-18, T-QH-08).
+// `data` is `S | undefined` before the first load; a leaf read through it is
+// the leaf's type plus `undefined`, which is what it returns at run time.
+async function displayLeafPaths() {
+  type Profile = {
+    name: string;
+    address: { city: string } | null;
+    nickname?: string;
+    tags: string[];
+    pair: [number, string];
+  };
+  const client = createSyncClient({ ssr: true });
+  const query = client.query({
+    queryKey: ['profile'],
+    queryFn: (): Profile => ({
+      name: 'Lee',
+      address: null,
+      tags: [],
+      pair: [1, 'a'],
+    }),
+  });
+  const name: string | undefined = query.display.data.name.value;
+  // @ts-expect-error a leaf under missing data may be undefined
+  const strictName: string = query.display.data.name.value;
+  const whole: Profile | undefined = query.display.data.value;
+  // A nullable parent opens its paths the same way.
+  const city: string | undefined = query.display.data.address.city.value;
+  const address: { city: string } | null | undefined =
+    query.display.data.address.value;
+  const nickname: string | undefined = query.display.data.nickname.value;
+  const tag: string | undefined = query.display.data.tags[0].value;
+  const count: number | undefined = query.display.data.tags.length.value;
+  for (const item of query.display.data.tags) {
+    const value: string | undefined = item.value;
+    void value;
+  }
+  const first: number | undefined = query.display.data.pair[0].value;
+  // @ts-expect-error a display leaf still has no setter
+  query.display.data.name.value = 'Kim';
+  // A field outside the shape is still an error.
+  // @ts-expect-error `missing` is not a Profile field
+  void query.display.data.missing;
+  // Selecting a primitive keeps the plain `S | undefined`.
+  const selected = client.query({
+    queryKey: ['profile'],
+    queryFn: (): Profile => ({
+      name: 'Lee',
+      address: null,
+      tags: [],
+      pair: [1, 'a'],
+    }),
+    select: data => data.name.length,
+  });
+  const length: number | undefined = selected.display.data.value;
+  // The status fields read as before.
+  const status: 'pending' | 'success' | 'error' = query.display.status.value;
+  const key: readonly unknown[] | null = query.display.queryKey.value;
+  void [name, strictName, whole, city, address, nickname, tag, count];
+  void [first, length, status, key];
+  query.dispose();
+  selected.dispose();
+}
+
+void displayLeafPaths;

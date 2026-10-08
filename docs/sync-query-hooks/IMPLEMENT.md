@@ -1,7 +1,7 @@
 # IMPLEMENT — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: **단계 0(재검증) 완료.** 다음은 단계 1. 코드 변경 없음. PR [superlucky84/state-ref#16](https://github.com/superlucky84/state-ref/pull/16)은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`). 단계 3의 진입 조건 중 PR 병합은 충족됐다(DC-QH-35).
+- 상태: **단계 1(sync 기반) 완료.** 다음은 단계 2. PR [superlucky84/state-ref#16](https://github.com/superlucky84/state-ref/pull/16)은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`). 단계 3의 진입 조건 중 PR 병합은 충족됐다(DC-QH-35).
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 모든 단계의 공통 완료 조건:
@@ -77,11 +77,14 @@
 ## 단계 1 — sync 기반 (peek, display 계산 공유, 타입)
 
 - 진입: 단계 0 완료.
-- [ ] `display.ts`의 `calculate`를 "status + 입력값 + 표시 옵션 → 표시 상태" 공유 함수로 꺼낸다. 관찰자 display는 최신 표시 옵션을 읽고 비공개 `reproject()`와 재투영 경로의 구조 공유를 둔다(DC-QH-26). 기존 display 동작 무변경.
-- [ ] 관찰자용 peek 내부 함수: key hash로 항목 조회, 없으면 만들지 않음, 옵션 오류는 `errorSource: 'source'` 표시(DC-QH-13), `initialData` 합성(DC-QH-33), 첫 렌더 `fetchStatus`는 캐시 그대로(DC-QH-32), 살아 있고 identity가 안정된 ref와 두 메모(DC-QH-29), 읽기 전용 보호.
-- [ ] `QueryDisplayRef` 타입 수정(DC-QH-18).
-- [ ] `packages/sync/test/sync-bundle.mjs`에 UI 프레임워크 import 부재 확인 추가(T-QH-27).
+- [x] `display.ts`의 `calculate`를 "status + 입력값 + 표시 옵션 → 표시 상태" 공유 함수로 꺼낸다. 관찰자 display는 최신 표시 옵션을 읽고 비공개 `reproject()`와 재투영 경로의 구조 공유를 둔다(DC-QH-26). 기존 display 동작 무변경.
+  - 결과: `projectDisplay()`(투영 메모 키에 `select` identity 추가), `createQueryDisplay(query, options | () => options)`, `reproject()`, `carryProjection()`(구조 공유 `shareStructure()`, 같은 생성자·문구의 `select` 오류 유지, `Date`는 시각으로 비교, 메모도 함께 갱신).
+- [x] 관찰자용 peek 내부 함수: key hash로 항목 조회, 없으면 만들지 않음, 옵션 오류는 `errorSource: 'source'` 표시(DC-QH-13), `initialData` 합성(DC-QH-33), 첫 렌더 `fetchStatus`는 캐시 그대로(DC-QH-32), 살아 있고 identity가 안정된 ref와 두 메모(DC-QH-29), 읽기 전용 보호.
+  - 결과: `peek.ts`의 `createPeekReader(lookup, readOptions)`. 읽기 하나가 메모 하나이고, 단계 2의 관찰자가 확정 옵션용·렌더 옵션용으로 둘을 만든다. 상태는 구독자 없는 내부 store에 두고, `guardRef`의 get 트랩(어느 깊이든)에서 다시 계산한다. 편집 가능 query의 `select` 입력은 display와 같은 읽기 전용 snapshot(`ref-guard.ts`의 `snapshotValue()`로 꺼냄). `QueryEntry`에 구독 없이 읽는 `peekStatus()`·`peekValue()`·`peekEditable()`·`canSeedInitial()`을 더했고, `seedInitial`은 `canSeedInitial()`을 쓴다. 테스트와 단계 2를 위한 client 내부 접근은 `internal.ts`(모듈 전용 symbol, 패키지 진입점에서 export하지 않음).
+- [x] `QueryDisplayRef` 타입 수정(DC-QH-18). `null` 부모와 선택적 필드까지 같은 규칙(DESIGN DC-QH-18).
+- [x] `packages/sync/test/sync-bundle.mjs`에 UI 프레임워크 import 부재 확인 추가(T-QH-27).
 - 기준 테스트: T-QH-08 중 `QueryDisplayRef` 부분과 부정 타입(`SyncClient`에 `peek` 없음), T-QH-27, 기존 sync 테스트 전체, 내부 peek·표시 계산 함수의 단위 테스트(T-QH-06·07·15·17의 peek 부분을 내부 함수로).
+  - 위치: `packages/sync/src/tests/peek.test.ts`(T-QH-01·02·06·07·15·17의 peek 부분, 17개), `packages/sync/src/tests/display-reproject.test.ts`(DC-QH-26 재투영, 7개), `packages/sync/test/types.ts`의 `displayLeafPaths`, `packages/sync/test/negative-types.ts`의 `client.peek`, `packages/sync/test/sync-bundle.mjs`.
 - 완료: 위 테스트 통과, `pnpm --filter @stateref/sync build`와 sync 타입 검사 통과.
 
 ## 단계 2 — 관찰자 (`client.observe`)
