@@ -1,12 +1,12 @@
 # DESIGN — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: **결정 완료** (2026-10-08 IMPLEMENT 단계 0 재검증 + 검증 에이전트 교차 검토 반영). 미결 `[ ]` 없음. 구현 전.
+- 상태: **결정 완료** (2026-10-08 IMPLEMENT 단계 0 재검증 + 검증 에이전트 교차 검토 2회 반영). 미결 `[ ]` 없음. 구현 전. PR #16은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`).
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 ## 1. 현재 구조 (기준 `6e462ed`, 2026-10-08 코드로 재확인)
 
-줄 번호는 `6e462ed` 기준이다.
+줄 번호는 `6e462ed` 기준이다. 단, React 커넥터는 PR #16 병합 뒤(`41798cf`) 줄 번호를 함께 적는다.
 
 | 구성 | 위치 | 이 설계와의 관계 |
 |---|---|---|
@@ -19,7 +19,7 @@
 | query key | `key.ts` `hashQueryKey` | `undefined`와 평범하지 않은 객체(ref 등)를 거절하며 던진다(`:7-23`) |
 | 구독 가드 | `ref-guard.ts` `guardedWatch` | 콜백 구독마다 `AbortController`를 만든다. 같은 콜백 함수는 기록을 재사용한다(`ref-guard.ts:86-136`, 기록 재사용 `:94-131`). 콜백 없는 호출은 참조만 돌려준다 |
 | 코어 구독 종료 | `state-ref/src/connectors/runner.ts` | 첫 실행이 돌려준 `AbortSignal`의 abort(`:206-219`), 또는 이후 실행의 `false` 반환(`:175`)으로 끝난다. 같은 콜백으로 다시 `watch`하면 새 구독 없이 캐시된 ref(`core/index.ts:92`) |
-| React 커넥터 | `connect-react/src/index.ts` | `useState(() => createLink(watch))`로 **첫 watch를 붙잡는다**(`:68`). 첫 렌더는 콜백 없는 `watch()`, 커밋 뒤 `useSyncExternalStore`의 `subscribe`에서 콜백 구독, 구독 직후 한 번 더 렌더해 경로를 모은다(`:39-74`, 한 번 더 렌더 `:52-55`). PR [#16](https://github.com/superlucky84/state-ref/pull/16)(미병합)은 첫 렌더에 `watch()`로 ref를 한 번 만들어(`link.live`) 구독 전에는 그 ref를 반환하고, 그 루트 `.value` identity를 스냅샷으로 쓴다. 구독 뒤 스냅샷은 지금처럼 구독 version이다(PR #16 기준 `:50-87`, `useState` `:81`, 한 번 더 렌더 `:64-67`) |
+| React 커넥터 | `connect-react/src/index.ts` | `useState(() => createLink(watch))`로 **첫 watch를 붙잡는다**(`:68`). 첫 렌더는 콜백 없는 `watch()`, 커밋 뒤 `useSyncExternalStore`의 `subscribe`에서 콜백 구독, 구독 직후 한 번 더 렌더해 경로를 모은다(`:39-74`, 한 번 더 렌더 `:52-55`). PR [#16](https://github.com/superlucky84/state-ref/pull/16)(2026-10-08 `41798cf`로 병합)은 첫 렌더에 `watch()`로 ref를 한 번 만들어(`link.live`) 구독 전에는 그 ref를 반환하고, 그 루트 `.value` identity를 스냅샷으로 쓴다. 구독 뒤 스냅샷은 지금처럼 구독 version이다(병합 뒤 `:50-87`, `live: watch()` `:53`, 스냅샷 `:73-74`, `useState` `:81`, 반환 `:85`, 한 번 더 렌더 `:64-67`) |
 | Preact 커넥터 | `connect-preact/src/index.ts` | React와 같은 설계를 `useEffect`(커밋 뒤)로 구독한다(`:53-60`). Preact 10은 언마운트 정리를 동기로 실행하고, `useEffect`는 다음 프레임 뒤(rAF 또는 100ms 대체 타이머 → `setTimeout`)에 실행한다(`preact/hooks/src/index.js` 10.24.1 `:112-127`, `:471-483`) |
 | Vue·Solid·Svelte 커넥터 | 각 `src/index.ts` | `connectXView(watch)`가 돌려준 함수를 컴포넌트에서 **선택 함수와 함께** 부른다: `useX(ref => ref.a.value)` → `Ref`/`Accessor`/`Readable`. setup에서 바로 구독하고 `onScopeDispose`/`onCleanup`/`onDestroy`로 해제. 서버: Vue는 `typeof window`에서 콜백 없는 `watch()`를 getter로 지연 읽기(`connect-vue/src/index.ts:37-45`), Solid는 `isServer`에서 콜백 없이 한 번 읽기(`connect-solid/src/index.ts:17-20`), Svelte store API는 서버 분기 없이 구독하고 `onDestroy`로 해제(`connect-svelte/src/index.ts:13-27`) |
 | Svelte runes | `connect-svelte/src/runes.ts` | `createSubscriber`로 반응형 읽기가 있을 때만 구독. 읽기 전용 View 변형이 없고 `select`가 쓰기 가능한 ref를 돌려줘야 한다(`:46-75`) |
@@ -41,7 +41,7 @@
   - 실험 1(6절)에서 이 방식의 프로토타입 watch를 **수정하지 않은 `connectReactView`**에 넣고 React StrictMode로 렌더했다. "disposed" 오류 없이 `success:Lee`, 언마운트 뒤 `owners: [0]`. 단계 0에서 컴포넌트마다 `useState`로 관찰자를 만드는 형태로 다시 실행해 같은 결과를 얻었다(E1, E6).
   - 검증: T-QH-03, T-QH-04, T-QH-20.
 - [x] **DC-QH-11 핸들 해제는 미룬다** — 마지막 구독이 끊기면 커서(DC-QH-22)는 바로 dispose하고, 관찰자가 연 **핸들의 `dispose()`만** 해제 일정 뒤에 실행한다. 그 사이 다시 구독되면 새 커서가 **새 핸들을 먼저 `attach`**하므로 캐시 소유자 수가 0이 되지 않고, 진행 중 READ는 새 핸들과 공유된다(취소·재발행 없음). key 전환으로 이전 key 핸들을 놓을 때도 같은 규칙이다(DC-QH-31).
-  - 해제 일정: 기본은 한 매크로태스크(`setTimeout(0)`). 관찰자를 만들 때 내부 옵션으로 바꿀 수 있다. **Preact 진입점**은 Preact의 effect 일정(다음 프레임: rAF 또는 100ms 대체 타이머 → `setTimeout`) 뒤에 `setTimeout`을 하나 더 둔 일정을 넘긴다. Preact는 언마운트 정리가 동기이고 새 컴포넌트의 구독(`useEffect`)이 다음 프레임 뒤라서, `setTimeout(0)`으로는 라우트 교체를 덮지 못한다(1절 Preact 행). React(같은 커밋에서 passive effect를 한꺼번에 실행)와 Vue·Solid·Svelte(같은 patch에서 동기 구독)는 기본 일정으로 충분하다.
+  - 해제 일정: 기본은 한 매크로태스크(`setTimeout(0)`). 관찰자를 만들 때 내부 옵션으로 바꿀 수 있다. **Preact 진입점**은 rAF → `setTimeout` → `setTimeout`으로 해제하고, rAF 대체 타이머는 Preact의 `RAF_TIMEOUT`(100ms)보다 긴 200ms로 둔다. 언마운트 때 먼저 예약된 해제가 새 컴포넌트의 effect flush(rAF 또는 100ms 대체 타이머 → `setTimeout`)보다 한 단계 늦게 끝나야 하고, rAF가 멈춘 탭에서도 effect의 100ms 대체 타이머가 해제보다 먼저 와야 하기 때문이다. effect 큐가 이미 예약돼 있으면 새 effect는 더 이른 flush에서 실행되므로 순서가 유지된다. Preact는 언마운트 정리가 동기이고 새 컴포넌트의 구독(`useEffect`)이 다음 프레임 뒤라서, `setTimeout(0)`으로는 라우트 교체를 덮지 못한다(1절 Preact 행). React(같은 커밋에서 passive effect를 한꺼번에 실행)와 Vue·Solid·Svelte(같은 patch에서 동기 구독)는 기본 일정으로 충분하다.
   - 근거: 즉시 해제하면 마지막 소유자가 떨어지는 순간 `QueryEntry.detach()`가 진행 중 READ를 `invalidate()`로 취소한다(`index.ts:460`). 실험 1·E1은 "해제 취소 + 같은 핸들 재사용" 프로토타입이었고(즉시 해제 요청 2·취소 1, 미룬 해제 요청 1·취소 0), 채택한 "커서 즉시 dispose + 새 핸들 먼저 attach + 이전 핸들 미룬 dispose"는 E6에서 따로 쟀다: StrictMode 요청 1·취소 0, 소유자 수 변화 `1,1,2,2,2,1`로 0을 거치지 않음, 언마운트 뒤 `[0]`(6절).
   - 검증: T-QH-05, T-QH-19, T-QH-20, T-QH-30(Preact 라우트 교체, 실제 타이머).
 - [x] **DC-QH-12 렌더 중 미리 읽기(peek)는 캐시를 만들지 않는다** — key로 캐시 항목을 찾아 상태와 값을 읽기만 한다. 항목이 없으면 만들지 않는다. 지켜야 할 조건은 DC-QH-29가 정한다.
@@ -61,13 +61,15 @@
   - `ssr: true` client에서는 콜백 구독도 붙지 않고 peek를 구독한다(DC-QH-15).
   - 마지막 구독 해제: DC-QH-11.
   - 커넥터가 붙잡는 watch는 이 함수 하나이고, key가 바뀌어도 바뀌지 않는다(DC-QH-14).
-  - 옵션 오류: `observe`·`matches`·`peek`·`watch()`는 잘못된 key(`undefined`, ref 같은 평범하지 않은 객체)나 boolean이 아닌 `enabled`로 렌더에서 던지지 않고, 커서와 같은 `status: 'error'`, `errorSource: 'source'` 표시를 돌려준다(`live-key.ts:111-121`과 같은 모양, R-QH-15). key에는 `undefined`를 쓸 수 없으므로 의존 조회는 `queryKey: ['user', id ?? null], enabled: id != null`로 쓴다(가이드).
+  - 옵션 오류: `observe`·`matches`·`peek`·`watch()`는 잘못된 key(`undefined`, ref 같은 평범하지 않은 객체)나 boolean이 아닌 `enabled`로 렌더에서 던지지 않고, 커서와 같은 `status: 'error'`, `errorSource: 'source'` 표시를 돌려준다(`live-key.ts:111-121`과 같은 모양, R-QH-15). key에는 `undefined`를 쓸 수 없으므로 의존 조회는 `queryKey: ['user', id ?? null], enabled: id != null`로 쓴다(가이드). 비교할 때 잘못된 옵션은 key hash 자리에 고정 표지(`'invalid'`)와 오류 문구를 둔다. 확정 옵션과 렌더 옵션이 같은 표지·문구면 `matches`는 true, `setOptions`는 false를 돌려주고 옵션 store에 다시 쓰지 않는다. 유효 여부나 오류 문구가 바뀔 때만 쓴다. 오류 표시도 DC-QH-29의 메모를 따른다(입력: 표지·문구·`enabled`·표시 옵션 identity). 그러지 않으면 React·Preact가 커밋마다 다시 렌더하거나 `getSnapshot`이 매번 새 객체를 돌려준다.
   - 관찰자는 처음 받은 client에 묶인다. 진입점이 첫 호출과 다른 `client`를 받으면 `This query observer is bound to another client.`로 던진다(DC-QH-25).
   - 그 밖의 멤버: `peek(options)`·`matches(options)`·`setOptions(options)`(DC-QH-14·28), `controls`(DC-QH-23). 모양은 3절.
+  - 검증: T-QH-02, T-QH-04, T-QH-12, T-QH-25.
 - [x] **DC-QH-14 key 전환은 관찰자 안에서 한다** — 관찰자는 확정 옵션을 들고 있고, 프레임워크 쪽이 커밋 뒤(React·Preact) 또는 렌더 전 반응(Vue·Solid·Svelte)에서 `setOptions`로 새 옵션을 넘긴다. key hash와 `enabled`를 비교한다.
   - 렌더 중(React·Preact): 관찰자를 바꾸지 않는다. 렌더 옵션이 확정 옵션과 다르면(`matches`가 false) `peek(options)`로 새 key 상태를 보여 준다(DC-QH-04, DC-QH-28).
   - `setOptions`에서: 붙어 있다면 새 key 핸들을 열어 `load()`하고 이전 key 핸들을 미뤄서 놓는다(DC-QH-11). 붙지 않았다면 확정 옵션만 바꾼다.
   - 구현은 `live-key.ts`의 커서를 그대로 쓴다(DC-QH-22).
+  - 검증: T-QH-09, T-QH-21, T-QH-31~33.
 - [x] **DC-QH-15 서버 판정은 sync client의 `ssr` 플래그** — `ssr: true` client의 관찰자는 콜백 구독이 와도 붙지 않고 불러오지 않는다. peek만 한다(R-QH-12).
   - 근거: Svelte store 커넥터는 서버에서도 구독하고 `onDestroy`(서버에서도 실행)로 해제한다([connectors DESIGN](../connectors/DESIGN.md) DC-CN-07). 프레임워크마다 서버를 판정하지 않고 sync에서 한 번 막는다. React·Preact·Vue·Solid는 서버에서 애초에 콜백 구독을 하지 않는다(1절).
   - 한계: 서버에서 `ssr: true` 없이 만든 client는 막지 못한다. Svelte store API에서는 서버 렌더 중 붙고 READ를 시작했다가 `onDestroy` 뒤 미룬 해제로 취소된다. 가이드에 적는다.
@@ -83,13 +85,14 @@
   - Solid: 옵션 객체 또는 accessor. `createComputed`(렌더 전 동기)로 `setOptions`를 부른다.
   - Svelte(store API): 옵션 객체 또는 `Readable<옵션>` store. store를 구독해 `setOptions`를 부르고 `onDestroy`로 끊는다. getter는 쓰지 않는다(DC-QH-36).
   - 근거: 사용자에게 익숙한 모양. setup이 한 번 실행되는 프레임워크에서 props 변화를 따라가려면 각 프레임워크가 추적하는 형태가 필요하다.
+  - 검증: T-QH-31, T-QH-32, T-QH-33.
 - [x] **DC-QH-18 `QueryDisplayRef`의 `undefined` 처리 수정** — `S | undefined`를 유니언으로 가르지 않고(비분배 `[S] extends [...]`) 하위 경로를 열며, 끝 값의 타입에 `| undefined`를 더한다(R-QH-10). 런타임 변경은 없다. 기존 `display` 사용에도 적용되므로 sync 공개 타입의 변경이다(0.x의 minor로 기록).
   - 검증: T-QH-08(타입 테스트).
 - [x] **DC-QH-19 mount 재조회의 문서 정정** — [server-sync DESIGN](../server-sync/DESIGN.md) 6절과 gate가 확인하는 지원 표 [PHASE8_6](../server-sync/PHASE8_6.md)의 F2-02 행·절 모두에 "mount 재조회 = 관찰자 훅 구독 시 `load()`"를 적고, PHASE8_6 행에 `packages/sync/src/tests/observe.test.ts`를 인용한다(`scripts/check-support-table.mjs`가 인용 파일의 실재를 확인, IMPLEMENT 단계 7).
 
 ### 단계 0 재검증에서 닫은 결정 (2026-10-08)
 
-DC-QH-20·21·24·25·26·28(렌더 +1)·31·33·35는 단계 0 보고의 추천을 사용자가 받아들였다(U-QH-11). DC-QH-23·32·34는 사용자가 골랐다(U-QH-08~10). DC-QH-22·27·29·30·36·37은 저자가 기술 근거로 닫았다.
+DC-QH-20·21·24·25·26·28(렌더 +1)·31·33·35는 단계 0 보고의 추천을 사용자가 받아들였다(U-QH-11). DC-QH-23·32·34는 사용자가 골랐다(U-QH-08~10). DC-QH-22·27·29·30·36·37은 저자가 기술 근거로 닫았다. 단, 사용자가 받아들인 뒤 교차 검토에서 저자가 고친 것이 있다: DC-QH-26(승인 당시 "필드별 identity 비교" → 함수 칸·재투영·원시값만 비교), DC-QH-31의 Preact 해제 일정(한 매크로태스크 → DC-QH-11의 Preact 일정), DC-QH-23의 `invalidate` 재조회와 `handle()` 타입(저자 결정). 다시 확인이 필요하면 사용자에게 묻는다.
 
 - [x] **DC-QH-20 진입점 위치 — 각 커넥터 패키지의 하위 경로** (U-QH-11) — `@stateref/connect-react/sync`, `@stateref/connect-preact/sync`, `@stateref/connect-vue/sync`, `@stateref/connect-solid/sync`, `@stateref/connect-svelte/sync`. 선례는 `@stateref/connect-svelte/runes`.
   - 근거: sync를 안 쓰는 사용자에게 비용이 없다. sync 패키지가 프레임워크를 알지 않는다(C-QH-04).
@@ -108,8 +111,8 @@ DC-QH-20·21·24·25·26·28(렌더 +1)·31·33·35는 단계 0 보고의 추천
   - 검증: T-QH-09, T-QH-10, T-QH-14.
 - [x] **DC-QH-23 명령·편집 접근 — 반환을 둘로 나눈다** (사용자, U-QH-08) — 반환의 두 번째 값 `q`(관찰자의 `controls`, 관찰자 수명 동안 같은 객체):
   - `q.refetch(): Promise<T>` — 붙어 있고 key가 활성이면 지금 key 핸들의 `refetch()`. 붙지 않았거나(커밋 전, SSR, 해제 뒤) `enabled: false`면 `This query observer is not attached.`로 reject한다.
-  - `q.invalidate(): void` — `client.invalidate(지금 확정 key)`. 붙어 있고 `enabled`면 이어서 지금 key 핸들의 `load()`를 불러 다시 불러온다(TanStack `invalidateQueries`의 활성 관찰자 재조회와 같음, 저자 결정). 붙지 않았으면 무효화만 한다. 다른 곳에서 부른 `client.invalidate(key)`는 기존 sync 규칙대로 다시 불러오지 않는다(다음 focus·reconnect·polling·재마운트에서 stale 규칙으로 READ, sync README).
-  - `q.handle(): Omit<QueryHandle<T>, 'dispose' | 'display' | 'watchDisplay'> | null` — 지금 key의, `openQuery`가 만든 **원래 핸들**(client `handles`에 등록된 것, 위임 래퍼 아님). 그래서 mutation `links`에 그대로 쓸 수 있다. 붙기 전·`enabled: false`·SSR·해제 뒤에는 `null`. key가 바뀌면 다른 핸들을 돌려준다. 편집용 `ref`가 로드 전에 던지는 등의 규칙은 `QueryHandle` 계약 그대로다. 해제(`dispose`)는 내놓지 않는다(관찰자 소유 핸들은 관찰자만 놓는다). 표시는 관찰자 표시(반환의 첫 값)로 읽는다.
+  - `q.invalidate(): void` — `client.invalidate(지금 확정 key)`. 붙어 있고 `enabled`면 이어서 `void handle.load().catch(() => {})`로 다시 불러온다(TanStack `invalidateQueries`의 활성 관찰자 재조회와 같음, 저자 결정). 실패는 표시의 `status: 'error'`로 보이고 거부는 삼킨다(`live-key.ts:147-150`과 같음). 연결 WRITE가 진행 중이면 `load()`가 거부되므로 무효화만 하고 READ는 하지 않으며, 그 WRITE의 `accept` 규칙이 이후를 정한다. 붙지 않았으면 무효화만 한다. 다른 곳에서 부른 `client.invalidate(key)`는 기존 sync 규칙대로 다시 불러오지 않는다(다음 focus·reconnect·polling·재마운트에서 stale 규칙으로 READ, sync README).
+  - `q.handle(): QueryHandleCore<T> | null` — 지금 key의, `openQuery`가 만든 **원래 핸들 객체 그 자체**(client `handles`에 등록된 것, 위임 래퍼 아님). `QueryHandleCore<T> = Omit<QueryHandle<T>, 'dispose' | 'display' | 'watchDisplay'>`로 표시·해제 멤버는 **타입에서만** 뺀다(런타임 객체에는 있으며, 캐스팅해 `dispose`를 부르는 것은 지원하지 않는다). mutation `links`(`mutation.ts:44`)와 연결 제출 영속화의 `links`·`queries`(`linked-persistence.ts:45`, `:84`, `:397`)가 받는 타입을 `QueryHandleCore<any>`로 넓혀 `q.handle()`을 그대로 넣을 수 있게 한다. 이 API들은 `queryKey`·`status`·`capture`·`version`과 `handles` 등록 여부만 쓰므로 동작은 같고, 기존 `QueryHandle`도 그대로 대입된다(넓히기만 하는 공개 타입 변경, CHANGELOG). `streamQuery`는 이미 필요한 멤버만 받는다(`stream.ts:88-92`). 붙기 전·`enabled: false`·SSR·해제 뒤에는 `null`. key가 바뀌면 다른 핸들을 돌려준다. 편집용 `ref`가 로드 전에 던지는 등의 규칙은 `QueryHandle` 계약 그대로다. 해제(`dispose`)는 내놓지 않는다(관찰자 소유 핸들은 관찰자만 놓는다). 표시는 관찰자 표시(반환의 첫 값)로 읽는다.
   - 근거: 표시 프록시에 메서드를 섞으면 상태 키와 충돌할 수 있다. 편집 ref는 로드 여부와 key에 따라 달라지므로 "지금 핸들"을 함수로 꺼내 쓰게 한다.
   - 버린 후보: `{ display, query }` 같은 객체 반환(읽기가 한 단계 깊어짐), 별도 훅 `useSyncQueryHandle`(같은 관찰자를 두 훅이 나눠야 함, `7a08107`의 후보 ②), 표시 프록시나 반환 함수에 메서드(상태 키 충돌), 명령은 client로만(편집 ref 접근 불가).
   - 검증: T-QH-18.
@@ -117,8 +120,8 @@ DC-QH-20·21·24·25·26·28(렌더 +1)·31·33·35는 단계 0 보고의 추천
   - 검증: T-QH-08(부정 타입: `SyncClient`에 `peek`가 없음).
 - [x] **DC-QH-25 `client`를 넘기는 방식 — 첫 인자로 직접** (U-QH-11) — context 주입은 N-QH-05대로 나중에. 관찰자는 처음 받은 client에 묶이며, 같은 컴포넌트에서 client를 바꾸면 오류로 알린다(DC-QH-13). 검증: T-QH-25.
 - [x] **DC-QH-26 옵션 동일성** (U-QH-11) — `setOptions`는 옵션을 넷으로 나눠 다룬다. React는 렌더마다 새 옵션 객체와 새 함수·객체 리터럴을 넘기므로 identity 비교만으로 핸들을 다시 열면 커밋마다 READ·렌더가 반복된다(검증 에이전트 재실험: 같은 key에 새 `retryDelay`만 세 번 쓰면 READ 1→4).
-  1. **함수 옵션 `queryFn`·`retryDelay`**: 관찰자는 핸들을 열 때마다 그 핸들 전용 칸(`slot = { queryFn, retryDelay }`)을 만들고, 핸들에는 `ctx => slot.queryFn(ctx)`, `n => slot.retryDelay(n)` 래퍼를 넘긴다(`retryDelay`가 없으면 넘기지 않는다). `setOptions`는 확정 key hash가 지금 핸들의 key와 같을 때만 그 핸들의 칸을 최신 함수로 바꾼다. key가 바뀐 뒤 이전 key의 칸은 마지막 값으로 고정된다. 그래서 항목 옵션(`index.ts:390-394`)에 래퍼가 남아도 이전 key의 다른 핸들의 `refetch`, 진행 중 READ의 재시도, mutation `accept: 'refetch'`가 새 key의 `queryFn`을 부르지 않는다(TanStack이 query마다 옵션을 따로 두는 것과 같은 결과). 함수가 바뀌어도 핸들을 다시 열지 않는다.
-  2. **표시 옵션 `select`·`placeholderData`·`equals`**: 관찰자 display는 이 셋을 생성 때 고정하지 않고(`display.ts:103-104`) 계산할 때마다 관찰자의 최신 옵션에서 읽는다. `setOptions`가 `select` 또는 `placeholderData` identity 변화를 보면 display의 비공개 `reproject()`를 불러 다시 투영한다(React·Preact는 커밋 뒤 effect 안이므로 렌더 중 쓰기가 아니다). 재투영 결과는 먼저 이전 `data`와 **구조 공유**한다(평범한 객체·배열이 깊게 같으면 이전 객체 유지, TanStack의 structural sharing). 그다음 `equals`를 적용하고, 같으면 publish하지 않는다. 그래서 인라인 `select: d => d.items.filter(...)`나 인라인 `placeholderData` 리터럴도 커밋마다 publish하지 않는다. 구조 공유는 이 재투영 경로에만 두고, 기존 `client.query`의 display는 옵션이 고정이라 동작이 같다(C-QH-02). key가 같고 `select`만 바뀐 렌더는 `matches`가 true라 이전 투영을 보이고 커밋 뒤 맞춰진다(R-QH-09의 예외).
+  1. **함수 옵션 `queryFn`·`retryDelay`**: 관찰자는 **key hash마다 칸 하나**(`slot = { queryFn, retryDelay }`)를 둔다. 같은 key로 핸들을 다시 열면(원시값 옵션 변경, 해제 일정 안의 재구독) 그 key의 칸을 그대로 쓰고, key hash가 바뀔 때만 새 칸을 만든다. 칸의 값은 옵션 store가 아니라 관찰자가 마지막으로 받은 옵션(처음에는 `observe` 인자)에서 채우고, `setOptions`는 확정 key hash가 칸의 key와 같을 때만 칸을 최신 함수로 바꾼다. 핸들에는 `ctx => slot.queryFn(ctx)`와 **항상** `n => (slot.retryDelay ?? 기본값)(n)`을 넘긴다(기본값은 `index.ts:767-769`와 같은 `Math.min(1000 * 2 ** n, 30_000)`). 그래서 나중에 `retryDelay`를 더하거나 빼도 다음 재시도에 반영되고 `undefined`를 부르지 않는다. 같은 key 핸들 교체 뒤 진행 중 READ의 재시도도 같은 칸을 부른다. key가 바뀐 뒤 이전 key의 칸은 마지막 값으로 고정된다. 그래서 항목 옵션(`index.ts:390-394`)에 래퍼가 남아도 이전 key의 다른 핸들의 `refetch`, 진행 중 READ의 재시도, mutation `accept: 'refetch'`가 새 key의 `queryFn`을 부르지 않는다(TanStack이 query마다 옵션을 따로 두는 것과 같은 결과). 함수가 바뀌어도 핸들을 다시 열지 않는다.
+  2. **표시 옵션 `select`·`placeholderData`·`equals`**: 관찰자 display는 이 셋을 생성 때 고정하지 않고(`display.ts:103-104`) 계산할 때마다 관찰자의 최신 옵션에서 읽는다. `setOptions`가 `select` 또는 `placeholderData` identity 변화를 보면 display의 비공개 `reproject()`를 불러 다시 투영한다(React·Preact는 커밋 뒤 effect 안이므로 렌더 중 쓰기가 아니다). 재투영 결과는 먼저 이전 `data`와 **구조 공유**한다(평범한 객체·배열이 깊게 같으면 이전 객체 유지, TanStack의 structural sharing). 그다음 `equals`를 적용하고, 같으면 publish하지 않는다. 그래서 인라인 `select: d => d.items.filter(...)`나 인라인 `placeholderData` 리터럴도 커밋마다 publish하지 않는다. 재투영이 `select` 오류를 내고 지금 표시도 `errorSource: 'select'`이며 오류의 생성자와 `message`가 같으면, 이전 표시(같은 error 객체)를 그대로 두고 publish하지 않는다. `Date`는 `getTime()` 값으로 비교한다. 그 밖의 값(Map·Set·클래스 인스턴스·함수를 담은 결과)은 구조 공유되지 않아 인라인 `select`면 커밋마다 publish되고 다시 렌더된다. 이런 `select`는 메모하거나 `equals`를 주어야 한다(가이드). 구조 공유는 이 재투영 경로에만 두고, 기존 `client.query`의 display는 옵션이 고정이라 동작이 같다(C-QH-02). key가 같고 `select`만 바뀐 렌더는 `matches`가 true라 이전 투영을 보이고 커밋 뒤 맞춰진다(R-QH-09의 예외).
   3. **원시값 핸들 옵션** `staleTime`, `gcTime`, `retry`, `networkMode`, `editable`, `refetchOnFocus`, `refetchOnReconnect`, `refetchInterval`, `refetchIntervalInBackground`: 필드별 `Object.is`로 비교해 다르면 비공개 store에 쓴다. 커서가 같은 key의 **새 핸들을 먼저 열고** 이전 것을 미뤄서 닫으므로 소유자 수가 0이 되지 않는다. 이때 커서가 부르는 `load()`(`live-key.ts:147-150`)는 기존 `staleTime` 규칙을 따른다(`staleTime` 0이면 READ 1회). 자동 재조회 옵션은 핸들을 열 때 고정되므로(`index.ts:1045-1050`) 바꾸려면 핸들을 다시 열어야 한다.
   4. **`initialData`·`initialUpdatedAt`**: 기준값이 없는 항목에만 심기므로(`seedInitial`) 비교하지 않는다. 다음 open과 peek 합성(DC-QH-33)에서 최신 값을 쓴다.
   - `queryKey` hash·`enabled`가 다르면 비공개 store에 쓴다(key 전환).
@@ -126,21 +129,21 @@ DC-QH-20·21·24·25·26·28(렌더 +1)·31·33·35는 단계 0 보고의 추천
 - [x] **DC-QH-27 React concurrent 렌더와 peek** (저자) — 끼어든 쓰기를 잡는 장치가 렌더 종류마다 다르다.
   - 구독 전(마운트): PR #16의 `link.live` 루트 identity(DC-QH-29로 안정, DC-QH-35).
   - 구독 뒤 같은 key: 커넥터의 구독 version.
-  - **key 전환 렌더**(`matches` false): 커넥터 스냅샷은 이전 key 커서의 version이라 새 key 캐시에 끼어든 쓰기를 잡지 못한다. 그래서 훅은 두 번째 `useSyncExternalStore(no-op subscribe, () => matches ? null : observer.peek(options).value)`(서버 스냅샷도 같은 함수)를 두어, 전환 렌더도 peek 루트 identity로 커밋 전 일관성 검사를 받게 한다. no-op subscribe라 갱신 알림은 만들지 않고, concurrent 렌더 끝의 스냅샷 재확인에만 쓰인다.
+  - **key 전환 렌더**(`matches` false): 커넥터 스냅샷은 이전 key 커서의 version이라 새 key 캐시에 끼어든 쓰기를 잡지 못한다. 그래서 훅은 두 번째 `useSyncExternalStore(no-op subscribe, () => matches ? null : observer.peek(options).value)`(서버 스냅샷도 같은 함수)를 두어, 전환 렌더도 peek 루트 identity로 커밋 전 일관성 검사를 받게 한다. no-op subscribe라 구독 알림은 없지만, React는 concurrent 렌더 끝과 커밋 뒤 passive 단계(`updateStoreInstance`)에서 스냅샷을 다시 확인한다. 커밋 뒤에는 ②의 `setOptions`가 확정 옵션을 바꾼 다음이라 ④가 null을 돌려주므로, React가 동기 렌더를 한 번 예약하고 이 렌더가 DC-QH-28의 "전환 뒤 한 번 더 렌더"를 맡는다. 렌더 안에서 여러 번 불려도 peek 메모(DC-QH-29)로 같은 값을 돌려준다.
   - 같은 key를 읽는 여러 컴포넌트는 각자 관찰자를 갖지만, 위 세 장치가 각 렌더의 값을 덮는다.
   - 검증: T-QH-23(PR #16의 `concurrent.tsx` 네 시나리오 + key 전환 중 새 key 쓰기).
 - [x] **DC-QH-28 React·Preact의 렌더 중 key 전환 — 렌더는 순수하게, 전환은 커밋 뒤, 전환 뒤 한 번 더 렌더** (U-QH-11에서 렌더 +1 수용)
-  - 훅 안의 순서: ① `useState`로 관찰자 ② `setOptions` effect ③ 커넥터 훅(`connectReactView(observer.watch)()`) ④ key 전환 렌더용 `useSyncExternalStore`(DC-QH-27) ⑤ 강제 렌더용 `useState` 카운터. `setOptions` effect를 커넥터보다 **먼저** 선언한다. React는 다시 연결되는 effect를 훅 순서로 실행하므로(`<Activity>` 표시, StrictMode) 그래야 구독이 확정 옵션을 최신으로 바꾼 뒤 붙는다(숨긴 동안 key가 바뀐 경우 이전 key에 붙어 READ했다가 취소하지 않는다). 붙지 않은 상태의 `setOptions`는 확정 옵션만 바꾼다.
+  - 훅 안의 순서: ① `useState`로 관찰자 ② `setOptions` effect ③ 커넥터 훅(`connectReactView(observer.watch)()`) ④ key 전환 렌더용 `useSyncExternalStore`(DC-QH-27) ⑤ 강제 렌더용 `useState` 카운터(Preact만. React는 ④의 커밋 뒤 재확인이 같은 역할을 한다, DC-QH-27). `setOptions` effect를 커넥터보다 **먼저** 선언한다. React는 다시 연결되는 effect를 훅 순서로 실행하므로(`<Activity>` 표시, StrictMode) 그래야 구독이 확정 옵션을 최신으로 바꾼 뒤 붙는다(숨긴 동안 key가 바뀐 경우 이전 key에 붙어 READ했다가 취소하지 않는다). 붙지 않은 상태의 `setOptions`는 확정 옵션만 바꾼다.
   - 렌더: `observer.matches(options)`가 true면 커넥터가 돌려준 값(구독 ref, 구독 전에는 첫 렌더에 만든 `watch()` ref — PR #16 기준)을, false면 `observer.peek(options)`를 반환한다. 렌더 중에는 구독자가 있는 관찰자 store(옵션 store·커서·display)에 쓰지 않는다.
-  - 커밋 뒤: `useEffect`에서 `observer.setOptions(options)`. key나 `enabled`가 바뀌었으면 true를 돌려주고, 훅은 카운터로 **한 번 더 렌더**한다. 이 렌더는 구독 ref를 지나므로 새 key 화면에서 읽는 경로가 구독에 모인다(커넥터가 마운트 때 한 번 더 렌더하는 것과 같은 이유, `connect-react/src/index.ts:52-55`).
+  - 커밋 뒤: `useEffect`에서 `observer.setOptions(options)`. key나 `enabled`가 바뀌었으면 true를 돌려주고, **한 번 더 렌더**된다(React는 ④의 재확인, Preact는 ⑤의 카운터). 이 렌더는 구독 ref를 지나므로 새 key 화면에서 읽는 경로가 구독에 모인다(커넥터가 마운트 때 한 번 더 렌더하는 것과 같은 이유, `connect-react/src/index.ts:52-55`).
   - `useEffect`를 고른 이유: TanStack의 `useBaseQuery`와 같고, React 18의 서버 렌더에서 `useLayoutEffect` 경고가 없으며, 렌더 결과는 이미 peek로 맞으므로 페인트 전 전환이 필요 없다.
-  - Preact도 같은 순서를 `preact/hooks`로 둔다(④ 없음: Preact 10에는 concurrent 렌더가 없다). 해제 일정은 DC-QH-11.
+  - Preact도 같은 순서를 `preact/hooks`로 둔다(④ 없음: Preact 10에는 concurrent 렌더와 `useSyncExternalStore` 재확인이 없다. 대신 ⑤). 해제 일정은 DC-QH-11.
   - 근거: 렌더 중 관찰자 store에 쓰면 React가 `Cannot update a component while rendering a different component` 오류를 낸다(6절 E2). 전환 뒤 다시 렌더하지 않으면 새 key 화면에서 처음 읽은 경로가 구독되지 않아, 그 경로만 바뀌면 화면이 갱신되지 않는다(6절 E3: `age` 2→99 변경에 렌더 0회).
-  - 비용: key(또는 `enabled`) 변경마다 렌더 1회.
+  - 비용: key(또는 `enabled`) 변경마다 렌더 1회(React는 ④, Preact는 ⑤). T-QH-24가 React에서 ④만으로 경로를 모으지 못하면 React에도 ⑤를 두고 비용을 "최대 2회"로 고친다.
   - 검증: T-QH-21, T-QH-24, T-QH-25, T-QH-30, T-QH-41.
 - [x] **DC-QH-29 peek는 "살아 있고 identity가 안정된" ref다** (저자) — 콜백 없는 `watch()`와 `peek(options)`가 돌려주는 ref는:
   1. **살아 있다**: peek ref의 **어느 깊이에서** 속성을 읽어도(`guardRef`의 get 트랩, 지금 `assertActive` 자리) 지금 캐시로 다시 계산한다. 먼저 잡아 둔 하위 ref(`const data = ref.data`)도 다음 읽기에 새 값을 본다. `watch()` ref는 읽는 시점의 확정 옵션을 따른다(DC-QH-13). Vue 서버 렌더는 `onServerPrefetch` 뒤에 getter로 읽는다(`connect-vue/src/index.ts:37-45`).
-  2. **입력이 같으면 같은 객체**: 입력(캐시 항목, 항목의 status 객체, resource 값 객체, key hash, `enabled`, `select`·`placeholderData`·`initialData` identity, `initialUpdatedAt`)이 같으면 직전 결과 객체와 같은 읽기 전용 snapshot을 돌려준다. PR #16의 React 커넥터는 구독 전 `getSnapshot`으로 `watch()` ref의 루트 `.value`를 쓰기 때문에, 매번 새 객체면 무한 렌더가 된다(6절 E4).
+  2. **입력이 같으면 같은 객체**: 입력(캐시 항목, 항목의 status 객체, resource 값 객체, key hash, `enabled`, `select`·`placeholderData`·`initialData` identity, `initialUpdatedAt`)이 같으면 직전 결과 객체와 같은 읽기 전용 snapshot을 돌려준다. PR #16의 React 커넥터는 구독 전 `getSnapshot`으로 `watch()` ref의 루트 `.value`를 쓰기 때문에, 매번 새 객체면 무한 렌더가 된다(6절 E4). 옵션 오류 표시도 같은 메모를 쓰며, 그때 입력은 key hash 대신 DC-QH-13의 고정 표지와 오류 문구다.
   3. 항목을 만들지 않고, `owners`·gc 타이머·이벤트를 바꾸지 않으며, 읽기 전용 보호(`guardRef`)를 거친다(DC-QH-12).
   - 구현 방향: peek 결과는 **구독자가 없는 내부 메모**(직전 입력 묶음과 결과 객체)에 둔다. 메모는 `watch()`용(읽는 시점의 확정 옵션)과 `peek(options)`용(렌더 옵션)으로 **따로** 둔다. 하나로 두면 구독 전 `getSnapshot`(확정 옵션)과 key 전환 렌더의 peek(렌더 옵션)가 번갈아 들어가 직전 결과가 계속 바뀌기 때문이다. 메모를 담는 그릇은 구독자 없는 state-ref store나 경로 프록시 중 구현에서 고르며, 어느 쪽이든 갱신 알림이 없다. `ssr: true` client의 콜백 구독(DC-QH-15)에만 메모 값을 담는 구독용 store를 쓰고, 그 갱신은 구독 시점에 한다.
   - 검증: T-QH-02, T-QH-15.
@@ -157,9 +160,8 @@ DC-QH-20·21·24·25·26·28(렌더 +1)·31·33·35는 단계 0 보고의 추천
   - 근거: TanStack은 렌더에서 `initialData`를 보여 준다. R-QH-02 때문에 항목을 만들 수 없으므로 합성한다. 렌더 결과가 결정적이도록(SSR 일치) peek에서는 `Date.now()`를 쓰지 않는다.
   - 검증: T-QH-17.
 - [x] **DC-QH-34 Svelte runes 진입점은 범위 밖** (사용자, U-QH-10, N-QH-07) — `@stateref/connect-svelte/sync`는 store API만 제공한다. T-QH-34는 삭제했다. 검증: `pnpm check:packaging`(Svelte는 `./sync` 하나, runes 쪽 sync 진입점 없음).
-- [x] **DC-QH-35 PR #16을 먼저 병합한다** (U-QH-11) — PR [superlucky84/state-ref#16](https://github.com/superlucky84/state-ref/pull/16)(React 커넥터 마운트 tearing 수정, 2026-10-08 기준 open·mergeable `clean`·base `6e462ed`)을 `main`에 병합하고, 이 브랜치를 그 `main`으로 갱신한 뒤 IMPLEMENT 단계 3(React·Preact)을 시작한다.
+- [x] **DC-QH-35 PR #16을 먼저 병합한다** (U-QH-11) — PR [superlucky84/state-ref#16](https://github.com/superlucky84/state-ref/pull/16)(React 커넥터 마운트 tearing 수정)을 `main`에 병합하고, 이 브랜치를 그 `main`으로 갱신한 뒤 IMPLEMENT 단계 3(React·Preact)을 시작한다. **완료(2026-10-08):** 사용자 요청으로 병합(`41798cf`, merge commit). 병합 전 PR head `d38956d`에서 React 커넥터 테스트 44/44, 커넥터 매트릭스 React 18.3.1·19.3.0 각 44/44, `tsc --noEmit`·eslint 통과를 확인했다(PR에는 CI 체크가 없었다). 이 브랜치는 `e58deaa`에서 `main`을 병합해 갱신했다.
   - 근거: DC-QH-29의 identity 조건은 그 수정이 있어야 의미가 생기고, T-QH-23은 그 수정의 `concurrent.tsx`를 쓴다. 병합 전 커넥터로 검증하면 병합 뒤 다시 검증해야 한다.
-  - 단계 1·2(sync 내부)와 단계 4(Vue·Solid·Svelte)는 PR #16과 무관해 먼저 진행할 수 있다.
   - 검증: IMPLEMENT 단계 3 진입 조건, T-QH-23.
 - [x] **DC-QH-36 Svelte store API의 옵션은 객체 또는 `Readable` store** (저자) — Svelte store API(비 runes 컴포넌트 포함)에서 일반 getter는 Svelte가 추적하지 않아 props 변화가 전달되지 않는다. TanStack Svelte Query(store API)도 옵션 또는 옵션 store를 받는다. 사용자는 `derived`나 `writable`로 옵션 store를 만들어 넘긴다.
   - 검증: T-QH-33.
@@ -226,12 +228,13 @@ type QueryObserver<T, S = T> = Readonly<{
   controls: Readonly<{
     refetch: () => Promise<T>;
     invalidate: () => void;
-    handle: () => Omit<QueryHandle<T>, 'dispose' | 'display' | 'watchDisplay'> | null;
+    handle: () => QueryHandleCore<T> | null; // = Omit<QueryHandle<T>, 'dispose' | 'display' | 'watchDisplay'>, 타입에서만 숨김
   }>;
 }>;
 
 // client.observe(options, internal?: { scheduleRelease?: (release: () => void) => () => void })
 // 둘째 인자는 진입점용 내부 옵션: 핸들 해제 일정(기본 setTimeout(0), Preact는 DC-QH-11)
+// mutation links·연결 제출 영속화의 query 타입은 QueryHandleCore<any>로 넓힌다(DC-QH-23)
 ```
 
 ## 4. 수명 (관찰자 하나)
@@ -247,7 +250,7 @@ type QueryObserver<T, S = T> = Readonly<{
 
 | 대상 | 변경 |
 |---|---|
-| `packages/sync` | `client.observe`(관찰자, 비공개 옵션 store, peek 메모, 해제 일정, 구독 계수, 핸들별 함수 칸, controls, 옵션 오류 표시), `display.ts`의 `calculate` 공유·최신 표시 옵션 읽기·`reproject()`·재투영 구조 공유, `QueryDisplayRef` 타입. `live-key.ts` 무변경 |
+| `packages/sync` | `client.observe`(관찰자, 비공개 옵션 store, peek 메모, 해제 일정, 구독 계수, key별 함수 칸, controls, 옵션 오류 표시), `QueryHandleCore` 타입과 `MutationLink.query`·연결 제출 영속화 `links`·`queries` 타입 넓힘, `display.ts`의 `calculate` 공유·최신 표시 옵션 읽기·`reproject()`·재투영 구조 공유, `QueryDisplayRef` 타입. `live-key.ts` 무변경 |
 | 커넥터 패키지 | 새 진입점 파일(`src/sync.ts`)과 `exports`·빌드 설정·선택적 peer 의존 추가만. 기존 `src/index.ts`(Svelte는 `runes.ts` 포함) 무변경(C-QH-01) |
 | `scripts/check-packaging.mjs` | 새 하위 경로 다섯 개 확인 |
 | `packages/sync/test/sync-bundle.mjs` | sync 산출물에 UI 프레임워크 import가 없음을 확인(C-QH-04) |
@@ -295,3 +298,5 @@ type QueryObserver<T, S = T> = Readonly<{
 ### 검증 에이전트 교차 검토 (2026-10-08)
 
 다섯 관점(코드 사실, 문서 간 정합성, sync 설계 반박, 프레임워크 설계 반박, 규칙·완결성)이 첫 갱신본(`025c172`)을 검토하고, 판정 에이전트가 각 지적을 저장소에서 다시 확인했다. 65건 중 중복 32·반박 2를 빼고 31건(높음 3, 중간 6, 낮음 22)을 이 판에 반영했다. 높음 3건은 모두 DC-QH-26이었다: 함수·객체 옵션의 identity 비교로 인한 커밋마다의 핸들 재오픈과 READ(재실험 READ 1→4), key를 확인하지 않는 `queryFn` 래퍼로 이전 key 캐시에 새 key 값이 들어가는 문제(재실험 확인), `select` 재투영의 계기 부재와 인라인 `select`의 렌더 반복. 중간 6건은 DC-QH-27(key 전환 렌더 tearing), DC-QH-29(렌더 중 store 쓰기 모순·메모 분리), DC-QH-11(Preact 라우트 교체), DC-QH-23(위임 래퍼와 mutation links·`invalidate` 의미), DC-QH-13(렌더 중 옵션 오류)에 반영했다.
+
+두 번째 확인 검토(`a688c89` 대상, 에이전트 2개)는 17건을 냈고 모두 이 판에 반영했다. 높음 1건: `q.handle()`의 `Omit` 타입은 mutation `links`(`QueryHandle<any>`)에 들어가지 않는다(임시 파일 `tsc`로 TS2739 확인) → `links` 쪽 타입을 넓힘(DC-QH-23). 그 밖: 인라인 `select`의 오류·`Date` 결과에서 커밋 반복(DC-QH-26 2), 잘못된 key의 비교·메모(DC-QH-13·29), `retryDelay` 래퍼의 `undefined` 호출과 key별 칸(DC-QH-26 1), React ④의 커밋 뒤 재확인이 추가 렌더를 일으킴(DC-QH-27·28), Preact rAF 정지 탭(DC-QH-11), `invalidate`의 거부 처리(DC-QH-23), React 18에 없는 `<Activity>`(T-QH-40·41), 단계별 기준 테스트와 PR #16 병합 뒤 문서 상태.

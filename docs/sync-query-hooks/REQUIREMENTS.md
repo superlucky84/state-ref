@@ -1,7 +1,7 @@
 # REQUIREMENTS — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: 요구사항 확정. 설계 결정 완료(2026-10-08 단계 0 재검증과 검증 에이전트 교차 검토 반영, DESIGN에 미결 `[ ]` 없음). 구현 전.
+- 상태: 요구사항 확정. 설계 결정 완료(2026-10-08 단계 0 재검증과 검증 에이전트 교차 검토 2회 반영, DESIGN에 미결 `[ ]` 없음). 구현 전. PR #16 병합 완료(`41798cf`), 이 브랜치에 반영(`e58deaa`).
 - 기준 commit: `6e462ed` (`main`), `@stateref/sync@0.2.0`, `@stateref/connect-react@19.0.0`. 작업 브랜치 `claude/sync-query-hooks`.
 - 연계: [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 - 문서 위치: `docs/sync-query-hooks/`. 관련 코드는 `packages/sync/src/`(`index.ts`의 `openQuery`·`QueryEntry`, `display.ts`, `live-key.ts`, `ref-guard.ts`)와 각 커넥터 패키지의 새 진입점이다. sync 전체 설계는 [server-sync](../server-sync/README.md)에 있다.
@@ -43,7 +43,7 @@
 - **U-QH-08** 명령·편집 접근은 **반환을 둘로 나눈다**: `const [account, q] = useSyncQuery(...)`. 표시는 `account.data.name.value` 그대로 읽고, 명령은 `q.refetch()`·`q.invalidate()`·`q.handle()`로 한다(DC-QH-23. 단계 0 보고의 1번 질문에서 사용자가 고른 "반환을 둘로 나눈다"이며, `7a08107`의 DC-QH-23 후보 번호와는 다르다).
 - **U-QH-09** 첫 렌더(구독 전)의 `fetchStatus`는 캐시 그대로 보여 준다. 곧 불러올 예정이어도 미리 `fetching`으로 표시하지 않는다(DC-QH-32).
 - **U-QH-10** Svelte runes 진입점은 이번 범위에서 뺀다. Svelte는 store API(`$store`) 진입점만 제공한다(DC-QH-34).
-- **U-QH-11** 나머지 결정은 재검증 보고의 추천대로 한다: 진입점 위치(DC-QH-20), 이름(DC-QH-21), peek 비공개(DC-QH-24), client 첫 인자(DC-QH-25), 옵션 동일성(DC-QH-26), key 전환 해제도 한 매크로태스크 미룸(DC-QH-31), key 변경마다 렌더 +1 수용(DC-QH-28), `initialData` peek 합성(DC-QH-33), PR [superlucky84/state-ref#16](https://github.com/superlucky84/state-ref/pull/16) 선병합(DC-QH-35). DC-QH-22·27은 사용자 결정 목록에 없던 기술 항목으로, 저자가 설계에서 닫았다.
+- **U-QH-11** 나머지 결정은 재검증 보고의 추천대로 한다: 진입점 위치(DC-QH-20), 이름(DC-QH-21), peek 비공개(DC-QH-24), client 첫 인자(DC-QH-25), 옵션 동일성(DC-QH-26. 승인 당시의 "필드별 identity 비교"는 교차 검토에서 함수 칸·재투영·원시값만 비교로 고쳤다), key 전환 해제도 미룸(DC-QH-31. 승인 당시 일정은 한 매크로태스크였고, 교차 검토에서 Preact만 DC-QH-11의 Preact 일정으로 늘렸다), key 변경마다 렌더 +1 수용(DC-QH-28), `initialData` peek 합성(DC-QH-33), PR [superlucky84/state-ref#16](https://github.com/superlucky84/state-ref/pull/16) 선병합(DC-QH-35). DC-QH-22·27은 사용자 결정 목록에 없던 기술 항목으로, 저자가 설계에서 닫았다.
 
 ## 3. 요구사항
 
@@ -59,7 +59,7 @@
 - **R-QH-08** focus·reconnect·polling 자동 재조회는 관찰자가 붙어 있는 동안 기존 정책(DC5-06)대로 동작한다.
 - **R-QH-09** 관찰자별 `select`·`placeholderData`·`equals`가 기존 display와 같게 적용된다. 렌더 중 미리 읽기(DC-QH-12, 첫 렌더와 key 전환 렌더)에도 같게 적용된다. 예외: key가 같고 `select`·`placeholderData`만 바뀐 렌더는 이전 투영을 보이고, 커밋 뒤 다시 투영된다(DC-QH-26).
 - **R-QH-10** 표시 상태의 `data` 아래 경로를 타입 오류 없이 `.value`로 읽을 수 있다(U-QH-06). 로드 전에는 `undefined`를 읽는다. 지금은 `QueryDisplayRef<S | undefined>`가 유니언으로 갈라져 `display.data.name`이 TS2339 오류다(2026-10-08 두 번 확인). 런타임은 이미 `undefined`를 돌려주고 읽은 경로만 구독한다(확인).
-- **R-QH-11** 편집·명령 수단에 컴포넌트에서 접근할 수 있다. 반환의 두 번째 값 `q`가 `refetch()`·`invalidate()`·`handle()`(지금 key의 원래 핸들 또는 `null`, 표시·해제 멤버 없음)을 제공한다(U-QH-08, DC-QH-23). 편집용 `ref`·`changes`·`capture` 등은 그 핸들의 기존 계약을 따르고, 그 핸들은 mutation `links`에 그대로 쓸 수 있다.
+- **R-QH-11** 편집·명령 수단에 컴포넌트에서 접근할 수 있다. 반환의 두 번째 값 `q`가 `refetch()`·`invalidate()`·`handle()`(지금 key의 원래 핸들 또는 `null`. 표시·해제 멤버는 타입에서만 뺀다)을 제공한다(U-QH-08, DC-QH-23). 편집용 `ref`·`changes`·`capture` 등은 그 핸들의 기존 계약을 따르고, 그 핸들은 mutation `links`에 그대로 쓸 수 있다.
 - **R-QH-12** 서버 렌더에서는 붙지 않고 불러오지 않는다. 캐시(사전 `await` 또는 hydrate)의 값만 보여 준다.
 - **R-QH-13** key가 바뀐 뒤에도 컴포넌트가 읽는 모든 경로의 변경이 화면에 반영된다. 새 key 화면에서 처음 읽은 경로도 포함한다(2026-10-08 실험 E3의 반례).
 - **R-QH-14** 구독 전 렌더 값은 React `useSyncExternalStore`의 스냅샷 계약(바뀐 게 없으면 같은 값)과 Vue 서버 렌더의 지연 읽기(`onServerPrefetch` 뒤의 캐시)를 모두 만족한다(2026-10-08 실험 E4, DC-QH-29).
@@ -68,7 +68,7 @@
 
 ### 제약
 
-- **C-QH-01** 기존 커넥터(`connectReact(View)`, `connectPreact(View)`, `connectVue(View)`, `connectSolid(View)`, `connectSvelte(View)`, `connectSvelteRunes`)의 소스와 공개 동작을 바꾸지 않는다(U-QH-03). 새 진입점은 기존 커넥터를 호출해 만든다. 단, PR [superlucky84/state-ref#16](https://github.com/superlucky84/state-ref/pull/16)의 React 커넥터 수정은 이 작업과 별개로 `main`에 들어가는 변경이며, 이 제약의 기준선은 그 병합 뒤의 `main`이다(DC-QH-35).
+- **C-QH-01** 기존 커넥터(`connectReact(View)`, `connectPreact(View)`, `connectVue(View)`, `connectSolid(View)`, `connectSvelte(View)`, `connectSvelteRunes`)의 소스와 공개 동작을 바꾸지 않는다(U-QH-03). 새 진입점은 기존 커넥터를 호출해 만든다. 단, PR [superlucky84/state-ref#16](https://github.com/superlucky84/state-ref/pull/16)의 React 커넥터 수정은 이 작업과 별개로 `main`에 들어간 변경이며(`41798cf`), 이 제약의 기준선은 그 병합 뒤의 `main`이다(DC-QH-35).
 - **C-QH-02** 기존 sync 공개 API(`client.query` 등)의 동작을 바꾸지 않는다. 지금의 명시적 `load()`/`dispose()` 사용과 반응형 key 핸들은 그대로 동작한다.
 - **C-QH-03** state-ref 코어(`packages/state-ref`)를 수정하지 않는다.
 - **C-QH-04** sync 패키지는 UI 프레임워크를 import하지 않는다.
