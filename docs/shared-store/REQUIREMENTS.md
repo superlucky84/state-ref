@@ -1,7 +1,7 @@
 # REQUIREMENTS — 번들 간 이름 기반 공유 스토어와 준비 게이트
 
 - 작성일: 2026-10-08
-- 상태: 확정(2026-10-08). [DESIGN](./DESIGN.md)의 DC-SH-01~04를 사용자가 닫았다.
+- 상태: 확정(2026-10-08). [DESIGN](./DESIGN.md)의 DC-SH-01~04를 사용자가 닫았다. 구현 진행 상황은 [IMPLEMENT](./IMPLEMENT.md)에 있다.
 - 기준 commit: `6b283ff`, `state-ref@3.1.1`. 작업 브랜치 `feat/shared-store`.
 - 출발점: [joongangscripts 특화 기능 후보](../idea/joongang-integration.md)의 JA-01.
 - 연계: [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
@@ -41,7 +41,7 @@ joongangscripts는 엔트리 번들이 수십 개이고, 번들 사이에서 상
 
 ### 제약
 
-- **C-SH-01** `packages/state-ref/src`의 `core`, `proxy`, `lens`, `connectors`, `path`, `helper`, `internal`, `index.ts`를 수정하지 않는다. `git diff main -- <위 경로>`가 비어 있어야 한다.
+- **C-SH-01** `packages/state-ref/src`의 `core`, `proxy`, `lens`, `connectors`, `path`, `helper`, `internal`, `draft`, `batch`, `plugin`, `index.ts`를 수정하지 않는다. `git diff main -- <위 경로>`가 비어 있어야 한다.
 - **C-SH-02** 기존 진입점(`state-ref`, `/plugin`, `/draft`, `/batch`)의 공개 API와 산출물 파일명을 바꾸지 않는다.
 - **C-SH-03** 헬퍼는 state-ref에 런타임 의존하지 않는다(타입 import만). 서로 다른 state-ref 버전의 번들이 같은 레지스트리를 쓸 수 있어야 한다.
 - **C-SH-04** 레지스트리 형식에는 프로토콜 버전을 둔다. 알 수 없는 버전을 만나면 조용히 덮어쓰지 않고 오류로 알린다.
@@ -72,14 +72,14 @@ joongangscripts는 엔트리 번들이 수십 개이고, 번들 사이에서 상
 
 | 요구사항 | 자동 검증 | 수동 검증 |
 |---|---|---|
-| R-SH-01, R-SH-02 | T-SH-01, T-SH-09 | M-SH-01 |
+| R-SH-01, R-SH-02 | T-SH-01, T-SH-10 | M-SH-01 |
 | R-SH-03 | T-SH-02, T-SH-10 | M-SH-01 |
 | R-SH-04, R-SH-05 | T-SH-04~06 | M-SH-02 |
 | R-SH-06 | T-SH-07 | — |
 | R-SH-07 | T-SH-03 | — |
 | R-SH-08 | T-SH-08 | M-SH-02 |
 | C-SH-01, C-SH-02, C-SH-07 | T-SH-13 | — |
-| C-SH-03, C-SH-04 | T-SH-09, T-SH-11 | — |
+| C-SH-03, C-SH-04 | T-SH-10, T-SH-11, T-SH-13 | — |
 | C-SH-05, C-SH-06 | T-SH-14, T-SH-15 | — |
 | N-SH-04 | T-SH-12 | — |
 

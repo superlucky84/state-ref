@@ -1,105 +1,99 @@
 # IMPLEMENT — 번들 간 이름 기반 공유 스토어와 준비 게이트
 
 - 작성일: 2026-10-08
-- 상태: 진행 중. [DESIGN](./DESIGN.md)의 결정은 2026-10-08에 모두 닫혔다.
+- 상태: 단계 0~4 완료. 단계 5·6은 일부 완료이며 남은 항목은 각 단계에 `[ ]`로 표시했다.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 모든 단계의 공통 완료 조건: `pnpm test:core` 통과, C-SH-01의 `git diff main -- <코어 경로>`가 비어 있음. 테스트는 `pnpm` 스크립트 또는 `pnpm exec vitest`로 실행한다(CLAUDE.md의 주의 사항).
 
 ## 테스트 목록
 
-| ID | 내용 | 단계 |
-|---|---|---|
-| T-SH-01 | `provideShared` 후 `getShared`가 같은 watch를 반환하고, 그 watch로 읽기·쓰기·구독이 동작한다 | 1 |
-| T-SH-02 | 제공 전에 건 `onShared` 콜백이 제공 시점에 한 번, 등록 순서대로 실행된다. 제공 후에 건 콜백은 즉시 실행된다 | 1 |
-| T-SH-03 | 중복 등록이 DC-SH-03대로 동작한다 | 1 |
-| T-SH-04 | `whenReady`가 값이 조건을 만족하는 시점에 한 번만 실행되고, 이후 변경에는 실행되지 않는다 | 2 |
-| T-SH-05 | `select` 옵션으로 조건을 바꿀 수 있고, 그 경로와 무관한 변경에는 다시 평가하지 않는다 | 2 |
-| T-SH-06 | 이미 준비된 값에는 즉시 실행되고, 실행 뒤 구독이 남지 않는다 | 2 |
-| T-SH-07 | `signal`이 대기 중·구독 중 어느 쪽에서 중단돼도 콜백이 실행되지 않고 대기·구독이 정리된다 | 2 |
-| T-SH-08 | `pendingShared`가 제공자 없는 대기 이름만 반환하고, 제공·중단 뒤에는 빠진다 | 1 |
-| T-SH-09 | 모듈을 두 번 로드한 두 사본(`vi.resetModules()`) 사이에서 제공·소비·쓰기 전파가 동작한다. `createComputed`, `combineWatch` 조합의 결과를 기록한다 | 4 |
-| T-SH-10 | 따로 빌드한 두 번들을 양쪽 순서로 로드해도 소비 쪽이 연결된다. `connectPreact`가 다른 번들의 watch로 렌더를 갱신한다 | 5 |
-| T-SH-11 | 레지스트리의 `v`가 다르면 오류를 던지고 기존 레지스트리를 바꾸지 않는다 | 4 |
-| T-SH-12 | 소비 사본의 `batch()` 안에서 제공 사본의 스토어에 쓸 때의 알림 횟수를 기록한다(보장이 아닌 관찰) | 4 |
-| T-SH-13 | `state-ref/shared`를 ESM과 CJS로 import할 수 있고, 타입이 해석되며, 기존 진입점의 산출물 파일명이 그대로다 | 3 |
-| T-SH-14 | 대기 콜백 하나가 던져도 나머지 콜백이 실행되고 `provideShared`가 정상 반환한다 | 4 |
-| T-SH-15 | `window`가 없는 환경에서 import와 제공·소비가 예외 없이 동작한다 | 4 |
+| ID | 내용 | 위치 | 결과 |
+|---|---|---|---|
+| T-SH-01 | `provideShared` 후 `getShared`가 같은 watch를 반환하고, 그 watch로 읽기·쓰기·구독이 동작한다 | `src/tests/shared/registry.ts` | 통과 |
+| T-SH-02 | 제공 전에 건 `onShared` 콜백이 제공 시점에 한 번, 등록 순서대로 실행된다. 제공 후에 건 콜백은 즉시 실행된다 | 같은 파일 | 통과 |
+| T-SH-03 | 중복 등록이 DC-SH-03대로 동작한다 | 같은 파일 | 통과 |
+| T-SH-04 | `whenReady`가 값이 조건을 만족하는 시점에 한 번만 실행되고, 이후 변경에는 실행되지 않는다 | `src/tests/shared/ready.ts` | 통과 |
+| T-SH-05 | `select` 옵션으로 조건을 바꿀 수 있고, 그 경로와 무관한 변경에는 다시 평가하지 않는다 | 같은 파일 | 통과 |
+| T-SH-06 | 이미 준비된 값에는 즉시 실행되고, 실행 뒤 구독이 남지 않는다 | 같은 파일 | 통과 |
+| T-SH-07 | `signal`이 대기 중·구독 중 어느 쪽에서 중단돼도 콜백이 실행되지 않고 대기·구독이 정리된다 | 두 파일 | 통과 |
+| T-SH-08 | `pendingShared`가 제공자 없는 대기 이름만 반환하고, 제공·중단 뒤에는 빠진다 | `registry.ts` | 통과 |
+| T-SH-09 | 소비 사본의 `createComputed`, `combineWatch`에 제공 사본의 watch를 넘긴 결과 | `test/shared-bundle.mjs` | 통과 |
+| T-SH-10 | 두 사본을 양쪽 순서로 로드해도 소비 쪽이 연결되고 쓰기가 양방향으로 전파된다. 공유 watch로 만든 Preact 훅이 렌더를 갱신한다 | `test/shared-bundle.mjs`, `connect-preact/src/tests/preact/shared.tsx` | 통과 (아래 주 1) |
+| T-SH-11 | 레지스트리의 `v`가 다르면 오류를 던지고 기존 레지스트리를 바꾸지 않는다 | `registry.ts`, `shared-bundle.mjs` | 통과 |
+| T-SH-12 | 소비 사본의 `batch()` 안에서 제공 사본의 스토어에 쓸 때의 알림 횟수(관찰) | `shared-bundle.mjs` | 기록됨: 제공 사본 batch 1회, 소비 사본 batch 2회 |
+| T-SH-13 | `state-ref/shared`를 ESM과 CJS로 import할 수 있고, 타입이 해석되며, 산출물에 `import`/`require`가 없고, 기존 산출물 파일명이 그대로다 | `scripts/check-packaging.mjs`, `shared-bundle.mjs`, `test/shared-types.ts` | 통과 |
+| T-SH-14 | 대기 콜백 하나가 던져도 나머지 콜백이 실행되고 `provideShared`가 정상 반환한다. 재진입 포함 | `registry.ts` | 통과 |
+| T-SH-15 | `window`가 없는 환경에서 import와 제공·소비가 예외 없이 동작한다 | `shared-bundle.mjs` (Node에서 직접 실행) | 통과 |
 
-## 단계 0 — 기준선
+주 1 — 두 사본은 **같은 버전의 UMD 빌드를 한 창에서 두 번 평가**해 만들었다. 실제 번들러(webpack 등)로 따로 빌드한 번들과, 서로 **다른 state-ref 버전**의 조합은 실행해 보지 않았다. 버전 독립성(C-SH-03)의 근거는 산출물에 코어 import가 없다는 T-SH-13의 검사다.
 
-- 시작 조건: DC-SH-01~04가 닫혔다.
-- [ ] 닫힌 결정을 DESIGN과 REQUIREMENTS에 반영한다.
-- [ ] `pnpm build:core`와 `pnpm test:core`를 실행하고 테스트 파일·테스트 수를 아래에 기록한다.
-- [ ] `pnpm gate`의 현재 결과를 기록한다.
-- **기준 테스트:** 기존 테스트가 모두 통과한 수치가 이 문서에 적힌다.
-- **완료 조건:** 기준선 수치 기록, 미결 결정 없음.
+## 단계 0 — 기준선 ✅
 
-## 단계 1 — 레지스트리와 제공·소비
+- [x] 닫힌 결정을 DESIGN과 REQUIREMENTS에 반영했다.
+- [x] 기준선(`6b283ff`): `pnpm test:core` 21 파일 · 342 테스트 통과.
+- [ ] 변경 전 `pnpm gate` 결과는 따로 실행해 기록하지 않았다. 변경 후 게이트만 실행했다(단계 3).
 
-- 시작 조건: 단계 0 완료.
-- [ ] `src/shared/registry.ts`: 레지스트리 생성, `v` 확인.
-- [ ] `src/shared/index.ts`: `provideShared`, `getShared`, `onShared`, `pendingShared`, `SharedStores` 타입.
-- [ ] `src/tests/shared/registry.ts`: T-SH-01, T-SH-02, T-SH-03, T-SH-08. 각 테스트 전에 레지스트리를 지운다.
-- **기준 테스트:** T-SH-01~03, T-SH-08.
-- **완료 조건:** 위 테스트 통과, 기존 테스트 수 유지.
+## 단계 1 — 레지스트리와 제공·소비 ✅
 
-## 단계 2 — 준비 게이트
+- [x] `src/shared/registry.ts`: 레지스트리 생성, `v` 확인. 전역 속성은 열거되지 않는다.
+- [x] `src/shared/index.ts`: `provideShared`, `getShared`, `onShared`, `pendingShared`, `SharedStores`.
+- [x] `src/tests/shared/registry.ts`: T-SH-01, 02, 03, 08과 이름·인자 검증.
+- **결과:** 17 테스트 통과.
 
-- 시작 조건: 단계 1 완료.
-- [ ] `whenReady` 구현. 이름과 watch를 모두 받는다.
-- [ ] 첫 실행에서의 구독 종료를 DESIGN 3절의 방식으로 구현하고, 구독이 남지 않는 것을 테스트로 확인한다.
-- [ ] `src/tests/shared/ready.ts`: T-SH-04~07.
-- **기준 테스트:** T-SH-04~07.
-- **완료 조건:** 위 테스트 통과.
+## 단계 2 — 준비 게이트 ✅
 
-## 단계 3 — 진입점과 빌드
+- [x] `whenReady` 구현. 이름과 watch를 모두 받는다.
+- [x] 첫 실행에서 열린 게이트는 `watch()` 반환 뒤 `abort()`로 닫는다. 구독이 남지 않는 것은 watch를 감싸 구독 콜백 실행 횟수를 세는 방식으로 확인했다. 코어에는 구독 수를 읽는 접점이 없고, 추가하지 않았다.
+- [x] `src/tests/shared/ready.ts`: T-SH-04~07과 콜백 예외 시 구독 종료.
+- **결과:** 12 테스트 통과.
+- **변이 확인:** 구현에서 ① 첫 실행 뒤 `abort()` ② 이후 실행의 `false` 반환 ③ 대기 목록 삭제를 각각 지우면 해당 테스트가 실패한다. `cache: false`는 지워도 실패하는 테스트가 없어 구현에서 제거했다.
 
-- 시작 조건: 단계 2 완료.
-- [ ] `vite.shared.config.js` 추가(`vite.batch.config.js` 형식).
-- [ ] `package.json`: `exports["./shared"]`(import·require), `typesVersions`, `build` 스크립트.
-- [ ] `vite.config.js`의 테스트용 alias에 `state-ref/shared` 추가.
-- [ ] 빌드 산출물을 import하는 T-SH-13 작성.
-- **기준 테스트:** T-SH-13, `pnpm build:core` 성공.
-- **완료 조건:** 기존 산출물 파일 목록에서 빠지거나 이름이 바뀐 것이 없다. `pnpm gate` 통과.
+## 단계 3 — 진입점과 빌드 ✅
 
-## 단계 4 — 테스트 강화 (Test Hardening)
+- [x] `vite.shared.config.js` 추가.
+- [x] `package.json`: `exports["./shared"]`(import·require), `typesVersions`, `build` 스크립트.
+- [x] `vite.config.js`와 `tsconfig.json`에 `state-ref/shared` alias 추가.
+- [x] `scripts/check-packaging.mjs`, `check-doc-examples.mjs`, `check-example-bundles.mjs`에 진입점 등록.
+- [x] `test/shared-types.ts`와 게이트 `shared-types` 단계 추가.
+- **결과:** `dist`에 `shared/`, `state-ref.shared.{mjs,cjs,umd.js}`만 추가됐고 빠지거나 바뀐 파일명이 없다. ESM 산출물 2,866 B.
+- **결과:** `pnpm gate` 21단계 통과(기존 19 + `shared-types`, `shared-bundle`). 코어 번들은 3,727 B gzip으로 예산(3,800 B) 안이다.
 
-- 시작 조건: 단계 3 완료.
-- [ ] T-SH-09: 두 사본 테스트. `createComputed`와 `combineWatch`에 다른 사본의 watch를 넘긴 결과를 DESIGN 4절에 적는다.
-- [ ] T-SH-11: 버전 불일치.
-- [ ] T-SH-12: 번들을 넘는 `batch`의 실제 알림 횟수를 DESIGN 4절에 적는다.
-- [ ] T-SH-14: 대기 콜백 예외 격리. 대기 콜백 안에서 다시 `provideShared`나 `onShared`를 부르는 재진입도 포함한다.
-- [ ] T-SH-15: `window` 없는 환경.
-- [ ] `whenReady` 콜백이 예외를 던져도 구독이 끝나는지 확인한다.
-- **기준 테스트:** T-SH-09, T-SH-11, T-SH-12, T-SH-14, T-SH-15.
-- **완료 조건:** 위 테스트 통과, 관찰 결과가 DESIGN에 반영됨.
+## 단계 4 — 테스트 강화 (Test Hardening) ✅
 
-## 단계 5 — 통합 테스트 (Integration Test)
+- [x] T-SH-09: 소비 사본의 `createComputed`, `combineWatch`가 제공 사본의 watch와 동작한다. DESIGN 4절에 반영.
+- [x] T-SH-11: 버전 불일치.
+- [x] T-SH-12: 번들을 넘는 `batch`의 알림 횟수를 DESIGN 4절에 반영.
+- [x] T-SH-14: 대기 콜백 예외 격리와 재진입.
+- [x] T-SH-15: `window` 없는 환경.
+- [x] `whenReady` 콜백이 예외를 던져도 구독이 끝난다.
+- **계획과 달라진 점:** 두 사본을 `vi.resetModules()` 대신 빌드된 UMD를 두 번 평가해 만들었다. 실제 배포 산출물을 검증하고 기존 `batch-bundle.mjs`와 같은 방식이다.
 
-- 시작 조건: 단계 4 완료.
-- [ ] 제공 번들과 소비 번들을 따로 빌드하는 예제를 만든다. 각 번들이 state-ref를 자체 포함한다.
-- [ ] 두 `<script>`의 순서를 바꾼 두 페이지에서 T-SH-10을 실행한다.
-- [ ] 소비 번들에서 `connectPreact`로 렌더가 갱신되는지 확인한다.
-- [ ] 저장소의 기존 브라우저 검증 구성에 이 예제를 포함할지 정하고, 포함하지 않으면 이유를 적는다.
-- **기준 테스트:** T-SH-10.
-- **완료 조건:** 두 순서 모두 통과, `pnpm gate` 통과.
+## 단계 5 — 통합 테스트 (Integration Test) — 일부 완료
 
-## 단계 6 — 문서와 릴리스 준비
+- [x] 두 사본의 양쪽 로드 순서(T-SH-10)를 `test/shared-bundle.mjs`에서 jsdom으로 실행한다.
+- [x] 공유 watch로 만든 `connectPreact` 훅이 렌더를 갱신한다(`connect-preact` 테스트 8 파일 · 31 테스트 통과).
+- [ ] 실제 번들러로 제공 번들과 소비 번들을 따로 빌드하는 예제 페이지. M-SH-01의 대상이다.
+- [ ] 저장소의 기존 브라우저 검증 구성에 그 예제를 포함할지 결정.
+- **완료 조건(미충족):** 따로 빌드한 두 번들이 실제 브라우저에서 양쪽 순서로 통과.
 
-- 시작 조건: 단계 5 완료.
-- [ ] `packages/state-ref` README와 문서 사이트에 `state-ref/shared` 사용법, 4절의 한계, 서버 렌더 경고를 적는다.
-- [ ] CLAUDE.md의 Key Files에 `src/shared/`를 추가한다.
-- [ ] [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md)의 M-SH-01, M-SH-02를 수행하고 결과를 적는다.
-- [ ] 버전과 릴리스 노트는 사용자 확인 후 진행한다.
-- **기준 테스트:** `pnpm test`, `pnpm gate`.
-- **완료 조건:** 문서의 예제 코드가 실제 API와 일치하고, M-SH-03을 제외한 수동 항목에 결과가 적혀 있다.
+## 단계 6 — 문서와 릴리스 준비 — 일부 완료
+
+- [x] `packages/state-ref/README.md`에 사용법, 중복 등록, 서버 경고, `batch` 한계를 적었다. 예제는 `check-doc-examples`로 타입 검사된다.
+- [x] 루트 `README.md`의 패키지 표와 `CLAUDE.md`의 Key Files에 진입점을 추가했다.
+- [ ] 문서 사이트에 `state-ref/shared` 페이지 추가.
+- [ ] [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md)의 M-SH-01, M-SH-02 수행.
+- [ ] 버전과 릴리스 노트. 사용자 확인 후 진행한다.
 
 ## 인계
 
-### 2026-10-08
+### 2026-10-08 — 구현
 
-- 완료: 계획 초안.
-- 다음: 단계 0.
-- 막힌 것: DC-SH-01~04 미결.
+- 완료: 단계 0~4, 단계 5·6의 자동화 가능한 부분. `pnpm test:core` 23 파일 · 371 테스트, `pnpm gate` 21단계 통과. C-SH-01 대상 경로의 diff는 비어 있다.
+- 다음: 단계 5의 실제 번들러 예제 → M-SH-01·02 → 문서 사이트 → 릴리스 결정.
+- 막힌 것: 없음.
+- commit: 구현 `f7c717b`, 문서 초안 `ab0afd4`.
+
+### 2026-10-08 — 계획 초안
+
 - 기준 commit: `6b283ff`.

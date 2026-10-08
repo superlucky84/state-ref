@@ -1,7 +1,7 @@
 # DESIGN — 번들 간 이름 기반 공유 스토어와 준비 게이트
 
 - 작성일: 2026-10-08
-- 상태: 결정 완료(2026-10-08). 사용자가 DC-SH-01~04를 모두 제안대로 확정했다. 미결 결정 없음.
+- 상태: 결정 완료, 구현 반영(2026-10-08). 사용자가 DC-SH-01~04를 모두 제안대로 확정했다. 미결 결정 없음.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 ## 1. 결정 목록
@@ -41,6 +41,7 @@
   - 근거: 제공 직후 같은 틱에 쓰는 값도 소비자가 놓치지 않는다. 한 소비자의 예외가 다른 소비자를 막지 않는다(C-SH-05). 검증: T-SH-14.
 - [x] **DC-SH-10 타입** — `interface SharedStores {}`를 내보내고, 사용자가 모듈 보강으로 이름과 값 타입을 등록한다. 등록되지 않은 이름은 제네릭 인자로 지정하며 기본은 `unknown`이다.
   - 근거: 이름 오타를 타입 단계에서 잡는다. joongangscripts처럼 JS만 쓰는 코드에는 부담이 없다.
+  - 구현 메모: 이름별 overload로 나누면 등록된 이름에 다른 타입의 스토어를 넘겨도 일반 overload로 빠져 통과했고, `whenReady(watch, ...)`의 콜백 타입이 첫 overload에서 굳어 오류가 났다. 그래서 함수마다 시그니처를 하나로 두고 `SharedValue`/`ReadyValue` 조건부 타입으로 값 타입을 정한다. 검증: `test/shared-types.ts`(게이트 `shared-types`).
 
 ## 2. API
 
@@ -90,36 +91,44 @@ whenReady('subs.ready', () => {
 - 구독 콜백은 `select(ref)`만 읽는다. state-ref의 경로 추적에 따라 그 경로가 바뀔 때만 다시 실행된다.
 - 조건을 만족하면 콜백을 실행하고 구독을 끝낸다.
 - **구독 종료 방식**: 코어는 첫 실행에서 반환한 `AbortSignal`만 등록하고, 이미 중단된 신호에는 반응하지 않는다(`connectors/runner.ts:214`). 그래서 첫 실행에서는 `AbortController`의 신호를 반환하고, `watch()` 호출이 끝난 뒤 `abort()`한다. 이후 실행에서는 `false`를 반환한다. 검증: T-SH-06.
-- `cache: false`로 구독한다. 같은 스토어에 `whenReady`를 여러 번 걸어도 서로의 구독을 공유하지 않는다.
+- 게이트마다 새 콜백 클로저로 구독한다. watch의 캐시는 콜백 동일성으로 구분하므로 같은 스토어에 `whenReady`를 여러 번 걸어도 구독이 겹치지 않는다. 처음에는 `cache: false`를 넘겼으나, 빼도 실패하는 테스트가 없어 제거했다.
 - 콜백이 던진 예외는 호출자에게 전파되지 않도록 잡아 `console.error`로 보고하고, 구독은 끝낸다.
 
 ## 4. 경계와 알려진 한계
 
 | 항목 | 내용 | 추적 |
 |---|---|---|
-| ref의 출처 | 소비 번들은 제공 번들의 state-ref 사본이 만든 ref를 받는다. `Watch`가 클로저로 완결돼 있어 읽기·쓰기·구독은 그대로 동작한다 | T-SH-09 |
-| 커넥터 | `connectPreact(watch)`는 watch를 호출만 하므로 다른 사본의 watch에도 동작한다. watch는 `getShared` 또는 `onShared`로 얻은 뒤 넘긴다 | T-SH-10, M-SH-01 |
-| `batch` | `state-ref/batch`의 상태는 사본마다 따로다. 소비 번들의 `batch()`가 제공 번들 스토어의 알림을 묶는지는 보장하지 않는다 | T-SH-12 |
-| `createComputed`, `combineWatch` | 소비 번들의 헬퍼에 다른 사본의 watch를 넘기는 조합은 테스트로 동작을 확인한 뒤 문서에 적는다 | T-SH-09 |
-| 서버 렌더 | 레지스트리는 `globalThis`에 있어 요청 사이에 공유된다. 서버에서 요청별 상태를 등록하면 안 된다. 문서에 경고를 적는다 | T-SH-15 |
+| ref의 출처 | 소비 번들은 제공 번들의 state-ref 사본이 만든 ref를 받는다. `Watch`가 클로저로 완결돼 있어 읽기·쓰기·구독은 그대로 동작한다. **확인됨** | T-SH-10 |
+| 커넥터 | `connectPreact(watch)`는 state-ref에서 타입만 import하고 watch를 호출만 한다. `onShared`로 받은 watch로 만든 훅이 렌더를 갱신하는 것은 **확인됨**. 실제로 따로 빌드한 두 번들에서의 렌더는 사람이 확인한다 | T-SH-10, M-SH-01 |
+| `batch` | `state-ref/batch`의 상태는 사본마다 따로다. **관찰 결과**: 제공 사본의 `batch()`는 쓰기 2회를 알림 1회로 묶고, 소비 사본의 `batch()`는 묶지 못해 알림이 2회 나간다. 값은 어느 쪽이든 올바르다 | T-SH-12 |
+| `createComputed`, `combineWatch` | 소비 사본의 헬퍼에 제공 사본의 watch를 넘겨도 동작한다. **확인됨**: 계산값이 갱신되고, 두 사본의 스토어를 묶은 `combineWatch`가 양쪽 변경에 모두 반응한다 | T-SH-09 |
+| 서버 렌더 | 레지스트리는 `globalThis`에 있어 요청 사이에 공유된다. 서버에서 요청별 상태를 등록하면 안 된다. README에 경고를 적었다. `window` 없는 Node에서의 동작은 **확인됨** | T-SH-15 |
 
 ## 5. 파일 구성
 
 | 파일 | 내용 |
 |---|---|
-| `packages/state-ref/src/shared/index.ts` | 진입점. 다섯 함수와 `SharedStores` 타입 |
+| `packages/state-ref/src/shared/index.ts` | 진입점. 다섯 함수와 `SharedStores`, `SharedValue`, `ReadyValue` 타입 |
 | `packages/state-ref/src/shared/registry.ts` | 레지스트리 생성·버전 확인 |
-| `packages/state-ref/src/tests/shared/*.ts` | 단위·두 사본 테스트 |
-| `packages/state-ref/vite.shared.config.js` | `vite.batch.config.js`와 같은 형식의 빌드 설정 |
+| `packages/state-ref/src/tests/shared/{registry,ready}.ts` | 단위 테스트 (vitest) |
+| `packages/state-ref/test/shared-bundle.mjs` | 빌드 산출물 테스트. UMD를 두 번 평가해 두 사본을 만든다 (게이트 `shared-bundle`) |
+| `packages/state-ref/test/shared-types.ts` | 타입 테스트 (게이트 `shared-types`) |
+| `packages/connect-preact/src/tests/preact/shared.tsx` | 공유 watch로 만든 Preact 훅 |
+| `packages/state-ref/vite.shared.config.js` | `vite.batch.config.js`와 같은 형식의 빌드 설정. 외부 의존이 없어 `rollupOptions.external`은 없다 |
 | `packages/state-ref/package.json` | `exports["./shared"]`, `typesVersions`, `build` 스크립트에 한 단계 추가 |
+| `scripts/{gate,check-packaging,check-doc-examples,check-example-bundles}.mjs` | 새 진입점 등록 |
 
-`package.json`과 빌드 설정 변경은 패키징 변경이며 C-SH-01의 소스 경로에 해당하지 않는다.
+`package.json`, 빌드 설정, 검사 스크립트 변경은 패키징 변경이며 C-SH-01의 소스 경로에 해당하지 않는다.
 
 ## 6. 인계
 
+### 2026-10-08 — 구현 (단계 0~4, 단계 5·6 일부)
+
+- 완료: 결정 확정, 진입점 구현, 단위·타입·두 사본 빌드 테스트, README와 CLAUDE.md. `pnpm gate` 21단계 통과.
+- 다음: [IMPLEMENT](./IMPLEMENT.md)의 남은 항목 — 실제 번들러로 따로 빌드한 두 번들 예제, 문서 사이트, 수동 검증 M-SH-01·02.
+- 막힌 것: 없음. 버전과 릴리스는 사용자 확인이 필요하다.
+- commit: 구현 `f7c717b`.
+
 ### 2026-10-08 — 문서 세트 초안
 
-- 완료: 네 문서 초안, 브랜치 `feat/shared-store` 생성.
-- 다음: 사용자가 DC-SH-01~04를 확인하면 IMPLEMENT 단계 0부터 진행한다.
-- 막힌 것: DC-SH-01~04 미결.
-- 기준 commit: `6b283ff`.
+- 완료: 네 문서 초안, 브랜치 `feat/shared-store` 생성. commit `ab0afd4`.
