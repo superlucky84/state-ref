@@ -873,6 +873,38 @@ class QueryEntry<T> {
   }
 }
 
+/**
+ * The option checks opening a query runs before it looks at the cache. A
+ * peek runs the same ones so a render shows the error the observer will.
+ */
+function checkOpenOptions(
+  queryOptions: Pick<
+    QueryOptions<unknown>,
+    | 'staleTime'
+    | 'gcTime'
+    | 'networkMode'
+    | 'initialData'
+    | 'initialUpdatedAt'
+    | keyof AutomaticRefetchOptions
+  >
+) {
+  checkDuration(queryOptions.staleTime ?? 0, 'staleTime');
+  checkDuration(queryOptions.gcTime ?? 0, 'gcTime');
+  checkAutomaticRefetchOptions(queryOptions);
+  checkNetworkMode(queryOptions.networkMode);
+  if (queryOptions.initialUpdatedAt !== undefined) {
+    if (
+      !Number.isFinite(queryOptions.initialUpdatedAt) ||
+      queryOptions.initialUpdatedAt < 0
+    ) {
+      throw new RangeError('initialUpdatedAt must be a finite timestamp.');
+    }
+    if (queryOptions.initialData === undefined) {
+      throw new TypeError('initialUpdatedAt requires initialData.');
+    }
+  }
+}
+
 /** One client owns one cache. Construct a new client for each SSR request. */
 export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
   const entries = new Map<string, QueryEntry<any>>();
@@ -1004,21 +1036,7 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
     kind: 'query' | 'infinite' = 'query'
   ): QueryEntry<T> => {
     const hash = hashQueryKey(queryOptions.queryKey);
-    checkDuration(queryOptions.staleTime ?? 0, 'staleTime');
-    checkDuration(queryOptions.gcTime ?? 0, 'gcTime');
-    checkAutomaticRefetchOptions(queryOptions);
-    checkNetworkMode(queryOptions.networkMode);
-    if (queryOptions.initialUpdatedAt !== undefined) {
-      if (
-        !Number.isFinite(queryOptions.initialUpdatedAt) ||
-        queryOptions.initialUpdatedAt < 0
-      ) {
-        throw new RangeError('initialUpdatedAt must be a finite timestamp.');
-      }
-      if (queryOptions.initialData === undefined) {
-        throw new TypeError('initialUpdatedAt requires initialData.');
-      }
-    }
+    checkOpenOptions(queryOptions);
     let entry = entries.get(hash) as QueryEntry<T> | undefined;
     if (entry) {
       if (entry.kind !== kind)
@@ -1763,7 +1781,8 @@ export function createSyncClient(options: SyncClientOptions = {}): SyncClient {
         peek: <T, S = T>(readOptions: () => PeekOptions<T, S>) =>
           createPeekReader<T, S>(
             hash => entries.get(hash) as PeekEntry<T> | undefined,
-            readOptions
+            readOptions,
+            checkOpenOptions
           ),
       }
     )

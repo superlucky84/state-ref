@@ -80,11 +80,12 @@
 - [x] `display.ts`의 `calculate`를 "status + 입력값 + 표시 옵션 → 표시 상태" 공유 함수로 꺼낸다. 관찰자 display는 최신 표시 옵션을 읽고 비공개 `reproject()`와 재투영 경로의 구조 공유를 둔다(DC-QH-26). 기존 display 동작 무변경.
   - 결과: `projectDisplay()`(투영 메모 키에 `select` identity 추가), `createQueryDisplay(query, options | () => options)`, `reproject()`, `carryProjection()`(구조 공유 `shareStructure()`, 같은 생성자·문구의 `select` 오류 유지, `Date`는 시각으로 비교, 메모도 함께 갱신).
 - [x] 관찰자용 peek 내부 함수: key hash로 항목 조회, 없으면 만들지 않음, 옵션 오류는 `errorSource: 'source'` 표시(DC-QH-13), `initialData` 합성(DC-QH-33), 첫 렌더 `fetchStatus`는 캐시 그대로(DC-QH-32), 살아 있고 identity가 안정된 ref와 두 메모(DC-QH-29), 읽기 전용 보호.
-  - 결과: `peek.ts`의 `createPeekReader(lookup, readOptions)`. 읽기 하나가 메모 하나이고, 단계 2의 관찰자가 확정 옵션용·렌더 옵션용으로 둘을 만든다. 상태는 구독자 없는 내부 store에 두고, `guardRef`의 get 트랩(어느 깊이든)에서 다시 계산한다. 편집 가능 query의 `select` 입력은 display와 같은 읽기 전용 snapshot(`ref-guard.ts`의 `snapshotValue()`로 꺼냄). `QueryEntry`에 구독 없이 읽는 `peekStatus()`·`peekValue()`·`peekEditable()`·`canSeedInitial()`을 더했고, `seedInitial`은 `canSeedInitial()`을 쓴다. 테스트와 단계 2를 위한 client 내부 접근은 `internal.ts`(모듈 전용 symbol, 패키지 진입점에서 export하지 않음).
-- [x] `QueryDisplayRef` 타입 수정(DC-QH-18). `null` 부모와 선택적 필드까지 같은 규칙(DESIGN DC-QH-18).
+  - 결과: `peek.ts`의 `createPeekReader(lookup, readOptions, validate)`. `validate`는 쿼리를 열 때와 같은 옵션 검사(`index.ts`의 `checkOpenOptions()`로 꺼냄)이고, 항목 종류·편집 가능 여부 일치와 편집 가능 `initialData` 검사는 peek가 한다. 읽기 하나가 메모 하나이고, 단계 2의 관찰자가 확정 옵션용·렌더 옵션용으로 둘을 만든다. 상태는 구독자 없는 내부 store에 두고, `guardRef`의 get 트랩(어느 깊이든)에서 다시 계산한다. 편집 가능 query의 `select` 입력은 display와 같은 읽기 전용 snapshot(`ref-guard.ts`의 `snapshotValue()`로 꺼냄). `QueryEntry`에 구독 없이 읽는 `peekStatus()`·`peekValue()`·`peekEditable()`·`canSeedInitial()`을 더했고, `seedInitial`은 `canSeedInitial()`을 쓴다. 테스트와 단계 2를 위한 client 내부 접근은 `internal.ts`(모듈 전용 symbol, 패키지 진입점에서 export하지 않음).
+- [x] `QueryDisplayRef` 타입 수정(DC-QH-18). 분배형으로 `.value` 좁히기·제네릭 유지, `null` 부모와 선택적 필드까지 같은 규칙, 인덱스 시그니처 제외, `value` 필드 매핑 제외(DESIGN DC-QH-18).
+- [x] (리뷰 반영) `hashQueryKey`가 key 안의 state-ref ref를 거절한다(DC-QH-13, 기존 동작 변경).
 - [x] `packages/sync/test/sync-bundle.mjs`에 UI 프레임워크 import 부재 확인 추가(T-QH-27).
 - 기준 테스트: T-QH-08 중 `QueryDisplayRef` 부분과 부정 타입(`SyncClient`에 `peek` 없음), T-QH-27, 기존 sync 테스트 전체, 내부 peek·표시 계산 함수의 단위 테스트(T-QH-06·07·15·17의 peek 부분을 내부 함수로).
-  - 위치: `packages/sync/src/tests/peek.test.ts`(T-QH-01·02·06·07·15·17의 peek 부분, 17개), `packages/sync/src/tests/display-reproject.test.ts`(DC-QH-26 재투영, 7개), `packages/sync/test/types.ts`의 `displayLeafPaths`, `packages/sync/test/negative-types.ts`의 `client.peek`, `packages/sync/test/sync-bundle.mjs`.
+  - 위치: `packages/sync/src/tests/peek.test.ts`(T-QH-01·02·06·07·15·17의 peek 부분, 26개), `packages/sync/src/tests/display-reproject.test.ts`(DC-QH-26 재투영, 9개), `packages/sync/test/types.ts`의 `displayLeafPaths`, `packages/sync/test/negative-types.ts`의 `client.peek`, `packages/sync/test/sync-bundle.mjs`.
 - 완료: 위 테스트 통과, `pnpm --filter @stateref/sync build`와 sync 타입 검사 통과.
 
 ## 단계 2 — 관찰자 (`client.observe`)
@@ -148,7 +149,7 @@
 - [ ] 가이드에 적을 것: SSR은 `ssr: true` client(특히 Svelte store API, DC-QH-15), client는 컴포넌트 수명 동안 바꾸지 않음(DC-QH-25), 신호 없는 콜백 구독은 관찰자를 붙잡음(DC-QH-30), 첫 렌더 `fetchStatus`(DC-QH-32), 의존 조회는 `id ?? null` + `enabled`(DC-QH-13), Vue는 옵션 안의 ref를 풀지 않음(DC-QH-17), Svelte는 store API만·옵션은 `Readable`(DC-QH-34·36), `q.invalidate()`와 `client.invalidate()`의 재조회 차이(DC-QH-23), 해제는 해제 일정 뒤(테스트에서 타이머 진행, T-QH-46), Vue `<KeepAlive>`, 번들 간 sync 버전 맞춤(DC-QH-37).
 - [ ] [server-sync DESIGN](../server-sync/DESIGN.md) 6절과 [PHASE8_6](../server-sync/PHASE8_6.md)의 F2-02 행·절에 mount 재조회 경로 기록, PHASE8_6 행에 `packages/sync/src/tests/observe.test.ts` 인용(DC-QH-19).
 - [ ] [server-sync README](../server-sync/README.md)에서 이 문서 세트로 링크.
-- [ ] CHANGELOG 메모(릴리스 시 반영): `QueryDisplayRef` 타입 변경, sync minor(`client.observe`, `QueryHandleCore`), `MutationLink.query`·연결 제출 영속화 타입 넓힘(DC-QH-23), 다섯 커넥터의 `./sync` 하위 경로와 peer 범위(DC-QH-20).
+- [ ] CHANGELOG 메모(릴리스 시 반영): `QueryDisplayRef` 타입 변경, `hashQueryKey`의 state-ref ref 거절(DC-QH-13), sync minor(`client.observe`, `QueryHandleCore`), `MutationLink.query`·연결 제출 영속화 타입 넓힘(DC-QH-23), 다섯 커넥터의 `./sync` 하위 경로와 peer 범위(DC-QH-20).
 - 완료: `pnpm gate`의 doc-examples·support-table 단계 통과.
 
 ## 진행 기록
@@ -168,3 +169,12 @@
 - 다음: 단계 1(sync 기반).
 - 막힌 점: 없음.
 - 기준 commit: 교차 검토 반영 `a688c89`, `main` 병합 `e58deaa`. 이 기록을 담은 commit은 `git log -- docs/sync-query-hooks`로 확인한다.
+
+### 2026-10-08 — 단계 1(sync 기반) 완료
+
+- 완료: peek(`peek.ts`), display 계산 공유·재투영·구조 공유(`display.ts`), `QueryDisplayRef` 타입, 번들 검사. commit `ac31d8f`.
+- 리뷰: 리뷰 에이전트 4개와 판정 1개가 `ac31d8f`를 검토해 20건(중간 7, 낮음 13)을 확인했고 모두 반영했다. 주요 내용: 비분배 타입이 `.value` 좁히기·제네릭·`Record` 값·`value` 필드에서 회귀한 것(분배형으로 재작성), key 안의 state-ref ref가 `{}`로 해시되던 기존 결함(`hashQueryKey`가 거절), 열 때 거절될 옵션을 peek가 성공으로 보이던 것, 테스트 판정력 부족(결함 주입으로 확인된 9건). 반영 뒤 리뷰가 지적한 결함 13가지를 하나씩 주입해 모두 테스트가 잡는 것을 확인했다.
+- 검증: sync 테스트 273개(23개 파일), sync 타입 검사, 소비자 타입·부정 타입 테스트, 번들 검사 통과. `pnpm gate`는 `bench` 앞 19단계 통과.
+- `bench` 기록: core 측정 "1000 live index nodes"(기준 5ms)가 게이트 안에서 5.3~6.5ms로 실패했다. `packages/state-ref`는 `main`과 같고, 두 작업 공간의 `dist/state-ref.mjs`는 sha256이 같다. 같은 기계에서 번갈아 재면 이 브랜치 6.5·4.1·5.5·5.3·7.3ms, `main` 4.8·5.1·5.0·5.0·4.9ms로 `main`도 기준을 넘는다. `main` 게이트는 4.8ms로 통과했다. 같은 바이트를 재는 측정의 흔들림이며 이 작업과 무관하다(인계 메모의 7.6ms 기록과 같은 현상). 기준 자체를 고칠지는 이 작업 범위 밖이다.
+- 다음: 단계 2(`client.observe`).
+- 막힌 점: 없음.

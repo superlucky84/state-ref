@@ -5,6 +5,7 @@
  * so these reach it through the package-internal client hook.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { create } from 'state-ref';
 import { createSyncClient } from '../index';
 import type { SyncCacheEvent } from '../index';
 import { internalsOf } from '../internal';
@@ -58,6 +59,9 @@ describe('peek: reading without taking part (T-QH-01)', () => {
     await Promise.resolve();
     const events: SyncCacheEvent[] = [];
     client.subscribeCache(event => events.push(event));
+    // Read late in the gc window: a read that re-armed the timer would push
+    // the eviction past 100ms.
+    await vi.advanceTimersByTimeAsync(60);
     const reader = peekOf<Account>(client, () => ({ queryKey: ['account'] }));
     for (let index = 0; index < 5; index += 1) {
       expect(reader.ref.data.name.value).toBe('Lee');
@@ -65,7 +69,7 @@ describe('peek: reading without taking part (T-QH-01)', () => {
     expect(client.inspectCache().map(entry => entry.owners)).toEqual([0]);
     await Promise.resolve();
     expect(events).toEqual([]);
-    await vi.advanceTimersByTimeAsync(100);
+    await vi.advanceTimersByTimeAsync(40);
     expect(client.size()).toBe(0);
     expect(reader.ref.status.value).toBe('pending');
     expect(reader.ref.data.value).toBeUndefined();
@@ -93,6 +97,8 @@ describe('peek: what it shows (T-QH-02)', () => {
       queryKey: ['account', 1],
       queryFn: () => read.promise,
     });
+    // An existing entry with no READ yet: still idle (DC-QH-32).
+    expect(reader.ref.fetchStatus.value).toBe('idle');
     const loading = query.load();
     // Never `fetching` ahead of a READ that has not started (DC-QH-32), but a
     // started one shows.
@@ -101,6 +107,7 @@ describe('peek: what it shows (T-QH-02)', () => {
     read.resolve({ name: 'Lee', age: 3 });
     await loading;
     expect(reader.ref.status.value).toBe('success');
+    expect(reader.ref.fetchStatus.value).toBe('idle');
     expect(reader.ref.data.name.value).toBe('Lee');
     query.ref.name.value = 'Kim';
     expect(reader.ref.data.name.value).toBe('Kim');
@@ -123,11 +130,89 @@ describe('peek: what it shows (T-QH-02)', () => {
     });
   });
 
+  it('refuses a ref in a query key when opening, too', () => {
+    const client = createSyncClient();
+    const id = create({ id: 7 }, { autoSync: true }).watch();
+    expect(() =>
+      client.query({ queryKey: ['user', id.id], queryFn: () => 1 })
+    ).toThrow('read a ref with `.value`');
+    expect(client.size()).toBe(0);
+  });
+
+  it('shows what opening the options would refuse, as a source error', async () => {
+    const client = createSyncClient();
+    const feed = client.infiniteQuery({
+      queryKey: ['feed'],
+      initialPageParam: 0,
+      queryFn: () => 1,
+      getNextPageParam: () => undefined,
+    });
+    await feed.load();
+    const account = client.query<Account>({
+      queryKey: ['account'],
+      queryFn: () => ({ name: 'Lee', age: 3 }),
+    });
+    await account.load();
+    const refusals: Array<[PeekOptions<any>, () => unknown]> = [
+      [
+        { queryKey: ['feed'] },
+        () => client.query({ queryKey: ['feed'], queryFn: () => 1 }),
+      ],
+      [
+        { queryKey: ['account'], editable: false },
+        () =>
+          client.query({
+            queryKey: ['account'],
+            queryFn: () => ({ name: 'Lee', age: 3 }),
+            editable: false,
+          }),
+      ],
+      [
+        { queryKey: ['other'], initialData: { a: 1 }, initialUpdatedAt: -5 },
+        () =>
+          client.query({
+            queryKey: ['other'],
+            queryFn: () => ({ a: 1 }),
+            initialData: { a: 1 },
+            initialUpdatedAt: -5,
+          }),
+      ],
+      [
+        { queryKey: ['dated'], initialData: { at: new Date(0) } },
+        () =>
+          client.query({
+            queryKey: ['dated'],
+            queryFn: () => ({ at: new Date(0) }),
+            initialData: { at: new Date(0) },
+          }),
+      ],
+    ];
+    for (const [options, open] of refusals) {
+      const state = peekOf(client, () => options).state();
+      expect(state.errorSource).toBe('source');
+      expect(state.status).toBe('error');
+      expect(open).toThrow((state.error as Error).message);
+    }
+    // Readonly data may be any value, as opening it allows.
+    const readonly = peekOf(client, () => ({
+      queryKey: ['dated-readonly'],
+      editable: false,
+      initialData: { at: new Date(0) },
+    })).state();
+    expect(readonly.status).toBe('success');
+    feed.dispose();
+    account.dispose();
+  });
+
   it('shows invalid options as a source error instead of throwing', () => {
     const client = createSyncClient();
+    const id = create({ id: 7 }, { autoSync: true }).watch();
     const cases: Array<PeekOptions<Account>> = [
       { queryKey: ['user', undefined] },
       { queryKey: ['user', new Map()] },
+      // A forgotten `.value`: a ref is not key data, even a ref to a number.
+      { queryKey: ['user', id.id] },
+      { queryKey: ['user', id] },
       { queryKey: ['user', 1], enabled: 1 as unknown as boolean },
     ];
     for (const options of cases) {
@@ -220,6 +305,38 @@ describe('peek: display options (T-QH-06)', () => {
   });
 });
 
+describe('peek: a failing equals (T-QH-06)', () => {
+  it('shows the select error the display shows', async () => {
+    const client = createSyncClient();
+    let age = 3;
+    const options = {
+      queryKey: ['account'],
+      select: (data: Account) => ({ age: data.age }),
+      equals: (): boolean => {
+        throw new Error('cannot compare');
+      },
+    };
+    const query = client.query<Account, { age: number }>({
+      ...options,
+      queryFn: () => ({ name: 'Lee', age }),
+    });
+    void query.display.value;
+    await query.load();
+    const reader = peekOf<Account, { age: number }>(client, () => options);
+    void reader.state();
+    age = 4;
+    await query.refetch();
+    const shown = query.display.value;
+    const peeked = reader.state();
+    expect(shown.errorSource).toBe('select');
+    expect(peeked.errorSource).toBe(shown.errorSource);
+    expect(peeked.status).toBe('error');
+    expect(peeked.data).toBeUndefined();
+    expect(reader.state()).toBe(peeked);
+    query.dispose();
+  });
+});
+
 describe('peek: read-only (T-QH-07)', () => {
   it('refuses writes and leaves the cache as it was', async () => {
     const client = createSyncClient();
@@ -254,6 +371,30 @@ describe('peek: read-only (T-QH-07)', () => {
     expect(query.isDirty()).toBe(false);
     query.dispose();
   });
+
+  it('hands out read-only state and key, for a readonly query too', async () => {
+    const client = createSyncClient();
+    const query = client.query<Account>({
+      queryKey: ['account', 1],
+      queryFn: () => ({ name: 'Lee', age: 3 }),
+      editable: false,
+    });
+    await query.load();
+    const reader = peekOf<Account>(client, () => ({
+      queryKey: ['account', 1],
+      editable: false,
+    }));
+    const state = reader.state();
+    expect(() => {
+      (state.data as Account).name = 'Kim';
+    }).toThrow();
+    expect(() => {
+      (state.queryKey as unknown[]).push('x');
+    }).toThrow();
+    expect(query.ref.name.value).toBe('Lee');
+    expect(reader.ref.queryKey.value).toEqual(['account', 1]);
+    query.dispose();
+  });
 });
 
 describe('peek: live and identity-stable (T-QH-15)', () => {
@@ -269,6 +410,95 @@ describe('peek: live and identity-stable (T-QH-15)', () => {
     await query.load();
     // Held from before the load: the read still recomputes.
     expect(data.name.value).toBe('Lee');
+    query.dispose();
+  });
+
+  it('recomputes when a held ref is inspected, not only read', async () => {
+    const client = createSyncClient();
+    const reader = peekOf<Account>(client, () => ({ queryKey: ['account'] }));
+    const data = reader.ref.data;
+    const query = client.query<Account>({
+      queryKey: ['account'],
+      queryFn: () => ({ name: 'Lee', age: 3 }),
+    });
+    await query.load();
+    expect('name' in data).toBe(true);
+    expect(Object.keys(data)).toEqual(['name', 'age']);
+    query.dispose();
+  });
+
+  it('follows a change of display options alone', async () => {
+    const client = createSyncClient();
+    const query = client.query<Account>({
+      queryKey: ['account'],
+      queryFn: () => ({ name: 'Lee', age: 3 }),
+    });
+    await query.load();
+    let options: PeekOptions<Account, string> = {
+      queryKey: ['account'],
+      select: data => data.name,
+    };
+    const reader = peekOf<Account, string>(client, () => options);
+    const ref = reader.ref;
+    const first = ref.value;
+    expect(ref.data.value).toBe('Lee');
+    options = { queryKey: ['account'], select: data => String(data.age) };
+    expect(ref.data.value).toBe('3');
+    const second = ref.value;
+    expect(second).not.toBe(first);
+    expect(ref.value).toBe(second);
+
+    // Before a load, placeholderData and initialData are what show.
+    const empty = createSyncClient();
+    let pending: PeekOptions<Account> = {
+      queryKey: ['account'],
+      placeholderData: { name: 'one', age: 0 },
+    };
+    const before = peekOf<Account>(empty, () => pending);
+    expect(before.ref.data.name.value).toBe('one');
+    pending = {
+      queryKey: ['account'],
+      placeholderData: { name: 'two', age: 0 },
+    };
+    expect(before.ref.data.name.value).toBe('two');
+    pending = { queryKey: ['account'], initialData: { name: 'i1', age: 0 } };
+    expect(before.ref.data.name.value).toBe('i1');
+    pending = { queryKey: ['account'], initialData: { name: 'i2', age: 0 } };
+    expect(before.ref.data.name.value).toBe('i2');
+    pending = { ...pending, initialUpdatedAt: 1 };
+    expect(before.ref.updatedAt.value).toBe(1);
+    pending = { ...pending, initialUpdatedAt: 2 };
+    expect(before.ref.updatedAt.value).toBe(2);
+    const settled = before.ref.value;
+    expect(before.ref.value).toBe(settled);
+    query.dispose();
+  });
+
+  it('survives a select that returns a new cyclic value each time', async () => {
+    const client = createSyncClient();
+    const query = client.query<Account>({
+      queryKey: ['account'],
+      queryFn: () => ({ name: 'Lee', age: 3 }),
+    });
+    await query.load();
+    const cyclic = (tag: string) => (data: Account) => {
+      const node: { tag: string; name: string; self?: unknown } = {
+        tag,
+        name: data.name,
+      };
+      node.self = node;
+      return node;
+    };
+    let options: PeekOptions<Account, { tag: string }> = {
+      queryKey: ['account'],
+      select: cyclic('first'),
+    };
+    const reader = peekOf<Account, { tag: string }>(client, () => options);
+    expect(reader.ref.data.tag.value).toBe('first');
+    options = { queryKey: ['account'], select: cyclic('second') };
+    expect(reader.ref.data.tag.value).toBe('second');
+    options = { queryKey: ['account'], select: cyclic('second') };
+    expect(reader.ref.data.tag.value).toBe('second');
     query.dispose();
   });
 
@@ -428,6 +658,33 @@ describe('peek: initialData (T-QH-17)', () => {
     expect(shown.loaded).toBe(before.loaded);
     expect(shown.updatedAt).toBe(before.updatedAt);
     expect(shown.data).toEqual(before.data);
+    query.dispose();
+  });
+
+  it('does not seed over a READ in flight, as opening does not', async () => {
+    const client = createSyncClient();
+    void client.prefetch({
+      queryKey: ['account'],
+      queryFn: () => new Promise<Account>(() => {}),
+    });
+    const options = {
+      queryKey: ['account'],
+      initialData: { name: '초기', age: 1 },
+    };
+    const peeked = peekOf<Account>(client, () => options).state();
+    expect(peeked).toMatchObject({
+      status: 'pending',
+      fetchStatus: 'fetching',
+      data: undefined,
+    });
+    const query = client.query<Account>({
+      ...options,
+      queryFn: () => new Promise<Account>(() => {}),
+    });
+    const shown = query.display.value;
+    expect(shown.status).toBe(peeked.status);
+    expect(shown.fetchStatus).toBe(peeked.fetchStatus);
+    expect(shown.data).toBe(peeked.data);
     query.dispose();
   });
 

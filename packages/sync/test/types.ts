@@ -22,6 +22,7 @@ import type {
   LocalSyncSnapshot,
   MutationResult,
   NetworkMode,
+  QueryDisplayRef,
   QueryKey,
   ResourceSubmission,
   SyncClientOptions,
@@ -555,8 +556,15 @@ streamQuery(streamed, {
 });
 
 // Missing data keeps its paths open (docs/sync-query-hooks DC-QH-18, T-QH-08).
-// `data` is `S | undefined` before the first load; a leaf read through it is
-// the leaf's type plus `undefined`, which is what it returns at run time.
+// Exact type checks: each `Exact` fails if a `| undefined` or `| null` is
+// lost or added, which a plain assignment to a wider type cannot detect.
+type Equal<A, B> = (<V>() => V extends A ? 1 : 2) extends <V>() => V extends B
+  ? 1
+  : 2
+  ? true
+  : false;
+function exact<A, B>(_check: Equal<A, B>) {}
+
 async function displayLeafPaths() {
   type Profile = {
     name: string;
@@ -564,57 +572,95 @@ async function displayLeafPaths() {
     nickname?: string;
     tags: string[];
     pair: [number, string];
+    counts: Record<string, number>;
   };
-  const client = createSyncClient({ ssr: true });
-  const query = client.query({
-    queryKey: ['profile'],
-    queryFn: (): Profile => ({
-      name: 'Lee',
-      address: null,
-      tags: [],
-      pair: [1, 'a'],
-    }),
+  const profile = (): Profile => ({
+    name: 'Lee',
+    address: null,
+    tags: [],
+    pair: [1, 'a'],
+    counts: {},
   });
-  const name: string | undefined = query.display.data.name.value;
-  // @ts-expect-error a leaf under missing data may be undefined
-  const strictName: string = query.display.data.name.value;
-  const whole: Profile | undefined = query.display.data.value;
-  // A nullable parent opens its paths the same way.
-  const city: string | undefined = query.display.data.address.city.value;
-  const address: { city: string } | null | undefined =
-    query.display.data.address.value;
-  const nickname: string | undefined = query.display.data.nickname.value;
-  const tag: string | undefined = query.display.data.tags[0].value;
-  const count: number | undefined = query.display.data.tags.length.value;
-  for (const item of query.display.data.tags) {
-    const value: string | undefined = item.value;
-    void value;
+  const client = createSyncClient({ ssr: true });
+  const query = client.query({ queryKey: ['profile'], queryFn: profile });
+  const data = query.display.data;
+  // Under `data`, which is missing before the first load, every leaf may be
+  // undefined.
+  exact<typeof data.name.value, string | undefined>(true);
+  exact<typeof data.value, Profile | undefined>(true);
+  exact<typeof data.address.value, { city: string } | null | undefined>(true);
+  exact<typeof data.address.city.value, string | undefined>(true);
+  exact<typeof data.nickname.value, string | undefined>(true);
+  exact<typeof data.tags.value, string[] | undefined>(true);
+  exact<(typeof data.tags)[0]['value'], string | undefined>(true);
+  exact<typeof data.tags.length.value, number | undefined>(true);
+  for (const item of data.tags) {
+    exact<typeof item.value, string | undefined>(true);
   }
-  const first: number | undefined = query.display.data.pair[0].value;
-  // @ts-expect-error a display leaf still has no setter
-  query.display.data.name.value = 'Kim';
-  // A field outside the shape is still an error.
+  exact<(typeof data.pair)[0]['value'], number | undefined>(true);
+  exact<typeof data.counts.anything.value, number | undefined>(true);
+  // A check on `.value` narrows, as it did before.
+  if (data.value !== undefined) {
+    exact<typeof data.name.value, string>(true);
+    exact<typeof data.address.city.value, string | undefined>(true);
+    if (data.address.value !== null) {
+      exact<typeof data.address.city.value, string>(true);
+    }
+    exact<typeof data.nickname.value, string | undefined>(true);
+    exact<typeof data.counts.anything.value, number>(true);
+  }
+  // @ts-expect-error a display leaf has no setter
+  data.name.value = 'Kim';
   // @ts-expect-error `missing` is not a Profile field
-  void query.display.data.missing;
+  void data.missing;
+  // A loaded ref where `null` is the only absence: still `| undefined` below.
+  const loaded = {} as QueryDisplayRef<Profile>;
+  exact<typeof loaded.name.value, string>(true);
+  exact<typeof loaded.address.city.value, string | undefined>(true);
+  exact<typeof loaded.counts.anything.value, number>(true);
+  // A field named `value` is not a path; the node's value keeps its absence.
+  type Option = { label: string; value: string };
+  const option = {} as QueryDisplayRef<Option | undefined>;
+  exact<typeof option.value, Option | undefined>(true);
+  exact<typeof option.label.value, string | undefined>(true);
+  const choice = {} as QueryDisplayRef<{ selected: Option | null }>;
+  exact<typeof choice.selected.value, Option | null>(true);
+  // A discriminated union still reads its common fields.
+  type Shape = { kind: 'a'; x: number } | { kind: 'b'; y: string };
+  const shape = {} as QueryDisplayRef<Shape | undefined>;
+  exact<typeof shape.kind.value, 'a' | 'b' | undefined>(true);
+  // A generic helper keeps its constraint's fields.
+  function rowId<R extends { id: string }>(row: QueryDisplayRef<R>) {
+    return row.id.value;
+  }
+  void rowId;
+  // An infinite query's ref reads a record value as before.
+  type Page = { byId: Record<string, number> };
+  const feed = client.infiniteQuery({
+    queryKey: ['feed'],
+    initialPageParam: 0,
+    queryFn: (): Page => ({ byId: {} }),
+    getNextPageParam: () => undefined,
+  });
+  exact<typeof feed.display.data.value, InfiniteData<Page, number> | undefined>(
+    true
+  );
+  exact<(typeof feed.ref.pages)[0]['byId']['anything']['value'], number>(true);
   // Selecting a primitive keeps the plain `S | undefined`.
   const selected = client.query({
     queryKey: ['profile'],
-    queryFn: (): Profile => ({
-      name: 'Lee',
-      address: null,
-      tags: [],
-      pair: [1, 'a'],
-    }),
-    select: data => data.name.length,
+    queryFn: profile,
+    select: value => value.name.length,
   });
-  const length: number | undefined = selected.display.data.value;
+  exact<typeof selected.display.data.value, number | undefined>(true);
   // The status fields read as before.
-  const status: 'pending' | 'success' | 'error' = query.display.status.value;
-  const key: readonly unknown[] | null = query.display.queryKey.value;
-  void [name, strictName, whole, city, address, nickname, tag, count];
-  void [first, length, status, key];
+  exact<typeof query.display.status.value, 'pending' | 'success' | 'error'>(
+    true
+  );
+  exact<typeof query.display.queryKey.value, QueryKey | null>(true);
   query.dispose();
   selected.dispose();
+  feed.dispose();
 }
 
 void displayLeafPaths;

@@ -3,12 +3,14 @@ import type { StateRefStore } from 'state-ref';
 import { guardRef, snapshotValue } from './ref-guard';
 import { hashQueryKey } from './key';
 import type { QueryKey } from './key';
+import { assertEditable, frozenCopy } from './tree';
 import type { QueryStatus } from './index';
 import {
   IDLE_STATUS,
   carryProjection,
   projectDisplay,
   sameDisplay,
+  type ProjectedDisplay,
   type ProjectionMemo,
   type QueryDisplayOptions,
   type QueryDisplayRef,
@@ -16,11 +18,13 @@ import {
 } from './display';
 
 /**
- * What a peek may read of a cache entry. Every member is a plain read: none
- * creates the entry, takes ownership, touches its gc timer or emits an event.
+ * What a peek may read of a cache entry. Every member is a plain read or a
+ * check that throws: none creates the entry, takes ownership, touches its gc
+ * timer or emits an event.
  */
 export type PeekEntry<T> = {
   readonly removed: boolean;
+  readonly kind: 'query' | 'infinite';
   peekStatus(): QueryStatus;
   isLoaded(): boolean;
   /** The value observers see, local edits included. Only when loaded. */
@@ -29,6 +33,8 @@ export type PeekEntry<T> = {
   peekEditable(): boolean;
   /** Whether opening a query with `initialData` now would seed it. */
   canSeedInitial(): boolean;
+  /** Throws as opening these options on this entry would. */
+  assertCompatible(options: PeekOptions<T, any>): void;
 };
 
 /** The options a peek reads. A subset of an observer's options. */
@@ -47,7 +53,7 @@ export type PeekReader<S> = Readonly<{
    * options and cache, and gives the same objects while neither changed.
    */
   ref: QueryDisplayRef<QueryDisplayState<S>>;
-  /** The current display state, recomputed the same way. */
+  /** The current display state, read-only, recomputed the same way. */
   state: () => QueryDisplayState<S>;
 }>;
 
@@ -99,24 +105,37 @@ const reasonOf = (error: unknown): string =>
  * number of times, or throw it away, and the cache is exactly as it was. The
  * result is a state-ref-shaped ref like a display's, read-only like one, and:
  *
- * - live: every read, at any depth, recomputes from `readOptions()` and the
- *   cache, so a ref made before the data arrived - or held across a change of
- *   options - shows what is there now;
+ * - live: every read or inspection, at any depth, recomputes from
+ *   `readOptions()` and the cache, so a ref made before the data arrived - or
+ *   held across a change of options - shows what is there now;
  * - stable: while nothing it depends on changed, every read returns the same
  *   objects. React compares a snapshot by identity, and a fresh object on
  *   every read makes it render forever (DESIGN 6절 E4).
+ *
+ * Options that opening the query would refuse - a bad key, `enabled` or
+ * timing option, a key of another query kind, a mix of editable and readonly
+ * data, non-plain editable `initialData` - show as a source error, as the
+ * observer will once it attaches (DC-QH-13). `validate` holds the checks that
+ * do not need an entry; the client passes the ones it runs on open.
  *
  * The state lives in a private store nobody subscribes to, so replacing it is
  * a plain write that notifies nothing.
  */
 export function createPeekReader<T, S = T>(
   lookup: (hash: string) => PeekEntry<T> | undefined,
-  readOptions: () => PeekOptions<T, S>
+  readOptions: () => PeekOptions<T, S>,
+  validate: (options: PeekOptions<T, S>) => void = () => {}
 ): PeekReader<S> {
   const memo: ProjectionMemo<T, S> = { last: null };
   const inputSnapshots = new WeakMap<object, object>();
   let inputs: Inputs<T, S> | null = null;
   let parsed: { hash: string; key: QueryKey } | null = null;
+  let checked: {
+    options: PeekOptions<T, S>;
+    entry: PeekEntry<T> | undefined;
+    seeded: boolean;
+  } | null = null;
+  let comparisonFailure: { data: S; error: unknown } | null = null;
   let current: QueryDisplayState<S> = Object.freeze({
     ...IDLE_STATUS,
     data: undefined,
@@ -129,12 +148,38 @@ export function createPeekReader<T, S = T>(
 
   const keyOf = (hash: string): QueryKey => {
     if (parsed?.hash !== hash)
-      parsed = { hash, key: JSON.parse(hash) as QueryKey };
+      parsed = { hash, key: frozenCopy(JSON.parse(hash)) as QueryKey };
     return parsed.key;
   };
 
+  /**
+   * The checks opening the query runs, done once per options object and
+   * entry: a render passes the same object to every read it makes.
+   */
+  const check = (
+    options: PeekOptions<T, S>,
+    entry: PeekEntry<T> | undefined,
+    seeded: boolean
+  ) => {
+    if (
+      checked &&
+      checked.options === options &&
+      checked.entry === entry &&
+      checked.seeded === seeded
+    )
+      return;
+    validate(options);
+    if (entry) {
+      if (entry.kind !== 'query')
+        throw new TypeError('A query key cannot mix query kinds.');
+      entry.assertCompatible(options);
+    }
+    if (seeded && (options.editable ?? true))
+      assertEditable(options.initialData);
+    checked = { options, entry, seeded };
+  };
+
   const readInputs = (options: PeekOptions<T, S>): Inputs<T, S> => {
-    let hash: string;
     try {
       if (
         options.enabled !== undefined &&
@@ -142,27 +187,70 @@ export function createPeekReader<T, S = T>(
       ) {
         throw new TypeError('enabled must be a boolean.');
       }
-      hash = hashQueryKey(options.queryKey);
+      const hash = hashQueryKey(options.queryKey);
+      if (options.enabled === false) return { kind: 'disabled', hash };
+      const found = lookup(hash);
+      const entry = found && !found.removed ? found : undefined;
+      const seeded =
+        options.initialData !== undefined && (!entry || entry.canSeedInitial());
+      check(options, entry, seeded);
+      const loaded = !seeded && entry !== undefined && entry.isLoaded();
+      return {
+        kind: 'enabled',
+        hash,
+        entry,
+        status: entry?.peekStatus(),
+        value: loaded ? entry!.peekValue() : undefined,
+        seeded,
+        initialData: options.initialData,
+        initialUpdatedAt: options.initialUpdatedAt,
+        select: options.select,
+        placeholderData: options.placeholderData,
+      };
     } catch (error) {
+      checked = null;
       return { kind: 'invalid', reason: reasonOf(error), error };
     }
-    if (options.enabled === false) return { kind: 'disabled', hash };
-    const found = lookup(hash);
-    const entry = found && !found.removed ? found : undefined;
-    const seeded =
-      options.initialData !== undefined && (!entry || entry.canSeedInitial());
-    const loaded = !seeded && entry !== undefined && entry.isLoaded();
+  };
+
+  /** The display's `equals` rule, failure included (R-QH-09). */
+  const compare = (
+    projected: ProjectedDisplay<S>,
+    options: PeekOptions<T, S>,
+    sameKey: boolean
+  ) => {
+    const data = projected.data;
+    if (
+      !sameKey ||
+      !current.enabled ||
+      data === undefined ||
+      current.data === undefined ||
+      Object.is(data, current.data)
+    ) {
+      comparisonFailure = null;
+      return projected;
+    }
+    let error: unknown;
+    if (comparisonFailure && Object.is(data, comparisonFailure.data)) {
+      error = comparisonFailure.error;
+    } else {
+      try {
+        comparisonFailure = null;
+        return (options.equals ?? Object.is)(data, current.data)
+          ? { ...projected, data: current.data }
+          : projected;
+      } catch (thrown) {
+        comparisonFailure = { data, error: thrown };
+        error = thrown;
+      }
+    }
     return {
-      kind: 'enabled',
-      hash,
-      entry,
-      status: entry?.peekStatus(),
-      value: loaded ? entry!.peekValue() : undefined,
-      seeded,
-      initialData: options.initialData,
-      initialUpdatedAt: options.initialUpdatedAt,
-      select: options.select,
-      placeholderData: options.placeholderData,
+      ...projected,
+      data: undefined,
+      status: 'error' as const,
+      error,
+      errorSource: 'select' as const,
+      isPlaceholder: false,
     };
   };
 
@@ -217,6 +305,8 @@ export function createPeekReader<T, S = T>(
       read = () => protect(next.initialData as T);
     }
     let projected = projectDisplay(status, read, options, memo);
+    const key = keyOf(next.hash);
+    const sameKey = current.queryKey === key;
     const onlyOptionsChanged =
       previous?.kind === 'enabled' &&
       previous.hash === next.hash &&
@@ -225,30 +315,12 @@ export function createPeekReader<T, S = T>(
       Object.is(previous.value, next.value) &&
       previous.seeded === next.seeded &&
       Object.is(previous.initialData, next.initialData);
-    if (onlyOptionsChanged && current.enabled) {
+    if (onlyOptionsChanged && sameKey && current.enabled) {
       projected = carryProjection(projected, current, memo);
     }
-    let data = projected.data;
-    if (
-      current.enabled &&
-      current.queryKey === keyOf(next.hash) &&
-      data !== undefined &&
-      current.data !== undefined &&
-      !Object.is(data, current.data)
-    ) {
-      try {
-        if ((options.equals ?? Object.is)(data, current.data)) {
-          data = current.data;
-        }
-      } catch {
-        // The display reports a failing `equals`; a peek just shows the
-        // new value rather than inventing a second error path.
-      }
-    }
     return Object.freeze({
-      ...projected,
-      data,
-      queryKey: keyOf(next.hash),
+      ...compare(projected, options, sameKey),
+      queryKey: key,
       enabled: true,
     });
   };
@@ -257,9 +329,10 @@ export function createPeekReader<T, S = T>(
     const options = readOptions();
     const next = readInputs(options);
     if (inputs && sameInputs(inputs, next)) return;
-    const previous = inputs;
+    // Built before it is remembered: a build that throws is retried on the
+    // next read instead of leaving the old state standing for new inputs.
+    const state = build(next, options, inputs);
     inputs = next;
-    const state = build(next, options, previous);
     if (Object.is(state.data, current.data) && sameDisplay(state, current))
       return;
     current = state;
@@ -272,14 +345,17 @@ export function createPeekReader<T, S = T>(
     store.watch() as StateRefStore<QueryDisplayState<S>>,
     refresh,
     refs,
-    snapshots
+    snapshots,
+    true,
+    false,
+    refresh
   ) as QueryDisplayRef<QueryDisplayState<S>>;
 
   return Object.freeze({
     ref,
     state: () => {
       refresh();
-      return current;
+      return snapshotValue(current, snapshots) as QueryDisplayState<S>;
     },
   });
 }

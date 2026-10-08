@@ -1,5 +1,7 @@
 export type QueryKey = readonly unknown[];
 
+const REF_LINK = Symbol.for('state-ref.ref-link');
+
 /** Stable JSON key; object order is ignored, array order is significant. */
 export function hashQueryKey(key: QueryKey): string {
   if (!Array.isArray(key)) throw new TypeError('Query key must be an array.');
@@ -15,6 +17,18 @@ export function hashQueryKey(key: QueryKey): string {
     }
     if (typeof value !== 'object' || seen.has(value)) {
       throw new TypeError('Query key must be an acyclic JSON-compatible tree.');
+    }
+    /**
+     * A state-ref ref is a proxy over a plain object, so it passes the plain
+     * check below, and a ref to a primitive has no keys and hashes to `{}`.
+     * `['user', idRef]` - a forgotten `.value` - would then share one entry
+     * across every id (docs/sync-query-hooks DC-QH-13). Every ref, core or
+     * guarded, answers the link symbol; plain data does not.
+     */
+    if (Reflect.get(value, REF_LINK) !== undefined) {
+      throw new TypeError(
+        'Query key must be an acyclic JSON-compatible tree; read a ref with `.value`.'
+      );
     }
     const plain =
       Array.isArray(value) || Object.getPrototypeOf(value) === Object.prototype;

@@ -21,15 +21,19 @@ assert.match(bundle, /from ["']state-ref["']/);
 assert.match(bundle, /from ["']state-ref\/plugin["']/);
 assert.doesNotMatch(bundle, /state-ref\/draft|@tanstack/);
 // The connectors import sync, never the other way (docs/sync-query-hooks
-// C-QH-04): no UI framework reaches the sync bundle.
-assert.doesNotMatch(
-  bundle,
-  /from\s*["'](?:react|react-dom|preact|vue|svelte|solid-js)(?:\/[^"']*)?["']/
-);
-assert.doesNotMatch(
-  bundle,
-  /import\(\s*["'](?:react|react-dom|preact|vue|svelte|solid-js)(?:\/[^"']*)?["']\s*\)/
-);
+// C-QH-04): no UI framework reaches the sync bundle, as a named, bare
+// (side-effect) or dynamic import.
+const frameworkImport =
+  /(?:\bfrom\s*|\bimport\s*\(?\s*)["'](?:react|react-dom|preact|vue|svelte|solid-js)(?:\/[^"']*)?["']/;
+for (const sample of [
+  'import{h}from"preact";',
+  'import "react";',
+  'import"vue";',
+  'await import("solid-js/web")',
+]) {
+  assert.match(sample, frameworkImport);
+}
+assert.doesNotMatch(bundle, frameworkImport);
 
 const query = createSyncClient({ ssr: true }).query({
   queryKey: ['bundle'],

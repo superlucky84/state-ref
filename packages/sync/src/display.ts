@@ -36,47 +36,76 @@ type Absent = null | undefined;
 /**
  * A state-ref-shaped display cursor with no public setters.
  *
- * Data that may be missing - `data` before the first load, an optional or
- * nullable field - is not split into a union of refs. The paths under it stay
- * open and their leaf values gain `| undefined`, which is what reading through
- * a missing parent returns at run time (DC-QH-18). A union of present types is
- * still distributed, so a discriminated union reads as before.
+ * Data that may be missing - `data` before the first load, a nullable or
+ * optional field - keeps the paths under it open: a leaf read through a
+ * missing parent is the leaf's type plus `undefined`, which is what it
+ * returns at run time (DC-QH-18). The type still distributes over the union,
+ * so a check on `.value` narrows it (`if (ref.data.value === undefined)
+ * return;` leaves `ref.data.name.value` a `string`), a discriminated union
+ * reads as before, and a generic `S` keeps its constraint's fields.
  */
-export type QueryDisplayRef<S> = [Exclude<S, Absent>] extends [never]
-  ? { readonly value: S }
-  : DisplayNode<
-      Exclude<S, Absent>,
-      Extract<S, Absent>,
-      [Extract<S, Absent>] extends [never] ? never : undefined
-    >;
+export type QueryDisplayRef<S> = DisplayMember<S, S>;
+
+/** One member `X` of the full value `S`. */
+type DisplayMember<X, S> = X extends Absent
+  ? OpenPaths<Exclude<S, Absent>> & { readonly value: X }
+  : PresentNode<X>;
 
 /**
- * One present member `D` of a display value. `E` is what the value itself may
- * also be (`null`, `undefined`); `M` is what every path below it may read as
- * when it is.
- *
- * A child ref always exists at run time, so an optional field gives a
- * non-optional ref whose value may be `undefined` instead.
+ * An optional field reads as `undefined` when it is left out. An index
+ * signature is not optional in that sense: `Record<string, X>` reads `X`,
+ * as an array element reads its element type.
  */
-type Child<D, K extends keyof D, M> = QueryDisplayRef<
-  D[K] | M | ({} extends Pick<D, K> ? undefined : never)
->;
+type OptionalKey<D, K extends keyof D> = string extends K
+  ? never
+  : number extends K
+  ? never
+  : symbol extends K
+  ? never
+  : {} extends Pick<D, K>
+  ? undefined
+  : never;
 
-type DisplayNode<D, E, M> = D extends readonly any[]
+/**
+ * A field called `value` is never a path: `.value` always reads the node's
+ * own value. Mapping it would intersect the child ref with that value and
+ * erase the value's `null` or `undefined`.
+ */
+type PresentNode<D> = D extends readonly any[]
   ? number extends D['length']
     ? {
-        readonly [index: number]: QueryDisplayRef<D[number] | M>;
-        readonly length: QueryDisplayRef<number | M>;
-        readonly value: D | E;
-      } & Iterable<QueryDisplayRef<D[number] | M>>
-    : { readonly [K in keyof D]-?: Child<D, K, M> } & {
-        readonly value: D | E;
+        readonly [index: number]: QueryDisplayRef<D[number]>;
+        readonly length: QueryDisplayRef<number>;
+        readonly value: D;
+      } & Iterable<QueryDisplayRef<D[number]>>
+    : { readonly [K in keyof D]: QueryDisplayRef<D[K]> } & {
+        readonly value: D;
       }
   : D extends object
-  ? { readonly [K in keyof D]-?: Child<D, K, M> } & {
-      readonly value: D | E;
+  ? {
+      readonly [K in keyof D as Exclude<K, 'value'>]-?: QueryDisplayRef<
+        D[K] | OptionalKey<D, K>
+      >;
+    } & { readonly value: D }
+  : { readonly value: D };
+
+/** The paths under a value that is missing: every leaf may be `undefined`. */
+type OpenPaths<D> = [D] extends [never]
+  ? unknown
+  : D extends readonly any[]
+  ? number extends D['length']
+    ? {
+        readonly [index: number]: QueryDisplayRef<D[number] | undefined>;
+        readonly length: QueryDisplayRef<number | undefined>;
+      } & Iterable<QueryDisplayRef<D[number] | undefined>>
+    : { readonly [K in keyof D]: QueryDisplayRef<D[K] | undefined> }
+  : D extends object
+  ? {
+      readonly [K in keyof D as Exclude<K, 'value'>]-?: QueryDisplayRef<
+        D[K] | undefined
+      >;
     }
-  : { readonly value: D | E };
+  : unknown;
 
 export type QueryDisplayWatch<S> = (
   renew?: (
@@ -225,40 +254,55 @@ const isPlain = (value: unknown): value is Record<PropertyKey, unknown> => {
  * kept. Anything else (Map, Set, class instances) is compared by identity
  * only, so a `select` that builds one fresh each time still changes.
  */
-export function shareStructure(previous: unknown, next: unknown): unknown {
+export function shareStructure(
+  previous: unknown,
+  next: unknown,
+  visiting: Set<object> = new Set()
+): unknown {
   if (Object.is(previous, next)) return previous;
   if (previous instanceof Date && next instanceof Date) {
     return previous.getTime() === next.getTime() ? previous : next;
   }
-  if (Array.isArray(previous) && Array.isArray(next)) {
-    let same = previous.length === next.length;
-    const shared = next.map((item, index) => {
-      const value = shareStructure(previous[index], item);
-      if (!Object.is(value, previous[index])) same = false;
-      return value;
-    });
-    return same ? previous : shared;
-  }
-  if (isPlain(previous) && isPlain(next)) {
-    const previousKeys = Object.keys(previous);
-    const nextKeys = Object.keys(next);
+  const arrays = Array.isArray(previous) && Array.isArray(next);
+  if (!arrays && !(isPlain(previous) && isPlain(next))) return next;
+  // A cyclic result is taken as it is rather than walked forever.
+  const pair = next as object;
+  if (visiting.has(pair)) return next;
+  visiting.add(pair);
+  try {
+    if (arrays) {
+      const before = previous as unknown[];
+      const after = next as unknown[];
+      let same = before.length === after.length;
+      const shared = after.map((item, index) => {
+        const value = shareStructure(before[index], item, visiting);
+        if (!Object.is(value, before[index])) same = false;
+        return value;
+      });
+      return same ? previous : shared;
+    }
+    const before = previous as Record<PropertyKey, unknown>;
+    const after = next as Record<PropertyKey, unknown>;
+    const previousKeys = Object.keys(before);
+    const nextKeys = Object.keys(after);
     let same = previousKeys.length === nextKeys.length;
     const shared: Record<PropertyKey, unknown> = Object.create(
-      Object.getPrototypeOf(next)
+      Object.getPrototypeOf(after)
     );
     for (const key of nextKeys) {
-      const value = shareStructure(previous[key], next[key]);
+      const value = shareStructure(before[key], after[key], visiting);
       if (
-        !Object.prototype.hasOwnProperty.call(previous, key) ||
-        !Object.is(value, previous[key])
+        !Object.prototype.hasOwnProperty.call(before, key) ||
+        !Object.is(value, before[key])
       ) {
         same = false;
       }
       shared[key] = value;
     }
     return same ? previous : shared;
+  } finally {
+    visiting.delete(pair);
   }
-  return next;
 }
 
 /** Same kind and message: a `select` that keeps failing the same way. */
@@ -303,6 +347,24 @@ export function carryProjection<T, S>(
 }
 
 /**
+ * Options given as an object keep the `select` and `equals` they had when the
+ * display was made, as displays always have; `placeholderData` was always
+ * read live. Only an observer, which passes a function, changes them later.
+ */
+function fixedOptions<T, S>(
+  options: QueryDisplayOptions<T, S>
+): () => QueryDisplayOptions<T, S> {
+  const fixed = {
+    select: options.select,
+    equals: options.equals,
+    get placeholderData() {
+      return options.placeholderData;
+    },
+  };
+  return () => fixed;
+}
+
+/**
  * One observer's display state over a query.
  *
  * Never installs placeholder or selection in the shared cache. The query is
@@ -317,7 +379,8 @@ export function createQueryDisplay<T, S = T>(
   query: DisplaySource<T>,
   options: QueryDisplayOptions<T, S> | (() => QueryDisplayOptions<T, S>) = {}
 ): QueryDisplayHandle<S> {
-  const readOptions = typeof options === 'function' ? options : () => options;
+  const readOptions =
+    typeof options === 'function' ? options : fixedOptions(options);
   const controllers = new Set<AbortController>();
   const statusAbort = new AbortController();
   const displayAbort = new AbortController();

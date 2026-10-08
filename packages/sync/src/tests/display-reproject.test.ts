@@ -66,12 +66,17 @@ describe('display reprojection (DC-QH-26)', () => {
   });
 
   it('does not publish an inline select that gives the same result', async () => {
+    // Fresh objects each time, as `items.map(i => ({ ... }))` in a render.
     const view = await setup<Array<{ id: number }>>({
-      select: data => data.items.filter(i => i.kind === 'a'),
+      select: data =>
+        data.items.filter(i => i.kind === 'a').map(i => ({ id: i.id })),
     });
     const before = view.display.ref.data.value;
     for (let index = 0; index < 3; index += 1) {
-      view.set({ select: data => data.items.filter(i => i.kind === 'a') });
+      view.set({
+        select: data =>
+          data.items.filter(i => i.kind === 'a').map(i => ({ id: i.id })),
+      });
     }
     expect(view.notified()).toBe(0);
     expect(view.display.ref.data.value).toBe(before);
@@ -152,6 +157,35 @@ describe('display reprojection (DC-QH-26)', () => {
   });
 });
 
+describe('fixed options', () => {
+  it('keeps the select and equals a display was made with', async () => {
+    const client = createSyncClient();
+    const options: {
+      queryKey: string[];
+      queryFn: () => { n: number; m: number };
+      select: (data: { n: number; m: number }) => number;
+      equals?: (a: number, b: number) => boolean;
+    } = {
+      queryKey: ['numbers'],
+      queryFn: () => ({ n: 1, m: 100 }),
+      select: data => data.n,
+    };
+    const query = client.query(options);
+    const seen: Array<number | undefined> = [];
+    query.watchDisplay(ref => {
+      seen.push(ref.data.value);
+    });
+    await query.load();
+    // Changing the object afterwards does not reach a display already made.
+    options.select = data => data.m;
+    query.ref.n.value = 2;
+    options.equals = () => true;
+    query.ref.n.value = 3;
+    expect(seen).toEqual([undefined, 1, 2, 3]);
+    query.dispose();
+  });
+});
+
 describe('shareStructure', () => {
   it('keeps every deeply equal part and replaces the rest', () => {
     const previous = { a: [1, 2], b: { c: 'x' }, d: new Date(5) };
@@ -170,10 +204,32 @@ describe('shareStructure', () => {
     expect(changed.a).toBe(previous.a);
     expect(changed.d).toBe(previous.d);
     expect(changed.b).toEqual({ c: 'y' });
-    expect(shareStructure([1], [1, 2])).toEqual([1, 2]);
-    expect(shareStructure({ a: 1 }, { a: 1, b: undefined })).toEqual({
-      a: 1,
-      b: undefined,
-    });
+    expect(shareStructure([1], [1, 2])).toStrictEqual([1, 2]);
+    const plain = { a: 1 };
+    const widened = shareStructure(plain, { a: 1, b: undefined });
+    expect(widened).not.toBe(plain);
+    expect(widened).toStrictEqual({ a: 1, b: undefined });
+    // A shorter array or a dropped key is a change, not a match.
+    const three = [1, 2, 3];
+    expect(shareStructure(three, [1, 2])).not.toBe(three);
+    expect(shareStructure(three, [1, 2])).toStrictEqual([1, 2]);
+    const pair = { a: 1, b: 2 };
+    expect(shareStructure(pair, { a: 1 })).not.toBe(pair);
+    expect(shareStructure(pair, { a: 1 })).toStrictEqual({ a: 1 });
+    // Fresh plain objects inside an array are shared one by one.
+    const rows = [{ id: 1 }];
+    expect(shareStructure(rows, [{ id: 1 }])).toBe(rows);
+  });
+
+  it('takes a cyclic value as it is instead of walking it forever', () => {
+    const make = (tag: string) => {
+      const node: { tag: string; self?: unknown } = { tag };
+      node.self = node;
+      return node;
+    };
+    const previous = make('a');
+    const next = make('b');
+    expect(() => shareStructure(previous, next)).not.toThrow();
+    expect((shareStructure(previous, next) as { tag: string }).tag).toBe('b');
   });
 });

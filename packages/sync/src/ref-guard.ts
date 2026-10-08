@@ -57,7 +57,13 @@ export function guardRef<T>(
    * query refused or why. Both ways of getting a ref (`query.ref` and
    * `query.watch(renew)`) pass through here, so both say the same thing.
    */
-  readonly = false
+  readonly = false,
+  /**
+   * Called before a ref is inspected rather than read: `in`, `Object.keys`,
+   * a property descriptor. The peek recomputes there as it does on a read
+   * (DC-QH-29); every other ref leaves these to the target as before.
+   */
+  inspect?: () => void
 ): StateRefStore<T> {
   const snapshot = (value: unknown): unknown =>
     snapshotValues ? snapshotValue(value, snapshots) : value;
@@ -86,6 +92,20 @@ export function guardRef<T>(
         if (readonly) throw new TypeError('This query is readonly.');
         return Reflect.set(target, key, value, receiver);
       },
+      ...(inspect && {
+        has(target, key) {
+          inspect();
+          return Reflect.has(target, key);
+        },
+        ownKeys(target) {
+          inspect();
+          return Reflect.ownKeys(target);
+        },
+        getOwnPropertyDescriptor(target, key) {
+          inspect();
+          return Reflect.getOwnPropertyDescriptor(target, key);
+        },
+      }),
     });
     refs.set(ref, guarded);
     return guarded;
