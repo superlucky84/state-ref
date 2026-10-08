@@ -1,7 +1,11 @@
 import { create } from 'state-ref';
 import type { Renew, StateRefStore } from 'state-ref';
 import { createLiveQuery } from './live-key';
-import type { LiveQueryCursor, LiveQueryOptions, OpenedQuery } from './live-key';
+import type {
+  LiveQueryCursor,
+  LiveQueryOptions,
+  OpenedQuery,
+} from './live-key';
 import { createQueryDisplay } from './display';
 import type {
   QueryDisplayHandle,
@@ -59,7 +63,9 @@ export type QueryObserver<T, S = T> = Readonly<{
   /** No callback: the confirmed options' state. A callback: subscribe. */
   watch: QueryDisplayWatch<QueryDisplayState<S>>;
   /** The state for options a render has but has not confirmed yet. */
-  peek: (options: ObserveOptions<T, S>) => QueryDisplayRef<QueryDisplayState<S>>;
+  peek: (
+    options: ObserveOptions<T, S>
+  ) => QueryDisplayRef<QueryDisplayState<S>>;
   /** Whether these options have the confirmed key and `enabled`. */
   matches: (options: ObserveOptions<T, S>) => boolean;
   /** Confirm new options; true when the key or `enabled` changed. */
@@ -98,7 +104,9 @@ const HANDLE_OPTIONS = [
 ] as const;
 
 /** The key as observers compare it: its hash, or why it has none (DC-QH-13). */
-type Marker = Readonly<{ ok: true; hash: string } | { ok: false; reason: string }>;
+type Marker = Readonly<
+  { ok: true; hash: string } | { ok: false; reason: string }
+>;
 
 const markers = new WeakMap<object, Marker>();
 
@@ -210,8 +218,7 @@ export function createObserver<T, S = T>(
     return {
       ...options,
       queryFn: context => current.queryFn(context),
-      retryDelay: attempt =>
-        (current.retryDelay ?? defaultRetryDelay)(attempt),
+      retryDelay: attempt => (current.retryDelay ?? defaultRetryDelay)(attempt),
     };
   };
 

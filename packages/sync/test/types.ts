@@ -708,20 +708,18 @@ async function observerTypes(journal: PersistedLinkedMutation) {
   if (!handle) return;
   const name: string = handle.ref.name.value;
   handle.ref.name.value = name;
-  await client
-    .mutation({ mutationFn: (input: { name: string }) => input })
-    .run(
-      { name },
-      {
-        links: [
-          {
-            query: handle,
-            submission: handle.capture(),
-            accept: { kind: 'submitted' },
-          },
-        ],
-      }
-    );
+  await client.mutation({ mutationFn: (input: { name: string }) => input }).run(
+    { name },
+    {
+      links: [
+        {
+          query: handle,
+          submission: handle.capture(),
+          accept: { kind: 'submitted' },
+        },
+      ],
+    }
+  );
   // An existing handle still goes everywhere a lent one does.
   const query: QueryHandle<Account> = client.query<Account>({
     queryKey: ['account', 2],

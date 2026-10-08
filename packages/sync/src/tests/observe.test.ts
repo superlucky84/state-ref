@@ -260,7 +260,10 @@ describe('attaching (T-QH-03, T-QH-04)', () => {
 
     const answer = deferred<Account>();
     const slow = reads(() => answer.promise);
-    const prefetching = client.prefetch({ queryKey: ['slow'], queryFn: slow.fn });
+    const prefetching = client.prefetch({
+      queryKey: ['slow'],
+      queryFn: slow.fn,
+    });
     const two = subscribe(
       client.observe<Account>({ queryKey: ['slow'], queryFn: slow.fn })
     );
@@ -418,7 +421,10 @@ describe('display options on a peek (T-QH-06, T-QH-07)', () => {
 
   it('keeps the previous data object when equals says so, in both', async () => {
     const client = createSyncClient();
-    const query = client.query<Account>({ queryKey: ['account'], queryFn: lee });
+    const query = client.query<Account>({
+      queryKey: ['account'],
+      queryFn: lee,
+    });
     await query.load();
     const observer = client.observe<Account, { name: string }>({
       queryKey: ['account'],
@@ -442,7 +448,10 @@ describe('display options on a peek (T-QH-06, T-QH-07)', () => {
 
   it('is read-only and leaves the cache as it was', async () => {
     const client = createSyncClient();
-    const query = client.query<Account>({ queryKey: ['account'], queryFn: lee });
+    const query = client.query<Account>({
+      queryKey: ['account'],
+      queryFn: lee,
+    });
     await query.load();
     const observer = client.observe<Account>({
       queryKey: ['account'],
@@ -456,9 +465,11 @@ describe('display options on a peek (T-QH-06, T-QH-07)', () => {
       (ref.value.data as Account).name = 'Kim';
     }).toThrow();
     expect(() => {
-      (observer.peek({ queryKey: ['account'], queryFn: lee }).status as {
-        value: string;
-      }).value = 'error';
+      (
+        observer.peek({ queryKey: ['account'], queryFn: lee }).status as {
+          value: string;
+        }
+      ).value = 'error';
     }).toThrow();
     expect(query.ref.name.value).toBe('Lee');
     query.dispose();
@@ -976,7 +987,13 @@ describe('initialData (T-QH-17)', () => {
       updatedAt: 500,
     });
     expect(
-      client.observe<Account>({ ...options, initialUpdatedAt: undefined, select: undefined }).watch().value
+      client
+        .observe<Account>({
+          ...options,
+          initialUpdatedAt: undefined,
+          select: undefined,
+        })
+        .watch().value
     ).toMatchObject({ data: { name: 'Seed', age: 1 }, updatedAt: null });
     expect(client.size()).toBe(0);
     const subscription = subscribe(observer);
