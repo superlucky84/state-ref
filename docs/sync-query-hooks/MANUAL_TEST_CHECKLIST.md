@@ -1,7 +1,7 @@
 # MANUAL_TEST_CHECKLIST — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08 (단계 0 재검증 결정과 교차 검토 반영)
-- 상태: 미수행. 단계 1~4(sync 기반·관찰자·다섯 커넥터 진입점)는 완료했다. 단계 6의 데모까지 준비된 뒤 수행한다.
+- 상태: 미수행. 단계 1~5(sync 기반·관찰자·다섯 커넥터 진입점·자동 테스트 보강)는 완료했다. Activity·KeepAlive 등 자동 검증과 비용 기준은 IMPLEMENT 마지막 진행 기록에 남겼고, 단계 6의 데모까지 준비된 뒤 이 체크리스트를 수행한다.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md).
 
 자동 테스트가 확인하지 못하는 것만 둔다. 각 항목에 수행일, 브라우저, 결과(통과/실패), commit을 적는다.

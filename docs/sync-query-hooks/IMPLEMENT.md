@@ -1,7 +1,7 @@
 # IMPLEMENT — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: **단계 1~4 완료(2026-10-09).** 단계 4의 Vue·Solid·Svelte 진입점·버전 매트릭스·전체 게이트를 검증했다. 다음은 단계 5 테스트 보강이다. 구현·리뷰 중단 당시 상태는 진행 기록에 보존했다. PR [superlucky84/state-ref#16](https://github.com/superlucky84/state-ref/pull/16)은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`). 단계 3의 진입 조건 중 PR 병합은 충족됐다(DC-QH-35).
+- 상태: **단계 1~5 완료(2026-10-09).** Activity·KeepAlive·경합·명시 핸들 공존·key 왕복 검증과 1,000 관찰자 비용 측정을 완료했고 전체 게이트가 통과했다. 다음은 단계 6 통합 데모·검증이다. 이전 구현·검증 결과는 진행 기록에 보존했다. PR #16의 `main` 병합과 이 브랜치 반영은 완료했다(`41798cf`, `e58deaa`, DC-QH-35).
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 모든 단계의 공통 완료 조건:
@@ -130,14 +130,16 @@
 ## 단계 5 — 테스트 보강 (Test Hardening)
 
 - 진입: 단계 3·4 완료.
-- [ ] T-QH-40·41 React `<Activity>`(숨김·표시, 숨긴 동안 key 변경). React 18 매트릭스 셀에서는 `skipIf`로 건너뛴다.
-- [ ] T-QH-42 Vue `<KeepAlive>`.
-- [ ] T-QH-43 경합 다섯 가지.
-- [ ] T-QH-44 관찰자 훅과 명시 핸들 공존.
-- [ ] T-QH-45 빠른 key 왕복.
-- [ ] T-QH-26 비용 측정, 결과를 진행 기록에 남김.
+- [x] T-QH-40·41 React `<Activity>`(숨김·표시, 숨긴 동안 key 변경). React 18 매트릭스 셀에서는 `skipIf`로 건너뛴다.
+- [x] T-QH-42 Vue `<KeepAlive>`.
+- [x] T-QH-43 경합 다섯 가지.
+- [x] T-QH-44 관찰자 훅과 명시 핸들 공존.
+- [x] T-QH-45 빠른 key 왕복.
+- [x] T-QH-26 비용 측정, 결과를 진행 기록에 남김.
+- 구현 위치: React `src/tests/react/query-hardening.tsx`(Activity·복구·editable 불일치·명시 핸들 공존·실제 커밋의 빠른 key 왕복), Vue `src/tests/query-keepalive.test.ts`, sync `src/tests/observe-races.test.ts`(해제 대기·재구독·첫 콜백 예외). 왕복은 해제 큐를 계측한 client로 서로 다른 커밋을 확정한 뒤 큐 전/후를 비교해 React batching으로 중간 key가 사라지는 허위 통과를 막는다.
+- 비용 기준: `node packages/sync/bench/query-observers.mjs`(먼저 core·sync 빌드). 1,000 관찰자 × key 공유/서로 다른 key, 워밍업 1회 + 측정 5회, 생성·구독·종료·해제/GC의 중앙값(ms), 최종 owners·항목 0, READ 0. 프레임워크 렌더 비용은 포함하지 않는 저수준 관찰자 기준이다.
 - 기준 테스트: T-QH-26, 40~45.
-- 완료: 위 테스트 통과, T-QH-26 수치 기록.
+- 완료(2026-10-09): 새 테스트 14개(React 9·Vue 2·sync 3), 해당 버전 매트릭스와 결함 주입 5/5, 전체 `pnpm gate` 21단계 모두 통과. T-QH-26 수치는 마지막 진행 기록에 남겼다.
 
 ## 단계 6 — 통합 테스트 (Integration Test)
 
@@ -248,3 +250,25 @@
 - 다음: 단계 5의 React `<Activity>`·Vue `<KeepAlive>`·경합·명시 핸들 공존·빠른 key 왕복과 1,000 관찰자 비용 측정. 단계 6의 통합 데모와 수동 체크리스트, 단계 7의 가이드·릴리스 기록은 아직 수행하지 않았다.
 - 막힌 점: 없음. 이번 단계에서는 PR을 만들거나 패키지를 게시하지 않는다.
 - 커밋 추적: 시작점은 `5b79607`. 이 완료 기록을 포함하는 커밋은 `git log -1 -- docs/sync-query-hooks/IMPLEMENT.md`로 확인한다.
+
+
+### 2026-10-09 — 단계 5 테스트 보강·비용 기준 완료
+
+- 작업: `claude/sync-query-hooks`에서 단계 4 ctxbin 인계와 `doc-driven-designer-v1` 규칙·스킬을 읽었다. 구현 전에 네 문서에 단계 5 상태·검증 위치·비용 측정 방법을 기록했다.
+- 테스트: React `query-hardening.tsx` 9개, Vue `query-keepalive.test.ts` 2개, sync `observe-races.test.ts` 3개를 추가했다. Activity 숨김 뒤 owners 0·신선한 key READ 0·stale key READ 1과 숨긴 key prop의 재연결 순서를 검증한다. KeepAlive 비활성 동안 소유권·진행 READ를 유지하고, 다시 활성화할 때 setup·READ를 반복하지 않으며 캐시 퇴출·루트 언마운트 때 해제한다.
+- 경합·공존: 해제 대기 중 key 변경과 같은 key 재구독, 첫 콜백 예외의 READ 취소·소유자 및 캐시 정리, 자동 load 오류와 `q.refetch()` 복구, editable 불일치의 source 오류를 확인했다. 명시 핸들·훅 중 어느 쪽을 먼저 해제해도 다른 소유자의 진행 READ·편집·재조회가 유지된다. React key 왕복은 key 2의 실제 커밋과 핸들을 확인한 뒤 해제 큐 전/후로 나누어 key 1의 READ 1회/2회·취소·owners 이력을 검사한다.
+- 매트릭스: React 18.3.1은 72개 통과·Activity 3개 건너뜀, React 19.3.0은 75개 전부 통과. Vue 3.2.47·3.5.10·3.5.43은 각 58개 통과. sync 전체 340개가 통과했고 해당 세 패키지의 타입 검사도 통과했다.
+- 결함 주입: 원본을 바꾸지 않은 격리 사본에서 기준 테스트 세 개가 통과하고 변이 5/5를 검출했다. React 옵션 확정을 커넥터 뒤로 이동·옵션 확정 누락, Vue KeepAlive 비활성 때 잘못 해제, sync 즉시 해제·첫 콜백 예외 정리 누락을 각각 잡았다. 도구·로그는 저장소 밖 `/workspace/.onboarding/`에 둔다.
+- 비용 기준(T-QH-26): 빌드된 sync를 `node packages/sync/bench/query-observers.mjs`로 단독 실행했다(Node `24.19.0`). 아래 값은 경우별 워밍업 1회 뒤 5회 측정한 중앙값(ms)이며 프레임워크 렌더 비용은 포함하지 않는다. `initialData`·`staleTime: Infinity`·`gcTime: 0`을 사용했다. 각 측정에서 총 owners 1,000, READ 0, 종료 뒤 owners·항목 0을 확인했다.
+
+| 1,000 관찰자 | 생성 | 첫 구독 | 마지막 구독 종료 | 미룬 해제·GC | 붙은 캐시 항목 |
+|---|---:|---:|---:|---:|---:|
+| key 하나 공유 | 98.45 | 216.05 | 199.20 | 7.23 | 1 |
+| 서로 다른 key | 9.98 | 351.45 | 129.91 | 31.53 | 1,000 |
+
+- 측정 한계: 같은 작업 공간에서도 생성 시간의 범위가 공유 key 9.61~166.37ms, 서로 다른 key 8.59~123.54ms로 넓었다. JIT·GC·작업 공간의 실행 부하가 섞인 첫 기준이므로 key 간 시간 차이를 성능 우열로 해석하지 않고, 이후 같은 조건의 회귀 비교에 쓴다. 새 시간 상한은 추가하지 않았다. 스크립트는 매 측정의 원시 시간과 구조 검증 결과를 JSON으로 출력한다.
+- 전체 게이트: `pnpm gate` 21단계 모두 통과(exit 0). core 402개, sync 340개, React 75개, Preact 51개, Vue 58개, Solid 브라우저 43개·SSR 5개, Svelte 브라우저 50개·SSR 5개가 통과했다. core live index 1,000개 3.6ms(기준 ≤ 5ms), 최소 gzip 3,727B(기준 ≤ 3,800B). 타입·문서 예제·lint·전체 테스트·SSR·번들·packaging·성능 검사 모두 포함한다.
+- 보호 조건: `origin/main` fetch 뒤 core·기존 다섯 커넥터 `src/index.ts`·Svelte `runes.ts` 비교 exit 0. 단계 4 이후 sync·커넥터 구현 소스와 lockfile도 바꾸지 않았다.
+- 다음: 단계 6 통합 테스트·다섯 프레임워크의 공통 상세 화면·React SSR 데모·전체 버전 매트릭스·실제 브라우저 수동 검증, 이후 단계 7 사용자 가이드·릴리스 기록. 수동 체크리스트는 아직 미수행이다.
+- 막힌 점: 없음. 이번 단계에서는 PR을 만들거나 패키지를 게시하지 않는다.
+- 커밋 추적: 시작점은 `76ee859`. 이 완료 기록을 포함하는 커밋은 `git log -1 -- docs/sync-query-hooks/IMPLEMENT.md`로 확인한다.

@@ -1,7 +1,7 @@
 # DESIGN — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: **결정 완료** (2026-10-08 IMPLEMENT 단계 0 재검증 + 검증 에이전트 교차 검토 2회 반영). 미결 `[ ]` 없음. 단계 1~4 완료(2026-10-09, 단계 4 매트릭스·전체 게이트 통과, 진행 상태는 IMPLEMENT 기준). PR #16은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`).
+- 상태: **결정 완료** (2026-10-08 IMPLEMENT 단계 0 재검증 + 검증 에이전트 교차 검토 2회 반영). 미결 `[ ]` 없음. 단계 1~5 완료(2026-10-09, 테스트 보강·비용 기준·전체 게이트 통과, 진행 상태는 IMPLEMENT 기준). 다음은 단계 6 통합 데모·검증이다. PR #16은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`).
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 ## 1. 현재 구조 (기준 `6e462ed`, 2026-10-08 코드로 재확인)
@@ -267,7 +267,7 @@ type ObserverSettings = Readonly<{
 | `packages/sync/test/sync-bundle.mjs` | sync 산출물에 UI 프레임워크 import가 없음을 확인(C-QH-04) |
 | state-ref 코어 | 없음(C-QH-03) |
 | 기존 `client.query` 사용 | 없음(C-QH-02) |
-| 비용 | 붙은 관찰자마다 커서 store 1 + display store 1 + 핸들. 목록처럼 관찰자가 많은 화면의 비용을 단계 5에서 잰다(T-QH-26) |
+| 비용 | 붙은 관찰자마다 커서 store 1 + display store 1 + 핸들. 목록처럼 관찰자가 많은 화면의 비용을 단계 5에서 잰다(T-QH-26). 빌드된 sync로 관찰자 1,000개가 key 하나를 공유하는 경우와 key 1,000개를 쓰는 경우를 따로 잰다. `initialData`·`staleTime: Infinity`로 네트워크 비용을 빼고, 생성·첫 구독·마지막 구독 종료·기본 해제 일정 및 gc 완료 시간을 나눠 기록한다. `gcTime: 0`으로 완료 후 owners·항목 모두 0을 확인한다. 시간은 워밍업 뒤 5회 중앙값의 첫 기준이며 새 시간 상한을 게이트에 넣지 않는다 |
 
 ## 6. 실험 기록 (2026-10-08, `main` `6e462ed`, 코드는 되돌림)
 
