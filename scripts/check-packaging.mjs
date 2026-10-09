@@ -50,7 +50,7 @@ for (const name of PACKAGES) {
     if (manifest[key]) walk(manifest[key], key);
   walk(manifest.exports, 'exports');
   assert.ok(seen.length > 0, `${manifest.name}: no entry paths declared`);
-  if (['connect-react', 'connect-preact'].includes(name)) {
+  if (name.startsWith('connect-')) {
     assert.equal(manifest.peerDependencies['@stateref/sync'], '^0.3.0');
     assert.equal(
       manifest.peerDependenciesMeta['@stateref/sync'].optional,
@@ -61,6 +61,12 @@ for (const name of PACKAGES) {
       assert.ok(
         !bundle.includes('@stateref/sync'),
         `${manifest.name}: base entry imports sync`
+      );
+    }
+    if (name === 'connect-svelte') {
+      assert.ok(
+        !manifest.exports['./runes/sync'],
+        'Svelte sync is store API only'
       );
     }
   }
@@ -110,6 +116,9 @@ try {
     '@stateref/sync',
     '@stateref/connect-react/sync',
     '@stateref/connect-preact/sync',
+    '@stateref/connect-vue/sync',
+    '@stateref/connect-solid/sync',
+    '@stateref/connect-svelte/sync',
     // Svelte 5 only, and Svelte 5 is ESM only.
     '@stateref/connect-svelte/runes',
   ];
@@ -149,13 +158,30 @@ try {
     import { createSyncClient } from '@stateref/sync';
     import { useSyncQuery as useReactQuery } from '@stateref/connect-react/sync';
     import { useSyncQuery as usePreactQuery } from '@stateref/connect-preact/sync';
+    import { useSyncQuery as useVueQuery } from '@stateref/connect-vue/sync';
+    import { createSyncQuery as createSolidQuery } from '@stateref/connect-solid/sync';
+    import { createSyncQuery as createSvelteQuery } from '@stateref/connect-svelte/sync';
     const plugin = await import('state-ref/plugin');
     const { connectSvelteRunes } = await import('@stateref/connect-svelte/runes');
     if (typeof connectSvelteRunes !== 'function')
       throw new Error('@stateref/connect-svelte/runes did not export connectSvelteRunes');
-    if ([create, createDraft, batch, provideShared, createSyncClient, useReactQuery, usePreactQuery].some(value => typeof value !== 'function'))
+    if ([create, createDraft, batch, provideShared, createSyncClient, useReactQuery, usePreactQuery, useVueQuery, createSolidQuery, createSvelteQuery].some(value => typeof value !== 'function'))
       throw new Error('an ESM entry did not export its function');
     if (Object.keys(plugin).length === 0) throw new Error('state-ref/plugin exported nothing');
+    // Check the built entries' server branches, including solid-js/web's
+    // conditional export. Inlining the browser isServer value would attach.
+    for (const query of [useVueQuery, createSolidQuery]) {
+      const client = createSyncClient();
+      let reads = 0;
+      const [select, controls] = query(client, {
+        queryKey: ['packaging-ssr'], queryFn: () => { reads += 1; return { name: 'loaded' }; },
+        initialData: { name: 'server' }, staleTime: Infinity,
+      });
+      const value = select(ref => ref.data.name.value);
+      if ((typeof value === 'function' ? value() : value.value) !== 'server' ||
+          client.size() !== 0 || reads !== 0 || controls.handle() !== null)
+        throw new Error('a built query entry subscribed or read during SSR');
+    }
   `;
   writeFileSync(join(sandbox, 'import-check.mjs'), esm);
   execFileSync(process.execPath, [join(sandbox, 'import-check.mjs')], {
@@ -172,8 +198,12 @@ try {
   `;
   const syncTypes = `
     import { createSyncClient, type QueryHandleCore } from '@stateref/sync';
+    import { readable } from 'svelte/store';
     import { useSyncQuery as useReactQuery } from '@stateref/connect-react/sync';
     import { useSyncQuery as usePreactQuery } from '@stateref/connect-preact/sync';
+    import { useSyncQuery as useVueQuery } from '@stateref/connect-vue/sync';
+    import { createSyncQuery as createSolidQuery } from '@stateref/connect-solid/sync';
+    import { createSyncQuery as createSvelteQuery } from '@stateref/connect-svelte/sync';
     const client = createSyncClient();
     export function useQueryTypes() {
       const result = useReactQuery(client, {
@@ -199,6 +229,40 @@ try {
       });
       const name: string | undefined = selected.data.value;
       return [label, handle, age, preactHandle, name];
+    }
+    export function useSetupQueryTypes() {
+      const [vue, vueControls] = useVueQuery(client, () => ({
+        queryKey: ['vue'], queryFn: () => ({ name: 'Lee', age: 3 }), select: data => data.name,
+      }));
+      const vueName = vue(ref => ref.data.value);
+      const name: string | undefined = vueName.value;
+      const vueHandle: QueryHandleCore<{ name: string; age: number }> | null = vueControls.handle();
+      // @ts-expect-error Vue selections are readonly
+      vueName.value = 'changed';
+      const [solid, solidControls] = createSolidQuery(client, () => ({
+        queryKey: ['solid'], queryFn: () => ({ name: 'Lee', age: 3 }), select: data => ({ label: data.name }),
+      }));
+      const solidName = solid(ref => ref.data.label.value);
+      const label: string | undefined = solidName();
+      const solidHandle: QueryHandleCore<{ name: string; age: number }> | null = solidControls.handle();
+      // @ts-expect-error Solid selections are accessors, not setter tuples
+      solidName[1]('changed');
+      const [svelte, svelteControls] = createSvelteQuery(client, {
+        queryKey: ['svelte'], queryFn: () => ({ name: 'Lee', age: 3 }),
+      });
+      const svelteName = svelte(ref => ref.data.name.value);
+      svelteName.subscribe(value => { const name: string | undefined = value; void name; });
+      const svelteHandle: QueryHandleCore<{ name: string; age: number }> | null = svelteControls.handle();
+      // @ts-expect-error Svelte selections are readonly stores
+      svelteName.set('changed');
+      // @ts-expect-error Svelte store API does not track a getter
+      createSvelteQuery(client, () => ({ queryKey: ['getter'], queryFn: () => 1 }));
+      const [fromStore, storeControls] = createSvelteQuery(client, readable({
+        queryKey: ['options-store'], queryFn: () => ({ name: 'Lee', age: 3 }),
+      }));
+      fromStore(ref => ref.data.age.value).subscribe(value => { const age: number | undefined = value; void age; });
+      const storeHandle: QueryHandleCore<{ name: string; age: number }> | null = storeControls.handle();
+      return [name, label, vueHandle, solidHandle, svelteHandle, storeHandle];
     }
   `;
   for (const [folder, type] of [

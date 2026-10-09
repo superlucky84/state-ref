@@ -1,7 +1,7 @@
 # DESIGN — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: **결정 완료** (2026-10-08 IMPLEMENT 단계 0 재검증 + 검증 에이전트 교차 검토 2회 반영). 미결 `[ ]` 없음. 단계 1~3 완료(2026-10-09, 단계 3 최소·최신 매트릭스·전체 게이트 통과, 진행 상태는 IMPLEMENT 기준). PR #16은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`).
+- 상태: **결정 완료** (2026-10-08 IMPLEMENT 단계 0 재검증 + 검증 에이전트 교차 검토 2회 반영). 미결 `[ ]` 없음. 단계 1~4 완료(2026-10-09, 단계 4 매트릭스·전체 게이트 통과, 진행 상태는 IMPLEMENT 기준). PR #16은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`).
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 ## 1. 현재 구조 (기준 `6e462ed`, 2026-10-08 코드로 재확인)
@@ -169,7 +169,7 @@ DC-QH-20·21·24·25·26·28(렌더 +1)·31·33·35는 단계 0 보고의 추천
 - [x] **DC-QH-35 PR #16을 먼저 병합한다** (U-QH-11) — PR [superlucky84/state-ref#16](https://github.com/superlucky84/state-ref/pull/16)(React 커넥터 마운트 tearing 수정)을 `main`에 병합하고, 이 브랜치를 그 `main`으로 갱신한 뒤 IMPLEMENT 단계 3(React·Preact)을 시작한다. **완료(2026-10-08):** 사용자 요청으로 병합(`41798cf`, merge commit). 병합 전 PR head `d38956d`에서 React 커넥터 테스트 44/44, 커넥터 매트릭스 React 18.3.1·19.3.0 각 44/44, `tsc --noEmit`·eslint 통과를 확인했다(PR에는 CI 체크가 없었다). 이 브랜치는 `e58deaa`에서 `main`을 병합해 갱신했다.
   - 근거: DC-QH-29의 identity 조건은 그 수정이 있어야 의미가 생기고, T-QH-23은 그 수정의 `concurrent.tsx`를 쓴다. 병합 전 커넥터로 검증하면 병합 뒤 다시 검증해야 한다.
   - 검증: IMPLEMENT 단계 3 진입 조건, T-QH-23.
-- [x] **DC-QH-36 Svelte store API의 옵션은 객체 또는 `Readable` store** (저자) — Svelte store API(비 runes 컴포넌트 포함)에서 일반 getter는 Svelte가 추적하지 않아 props 변화가 전달되지 않는다. TanStack Svelte Query(store API)도 옵션 또는 옵션 store를 받는다. 사용자는 `derived`나 `writable`로 옵션 store를 만들어 넘긴다.
+- [x] **DC-QH-36 Svelte store API의 옵션은 객체 또는 `Readable` store** (저자) — Svelte store API(비 runes 컴포넌트 포함)에서 일반 getter는 Svelte가 추적하지 않아 props 변화가 전달되지 않는다. TanStack Svelte Query(store API)도 옵션 또는 옵션 store를 받는다. 사용자는 `derived`나 `writable`로 옵션 store를 만들어 넘긴다. 진입점은 한 번의 store 구독에서 동기로 초기값을 받고 이후 값을 전달한다. `get(store)` 뒤 다시 구독해 store의 start·stop을 반복하지 않는다. `onDestroy` 또는 초기화 실패 때 그 구독을 해제한다.
   - 검증: T-QH-33.
 - [x] **DC-QH-37 공유 client의 sync 사본 호환** (저자) — `state-ref/shared`로 공유한 client는 그것을 만든 sync 사본의 메서드를 가진다(1절). 그래서 진입점은 `typeof client.observe !== 'function'`이면 `This sync client has no observe(); align the @stateref/sync versions of the bundles on this page.`로 던진다. `observe`가 있으면 그 client를 만든 사본의 구현이 쓰이므로 캐시 내부 접근이 맞는다.
   - 근거: 선택적 peer는 설치 경고가 없고(DC-QH-20), 공유 client는 다른 번들의 옛 sync 사본이 만들 수 있다.

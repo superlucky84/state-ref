@@ -1,7 +1,7 @@
 # REQUIREMENTS — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: 요구사항 확정. 설계 결정 완료(2026-10-08 단계 0 재검증과 검증 에이전트 교차 검토 2회 반영, DESIGN에 미결 `[ ]` 없음). 단계 1~3 완료(2026-10-09, 단계 3 최소·최신 매트릭스·전체 게이트 통과, 진행 상태는 IMPLEMENT 기준). PR #16 병합 완료(`41798cf`), 이 브랜치에 반영(`e58deaa`).
+- 상태: 요구사항 확정. 설계 결정 완료(2026-10-08 단계 0 재검증과 검증 에이전트 교차 검토 2회 반영, DESIGN에 미결 `[ ]` 없음). 단계 1~4 완료(2026-10-09, 단계 4 매트릭스·전체 게이트 통과, 진행 상태는 IMPLEMENT 기준). PR #16 병합 완료(`41798cf`), 이 브랜치에 반영(`e58deaa`).
 - 기준 commit: `6e462ed` (`main`), `@stateref/sync@0.2.0`, `@stateref/connect-react@19.0.0`. 작업 브랜치 `claude/sync-query-hooks`.
 - 연계: [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 - 문서 위치: `docs/sync-query-hooks/`. 관련 코드는 `packages/sync/src/`(`index.ts`의 `openQuery`·`QueryEntry`, `display.ts`, `live-key.ts`, `ref-guard.ts`)와 각 커넥터 패키지의 새 진입점이다. sync 전체 설계는 [server-sync](../server-sync/README.md)에 있다.

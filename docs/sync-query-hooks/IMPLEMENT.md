@@ -1,7 +1,7 @@
 # IMPLEMENT — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: **단계 3(React·Preact 진입점) 완료(2026-10-09): 최소·최신 매트릭스, 결함 주입 7/7, 전체 게이트 21단계 통과.** 단계 1·2 완료. 다음은 단계 4(Vue·Solid·Svelte 진입점). 구현·리뷰 중단 당시 상태는 진행 기록에 보존했다. PR [superlucky84/state-ref#16](https://github.com/superlucky84/state-ref/pull/16)은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`). 단계 3의 진입 조건 중 PR 병합은 충족됐다(DC-QH-35).
+- 상태: **단계 1~4 완료(2026-10-09).** 단계 4의 Vue·Solid·Svelte 진입점·버전 매트릭스·전체 게이트를 검증했다. 다음은 단계 5 테스트 보강이다. 구현·리뷰 중단 당시 상태는 진행 기록에 보존했다. PR [superlucky84/state-ref#16](https://github.com/superlucky84/state-ref/pull/16)은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`). 단계 3의 진입 조건 중 PR 병합은 충족됐다(DC-QH-35).
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 모든 단계의 공통 완료 조건:
@@ -42,10 +42,10 @@
 | T-QH-25 | React: key 변경·마운트·StrictMode에서 `console.error`에 렌더 중 갱신 경고 없음, 렌더 중 구독자가 있는 관찰자 store 쓰기 없음 / 잘못된 key·`enabled`가 렌더에서 던지지 않음, `queryKey: ['user', undefined]`로 마운트하고 여러 번 다시 렌더해도 렌더 수가 늘지 않고 `getSnapshot should be cached` 경고 없음 / 같은 컴포넌트에 다른 `client`를 넘기면 `This query observer is bound to another client.` | react | R-QH-02, R-QH-15, DC-QH-13, DC-QH-25, DC-QH-28 |
 | T-QH-26 | 비용: 관찰자 1,000개 마운트·언마운트의 시간과 해제 뒤 owners·항목 수(목록 화면 모사). 기준을 측정해 진행 기록에 남기고 이후 회귀 비교의 기준으로 쓴다 | sync 또는 react bench | DESIGN 5절 |
 | T-QH-27 | sync 산출물에 `react`·`preact`·`vue`·`svelte`·`solid-js` import가 없음(`packages/sync/test/sync-bundle.mjs`에 확인 추가) | sync 빌드 | C-QH-04 |
-| T-QH-28 | `observe`가 없는 client(옛 sync 사본이 만든 공유 client 모사)를 넘기면 진입점이 `This sync client has no observe(); ...`로 실패 | react | R-QH-16, DC-QH-37 |
+| T-QH-28 | `observe`가 없는 client(옛 sync 사본이 만든 공유 client 모사)를 넘기면 진입점이 `This sync client has no observe(); ...`로 실패 | 다섯 커넥터 | R-QH-16, DC-QH-37 |
 | T-QH-30 | Preact: T-QH-20, 21, 24, 25 대응 / `act` 없이 실제 타이머로 같은 key 라우트 교체 — keyed diff와 먼저 언마운트한 뒤 같은 작업 안에서 새 마운트하는 두 순서, 각각 rAF 정상·정지에서 요청 1·취소 0(해제 일정, DC-QH-11) / `preact-render-to-string`에서 붙지 않고 요청 0 | preact | R-QH-01, R-QH-05, R-QH-12, DC-QH-11, DC-QH-28 |
 | T-QH-31 | Vue: setup의 getter key 변경(렌더 전 반영), 선택 함수 여러 개가 한 관찰자, 스코프 해제, 서버 렌더에서 `onServerPrefetch` 뒤 값이 HTML에 들어감 | vue | R-QH-01, DC-QH-16, DC-QH-17, DC-QH-29 |
-| T-QH-32 | Solid: accessor key 변경(`createComputed`), `onCleanup` 해제 / `isServer`에서 요청 없음(`*.ssr.test.tsx`, `test:ssr`) | solid | R-QH-01, R-QH-12, DC-QH-17 |
+| T-QH-32 | Solid: accessor key 변경(`createComputed`, 렌더 계산의 모든 프레임에서 key·선택 값 일치), `onCleanup` 해제 / `isServer`에서 요청 없음(`*.ssr.test.tsx`, `test:ssr`) | solid | R-QH-01, R-QH-12, DC-QH-17 |
 | T-QH-33 | Svelte store API: 옵션 객체·`Readable` 옵션 store key 변경, 컴포넌트 수명 / `ssr: true` client의 서버 렌더에서 항목·요청 없음(`*.ssr.test.ts`, `test:ssr`) | svelte | R-QH-01, R-QH-12, DC-QH-15, DC-QH-36 |
 | ~~T-QH-34~~ | 삭제 — Svelte runes 진입점은 범위 밖(N-QH-07, DC-QH-34) | — | — |
 | T-QH-40 | React `<Activity mode="hidden">`: 숨기면 해제 일정 뒤 owners 0, 다시 보이면 신선한 key는 요청 0, stale이면 요청 1. `Activity`가 없는 React(매트릭스 min 18.3.1, 19.2 미만)에서는 `it.skipIf(!('Activity' in React))`로 건너뛰고, 매트릭스 latest(19.3)와 워크스페이스에서는 반드시 실행 | react | U-QH-01, DC-QH-11 |
@@ -118,12 +118,14 @@
 ## 단계 4 — Vue·Solid·Svelte 진입점
 
 - 진입: 단계 2 완료(PR #16과 무관).
-- [ ] Vue `useSyncQuery(client, options | () => options)`: getter면 `watch(getter, setOptions)`(flush `'pre'`), `connectVueView(observer.watch)` 반환 함수와 `controls`. 옵션 안의 ref는 풀지 않는다(DC-QH-17).
-- [ ] Solid `createSyncQuery(client, options | () => options)`: `createComputed`로 `setOptions`, `connectSolidView`.
-- [ ] Svelte `createSyncQuery(client, options | Readable<options>)`: store면 구독해 `setOptions`, `onDestroy`로 해제, `connectSvelteView`. runes 진입점은 만들지 않는다(DC-QH-34).
-- [ ] 각 패키지 `exports`·빌드·선택적 peer·packaging 검사.
+- 릴리스 준비: Vue `3.5.0`·Solid `1.5.0`·Svelte `5.1.0`, 선택적 peer `@stateref/sync: ^0.3.0`(sync는 단계 3에서 이미 `0.3.0`). 기존 기본·runes 진입점을 유지하고 ESM `./sync` 빌드를 더한다. 게시하지 않는다(DC-QH-20).
+- [x] Vue `useSyncQuery(client, options | () => options)`: getter면 `watch(getter, setOptions)`(flush `'pre'`), `connectVueView(observer.watch)` 반환 함수와 `controls`. 옵션 안의 ref는 풀지 않는다(DC-QH-17).
+- [x] Solid `createSyncQuery(client, options | () => options)`: `createComputed`로 `setOptions`, `connectSolidView`.
+- [x] Svelte `createSyncQuery(client, options | Readable<options>)`: store면 하나의 구독에서 초기값과 이후 `setOptions`를 받고, `onDestroy` 및 초기화 실패 때 해제, `connectSvelteView`. runes 진입점은 만들지 않는다(DC-QH-34).
+- [x] 각 패키지 `exports`·빌드·선택적 peer·packaging 검사.
 - 기준 테스트: T-QH-31~33. `pnpm --filter @stateref/connect-solid test:ssr`, `pnpm --filter @stateref/connect-svelte test:ssr`. 커넥터 매트릭스 해당 셀. `pnpm check:packaging`.
-- 완료: 위 명령 모두 exit 0.
+- 위치: 각 패키지 `src/sync.ts`와 `src/tests/query-hook.test.ts`(Solid는 `.tsx`), Vue `query-ssr.test.ts`·Solid/Svelte `query.ssr.test.*`, Svelte `src/tests/svelte/Query{Panel,Unused}.svelte`. 공개 진입점·소비자 타입·빌드된 Vue/Solid SSR은 `scripts/check-packaging.mjs`.
+- 완료(2026-10-09): Vue 56개, Solid 브라우저 43개·SSR 5개, Svelte 브라우저 50개·SSR 5개. 해당 버전 매트릭스와 packaging·sync 337개·전체 `pnpm gate` 21단계가 모두 exit 0. 상세 결과와 성능 재측정은 마지막 진행 기록에 남겼다.
 
 ## 단계 5 — 테스트 보강 (Test Hardening)
 
@@ -231,3 +233,18 @@
 - 보호 조건: `origin/main` 재fetch 뒤 core와 기존 다섯 커넥터 `src/index.ts`·Svelte `runes.ts` 비교가 exit 0. 관찰자·`live-key.ts`와 lockfile도 이번 단계에서 바꾸지 않았다.
 - 다음: 단계 4(Vue·Solid·Svelte store API 진입점), 이어서 단계 5~7의 hardening·통합 데모·수동 검증·사용자 가이드·릴리스 기록. 수동 체크리스트는 아직 수행하지 않았다.
 - 막힌 점: 없음. 이번 단계에서는 PR을 만들거나 패키지를 게시하지 않는다.
+
+
+### 2026-10-09 — 단계 4 Vue·Solid·Svelte 진입점 완료
+
+- 작업: `claude/sync-query-hooks`로 이동한 뒤 단계 3의 ctxbin 인계와 `doc-driven-designer-v1` 규칙·스킬을 읽었다. 확정 문서 네 개를 읽고, 구현 전에 현재 단계·버전 준비·Svelte 옵션 store 구독 방식을 기록했다.
+- 구현: Vue `useSyncQuery`와 Solid·Svelte `createSyncQuery`는 관찰자 하나와 기존 `connect*View`를 조합해 `[선택 함수, controls]`를 반환한다. 첫 선택 전에는 핸들·항목·READ가 없고 여러 선택은 핸들 하나를 공유한다. Vue getter는 `watch`의 `flush: 'pre'`, Solid accessor는 `createComputed`로 옵션을 렌더 전에 확정한다. Vue 옵션 안의 ref는 풀지 않는다. Svelte는 객체 또는 `Readable` 옵션 store를 받고, 한 번의 동기 구독에서 초기값과 갱신을 받으며 `onDestroy` 및 관찰자 초기화 실패 때 구독을 정리한다.
+- 패키징: 세 ESM `./sync` export와 독립 빌드를 추가했다. Vue `3.5.0`, Solid `1.5.0`, Svelte `5.1.0`으로 minor 버전을 준비했고 선택적 sync peer는 `^0.3.0`이다. node16 소비자의 T/S 추론·읽기 전용 선택 결과·빌린 핸들·Svelte 옵션 store 타입, 공개 import·require 거절, 기본 진입점의 sync import 없음이 packaging 검사에 들어간다. Solid의 `solid-js/web`을 외부로 유지하고 빌드된 Vue·Solid 진입점의 서버 무구독·무READ도 검사한다.
+- 테스트: Vue 전체 56개(새 12개, SSR 3 포함), Solid 브라우저 43개(새 10개)·SSR 5개(새 3개), Svelte 브라우저 50개(새 12개)·SSR 5개(새 4개). key 전환의 캐시 있음/없음·새 경로 재수집·여러 선택의 단일 핸들·컴포넌트 사이 READ 공유·해제·enabled·투영·잘못된 옵션·옛 client 오류를 검증한다. Vue SSR은 setup에서 미리 읽은 선택이 `onServerPrefetch` 결과를 HTML에 반영하고, Solid·Svelte는 hydrate된 값과 owners 0을 확인한다. Svelte 서버에는 `ssr: true` client를 사용한다.
+- 매트릭스: Vue 3.2.47·3.5.10·3.5.43 각 56개 통과. Solid 1.9.1·1.9.15 각 브라우저 43개와 SSR 5개 통과. Svelte 4.2.19는 브라우저 42개 통과·기존 runes 8개 건너뜀, 5.57.1은 50개 통과; 두 버전 모두 SSR 5개 통과. 새 store API 테스트는 양쪽 버전에서 전부 실행됐다.
+- 결함 주입: 격리한 사본의 기준 테스트가 통과하고 결함 8/8을 검출했다. Vue 옵션 갱신 누락·렌더 뒤 반영, Solid 갱신 누락·`createEffect`로 지연, Svelte 갱신 누락·구독 해제 누락·store 시작 두 번·초기화 실패 때 누수다. 처음에는 Solid의 `createEffect` 변이가 통과했으나, key 신호와 선택 결과를 같이 읽는 `createRenderEffect`의 모든 프레임을 검사하도록 보강해 `{id: 2, key: 1}`의 이전 key 표시를 잡았다. 원본에는 결함을 주입하지 않았다.
+- 전체 게이트: Node `24.19.0` + pnpm `9.12.3`에서 `pnpm gate` 21단계 모두 통과(exit 0), sync 337개·core 402개 포함. 첫 실행은 기존 core live index 1,000개가 8.2ms(기준 ≤ 5ms)여서 bench에서 멈췄다. 같은 산출물의 재측정은 3.1ms·성능 6/6 통과, 전체 게이트 재실행은 2.7ms·최소 gzip 3,727B(기준 ≤ 3,800B)로 통과했다. 코드·성능 기준은 바꾸지 않았으며 이전 단계에도 기록된 측정 변동을 보존한다.
+- 보호 조건: `origin/main` 재fetch 후 core·기존 다섯 커넥터 `src/index.ts`·Svelte `runes.ts` 비교 exit 0. sync 소스·타입 테스트와 lockfile도 이번 단계에서 바꾸지 않았다. frozen offline install 통과. 도구·로그는 저장소 밖 `/workspace/.onboarding/`에 둔다.
+- 다음: 단계 5의 React `<Activity>`·Vue `<KeepAlive>`·경합·명시 핸들 공존·빠른 key 왕복과 1,000 관찰자 비용 측정. 단계 6의 통합 데모와 수동 체크리스트, 단계 7의 가이드·릴리스 기록은 아직 수행하지 않았다.
+- 막힌 점: 없음. 이번 단계에서는 PR을 만들거나 패키지를 게시하지 않는다.
+- 커밋 추적: 시작점은 `5b79607`. 이 완료 기록을 포함하는 커밋은 `git log -1 -- docs/sync-query-hooks/IMPLEMENT.md`로 확인한다.
