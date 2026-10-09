@@ -141,6 +141,22 @@ working, for a query a store or service owns beyond one component.
   subscription is made, the snapshot is now the live ref's root value, which
   changes on every write.
 
+## state-ref 3.2.1
+
+Documentation only; no code change. Published so the bundled AI skill and the
+agent add-on describe the sync 0.3 component queries.
+
+- The bundled AI skill (`dist/skills/state-ref/reference/framework-connectors.md`,
+  `server-sync.md` and `SKILL.md`) documents each connector's `./sync` entry
+  (`useSyncQuery` / `createSyncQuery`), the Lithent connector
+  (`connectLithent`, `connectLithentView`) and the rules an agent must keep:
+  options forms per framework, loading is `status === 'pending'`, dependent
+  keys with `id ?? null` and `enabled`, `q.handle()` is never disposed, one
+  `ssr: true` client per request.
+- The agent add-on (`dist/ai-addons/state-ref-agent-addon.md`) gains the same
+  component query rules, the `./sync` import paths and `client.observe` as the
+  low-level API.
+
 ## state-ref 3.2.0
 
 Additive: nothing that worked on 3.1.x changes. The new entry point is not

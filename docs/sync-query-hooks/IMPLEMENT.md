@@ -390,3 +390,10 @@
 - 릴리스 메모: npm 현재 버전은 sync 0.2.0, React 19.0.0, Preact 10.4.0, Vue 3.4.0, Solid 1.4.0, Svelte 5.0.0, connect-lithent 없음(E404). AI 스킬은 `state-ref` 패키지에 실려 나가므로 이번 릴리스(state-ref 미변경)로는 배포되지 않는다(릴리스 절차에 별도 판단으로 적음). npm에 `lithent@1.24.1`(CJS 수정)과 `lithent-concurrent@0.1.4`가 새로 나왔다. 커넥터는 1.24.0·0.1.3으로 검증했고 ESM 전용을 유지한다.
 - 검증: `node scripts/check-doc-examples.mjs`(22 블록 컴파일, 15 skip), `node scripts/check-support-table.mjs`(9행, 근거 파일 29개) 통과. 전체 `pnpm gate`(Node 22.22.0, pnpm 9.12.3)는 build·타입·doc-examples·support-table·lint·test(core 402, sync 342, React 77, Preact 51, Vue 60, Solid 45, Svelte 52, Lithent 19+2, shared 122)·ssr·번들·packaging까지 통과했고, `bench`의 "1000 live index nodes"만 테스트 직후 5.5ms(기준 5ms)로 실패했다. core는 `origin/main`과 같고, 같은 bench를 단독으로 세 번 다시 재면 3.6·3.7·3.6ms로 6/6 통과, `bundle` 단계(`bundle-size.mjs`)도 통과했다. 앞선 단계에서 기록한 측정 흔들림과 같은 현상이다. 이 단계 직전 기준(`db5406f`)의 게이트도 같은 측정만 5.2ms로 실패했다.
 - 다음: PR 생성. 머지·배포는 `docs/release/2026-10-09.md` 순서대로(머지가 문서 사이트를 바로 배포하므로 게시를 머지 직후에). 사람의 사용성 평가(M-QH 중 사람 확인 항목)는 여전히 미수행.
+
+### 2026-10-09 — AI 스킬을 함께 내보내는 `state-ref` 3.2.1
+
+- 사용자 결정: AI 스킬도 이번 릴리스와 함께 나가야 한다. 스킬(`skills/state-ref`)과 agent add-on(`state-ref-agent-addon.md`)은 루트 build의 `scripts/copy-skills.mjs`가 `state-ref` 패키지의 `dist/skills`·`dist/ai-addons`로 복사하므로, `state-ref`를 3.2.0 → **3.2.1**로 올린다(3.1.1과 같은 문서 patch, 코드 변경 없음, 코어 소스는 `main`과 같음).
+- agent add-on: 6절(프레임워크 연결)에 Lithent `connectLithent`와 `./sync` 안내, 12절(서버 데이터)에 컴포넌트 조회 규칙(프레임워크별 옵션 모양과 읽기, 로딩은 `status === 'pending'`, 의존 key, `q`의 세 명령과 `q.handle()`을 dispose하지 않음, SSR, client 고정, `select` 메모/`equals`), import 경로와 API 목록에 `./sync`·Lithent·`client.observe`를 넣었다. 스킬 본문은 단계 7에서 이미 갱신했다.
+- CHANGELOG에 `state-ref 3.2.1` 절, 릴리스 절차(`docs/release/2026-10-09.md`)에 여덟째 패키지(표·순서·dry run·게시·설치 확인·태그·GitHub 릴리스)와 dist의 스킬·add-on 확인 명령을 넣었다.
+- 확인: 루트 `pnpm build`가 버전 3.2.1을 넣어 복사했다(`dist/skills/.../framework-connectors.md`의 `useSyncQuery` 5회, add-on `Document Version: 3.2.1`과 `useSyncQuery` 4회). `npm pack --dry-run`: 94 파일, 190.5 kB(3.2.0은 94 파일, 186.8 kB).
