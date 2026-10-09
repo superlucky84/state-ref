@@ -1,7 +1,7 @@
 # DESIGN — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: **결정 완료** (2026-10-08 IMPLEMENT 단계 0 재검증 + 검증 에이전트 교차 검토 2회 반영). 미결 `[ ]` 없음. 단계 1~5 및 추가 단계 5.1 Lithent 지원·5.2 일반 커넥터 완료(2026-10-09, 전체 게이트 통과, 진행 상태는 IMPLEMENT 기준). 다음은 단계 6 통합 데모·검증이다. PR #16은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`).
+- 상태: **결정 완료** (2026-10-08 IMPLEMENT 단계 0 재검증 + 검증 에이전트 교차 검토 2회 반영). 미결 `[ ]` 없음. 단계 1~5 및 추가 단계 5.1 Lithent 지원·5.2 일반 커넥터 완료(2026-10-09, 전체 게이트 통과, 진행 상태는 IMPLEMENT 기준). 단계 6 통합 데모·자동 브라우저 검증도 완료했다(2026-10-09, U-QH-14). 사람의 사용성 평가는 미수행이고 다음 구현 범위는 단계 7 가이드·릴리스 기록이다. PR #16은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`).
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 ## 1. 현재 구조 (기준 `6e462ed`, 2026-10-08 코드로 재확인)
@@ -140,7 +140,7 @@ DC-QH-20·21·24·25·26·28(렌더 +1)·31·33·35는 단계 0 보고의 추천
 - [x] **DC-QH-28 React·Preact의 렌더 중 key 전환 — 렌더는 순수하게, 전환은 커밋 뒤, 전환 뒤 한 번 더 렌더** (U-QH-11에서 렌더 +1 수용)
   - 훅 구성과 effect 순서: ① `useState`로 관찰자 ② `setOptions` effect ③ 커넥터 훅(`connectReactView(observer.watch)()`) ④ key 전환 렌더용 `useSyncExternalStore`(DC-QH-27) ⑤ 강제 렌더용 `useState` 카운터(Preact만. React는 ④의 커밋 뒤 재확인이 같은 역할을 한다, DC-QH-27). Preact의 ⑤ 상태는 ① 뒤에서 만들어 ②의 setter를 마련한다. `setOptions` effect를 커넥터보다 **먼저** 선언한다. React는 다시 연결되는 effect를 훅 순서로 실행하므로(`<Activity>` 표시, StrictMode) 그래야 구독이 확정 옵션을 최신으로 바꾼 뒤 붙는다(숨긴 동안 key가 바뀐 경우 이전 key에 붙어 READ했다가 취소하지 않는다). 붙지 않은 상태의 `setOptions`는 확정 옵션만 바꾼다.
   - 렌더: `observer.matches(options)`가 true면 커넥터가 돌려준 값(구독 ref, 구독 전에는 첫 렌더에 만든 `watch()` ref — PR #16 기준)을, false면 `observer.peek(options)`를 반환한다. 렌더 중에는 구독자가 있는 관찰자 store(옵션 store·커서·display)에 쓰지 않는다.
-  - 커밋 뒤: `useEffect`에서 `observer.setOptions(options)`. key나 `enabled`가 바뀌었으면 true를 돌려주고, **한 번 더 렌더**된다(React는 ④의 재확인, Preact는 ⑤의 카운터). 이 렌더는 구독 ref를 지나므로 새 key 화면에서 읽는 경로가 구독에 모인다(커넥터가 마운트 때 한 번 더 렌더하는 것과 같은 이유, `connect-react/src/index.ts:52-55`).
+  - 커밋 뒤: `useEffect`에서 `observer.setOptions(options)`. key나 `enabled`가 바뀌었으면 true를 돌려주고, **한 번 더 렌더**된다(React는 ④의 재확인, Preact는 ⑤의 카운터). 이 렌더는 구독 ref를 지나므로 새 key 화면에서 읽는 경로가 구독에 모인다(커넥터가 마운트 때 한 번 더 렌더하는 것과 같은 이유, `connect-react/src/index.ts:64-67`).
   - `useEffect`를 고른 이유: TanStack의 `useBaseQuery`와 같고, React 18의 서버 렌더에서 `useLayoutEffect` 경고가 없으며, 렌더 결과는 이미 peek로 맞으므로 페인트 전 전환이 필요 없다.
   - Preact도 같은 effect 순서를 `preact/hooks`로 둔다(④ 없음: Preact 10에는 concurrent 렌더와 `useSyncExternalStore` 재확인이 없다. 대신 ⑤). 해제 일정은 DC-QH-11.
   - 근거: 렌더 중 관찰자 store에 쓰면 React가 `Cannot update a component while rendering a different component` 오류를 낸다(6절 E2). 전환 뒤 다시 렌더하지 않으면 새 key 화면에서 처음 읽은 경로가 구독되지 않아, 그 경로만 바뀌면 화면이 갱신되지 않는다(6절 E3: `age` 2→99 변경에 렌더 0회).
@@ -269,6 +269,12 @@ type ObserverSettings = Readonly<{
 - [x] **DC-QH-43 일반 커넥터** (U-QH-13) — 기본 진입점에 `connectLithent<T>(watch: Watch<T>): () => StateRefStore<T>`를 추가한다. 기존 `connectLithentView<R extends { readonly value: unknown }>`와 비공개 `connectWatch`를 공유하며 런타임에서 읽기 전용 여부를 판별하거나 ref를 변환하지 않는다. View는 입력 반환형 `R`을 그대로 유지한다. mounter에서 한 번 연결하고 렌더·이벤트에서 `store().name.value`로 읽고 쓴다. 직접 `watch(renew)` 연동은 계속 가능하지만 일반 가이드의 기본 경로는 즉시 해제를 제공하는 커넥터로 한다. ESM 전용·peer·sync의 View 사용은 유지한다. T-QH-56에서 두 API의 수명·SSR·concurrent 및 공개 타입·예제를 확인한다.
 
 기존 단계 0~5 결과는 이 추가 범위의 승인 전 기록이며 재작성하지 않는다. 추가 범위는 IMPLEMENT 단계 5.1·5.2에서 완료한 뒤 단계 6 전체 통합을 이어간다.
+
+### 단계 6 체험 데모·브라우저 검증 (U-QH-14)
+
+- [x] **DC-QH-44 데모** — `examples/shared`의 별빛 정비소 모델·CSS·로컬 HTTP Vite plugin을 여섯 네이티브 UI가 공유한다. 각 앱의 `/mission.html`은 우주선 목록과 실제 컴포넌트 소유 query 상세·보조 화면을 제공한다. UI는 준비 상태·편집·저장을 설명하고 세부 캐시/요청 진단은 접힌 영역에 둔다. 보조 화면은 독립 관찰자이며 모델이 명시 query 소유자를 추가하지 않는다. 장비 draft와 batch는 별도 일반 store로 체험한다. 기존 진단/쇼핑 데모와 공개 라이브러리는 유지한다.
+- [x] **DC-QH-45 네트워크** — 외부 계정 없이 같은 origin의 `/mission-api` READ/WRITE를 사용한다. Vite dev/preview에서 동일 서버가 지연·단발 실패·서버 변경을 제공한다. API는 데모 메모리만 변경하며 파일/외부 데이터에 쓰지 않는다. 조회는 AbortSignal을 fetch에 전달하고 저장은 capture+links로 승인 응답을 연결한다. 불확실한 WRITE를 자동 재전송하지 않는다. 브라우저의 모의 무선 연결은 공개 SyncEnvironment로 제어한다.
+- [x] **DC-QH-46 Playwright** — 별도 mission config가 여섯 production 페이지·Lithent concurrent·React StrictMode development·React SSR을 시작한다. DOM과 실제 요청/취소를 관찰하고 key/data의 중간 불일치는 MutationObserver로 확인한다. 공유 READ·해제·fresh/stale 캐시·polling·새 경로·편집/links·오류 복구·SSR HTML/hydration을 검증한다. 자동으로 입증한 수용 항목만 완료 표시하며 사용성 평가는 사람이 수행할 항목으로 남긴다. trace/실패 screenshot/JSON 결과와 실행 안내를 제공한다(T-QH-57~59).
 
 | 대상 | 변경 |
 |---|---|

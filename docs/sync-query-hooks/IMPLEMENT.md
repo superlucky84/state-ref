@@ -1,7 +1,7 @@
 # IMPLEMENT — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: **단계 1~5 및 추가 단계 5.1 Lithent 지원·5.2 일반 커넥터 완료(2026-10-09), 단계 5 뒤 상태 점검의 코드 결함·테스트 빈틈 반영 완료.** Activity·KeepAlive·경합·명시 핸들 공존·key 왕복 검증과 1,000 관찰자 비용 측정을 완료했고 전체 게이트가 통과했다. 다음은 단계 6 통합 데모·검증이다. 이전 구현·검증 결과는 진행 기록에 보존했다. PR #16의 `main` 병합과 이 브랜치 반영은 완료했다(`41798cf`, `e58deaa`, DC-QH-35).
+- 상태: **단계 1~5 및 추가 단계 5.1 Lithent 지원·5.2 일반 커넥터 완료(2026-10-09), 단계 5 뒤 상태 점검의 코드 결함·테스트 빈틈 반영 완료.** Activity·KeepAlive·경합·명시 핸들 공존·key 왕복 검증과 1,000 관찰자 비용 측정을 완료했고 전체 게이트가 통과했다. 단계 6 통합 데모·자동 브라우저 검증도 완료했다(2026-10-09, U-QH-14). 사람의 사용성 평가는 미수행이고 다음 구현 범위는 단계 7 가이드·릴리스 기록이다. 이전 구현·검증 결과는 진행 기록에 보존했다. PR #16의 `main` 병합과 이 브랜치 반영은 완료했다(`41798cf`, `e58deaa`, DC-QH-35).
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 모든 단계의 공통 완료 조건:
@@ -62,6 +62,9 @@
 | T-QH-54 | base/concurrent DOM·SSR 셀, unread 경로는 렌더 없음, concurrent retryable mid-build의 외부 변경 감지와 일관된 재빌드 | lithent tests·matrix | R-QH-19, DC-QH-41 |
 | T-QH-55 | 기본·sync ESM 진입점과 require 거절, strict node16 소비자 타입, 실제 공개 진입점으로 README·사이트의 조회/편집/명령·저장·SSR 예제 실행, 영/한 사이트 빌드·표시 | packaging·docs | R-QH-20, DC-QH-38·42 |
 | T-QH-56 | 일반/View accessor의 `.value` 편집·읽은 경로 갱신·언마운트 abort(이후 변경 없이)·재마운트, SSR 콜백 없는 읽기, concurrent 외부 변경 알림, 공개 export·정확한 mutable/readonly 반환 타입·일반 상태 문서 예제 | lithent tests·matrix·packaging·docs | R-QH-21, DC-QH-43 |
+| T-QH-57 | 여섯 production 데모·Lithent concurrent·React StrictMode의 실제 READ 공유/취소·fresh/stale·polling·key 전환/새 필드·편집/저장/저장 중 입력·통신/실패 복구·페이지 오류 | e2e mission | R-QH-22, DC-QH-44~46 |
+| T-QH-58 | React 관찰자 SSR 사전 데이터 HTML·렌더 중 READ/owners 0·hydration 값/상태 일치·경고 없음 | react SSR·e2e mission | R-QH-12·22, DC-QH-46 |
+| T-QH-59 | 장비 draft 취소/적용·batch 알림·Lithent 일반 연결의 반복 수명·모바일 표시·키보드 조작 가능한 체험 UI | mission model·e2e | R-QH-22, DC-QH-44 |
 
 ## 단계 0 — 재검증 (완료, 2026-10-08)
 
@@ -174,19 +177,21 @@
 
 ## 단계 6 — 통합 테스트 (Integration Test)
 
+추가 요청 U-QH-14 완료(2026-10-09): `/mission.html`의 별빛 정비소를 공통 시나리오로 구현했다. `examples/e2e/playwright.mission.config.ts`와 T-QH-57~59로 M-QH-01~07의 기계적으로 관찰 가능한 결과를 검증한다. 실행 안내는 `examples/MISSION.md`, 증거는 진행 기록과 MANUAL_TEST_CHECKLIST에 남긴다. 장비 draft·batch는 추가 체험이며 단계 7 전체 가이드·릴리스 작업은 별도다.
+
 - 진입: 단계 5 및 추가 범위 단계 5.1·5.2 완료. 여섯 커넥터 매트릭스를 실행한다.
-- [ ] `pnpm test` 전체.
-- [ ] `node scripts/connector-matrix.mjs` (기존 다섯 커넥터 최소·최신 버전과 Lithent base/concurrent).
-- [ ] `pnpm gate`. 참고: 2026-10-08에 `bench`의 "1000 live index nodes"가 한 번 7.6ms(기준 5ms)로 실패하고 단독 재실행에서 4.8·4.0ms로 통과한 적이 있다. 이 작업과 무관한 측정 흔들림인지 다시 확인한다.
-- [ ] `pnpm check:packaging`.
-- [ ] 수동 검증의 고정 장치: `examples/{react,preact,vue,svelte,solid}`에 같은 상세 화면(목록 → 상세 `id` prop, 항목별로 다른 필드, 새로고침·무효화·이름 편집·`q.handle()`을 `links`에 넣은 저장)을 추가하고, `examples/react/src/ssr`에 관찰자 훅 화면을 추가한다(M-QH-01~05). Lithent는 단계 5.1·5.2 문서의 공개 예제를 같은 화면으로 연결해 base/concurrent 브라우저 검증 장치를 준비한다(M-QH-06·07). `pnpm check:examples`.
+- [x] `pnpm test` 전체.
+- [x] `node scripts/connector-matrix.mjs` (기존 다섯 커넥터 최소·최신 버전과 Lithent base/concurrent).
+- [x] `pnpm gate`. 측정 기록: 이전 단계의 5.3~6.5ms·7.6ms·8.2ms 실패와 재측정 통과는 진행 기록에 보존한다. 이번 최종 gate는 2.5ms(기준 5ms)로 첫 실행부터 통과했다. 성능 기준이나 라이브러리 코드는 바꾸지 않았다.
+- [x] `pnpm check:packaging`.
+- [x] 수동 검증의 고정 장치: `examples/{react,preact,vue,svelte,solid}`에 같은 상세 화면(목록 → 상세 `id` prop, 항목별로 다른 필드, 새로고침·무효화·이름 편집·`q.handle()`을 `links`에 넣은 저장)을 추가하고, `examples/react/src/ssr`에 관찰자 훅 화면을 추가한다(M-QH-01~05). Lithent는 단계 5.1·5.2 문서의 공개 예제를 같은 화면으로 연결해 base/concurrent 브라우저 검증 장치를 준비한다(M-QH-06·07). `pnpm check:examples`.
 - 완료: 나열한 명령 모두 exit 0.
 
 ## 단계 7 — 문서
 
 - 진입: 단계 6 완료.
 - [ ] sync README와 문서 사이트(영·한)의 query 안내에 관찰자 훅을 기본 경로로 추가. 기존 명시 핸들 사용은 유지.
-- [ ] 가이드에 적을 것: SSR은 `ssr: true` client(특히 Svelte store API, DC-QH-15), client는 컴포넌트 수명 동안 바꾸지 않음(DC-QH-25), 신호 없는 콜백 구독은 관찰자를 붙잡음(DC-QH-30), 첫 렌더 `fetchStatus`(DC-QH-32), 의존 조회는 `id ?? null` + `enabled`(DC-QH-13), Vue는 옵션 안의 ref를 풀지 않음(DC-QH-17), Svelte는 store API만·옵션은 `Readable`(DC-QH-34·36), `q.invalidate()`와 `client.invalidate()`의 재조회 차이(DC-QH-23), 해제는 해제 일정 뒤(테스트에서 타이머 진행, T-QH-46), Vue `<KeepAlive>`, 번들 간 sync 버전 맞춤(DC-QH-37).
+- [ ] 가이드에 적을 것: SSR은 `ssr: true` client(특히 Svelte store API, DC-QH-15), client는 컴포넌트 수명 동안 바꾸지 않음(DC-QH-25), 신호 없는 콜백 구독은 관찰자를 붙잡음(DC-QH-30), 첫 렌더 `fetchStatus`(DC-QH-32), 의존 조회는 `id ?? null` + `enabled`(DC-QH-13), Vue는 옵션 안의 ref를 풀지 않음(DC-QH-17), Svelte는 store API만·옵션은 `Readable`(DC-QH-34·36), `q.invalidate()`와 `client.invalidate()`의 재조회 차이(DC-QH-23), 해제는 해제 일정 뒤(테스트에서 타이머 진행, T-QH-46), Vue `<KeepAlive>`, 번들 간 sync 버전 맞춤(DC-QH-37), 구조 공유가 안 되는 `select` 결과는 메모 또는 `equals`(DC-QH-26 2), `observe`·`peek`는 훅 작성자용 저수준 API(DC-QH-21·24).
 - [ ] [server-sync DESIGN](../server-sync/DESIGN.md) 6절과 [PHASE8_6](../server-sync/PHASE8_6.md)의 F2-02 행·절에 mount 재조회 경로 기록, PHASE8_6 행에 `packages/sync/src/tests/observe.test.ts` 인용(DC-QH-19).
 - [ ] [server-sync README](../server-sync/README.md)에서 이 문서 세트로 링크.
 - [ ] CHANGELOG 메모(릴리스 시 반영): `QueryDisplayRef` 타입 변경, `hashQueryKey`의 state-ref ref 거절(DC-QH-13), sync minor(`client.observe`, `QueryHandleCore`), `MutationLink.query`·연결 제출 영속화 타입 변경: 넘기는 쪽에는 넓힘, 읽는 쪽·구현자에는 표시·해제 멤버 제거로 좁힘(DC-QH-23), 다섯 커넥터의 `./sync` 하위 경로와 peer 범위(DC-QH-20).
@@ -349,3 +354,19 @@
 - 문서(반영): 이 브랜치가 추가한 사이트 문단에서 JSX 줄바꿈 때문에 단어가 붙던 곳 7군데를 고쳤다(Lithent en 2·ko 1, SyncQuery en 2·ko 2. 예: "readaccount()", "Lithent guidealso"). TypeScript 파서로 텍스트와 인라인 요소 사이의 줄바꿈 경계를 전부 찾아 확인했다. 남은 검출은 `{' '}` 자체이거나 한국어 조사(`</strong>입니다`, `</a>에는`)라 의도대로다. 이 브랜치 밖의 `CustomConnector_ko.tsx:69`("반환합니다.<code>connectReact</code>")는 기존 문제라 손대지 않았다.
 - 머지 전에 남은 일(이번에 하지 않음): 단계 6 데모·브라우저 수동 검증(M-QH-01~07), 단계 7 가이드·CHANGELOG·릴리스 문서. 사이트·README·스킬의 "이 브랜치에서 준비, 미게시" 문구 정리와 sync README의 상대 링크(`../connect-lithent/README.md`) 정리. `main` 머지가 문서 사이트를 바로 배포하므로(`deploy-docs.yml`) 패키지 게시 순서를 맞출 것. 선택: 게이트에 Lithent concurrent 실행과 Lithent 타입 검사 추가, concurrent 감지 실패 시 건너뛰지 않고 실패하는 테스트.
 - 막힌 점: 없음. PR은 아직 만들지 않았다(사용자 판단 대기).
+
+
+### 2026-10-09 — 단계 6 별빛 정비소·Playwright 통합 검증 완료 (U-QH-14)
+
+- 기준: `claude/sync-query-hooks`에서 사용자 수정 `35fe3c3`를 pull하고 ctxbin 최신 인계·`doc-driven-designer-v1` 규칙과 스킬을 읽었다. 구현 전에 U-QH-14/R-QH-22, DC-QH-44~46, T-QH-57~59와 사람의 체험 항목을 기록했다. narrow origin fetch가 main만 갱신하므로 작업 브랜치 tracking ref도 명시 fetch해 원격 기준을 확인했다.
+- 체험 데모: 여섯 앱의 `/mission.html`은 우주선 선택·두 상세 화면·이름 편집·capture+links 저장·저장 중 추가 편집·캐시·새로고침/무효화·오류 복구·무선 복구·자동 조회와 일반 상태의 별 모으기·computed 장비 점수·draft 취소/적용·batch 보충을 제공한다. 상세 화면은 native sync API로 컴포넌트가 소유하고 모델이 별도 query owner를 열지 않는다. 읽기는 readonly display의 leaf `.value`, 수정은 로드된 빌린 핸들이다. SSR은 React `/sync-query`에서 prefetch/dehydrate/hydrate를 실제로 연결한다.
+- 네트워크/패키징: 공유 Vite plugin이 dev/preview 모두 같은 메모리 HTTP 정비소를 제공한다. AbortSignal이 실제 fetch로 전달되고, confirmed rejection은 편집을 유지한다. 외부 서비스·파일 데이터는 변경하지 않는다. 기존 데모 진입점은 유지했다. Lithent workspace를 추가하고 exact core alias의 concurrent 빌드도 분리했다. lockfile은 새 importer와 Playwright 설정의 `@types/node`/`undici-types`를 추가하며 기존 runtime 버전은 그대로다. Node types가 기존 도구의 optional peer로 해석된 snapshot 변경도 포함한다.
+- 브라우저: Chromium 151.0.7922.173에서 T-QH-57~59 **65/65 통과**, exit 0, 약 4분. 여섯 production + Lithent concurrent + React StrictMode dev 각각 8개, React SSR 1개다. 실제 GET 1 공유·마지막 소유자 해제 후 ABORTED·fresh READ 0/stale READ 1 추가·polling 종료·props key/새 oxygen 경로·첫 로딩 중 무효화·linked save capture 이후 편집 유지·서버 승인/거절·503 복구·SSR HTML/무READ hydration을 확인한다. pageerror/예상하지 않은 console error 0이며 의도한 503/409 resource 오류만 제외했다.
+- 브라우저 보강: 마지막 재마운트 뒤 별 버튼을 다시 눌러 값이 1→2로 한 번만 증가하는 단언을 추가했다. 해당 공유/수명 시나리오를 8개 대상에서 재실행해 **8/8 통과**, E2E 타입 검사도 통과했다. 최신 JSON은 마지막 실행 8개이며 전체 65개 JSON은 환경의 `mission-browser-final.json`과 ignored `transcripts/mission-full-run.json`에 별도 보존했다.
+- 표시 검증: 데스크톱 1360px·작은 화면 390px 캡처를 실제로 읽었다. 누락 favicon 404와 행성 장식의 가로 overflow를 고쳤고, 키보드 Enter·모바일 overflow 검증이 통과했다. 초기 concurrent 구독 1 기대는 이 런타임의 경로/버전 구독 2라는 계약과 달라 기대를 바로잡았다. 두 구독 모두 후속 쓰기 없이 unmount에서 0이다. 라이브러리 결함을 새로 발견하거나 변경한 것은 없다.
+- 자동 회귀: `pnpm gate` **21/21 통과**, exit 0. core 402·sync 342·React 77·Preact 51·Vue 60·Solid DOM 45/SSR 5·Svelte DOM 52/SSR 5·Lithent base DOM 19(+concurrent 전용 2 건너뜀)/SSR 5·공유 예제 122 통과. live index 1,000개 2.5ms(≤5ms), 최소 gzip 3,727B(≤3,800B), bench 6/6 통과. `pnpm check:examples`, frozen offline install도 통과했다.
+- 버전 매트릭스: `node scripts/connector-matrix.mjs` **19셀 전부 통과**, exit 0(기존 다섯 최소·최신, Vue 최소/중간/최신, Lithent base/concurrent DOM·SSR). 처음에는 기본 npm cache가 쓰기 불가인 home을 가리켜 Lithent 설치만 실패했다. workspace cache와 기존 isolated cell로 해당 셀을 확인하고, cache를 지정한 전체 명령도 다시 실행해 19셀 exit 0을 확인했다. 환경 밖 권한이나 소스 변경으로 우회하지 않았다.
+- 기록/사용 방법: [MISSION](../../examples/MISSION.md)에 프레임워크별 실행·로컬 주소·다섯 체험 미션·SSR·`pnpm test:mission`과 선택 실행을 안내했다. MANUAL_TEST_CHECKLIST의 M-QH-01~07은 **자동 결과**와 시나리오 근거를 적었으며 Lithent SSR은 Node 렌더 매트릭스로 구분했다. 사람이 느끼는 명확성·재미와 실제 기기 조작감 두 항목은 미수행이다.
+- 보호 조건: fetched `origin/main` 대비 core 전체·기존 다섯 기본 커넥터·Svelte runes diff 0. 기준 `35fe3c3` 대비 모든 package 라이브러리 소스 diff 0으로 사용자의 webpack 감지 수정도 보존했다. Lithent framework 저장소도 수정하지 않았다. 관련 로그·캡처는 저장소 밖 `/workspace/.onboarding/mission-*`, 브라우저 원시 결과는 ignored 디렉터리에 둔다.
+- 다음: 사람의 체험 피드백을 받으면 데모 사용성을 보완한다. 단계 7의 다른 프레임워크 가이드·server-sync 교차 링크·CHANGELOG/릴리스 문서와 미게시 문구·패키지 게시/사이트 배포 순서 정리는 남는다. 기존 audit 기록의 문서 항목은 단계 7 체크리스트로 옮겼고 현재 React 경로 재수집 위치 참조도 고쳤다. PR·main 병합·게시·배포는 수행하지 않았다. 막힌 점 없음.
+- 커밋·인계: 이번 기록과 구현은 `feat(examples): add playable sync missions and browser verification`로 함께 커밋해 작업 브랜치에 push한다. 정확한 SHA는 `git log -1 -- examples/e2e/src/mission.spec.ts`와 ctxbin key `state-ref-root/claude/sync-query-hooks`에서 확인한다.

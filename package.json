@@ -49,7 +49,8 @@
     "types:examples": "pnpm -r --filter './examples/*' run --if-present typecheck",
     "build:examples": "pnpm -r --filter './examples/*' run --if-present build",
     "check:examples": "pnpm types:examples && pnpm build:examples && node scripts/check-example-operations.mjs && node scripts/check-example-bundles.mjs && node scripts/check-example-ssr.mjs",
-    "test:e2e": "pnpm build:examples && pnpm --filter stateref-example-e2e e2e"
+    "test:e2e": "pnpm build:examples && pnpm --filter stateref-example-e2e e2e",
+    "test:mission": "pnpm build:examples && pnpm --filter stateref-example-e2e e2e:mission"
   },
   "author": "superlucky84",
   "repository": {

@@ -10,7 +10,10 @@
     "./demo.css": "./src/demo.css",
     "./shop": "./src/shop.ts",
     "./shop-art": "./src/shop-art.ts",
-    "./shop.css": "./src/shop.css"
+    "./shop.css": "./src/shop.css",
+    "./mission": "./src/mission.ts",
+    "./mission-view": "./src/mission-view.ts",
+    "./mission.css": "./src/mission.css"
   },
   "scripts": {
     "test": "vitest run --reporter verbose",

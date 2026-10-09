@@ -3,13 +3,17 @@
   "name": "stateref-example-e2e",
   "version": "0.0.0",
   "private": true,
-  "description": "Real-browser scenario runner for the five demos (Phase 8.8)",
+  "description": "Real-browser scenarios for diagnostic demos and six-framework sync missions",
   "scripts": {
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "e2e:mission": "playwright test --config playwright.mission.config.ts"
   },
   "dependencies": {
     "stateref-example-shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
   }
 }
