@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as lithent from 'lithent';
 import { createStore } from 'state-ref';
+import type { StateRefStore, Watch } from 'state-ref';
 import { createSyncClient } from '@stateref/sync';
 import type { QueryObserverControls, SyncClient } from '@stateref/sync';
-import { connectLithentView } from '@/index';
+import { connectLithent, connectLithentView } from '@/index';
 import { createSyncQuery } from '@/sync';
 
 type Account = { name: string; age: number };
@@ -491,64 +492,107 @@ describe('options and keys (T-QH-51/52)', () => {
   });
 });
 
-describe('concurrent view consistency (T-QH-54)', () => {
-  it('renders only paths read through the accessor', async () => {
-    const watch = createStore({ name: 'one', age: 1 });
-    let renders = 0;
-    const Panel = mount(() => {
-      const value = connectLithentView(watch);
-      return () => {
-        renders++;
-        return h('p', {}, value().name.value);
-      };
-    });
-    const { host } = draw(h(Panel, {}));
-    await tick();
-    const before = renders;
-    watch().age.value = 2;
-    await tick();
-    expect(renders).toBe(before);
-    watch().name.value = 'two';
-    await tick();
-    expect(host.textContent).toBe('two');
-  });
-
-  it.skipIf(!notify)(
-    'restarts a retryable build when an unread path changed mid-build',
-    async () => {
-      const watch = createStore({ name: 'one', age: 1 });
-      let armed = false;
-      let bump!: () => boolean;
-      let builds = 0;
-      const Child = mount(() => () => {
-        if (armed) {
-          armed = false;
-          watch().age.value = 2;
-        }
-        return h('i', {}, String(watch().age.value));
+describe.each([
+  ['connectLithent', connectLithent<Account>],
+  ['connectLithentView', connectLithentView<StateRefStore<Account>>],
+] as const)(
+  '%s ordinary state lifetime and consistency (T-QH-54, T-QH-56)',
+  (_name, connect) => {
+    it('aborts on unmount without waiting for a change and can mount again', async () => {
+      const store = createStore({ name: 'one', age: 1 });
+      const signals: AbortSignal[] = [];
+      const watch: Watch<Account> = (renew, option) =>
+        renew
+          ? store((ref, first) => {
+              const result = renew(ref, first);
+              if (first && result instanceof AbortSignal) signals.push(result);
+              return result;
+            }, option)
+          : store();
+      let edit!: () => void;
+      const Panel = mount(() => {
+        const value = connect(watch);
+        edit = () => {
+          value().name.value = 'edited';
+        };
+        return () => h('p', {}, value().name.value);
       });
-      const Parent = mount(renew => {
-        bump = renew;
-        const value = connectLithentView(watch);
+      const { host, stop } = draw(h(Panel, {}));
+      await tick();
+      expect(host.textContent).toBe('one');
+      edit();
+      await tick();
+      expect(host.textContent).toBe('edited');
+      expect(signals).toHaveLength(notify ? 2 : 1);
+      expect(signals.every(signal => !signal.aborted)).toBe(true);
+      stop();
+      expect(signals.every(signal => signal.aborted)).toBe(true);
+      const mountedAgain = draw(h(Panel, {}));
+      await tick();
+      expect(mountedAgain.host.textContent).toBe('edited');
+      expect(signals).toHaveLength(notify ? 4 : 2);
+      mountedAgain.stop();
+      expect(signals.every(signal => signal.aborted)).toBe(true);
+    });
+
+    it('renders only paths read through the accessor', async () => {
+      const watch = createStore({ name: 'one', age: 1 });
+      let renders = 0;
+      const Panel = mount(() => {
+        const value = connect(watch);
         return () => {
-          builds++;
-          return h(
-            'div',
-            {},
-            h('b', {}, `${value().name.value}:${watch().age.value}`),
-            h(Child, {})
-          );
+          renders++;
+          return h('p', {}, value().name.value);
         };
       });
-      const { host } = draw(h(Parent, {}));
+      const { host } = draw(h(Panel, {}));
       await tick();
-      expect(host.innerHTML).toBe('<div><b>one:1</b><i>1</i></div>');
-      builds = 0;
-      armed = true;
-      bump();
+      const before = renders;
+      watch().age.value = 2;
       await tick();
-      expect(host.innerHTML).toBe('<div><b>one:2</b><i>2</i></div>');
-      expect(builds).toBe(2);
-    }
-  );
-});
+      expect(renders).toBe(before);
+      watch().name.value = 'two';
+      await tick();
+      expect(host.textContent).toBe('two');
+    });
+
+    it.skipIf(!notify)(
+      'restarts a retryable build when an unread path changed mid-build',
+      async () => {
+        const watch = createStore({ name: 'one', age: 1 });
+        let armed = false;
+        let bump!: () => boolean;
+        let builds = 0;
+        const Child = mount(() => () => {
+          if (armed) {
+            armed = false;
+            watch().age.value = 2;
+          }
+          return h('i', {}, String(watch().age.value));
+        });
+        const Parent = mount(renew => {
+          bump = renew;
+          const value = connect(watch);
+          return () => {
+            builds++;
+            return h(
+              'div',
+              {},
+              h('b', {}, `${value().name.value}:${watch().age.value}`),
+              h(Child, {})
+            );
+          };
+        });
+        const { host } = draw(h(Parent, {}));
+        await tick();
+        expect(host.innerHTML).toBe('<div><b>one:1</b><i>1</i></div>');
+        builds = 0;
+        armed = true;
+        bump();
+        await tick();
+        expect(host.innerHTML).toBe('<div><b>one:2</b><i>2</i></div>');
+        expect(builds).toBe(2);
+      }
+    );
+  }
+);

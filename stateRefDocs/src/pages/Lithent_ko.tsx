@@ -1,6 +1,7 @@
 import { mount } from 'lithent';
 import { CodeBlock } from '@/components/CodeBlock';
 import {
+  lithentStoreExample,
   lithentQueryExample,
   lithentSaveExample,
   lithentSsrExample,
@@ -12,9 +13,30 @@ export const LithentKo = mount(() => {
       <h1>Lithent 연동</h1>
 
       <p>
-        일반 StateRef 상태는 <code>watch(renew)</code>로 Lithent에 직접
-        연결합니다. 서버 조회에는 <code>@stateref/connect-lithent/sync</code>의{' '}
+        일반 StateRef 상태는 <code>connectLithent</code>로 연결합니다. 서버
+        조회에는 <code>@stateref/connect-lithent/sync</code>의{' '}
         <code>createSyncQuery</code>로 로딩과 컴포넌트 수명을 관리합니다.
+      </p>
+
+      <h2>일반 상태 커넥터</h2>
+      <p>
+        커넥터는 이 브랜치에서 준비 중이며 아직 게시되지 않았습니다. mounter에서
+        한 번 연결하고 렌더에서는 <code>counter().count.value</code>로 읽으며
+        이벤트에서 같은 ref로 수정합니다. 마운트 뒤 구독하고 언마운트에서 즉시
+        abort합니다. 서버 렌더에서는 구독 없이 읽습니다. 기본 진입점에는 sync
+        의존성이 필요하지 않습니다.
+      </p>
+      <CodeBlock
+        language="bash"
+        code="pnpm add lithent state-ref @stateref/connect-lithent"
+      />
+      <CodeBlock language="typescript" code={lithentStoreExample} />
+      <p>
+        <code>connectLithent</code>는 수정 가능한 StateRef accessor를
+        반환합니다.
+        <code>connectLithentView</code>는 watch의 ref 타입을 유지하므로 조회
+        표시는 읽기 전용이고 일반 watch는 수정할 수 있습니다. 두 함수는
+        구독·해제 구현을 공유하며 읽을 때 모두 <code>.value</code>를 사용합니다.
       </p>
 
       <h2>컴포넌트 안의 서버 조회</h2>
@@ -72,7 +94,12 @@ resolve: {
         관리하되, 연 쪽에서 load와 dispose를 담당합니다.
       </p>
 
-      <h2>설치</h2>
+      <h2>watch 직접 연동</h2>
+      <p>
+        <code>watch(renew)</code> 직접 연동도 가능합니다. 이 구독은 나중에 읽은
+        경로의 변경 알림이 언마운트된 컴포넌트의 renew를 호출할 때 끝납니다.
+        언마운트 시 즉시 정리하려면 <code>connectLithent</code>를 사용하세요.
+      </p>
 
       <CodeBlock language="bash" code={`pnpm add state-ref lithent`} />
 
@@ -401,10 +428,11 @@ const store = todoStore(renew);
 // store.done.value는 boolean`}
       />
 
-      <h2>일반 상태와 수명을 관리하는 조회</h2>
+      <h2>일반 상태와 조회의 수명</h2>
 
       <p>
-        일반 상태는 직접 연결하고 sync 조회에는 명시적인 수명 관리가 더해집니다:
+        일반 상태 커넥터와 sync helper는 모두 컴포넌트 수명을 따릅니다. watch
+        직접 연동도 계속 사용할 수 있습니다:
       </p>
 
       <ul>
@@ -415,8 +443,7 @@ const store = todoStore(renew);
         <li>설정/렌더 분리가 구독 패턴과 완벽하게 일치합니다</li>
         <li>연결해야 할 프레임워크별 반응성 시스템이 없습니다</li>
         <li>
-          sync 관찰자는 다음 알림을 기다리지 않고 helper의 abort 정리로
-          해제합니다
+          일반 상태 커넥터와 sync helper 모두 언마운트에서 구독을 abort합니다
         </li>
       </ul>
 

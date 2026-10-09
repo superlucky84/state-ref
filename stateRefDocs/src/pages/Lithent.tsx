@@ -1,6 +1,7 @@
 import { mount } from 'lithent';
 import { CodeBlock } from '@/components/CodeBlock';
 import {
+  lithentStoreExample,
   lithentQueryExample,
   lithentSaveExample,
   lithentSsrExample,
@@ -12,11 +13,32 @@ export const Lithent = mount(() => {
       <h1>Lithent Integration</h1>
 
       <p>
-        Ordinary StateRef state connects to Lithent through{' '}
-        <code>watch(renew)</code>. For server queries, use{' '}
+        Connect ordinary editable StateRef state with{' '}
+        <code>connectLithent</code>. For server queries, use{' '}
         <code>createSyncQuery</code> from{' '}
         <code>@stateref/connect-lithent/sync</code> to manage loading and
         component lifetime.
+      </p>
+
+      <h2>Ordinary state with a connector</h2>
+      <p>
+        The connector is prepared on this branch and has not been published yet.
+        Call it once in the mounter, read <code>counter().count.value</code> in
+        render, and write through the same ref in event handlers. It subscribes
+        after mount and aborts immediately on unmount. Server rendering reads
+        without subscribing. The base entry needs no sync dependency.
+      </p>
+      <CodeBlock
+        language="bash"
+        code="pnpm add lithent state-ref @stateref/connect-lithent"
+      />
+      <CodeBlock language="typescript" code={lithentStoreExample} />
+      <p>
+        <code>connectLithent</code> returns an editable StateRef accessor.
+        <code>connectLithentView</code> preserves the watch's ref type: a query
+        display stays readonly, and an editable watch stays editable. Both share
+        the same subscription and cleanup, and both read with{' '}
+        <code>.value</code>.
       </p>
 
       <h2>Server queries in a component</h2>
@@ -76,7 +98,13 @@ resolve: {
         it.
       </p>
 
-      <h2>Install</h2>
+      <h2>Direct watch integration</h2>
+      <p>
+        Direct <code>watch(renew)</code> remains available. Its subscription
+        ends when a later watched-path notification calls the unmounted
+        component's renew. Use <code>connectLithent</code> for immediate unmount
+        cleanup.
+      </p>
 
       <CodeBlock language="bash" code={`pnpm add state-ref lithent`} />
 
@@ -404,11 +432,11 @@ const store = todoStore(renew);
 // store.done.value is boolean`}
       />
 
-      <h2>Direct state and managed queries</h2>
+      <h2>State and query lifetimes</h2>
 
       <p>
-        Basic state supports direct integration. Sync queries add explicit
-        lifetime management:
+        State and query connectors both follow the component lifetime. Direct
+        watch integration also remains available:
       </p>
 
       <ul>
@@ -422,8 +450,7 @@ const store = todoStore(renew);
         </li>
         <li>No framework-specific reactivity system to bridge</li>
         <li>
-          Sync observers use the helper's abort cleanup instead of waiting for a
-          later notification
+          State connectors and sync helpers abort their subscriptions on unmount
         </li>
       </ul>
 

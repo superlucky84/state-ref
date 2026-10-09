@@ -442,7 +442,8 @@ export function connectMyFramework<T>(watch: Watch<T>) {
           <a href="#/ko/guide/vue">Vue</a> - Vue 커넥터 사용법
         </li>
         <li>
-          <a href="#/ko/guide/lithent">Lithent</a> - 커넥터 없는 직접 통합
+          <a href="#/ko/guide/lithent">Lithent</a> - 일반 상태·조회 커넥터와
+          watch 직접 연동
         </li>
       </ul>
     </div>

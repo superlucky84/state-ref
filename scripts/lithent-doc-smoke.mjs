@@ -5,6 +5,10 @@ import { JSDOM } from 'jsdom';
 import { h, mount, render, nextTick } from 'lithent';
 import { createSyncClient } from '@stateref/sync';
 import { createSyncQuery } from '@stateref/connect-lithent/sync';
+import {
+  Counter,
+  counterStore,
+} from './lithent-examples/lithentStoreExample.js';
 import { AccountDetail } from './lithent-examples/lithentQueryExample.js';
 import { accountSave } from './lithent-examples/lithentSaveExample.js';
 import { renderAccount } from './lithent-examples/lithentSsrExample.js';
@@ -34,6 +38,14 @@ const tick = async () => {
   for (let i = 0; i < 8; i++) await nextTick();
 };
 const host = document.createElement('div');
+const stopCounter = render(h(Counter, {}), host);
+await tick();
+assert.equal(host.querySelector('button').textContent, '0');
+host.querySelector('button').click();
+await tick();
+assert.equal(host.querySelector('button').textContent, '1');
+assert.equal(counterStore().count.value, 1);
+stopCounter();
 const stop = render(h(AccountDetail, { id: 1 }), host);
 await tick();
 assert.equal(host.querySelector('p').textContent, 'loaded');
@@ -83,5 +95,5 @@ await new Promise(resolve => setTimeout(resolve, 0));
 assert.equal(client.size(), 0);
 dom.window.close();
 console.log(
-  'Lithent public documentation examples: query/edit/refetch/invalidate, linked save and SSR PASS'
+  'Lithent public documentation examples: editable store, query/edit/refetch/invalidate, linked save and SSR PASS'
 );

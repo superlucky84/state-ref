@@ -125,15 +125,18 @@ const city = connectVueView(account.watchDisplay)(d => d.data.value);
 
 ## Lithent
 
-Ordinary Lithent state uses `watch` directly. Sync queries use the optional `@stateref/connect-lithent/sync` entry (prepared on this branch, not yet published): create once in the mounter, read `account().data.name.value` in render, and use `q.handle()` for local edits and mutation links. An options getter follows live props. The helper subscribes after mount and aborts on unmount; bare `observer.watch(renew)` can retain its owner until the next notification. See `packages/connect-lithent/README.md` for the complete example, SSR and concurrent core alias.
+Call `connectLithent(watch)` once in the mounter for ordinary editable state. It returns an accessor: read and write `counter().count.value`. `connectLithentView(watch)` preserves the input ref type, including a readonly sync display; it also accepts editable watches. Both share mount-time subscription and immediate abort on unmount. Direct `watch(renew)` remains available but waits for a later watched-path notification to end an unmounted subscription.
+
+Sync queries use the optional `@stateref/connect-lithent/sync` entry (prepared on this branch, not yet published): create once in the mounter, read `account().data.name.value` in render, and use `q.handle()` for local edits and mutation links. An options getter follows live props. Bare `observer.watch(renew)` can retain its owner until the next notification. See `packages/connect-lithent/README.md` for the complete example, SSR and concurrent core alias.
 
 ```tsx
 import { mount } from 'lithent';
+import { connectLithent } from '@stateref/connect-lithent';
 import { watch } from './store';
 
-const Counter = mount(renew => {
-  const { count } = watch(renew);
-  return () => <button onClick={() => count.value++}>{count.value}</button>;
+const Counter = mount(() => {
+  const counter = connectLithent(watch);
+  return () => <button onClick={() => counter().count.value++}>{counter().count.value}</button>;
 });
 ```
 

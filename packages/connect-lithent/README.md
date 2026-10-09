@@ -1,8 +1,36 @@
 # @stateref/connect-lithent
 
-Lithent query views and component-owned sync queries. Use `lithent@^1.24.0`, `state-ref@^3.1.0`, and `@stateref/sync@^0.3.0` for the optional ESM `./sync` entry. This package is prepared on the sync-query branch and has not been published yet.
+Lithent state, query views and component-owned sync queries. Use `lithent@^1.24.0` and `state-ref@^3.1.0`; add `@stateref/sync@^0.3.0` for the optional ESM `./sync` entry. This package is prepared on the sync-query branch and has not been published yet.
 
 Both the base and `./sync` entries use ESM imports.
+
+## Ordinary state
+
+```sh
+pnpm add lithent state-ref @stateref/connect-lithent
+```
+
+Call `connectLithent(watch)` once in the mounter. Read the accessor in render and write through its ref in event handlers. The connector subscribes after mount, watches the paths read in render, and aborts immediately on unmount. Server rendering reads without subscribing.
+
+<!-- lithent-example: lithentStoreExample -->
+```ts
+import { h, mount } from 'lithent';
+import { createStore } from 'state-ref';
+import { connectLithent } from '@stateref/connect-lithent';
+
+export const counterStore = createStore({ count: 0 });
+
+export const Counter = mount(() => {
+  const counter = connectLithent(counterStore);
+  return () => h('button', {
+    onClick: () => { counter().count.value += 1; },
+  }, String(counter().count.value));
+});
+```
+
+`connectLithent<T>(watch: Watch<T>)` returns `() => StateRefStore<T>`. `connectLithentView<R>(watch: ViewWatch<R>)` returns `() => R`, preserving the watch's ref type. A sync display remains readonly; an editable watch remains editable even through View. Both use the same subscription and cleanup implementation, and both read values with `.value`.
+
+## Component-owned sync queries
 
 ```sh
 pnpm add lithent state-ref @stateref/sync @stateref/connect-lithent
@@ -122,7 +150,7 @@ export async function renderAccount(id: number, data: Account) {
 
 For an existing explicit query, call `connectLithentView(query.watchDisplay)` inside the mounter and read `view().data.name.value`. It manages the UI subscription; the owner who called `client.query()` still loads and disposes that handle.
 
-Ordinary `state-ref` still works with `watch(renew)` directly. For a sync observer use this helper: bare `observer.watch(renew)` only notices an unmount on a later notification, so a pending request, polling and ownership can remain alive.
+Ordinary `state-ref` still works with `watch(renew)` directly. It removes the subscription when a later watched-path notification calls the unmounted component's `renew`, which returns false. Use `connectLithent` to release immediately on unmount. For a sync observer use `createSyncQuery`: bare `observer.watch(renew)` can keep a pending request, polling and ownership alive until another notification.
 
 To use `lithent-concurrent@0.1.3`, install it alongside Lithent and alias only the exact core import in the application bundler:
 

@@ -1,13 +1,12 @@
 import * as lithent from 'lithent';
-import type { Renew } from 'state-ref';
+import type { Renew, StateRefStore, Watch } from 'state-ref';
 
 export type ViewWatch<R> = (
   renew?: Renew<R>,
   option?: { cache?: boolean }
 ) => R;
 
-/** Read a query view in a Lithent mounter; subscribe only after its mount. */
-export function connectLithentView<R extends { readonly value: unknown }>(
+function connectWatch<R extends { readonly value: unknown }>(
   viewWatch: ViewWatch<R>
 ): () => R {
   if (typeof window === 'undefined') return () => viewWatch();
@@ -54,4 +53,16 @@ export function connectLithentView<R extends { readonly value: unknown }>(
     };
   });
   return () => current ?? viewWatch();
+}
+
+/** Connect an editable state-ref store once in a Lithent mounter. */
+export function connectLithent<T>(watch: Watch<T>): () => StateRefStore<T> {
+  return connectWatch<StateRefStore<T>>(watch);
+}
+
+/** Preserve a view's ref type; subscribe only after the component's mount. */
+export function connectLithentView<R extends { readonly value: unknown }>(
+  viewWatch: ViewWatch<R>
+): () => R {
+  return connectWatch(viewWatch);
 }

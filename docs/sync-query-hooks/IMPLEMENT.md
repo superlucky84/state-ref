@@ -1,7 +1,7 @@
 # IMPLEMENT — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: **단계 1~5 및 추가 단계 5.1 Lithent 지원 완료(2026-10-09), 단계 5 뒤 상태 점검의 코드 결함·테스트 빈틈 반영 완료.** Activity·KeepAlive·경합·명시 핸들 공존·key 왕복 검증과 1,000 관찰자 비용 측정을 완료했고 전체 게이트가 통과했다. 다음은 단계 6 통합 데모·검증이다. 이전 구현·검증 결과는 진행 기록에 보존했다. PR #16의 `main` 병합과 이 브랜치 반영은 완료했다(`41798cf`, `e58deaa`, DC-QH-35).
+- 상태: **단계 1~5 및 추가 단계 5.1 Lithent 지원·5.2 일반 커넥터 완료(2026-10-09), 단계 5 뒤 상태 점검의 코드 결함·테스트 빈틈 반영 완료.** Activity·KeepAlive·경합·명시 핸들 공존·key 왕복 검증과 1,000 관찰자 비용 측정을 완료했고 전체 게이트가 통과했다. 다음은 단계 6 통합 데모·검증이다. 이전 구현·검증 결과는 진행 기록에 보존했다. PR #16의 `main` 병합과 이 브랜치 반영은 완료했다(`41798cf`, `e58deaa`, DC-QH-35).
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 모든 단계의 공통 완료 조건:
@@ -61,6 +61,7 @@
 | T-QH-53 | 서버 seeded/hydrated HTML, ssr true/false 모두 렌더 중 owners·READ 0 | lithent `query.ssr.test.ts` | R-QH-18, DC-QH-39 |
 | T-QH-54 | base/concurrent DOM·SSR 셀, unread 경로는 렌더 없음, concurrent retryable mid-build의 외부 변경 감지와 일관된 재빌드 | lithent tests·matrix | R-QH-19, DC-QH-41 |
 | T-QH-55 | 기본·sync ESM 진입점과 require 거절, strict node16 소비자 타입, 실제 공개 진입점으로 README·사이트의 조회/편집/명령·저장·SSR 예제 실행, 영/한 사이트 빌드·표시 | packaging·docs | R-QH-20, DC-QH-38·42 |
+| T-QH-56 | 일반/View accessor의 `.value` 편집·읽은 경로 갱신·언마운트 abort(이후 변경 없이)·재마운트, SSR 콜백 없는 읽기, concurrent 외부 변경 알림, 공개 export·정확한 mutable/readonly 반환 타입·일반 상태 문서 예제 | lithent tests·matrix·packaging·docs | R-QH-21, DC-QH-43 |
 
 ## 단계 0 — 재검증 (완료, 2026-10-08)
 
@@ -147,7 +148,7 @@
 - 기준 테스트: T-QH-26, 40~45.
 - 완료(2026-10-09): 새 테스트 14개(React 9·Vue 2·sync 3), 해당 버전 매트릭스와 결함 주입 5/5, 전체 `pnpm gate` 21단계 모두 통과. T-QH-26 수치는 마지막 진행 기록에 남겼다.
 
-## 단계 5.1 — Lithent 추가 지원 (U-QH-12, 진행 중)
+## 단계 5.1 — Lithent 추가 지원 (U-QH-12, 완료)
 
 - 진입: 단계 0~5 및 이후 점검 수정 `41c612b` 완료. 사용자 요청으로 sync 진입점과 자연스러운 사용 문서를 추가한다.
 - [x] 새 패키지·`connectLithentView`·`./sync`의 accessor와 controls, 마운트 구독·abort 정리, props getter의 렌더 peek/커밋 확정.
@@ -162,14 +163,23 @@
 - 위치: `packages/connect-lithent/{src/index.ts,src/sync.ts,src/tests/,test/}`, `scripts/check-packaging.mjs`, `scripts/connector-matrix.mjs`, sync README·사이트 Lithent/SyncQuery. Lithent 저장소의 구현은 바꾸지 않는다.
 - 완료 조건: 위 기준 테스트·버전 셀·문서·packaging·gate 통과. 기존 단계 6 데모와 수동 검증·단계 7의 다른 프레임워크 가이드는 별도로 남는다.
 
+## 단계 5.2 — Lithent 일반 커넥터 (U-QH-13, 완료)
+
+- 진입: 단계 5.1 완료 commit `b05ac87`. 사용자 요청으로 일반 `connectLithent`를 추가한다.
+- [x] 비공개 구독 구현을 공유하는 일반/View 공개 래퍼와 일반 `Watch<T>`·`StateRefStore<T>` 타입 계약.
+- [x] T-QH-56: 두 API의 실제 편집·경로 갱신·즉시 해제·재마운트·SSR와 base/concurrent 셀, 공개 타입·예제 검증.
+- [x] 패키지 README·사이트(en/ko)·패키지 목록·커넥터 skill에 일반 사용 경로와 View의 타입 보존 설명.
+- [x] `pnpm gate`·보호 diff 확인 후 완료 기록·commit/push·ctxbin 인계.
+- 완료 조건: 위 검증 통과. 단계 6/7과 M-QH-01~07의 수동 검증은 별도이며 아직 완료하지 않는다.
+
 ## 단계 6 — 통합 테스트 (Integration Test)
 
-- 진입: 단계 5 및 추가 범위 단계 5.1 완료. 여섯 커넥터 매트릭스를 실행한다.
+- 진입: 단계 5 및 추가 범위 단계 5.1·5.2 완료. 여섯 커넥터 매트릭스를 실행한다.
 - [ ] `pnpm test` 전체.
 - [ ] `node scripts/connector-matrix.mjs` (기존 다섯 커넥터 최소·최신 버전과 Lithent base/concurrent).
 - [ ] `pnpm gate`. 참고: 2026-10-08에 `bench`의 "1000 live index nodes"가 한 번 7.6ms(기준 5ms)로 실패하고 단독 재실행에서 4.8·4.0ms로 통과한 적이 있다. 이 작업과 무관한 측정 흔들림인지 다시 확인한다.
 - [ ] `pnpm check:packaging`.
-- [ ] 수동 검증의 고정 장치: `examples/{react,preact,vue,svelte,solid}`에 같은 상세 화면(목록 → 상세 `id` prop, 항목별로 다른 필드, 새로고침·무효화·이름 편집·`q.handle()`을 `links`에 넣은 저장)을 추가하고, `examples/react/src/ssr`에 관찰자 훅 화면을 추가한다(M-QH-01~05). Lithent는 단계 5.1 문서의 공개 예제를 같은 화면으로 연결해 base/concurrent 브라우저 검증 장치를 준비한다(M-QH-06). `pnpm check:examples`.
+- [ ] 수동 검증의 고정 장치: `examples/{react,preact,vue,svelte,solid}`에 같은 상세 화면(목록 → 상세 `id` prop, 항목별로 다른 필드, 새로고침·무효화·이름 편집·`q.handle()`을 `links`에 넣은 저장)을 추가하고, `examples/react/src/ssr`에 관찰자 훅 화면을 추가한다(M-QH-01~05). Lithent는 단계 5.1·5.2 문서의 공개 예제를 같은 화면으로 연결해 base/concurrent 브라우저 검증 장치를 준비한다(M-QH-06·07). `pnpm check:examples`.
 - 완료: 나열한 명령 모두 exit 0.
 
 ## 단계 7 — 문서
@@ -318,3 +328,13 @@
 - 최종 검증: `pnpm gate` 21단계 모두 통과(exit 0, Node 24.19.0 + pnpm 9.12.3). core 402, sync 342, React 77, Preact 51, Vue 60, Solid DOM 45·SSR 5, Svelte DOM 52·SSR 5 및 위 Lithent 테스트. 커넥터 매트릭스 Lithent base/concurrent, 새 패키지 `tsc --noEmit`, 공개 import/require·타입·예제, 문서 빌드, offline frozen install 통과. core live index 1,000개 2.5ms(기준 ≤ 5ms), 최소 gzip 3,727B(≤ 3,800B). 보호 diff는 fetched `origin/main` 대비 core 전체·기존 다섯 커넥터 기본/runes 진입점에서 0이며 sync 구현도 `41c612b` 대비 0이다. sync bundle 검사에 두 Lithent import 금지를 추가했다. lockfile은 새 importer와 Lithent 1.24.0/concurrent 0.1.3만 더했다.
 - 다음: 단계 6 여섯 커넥터 전체 통합·상세 화면 데모·React SSR·수동 검증, 이후 단계 7의 다른 프레임워크 가이드와 release notes. 단계 5 뒤 점검의 남은 문서 항목도 기존 기록대로 처리한다. 막힌 점 없음.
 - 커밋·인계: 이 범위는 `feat(lithent): add managed sync queries and usage guides` 커밋으로 작업 브랜치에 push한다. 정확한 SHA는 `git log -1 -- packages/connect-lithent`로 확인한다. ctxbin key `state-ref-root/claude/sync-query-hooks`에 다음 작업·보장 범위·검증 결과를 인계한다.
+
+### 2026-10-09 — 단계 5.2 Lithent 일반 커넥터 완료 (U-QH-13)
+
+- 기준: `b05ac87`를 pull하고 작업 브랜치에서 ctxbin 규칙·핸드오프를 로드했다. 일반 커넥터를 다른 프레임워크와 맞추라는 사용자 요청만 추가 구현했다.
+- 공개 API: `connectLithent<T>(watch: Watch<T>): () => StateRefStore<T>`를 기본 진입점에 추가했다. 기존 View와 비공개 `connectWatch` 구현을 공유한다. View는 입력 ref 타입을 보존하며 일반 watch의 수정 가능성도 유지한다. 읽기 전용 판별이나 ref 변환을 추가하지 않았다. 마운트에서 구독하고 언마운트에서 즉시 abort하는 기존 수명·SSR·concurrent 계약도 동일하다.
+- 검증(T-QH-56): 일반/View 각각 실제 `.value` 편집·읽은 경로의 갱신·후속 변경 없는 즉시 abort·재마운트를 확인했다. 기존 concurrent mid-build 검증을 두 API 모두에 적용했다. base DOM 19 통과·concurrent 전용 2 제외, concurrent DOM 21 통과, 두 SSR 셀 각각 5 통과. 새 패키지 `tsc --noEmit` 통과. 공개 ESM export와 strict node16 소비자에서 정확한 mutable/readonly 반환형 및 쓰기 허용/거절을 확인했다.
+- 문서: README·사이트(en/ko)의 일반 Counter 예제를 하나의 문자열로 공유하고 공개 빌드 진입점으로 타입 검사·버튼 편집 실행까지 검증했다. 기존 조회·저장·SSR 예제를 합한 네 예제가 모두 통과했다. 패키지 목록·메타데이터·커넥터 skill과 직접 연동의 해제 설명도 맞췄다. Chromium 151.0.7922.173에서 Lithent/SyncQuery 영·한 네 경로의 표시와 새 예제를 확인했으며 pageerror 0이다. 수동 M-QH-01~07의 완료 근거로 쓰지 않는다.
+- 전체 `pnpm gate` 21단계 모두 통과(Node 24.19.0, pnpm 9.12.3). sync 342 등 기존 테스트 통과, core live index 1,000개 3.4ms(≤ 5ms), 최소 gzip 3,727B(≤ 3,800B). fetched `origin/main` 대비 코어·기존 다섯 커넥터 보호 diff 0. `b05ac87` 대비 sync 구현·lockfile diff 0. Lithent 저장소도 수정하지 않았다. 의존성과 환경 설정 변경 없음.
+- 다음: 기존 단계 6 통합 데모·전체 매트릭스·수동 검증과 단계 7 가이드는 남는다. 막힌 점 없음. Lithent CJS 문제는 별도 요청대로 [lithent#92](https://github.com/superlucky84/lithent/issues/92)에 등록·내용 재확인했다.
+- 커밋·인계: 이 기록과 구현은 `feat(lithent): add ordinary state connector`로 함께 커밋한다. 정확한 SHA는 `git log -1 -- packages/connect-lithent` 및 ctxbin `state-ref-root/claude/sync-query-hooks`에서 확인한다.

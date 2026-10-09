@@ -169,12 +169,12 @@ try {
     import { createSyncQuery as createSolidQuery } from '@stateref/connect-solid/sync';
     import { createSyncQuery as createSvelteQuery } from '@stateref/connect-svelte/sync';
     import { createSyncQuery as createLithentQuery } from '@stateref/connect-lithent/sync';
-    import { connectLithentView } from '@stateref/connect-lithent';
+    import { connectLithent, connectLithentView } from '@stateref/connect-lithent';
     const plugin = await import('state-ref/plugin');
     const { connectSvelteRunes } = await import('@stateref/connect-svelte/runes');
     if (typeof connectSvelteRunes !== 'function')
       throw new Error('@stateref/connect-svelte/runes did not export connectSvelteRunes');
-    if ([create, createDraft, batch, provideShared, createSyncClient, useReactQuery, usePreactQuery, useVueQuery, createSolidQuery, createSvelteQuery, createLithentQuery, connectLithentView].some(value => typeof value !== 'function'))
+    if ([create, createDraft, batch, provideShared, createSyncClient, useReactQuery, usePreactQuery, useVueQuery, createSolidQuery, createSvelteQuery, createLithentQuery, connectLithent, connectLithentView].some(value => typeof value !== 'function'))
       throw new Error('an ESM entry did not export its function');
     if (Object.keys(plugin).length === 0) throw new Error('state-ref/plugin exported nothing');
     // Check the built entries' server branches, including solid-js/web's
@@ -207,10 +207,23 @@ try {
     export const entries = [create, createDraft, batch, provideShared].length;
   `;
   const syncTypes = `
-    import { connectLithentView } from '@stateref/connect-lithent';
+    import type { StateRefStore } from 'state-ref';
+    import { connectLithent, connectLithentView } from '@stateref/connect-lithent';
+    import type { QueryDisplayRef, QueryDisplayState, QueryDisplayWatch } from '@stateref/sync';
+    type Same<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;
+    const lithentStore = connectLithent(create({ name: 'store' }).watch);
+    const exactStore: Same<ReturnType<typeof lithentStore>, StateRefStore<{ name: string }>> = true;
+    lithentStore().name.value = 'changed';
     const lithentView = connectLithentView(create({ name: 'view' }).watch);
+    const exactView: Same<ReturnType<typeof lithentView>, ReturnType<typeof lithentStore>> = true;
+    lithentView().name.value = 'also editable';
+    declare const readonlyWatch: QueryDisplayWatch<QueryDisplayState<{ name: string }>>;
+    const readonlyView = connectLithentView(readonlyWatch);
+    const exactReadonly: Same<ReturnType<typeof readonlyView>, QueryDisplayRef<QueryDisplayState<{ name: string }>>> = true;
+    // @ts-expect-error a display watch retains its readonly value property
+    readonlyView().data.name.value = 'forbidden';
     const lithentName: string = lithentView().name.value;
-    void lithentName;
+    void lithentName; void exactStore; void exactView; void exactReadonly;
     import { createSyncClient, type QueryHandleCore } from '@stateref/sync';
     import { readable } from 'svelte/store';
     import { useSyncQuery as useReactQuery } from '@stateref/connect-react/sync';
@@ -307,8 +320,8 @@ try {
   ];
   assert.equal(
     examples.length,
-    3,
-    'Lithent query, save and SSR examples must be checked'
+    4,
+    'Lithent store, query, save and SSR examples must be checked'
   );
   for (const [, name, example] of examples)
     assert.ok(
@@ -331,7 +344,7 @@ try {
           ? syncTypes
           : `
         // @ts-expect-error Lithent's base entry is ESM-only, just like its sync entry
-        import { connectLithentView } from '@stateref/connect-lithent';
+        import { connectLithent, connectLithentView } from '@stateref/connect-lithent';
         // @ts-expect-error sync cannot be imported by a CommonJS consumer
         import { createSyncQuery } from '@stateref/connect-lithent/sync';
       `)

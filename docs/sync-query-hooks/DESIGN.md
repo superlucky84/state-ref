@@ -1,7 +1,7 @@
 # DESIGN — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: **결정 완료** (2026-10-08 IMPLEMENT 단계 0 재검증 + 검증 에이전트 교차 검토 2회 반영). 미결 `[ ]` 없음. 단계 1~5 및 추가 단계 5.1 Lithent 지원 완료(2026-10-09, 전체 게이트 통과, 진행 상태는 IMPLEMENT 기준). 다음은 단계 6 통합 데모·검증이다. PR #16은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`).
+- 상태: **결정 완료** (2026-10-08 IMPLEMENT 단계 0 재검증 + 검증 에이전트 교차 검토 2회 반영). 미결 `[ ]` 없음. 단계 1~5 및 추가 단계 5.1 Lithent 지원·5.2 일반 커넥터 완료(2026-10-09, 전체 게이트 통과, 진행 상태는 IMPLEMENT 기준). 다음은 단계 6 통합 데모·검증이다. PR #16은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`).
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 ## 1. 현재 구조 (기준 `6e462ed`, 2026-10-08 코드로 재확인)
@@ -266,8 +266,9 @@ type ObserverSettings = Readonly<{
 - [x] **DC-QH-40 key·옵션 확정** — 고정 객체 또는 props를 읽는 getter다. 초기 마운트 확정 callback을 커넥터보다 먼저 등록한다. getter의 update callback은 해당 렌더의 옵션을 읽고, 반환 callback에서 커밋 뒤 `setOptions`한다. 렌더는 `matches`가 false이면 `peek`를 읽는다. key·enabled 전환 뒤 새 경로를 모으는 렌더는 microtask로 예약한다(현재 Lithent flush 안의 같은 key 재예약은 큐의 clear에 지워질 수 있음). hook 작성자의 render/commit 구분을 라이브러리가 처리한다(T-QH-51·52).
 - [x] **DC-QH-41 concurrent** — core는 `import * as lithent from 'lithent'`로 외부화한다. `notifyStoreWrite`가 있으면 별도 root `.value` 구독으로 표시 변경마다 버전을 알린다. 실제 화면 갱신 구독은 렌더가 읽은 경로만 따른다. 두 구독은 같은 observer·handle과 abort를 공유한다. `/^lithent$/` alias만으로 concurrent를 선택하며 별도 concurrent peer/import는 없다. 기준은 Lithent 1.24.0 / concurrent 0.1.3이다. getter update effect가 실행된 빌드 등은 해당 렌더러 계약대로 재시도 대상에서 제외된다(T-QH-54).
 - [x] **DC-QH-42 문서** — 패키지 README·sync README·사이트 Lithent 및 sync query 페이지(en/ko)에 accessor 기반 사용과 편집/links·SSR·선택적 concurrent를 적는다. 핵심 예제를 공개 패키지 타입 검사에 포함하고 DOM 실행 테스트와 맞춘다. 기존 일반 상태 직접 연동과 명시 핸들은 계속 안내한다(T-QH-55).
+- [x] **DC-QH-43 일반 커넥터** (U-QH-13) — 기본 진입점에 `connectLithent<T>(watch: Watch<T>): () => StateRefStore<T>`를 추가한다. 기존 `connectLithentView<R extends { readonly value: unknown }>`와 비공개 `connectWatch`를 공유하며 런타임에서 읽기 전용 여부를 판별하거나 ref를 변환하지 않는다. View는 입력 반환형 `R`을 그대로 유지한다. mounter에서 한 번 연결하고 렌더·이벤트에서 `store().name.value`로 읽고 쓴다. 직접 `watch(renew)` 연동은 계속 가능하지만 일반 가이드의 기본 경로는 즉시 해제를 제공하는 커넥터로 한다. ESM 전용·peer·sync의 View 사용은 유지한다. T-QH-56에서 두 API의 수명·SSR·concurrent 및 공개 타입·예제를 확인한다.
 
-기존 단계 0~5 결과는 이 추가 범위의 승인 전 기록이며 재작성하지 않는다. 새 범위는 IMPLEMENT 단계 5.1에서 완료한 뒤 단계 6 전체 통합을 이어간다.
+기존 단계 0~5 결과는 이 추가 범위의 승인 전 기록이며 재작성하지 않는다. 추가 범위는 IMPLEMENT 단계 5.1·5.2에서 완료한 뒤 단계 6 전체 통합을 이어간다.
 
 | 대상 | 변경 |
 |---|---|

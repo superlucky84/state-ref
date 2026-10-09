@@ -3,7 +3,7 @@
   "name": "@stateref/connect-lithent",
   "version": "0.1.0",
   "private": false,
-  "description": "Lithent query view connector for state-ref",
+  "description": "Lithent state and query view connectors for state-ref",
   "module": "./dist/stateref-connect-lithent.mjs",
   "types": "./dist/index.d.ts",
   "exports": {

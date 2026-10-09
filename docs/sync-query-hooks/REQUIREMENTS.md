@@ -1,7 +1,7 @@
 # REQUIREMENTS — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: 요구사항 확정. 설계 결정 완료(2026-10-08 단계 0 재검증과 검증 에이전트 교차 검토 2회 반영, DESIGN에 미결 `[ ]` 없음). 단계 1~5 및 추가 단계 5.1 Lithent 지원 완료(2026-10-09, 전체 게이트 통과, 진행 상태는 IMPLEMENT 기준). 다음은 단계 6 통합 데모·검증이다. PR #16 병합 완료(`41798cf`), 이 브랜치에 반영(`e58deaa`).
+- 상태: 요구사항 확정. 설계 결정 완료(2026-10-08 단계 0 재검증과 검증 에이전트 교차 검토 2회 반영, DESIGN에 미결 `[ ]` 없음). 단계 1~5 및 추가 단계 5.1 Lithent 지원·5.2 일반 커넥터 완료(2026-10-09, 전체 게이트 통과, 진행 상태는 IMPLEMENT 기준). 다음은 단계 6 통합 데모·검증이다. PR #16 병합 완료(`41798cf`), 이 브랜치에 반영(`e58deaa`).
 - 기준 commit: `6e462ed` (`main`), `@stateref/sync@0.2.0`, `@stateref/connect-react@19.0.0`. 작업 브랜치 `claude/sync-query-hooks`.
 - 연계: [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 - 문서 위치: `docs/sync-query-hooks/`. 관련 코드는 `packages/sync/src/`(`index.ts`의 `openQuery`·`QueryEntry`, `display.ts`, `live-key.ts`, `ref-guard.ts`)와 각 커넥터 패키지의 새 진입점이다. sync 전체 설계는 [server-sync](../server-sync/README.md)에 있다.
@@ -49,6 +49,8 @@
 
 추가 요청 U-QH-12(2026-10-09): Lithent도 이번 sync 기능의 자연스러운 사용 경로와 문서에 포함한다. 새 `@stateref/connect-lithent/sync` 진입점을 구현하고 기본·concurrent 빌드를 검증한다. 기존 `watch(renew)` 일반 상태 사용은 유지한다.
 
+추가 요청 **U-QH-13**(2026-10-09): 다른 커넥터와 이름·타입 계약을 맞추도록 일반 watch용 `connectLithent`도 제공한다. `connectLithentView`와 구독 구현을 공유한다.
+
 ### 기능
 
 - **R-QH-01** 각 프레임워크에서 컴포넌트 함수 안에서 query 옵션을 넘겨 반응형 표시 상태를 얻는다. React·Preact는 렌더마다 호출하는 훅, Vue·Solid·Svelte(store API)는 setup에서 한 번 호출하는 함수다.
@@ -71,6 +73,7 @@
 - **R-QH-18** Lithent의 첫 실제 마운트 뒤 구독·load하고 언마운트에서 `AbortSignal`로 끊는다. 같은 key의 다른 명시 핸들과 관찰자는 유지된다. 같은 작업의 라우트 교체는 READ를 취소·재발행하지 않는다. 서버는 콜백 없이 읽고 owners·READ를 만들지 않는다.
 - **R-QH-19** Lithent concurrent의 버전 알림에 연결해 외부 표시 상태 변경을 렌더러가 감지하게 한다. broad 버전 구독은 렌더 알림의 경로 수집과 분리한다. 렌더러 자체의 재시도 제한(마운트·update effect가 실행된 빌드, 재시도 상한)은 유지하며 무조건적인 tearing 방지를 약속하지 않는다.
 - **R-QH-20** Lithent 설치·고정 옵션·props getter·새로고침·무효화·로컬 편집·mutation links·SSR·concurrent 선택을 README와 영어·한국어 사이트에 안내한다. 문서 예제는 실제 공개 진입점으로 타입·실행 검증한다.
+- **R-QH-21** 기본 진입점의 `connectLithent<T>(watch: Watch<T>): () => StateRefStore<T>`는 일반 ref의 `.value` 읽기·쓰기를 보존한다. `connectLithentView<R>`는 전달된 ref 타입을 보존한다(수정 가능한 watch도 허용). 두 함수는 마운트 구독·즉시 abort 해제·경로별 갱신·SSR·concurrent 알림 구현을 공유한다. API별 문서 예제를 공개 진입점으로 검증한다(T-QH-56).
 
 ### 제약
 

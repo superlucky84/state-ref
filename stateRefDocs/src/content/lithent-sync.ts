@@ -1,3 +1,16 @@
+export const lithentStoreExample = `import { h, mount } from 'lithent';
+import { createStore } from 'state-ref';
+import { connectLithent } from '@stateref/connect-lithent';
+
+export const counterStore = createStore({ count: 0 });
+
+export const Counter = mount(() => {
+  const counter = connectLithent(counterStore);
+  return () => h('button', {
+    onClick: () => { counter().count.value += 1; },
+  }, String(counter().count.value));
+});`;
+
 export const lithentQueryExample = `import { h, mount } from 'lithent';
 import { createSyncClient } from '@stateref/sync';
 import { createSyncQuery } from '@stateref/connect-lithent/sync';
