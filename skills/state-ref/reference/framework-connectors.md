@@ -125,7 +125,7 @@ const city = connectVueView(account.watchDisplay)(d => d.data.value);
 
 ## Lithent
 
-Lithent uses `watch` directly without a connector.
+Ordinary Lithent state uses `watch` directly. Sync queries use the optional `@stateref/connect-lithent/sync` entry (prepared on this branch, not yet published): create once in the mounter, read `account().data.name.value` in render, and use `q.handle()` for local edits and mutation links. An options getter follows live props. The helper subscribes after mount and aborts on unmount; bare `observer.watch(renew)` can retain its owner until the next notification. See `packages/connect-lithent/README.md` for the complete example, SSR and concurrent core alias.
 
 ```tsx
 import { mount } from 'lithent';

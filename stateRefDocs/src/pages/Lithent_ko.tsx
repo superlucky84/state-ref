@@ -1,5 +1,10 @@
 import { mount } from 'lithent';
 import { CodeBlock } from '@/components/CodeBlock';
+import {
+  lithentQueryExample,
+  lithentSaveExample,
+  lithentSsrExample,
+} from '@/content/lithent-sync';
 
 export const LithentKo = mount(() => {
   return () => (
@@ -7,9 +12,64 @@ export const LithentKo = mount(() => {
       <h1>Lithent 연동</h1>
 
       <p>
-        Lithent는 경량 Virtual DOM 라이브러리입니다. StateRef는 별도의 커넥터
-        패키지 없이 Lithent와 직접 통합됩니다. 단순히 <code>renew</code> 함수를{' '}
-        <code>watch()</code>에 전달하면 됩니다.
+        일반 StateRef 상태는 <code>watch(renew)</code>로 Lithent에 직접
+        연결합니다. 서버 조회에는 <code>@stateref/connect-lithent/sync</code>의{' '}
+        <code>createSyncQuery</code>로 로딩과 컴포넌트 수명을 관리합니다.
+      </p>
+
+      <h2>컴포넌트 안의 서버 조회</h2>
+      <p>
+        새 커넥터는 이 브랜치에서 준비 중이며 아직 게시되지 않았습니다.
+        기본·sync 진입점은 ESM import로 사용합니다. Lithent 1.24 이상과 sync 0.3
+        이상을 사용합니다. 앱당 client 하나를 만들고 mounter에서 helper를 한 번
+        호출하세요. props는 getter 안에서 읽고, 고정 key에는 옵션 객체를 넘기면
+        됩니다. 렌더에서는 accessor를 호출해 읽습니다.
+      </p>
+      <CodeBlock
+        language="bash"
+        code="pnpm add lithent state-ref @stateref/sync @stateref/connect-lithent"
+      />
+      <CodeBlock language="typescript" code={lithentQueryExample} />
+      <p>
+        마운트 뒤 불러오며 진행 중 READ는 공유하고 언마운트에서 구독을
+        정리합니다. 신선한 캐시는 READ 없이 표시합니다. key가 바뀌면 그 key의
+        캐시나 대기 상태가 바로 보입니다. 표시는 읽기 전용이며 로드된 핸들의
+        ref로 이름을 편집하면 로컬에만 반영됩니다. 빌린 핸들을 직접 dispose하지
+        마세요. refetch는 편집을 유지합니다. 예제는 Promise 거부를 처리하고 조회
+        오류는 표시 상태로 보여 줍니다.
+      </p>
+      <h3>편집 저장</h3>
+      <p>
+        mounter에 <code>const save = accountSave(client, q)</code>를 넣고 저장
+        핸들러에서 호출합니다. 제출 직전에 capture하고 현재 핸들을 links에
+        넘깁니다. 이 예제는 서버가 확정한 전체 Account를 돌려준다는 계약입니다.
+        성공을 표시하기 전에 반환 결과를 확인하고, 결과가 불확실한 WRITE는 자동
+        재전송하지 마세요.
+      </p>
+      <CodeBlock language="typescript" code={lithentSaveExample} />
+      <h3>서버 렌더</h3>
+      <p>
+        요청마다 <code>ssr: true</code> client를 만들고 렌더 전에 캐시를
+        채웁니다. 브라우저에서는 컴포넌트를 마운트하기 전에 hydrate하세요.
+        컴포넌트의 서버 렌더는 구독이나 추가 READ 없이 캐시를 읽습니다.
+      </p>
+      <CodeBlock language="typescript" code={lithentSsrExample} />
+      <h3>선택적 concurrent 코어</h3>
+      <CodeBlock
+        language="typescript"
+        code={`// 앱의 서버·브라우저 번들러에서:
+resolve: {
+  alias: [{ find: /^lithent$/, replacement: 'lithent-concurrent' }],
+}`}
+      />
+      <p>
+        concurrent 0.1.3으로 검증합니다. helper·SSR·JSX 하위 경로는 바꾸지
+        마세요. 커넥터는 표시 변경을 렌더러에 알리고 화면은 읽은 경로의 변경에
+        반응합니다. 렌더러의 재시도 제한은 그대로입니다. 마운트나 update
+        effect가 실행된 빌드는 값이 섞인 채 커밋될 수 있고 옵션 getter도 update
+        callback을 사용합니다. 기존 명시 query는{' '}
+        <code>connectLithentView(query.watchDisplay)</code>로 UI 구독을
+        관리하되, 연 쪽에서 load와 dispose를 담당합니다.
       </p>
 
       <h2>설치</h2>
@@ -341,9 +401,11 @@ const store = todoStore(renew);
 // store.done.value는 boolean`}
       />
 
-      <h2>왜 커넥터가 필요 없나요?</h2>
+      <h2>일반 상태와 수명을 관리하는 조회</h2>
 
-      <p>다른 프레임워크와 달리 Lithent는 커넥터가 필요 없습니다:</p>
+      <p>
+        일반 상태는 직접 연결하고 sync 조회에는 명시적인 수명 관리가 더해집니다:
+      </p>
 
       <ul>
         <li>
@@ -352,7 +414,10 @@ const store = todoStore(renew);
         </li>
         <li>설정/렌더 분리가 구독 패턴과 완벽하게 일치합니다</li>
         <li>연결해야 할 프레임워크별 반응성 시스템이 없습니다</li>
-        <li>직접 통합은 오버헤드가 전혀 없습니다</li>
+        <li>
+          sync 관찰자는 다음 알림을 기다리지 않고 helper의 abort 정리로
+          해제합니다
+        </li>
       </ul>
 
       <h2>관련 문서</h2>

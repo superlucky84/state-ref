@@ -129,6 +129,7 @@ A shared query cache with an editable resource ref, from the separate `@stateref
 | [`@stateref/connect-vue`](https://www.npmjs.com/package/@stateref/connect-vue) | Vue connector |
 | [`@stateref/connect-svelte`](https://www.npmjs.com/package/@stateref/connect-svelte) | Svelte connector |
 | [`@stateref/connect-solid`](https://www.npmjs.com/package/@stateref/connect-solid) | Solid connector |
+| [`@stateref/connect-lithent`](./packages/connect-lithent/README.md) | Lithent query views and `./sync` component queries (prepared, not yet published) |
 | [`lithent`](https://www.npmjs.com/package/lithent) | Lithent, which `state-ref` integrates with directly |
 
 The package README at [`packages/state-ref`](./packages/state-ref/README.md) carries the full set of runnable examples, and [`packages/sync`](./packages/sync/README.md) documents every rule of the sync package.

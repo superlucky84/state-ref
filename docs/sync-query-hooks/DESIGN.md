@@ -1,7 +1,7 @@
 # DESIGN — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: **결정 완료** (2026-10-08 IMPLEMENT 단계 0 재검증 + 검증 에이전트 교차 검토 2회 반영). 미결 `[ ]` 없음. 단계 1~5 완료(2026-10-09, 테스트 보강·비용 기준·전체 게이트 통과, 진행 상태는 IMPLEMENT 기준). 다음은 단계 6 통합 데모·검증이다. PR #16은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`).
+- 상태: **결정 완료** (2026-10-08 IMPLEMENT 단계 0 재검증 + 검증 에이전트 교차 검토 2회 반영). 미결 `[ ]` 없음. 단계 1~5 및 추가 단계 5.1 Lithent 지원 완료(2026-10-09, 전체 게이트 통과, 진행 상태는 IMPLEMENT 기준). 다음은 단계 6 통합 데모·검증이다. PR #16은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`).
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 ## 1. 현재 구조 (기준 `6e462ed`, 2026-10-08 코드로 재확인)
@@ -258,6 +258,16 @@ type ObserverSettings = Readonly<{
 | 마지막 구독 해제 | 언마운트 | 스코프 해제 | 커서 dispose, 핸들은 해제 일정 뒤 `dispose()`. 그 사이 다시 붙으면 새 핸들이 먼저 `attach` |
 
 ## 5. 영향 범위
+
+### Lithent 추가 지원 (2026-10-09, U-QH-12)
+
+- [x] **DC-QH-38 진입점·반환** — 새 패키지 `@stateref/connect-lithent`의 기본 진입점은 `connectLithentView(viewWatch): () => R`, `./sync`는 `createSyncQuery(client, options | getter): readonly [() => QueryDisplayRef<QueryDisplayState<S>>, QueryObserverControls<T>]`다. 둘 다 ESM 전용이다. 공개 Lithent 1.24.0은 `type: module` 안의 `.umd.js`를 require에 지정해 Node 24에서 빈 namespace를 돌려준다(`mount`·`useRenew` 없음). 따라서 새 커넥터에 동작하지 않는 CJS 경로를 광고하지 않고 `ERR_PACKAGE_PATH_NOT_EXPORTED`로 거절한다(T-QH-55). 클로저 렌더는 accessor의 현재 ref를 읽는다. 버전은 신규 `0.1.0`, `lithent: ^1.24.0`, 선택적 sync peer `^0.3.0`. 기본 진입점은 sync를 import하지 않는다. 실제 게시하지 않는다.
+- [x] **DC-QH-39 수명** — `connectLithentView`는 mounter에서 등록하고 최초 렌더는 콜백 없는 ref를 읽는다. `mountCallback`에서 첫 구독의 `AbortSignal`을 등록한 뒤 구독 ref의 경로를 모으는 렌더를 예약한다. 반환 cleanup은 signal을 abort하며 첫 구독 예외도 정리한다. `typeof window === 'undefined'`에서는 구독하지 않는다. `observer.watch(renew)`만 쓰는 방식은 언마운트 후 다음 알림까지 owner를 유지하므로 sync 가이드에 쓰지 않는다(T-QH-50·53).
+- [x] **DC-QH-40 key·옵션 확정** — 고정 객체 또는 props를 읽는 getter다. 초기 마운트 확정 callback을 커넥터보다 먼저 등록한다. getter의 update callback은 해당 렌더의 옵션을 읽고, 반환 callback에서 커밋 뒤 `setOptions`한다. 렌더는 `matches`가 false이면 `peek`를 읽는다. key·enabled 전환 뒤 새 경로를 모으는 렌더는 microtask로 예약한다(현재 Lithent flush 안의 같은 key 재예약은 큐의 clear에 지워질 수 있음). hook 작성자의 render/commit 구분을 라이브러리가 처리한다(T-QH-51·52).
+- [x] **DC-QH-41 concurrent** — core는 `import * as lithent from 'lithent'`로 외부화한다. `notifyStoreWrite`가 있으면 별도 root `.value` 구독으로 표시 변경마다 버전을 알린다. 실제 화면 갱신 구독은 렌더가 읽은 경로만 따른다. 두 구독은 같은 observer·handle과 abort를 공유한다. `/^lithent$/` alias만으로 concurrent를 선택하며 별도 concurrent peer/import는 없다. 기준은 Lithent 1.24.0 / concurrent 0.1.3이다. getter update effect가 실행된 빌드 등은 해당 렌더러 계약대로 재시도 대상에서 제외된다(T-QH-54).
+- [x] **DC-QH-42 문서** — 패키지 README·sync README·사이트 Lithent 및 sync query 페이지(en/ko)에 accessor 기반 사용과 편집/links·SSR·선택적 concurrent를 적는다. 핵심 예제를 공개 패키지 타입 검사에 포함하고 DOM 실행 테스트와 맞춘다. 기존 일반 상태 직접 연동과 명시 핸들은 계속 안내한다(T-QH-55).
+
+기존 단계 0~5 결과는 이 추가 범위의 승인 전 기록이며 재작성하지 않는다. 새 범위는 IMPLEMENT 단계 5.1에서 완료한 뒤 단계 6 전체 통합을 이어간다.
 
 | 대상 | 변경 |
 |---|---|

@@ -24,12 +24,14 @@ assert.doesNotMatch(bundle, /state-ref\/draft|@tanstack/);
 // C-QH-04): no UI framework reaches the sync bundle, as a named, bare
 // (side-effect) or dynamic import.
 const frameworkImport =
-  /(?:\bfrom\s*|\bimport\s*\(?\s*)["'](?:react|react-dom|preact|vue|svelte|solid-js)(?:\/[^"']*)?["']/;
+  /(?:\bfrom\s*|\bimport\s*\(?\s*)["'](?:react|react-dom|preact|vue|svelte|solid-js|lithent|lithent-concurrent)(?:\/[^"']*)?["']/;
 for (const sample of [
   'import{h}from"preact";',
   'import "react";',
   'import"vue";',
   'await import("solid-js/web")',
+  'import * as lithent from "lithent";',
+  'await import("lithent-concurrent")',
 ]) {
   assert.match(sample, frameworkImport);
 }

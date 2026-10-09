@@ -1,5 +1,10 @@
 import { mount } from 'lithent';
 import { CodeBlock } from '@/components/CodeBlock';
+import {
+  lithentQueryExample,
+  lithentSaveExample,
+  lithentSsrExample,
+} from '@/content/lithent-sync';
 
 export const Lithent = mount(() => {
   return () => (
@@ -7,9 +12,68 @@ export const Lithent = mount(() => {
       <h1>Lithent Integration</h1>
 
       <p>
-        Lithent is a lightweight Virtual DOM library. StateRef integrates
-        directly with Lithent without needing a separate connector package.
-        Simply pass the <code>renew</code> function to <code>watch()</code>.
+        Ordinary StateRef state connects to Lithent through{' '}
+        <code>watch(renew)</code>. For server queries, use{' '}
+        <code>createSyncQuery</code> from{' '}
+        <code>@stateref/connect-lithent/sync</code> to manage loading and
+        component lifetime.
+      </p>
+
+      <h2>Server queries in a component</h2>
+      <p>
+        The sync connector is prepared on this branch and has not been published
+        yet. Both entries use ESM imports. It uses Lithent 1.24 or later and
+        sync 0.3 or later. Create one client per app, then call the helper once
+        in the mounter. A getter follows live props; a fixed object is enough
+        for a fixed key. Read the accessor inside the render function.
+      </p>
+      <CodeBlock
+        language="bash"
+        code="pnpm add lithent state-ref @stateref/sync @stateref/connect-lithent"
+      />
+      <CodeBlock language="typescript" code={lithentQueryExample} />
+      <p>
+        The helper loads after mount, shares pending READs, and releases its
+        subscription on unmount. A fresh cache needs no READ. Key changes
+        immediately show that key's cache or pending state. The display is
+        readonly; name edits through the loaded borrowed handle stay local. Do
+        not dispose that handle. Refetch keeps local edits; the example handles
+        its rejected Promise while the display shows the query error.
+      </p>
+      <h3>Save an edit</h3>
+      <p>
+        Add <code>const save = accountSave(client, q)</code> in the mounter and
+        call it from a save handler. Capture at submission time and link the
+        current handle. This example expects the server's full accepted Account.
+        Check the returned mutation result before showing success; never
+        automatically resend an uncertain WRITE.
+      </p>
+      <CodeBlock language="typescript" code={lithentSaveExample} />
+      <h3>Server rendering</h3>
+      <p>
+        Use a request-scoped <code>ssr: true</code> client. Populate its cache
+        before rendering and hydrate the browser client before mounting. The
+        component's server render reads cached data without subscribing or
+        starting another READ.
+      </p>
+      <CodeBlock language="typescript" code={lithentSsrExample} />
+      <h3>Optional concurrent core</h3>
+      <CodeBlock
+        language="typescript"
+        code={`// In the application's bundler, server and browser:
+resolve: {
+  alias: [{ find: /^lithent$/, replacement: 'lithent-concurrent' }],
+}`}
+      />
+      <p>
+        Tested with concurrent 0.1.3. Keep helper, SSR and JSX subpaths
+        unchanged. The connector reports display changes to the renderer while
+        rendering watched paths. It inherits the renderer's retry limits: builds
+        with mounts or update effects can still commit mixed values. Options
+        getters use an update callback. For an explicit query,{' '}
+        <code>connectLithentView(query.watchDisplay)</code>
+        manages the UI subscription; the query owner still loads and disposes
+        it.
       </p>
 
       <h2>Install</h2>
@@ -340,9 +404,12 @@ const store = todoStore(renew);
 // store.done.value is boolean`}
       />
 
-      <h2>Why No Connector?</h2>
+      <h2>Direct state and managed queries</h2>
 
-      <p>Unlike other frameworks, Lithent doesn't need a connector because:</p>
+      <p>
+        Basic state supports direct integration. Sync queries add explicit
+        lifetime management:
+      </p>
 
       <ul>
         <li>
@@ -354,7 +421,10 @@ const store = todoStore(renew);
           patterns
         </li>
         <li>No framework-specific reactivity system to bridge</li>
-        <li>Direct integration means zero overhead</li>
+        <li>
+          Sync observers use the helper's abort cleanup instead of waiting for a
+          later notification
+        </li>
       </ul>
 
       <h2>Related</h2>

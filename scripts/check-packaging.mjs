@@ -23,6 +23,7 @@ const PACKAGES = [
   'connect-vue',
   'connect-svelte',
   'connect-solid',
+  'connect-lithent',
   'sync',
 ];
 
@@ -56,7 +57,7 @@ for (const name of PACKAGES) {
       manifest.peerDependenciesMeta['@stateref/sync'].optional,
       true
     );
-    for (const entry of [manifest.module, manifest.main]) {
+    for (const entry of [manifest.module, manifest.main].filter(Boolean)) {
       const bundle = await readFile(join(dir, entry), 'utf8');
       assert.ok(
         !bundle.includes('@stateref/sync'),
@@ -88,15 +89,19 @@ try {
         name.replace(/^connect-/, 'connect-')
       )
     );
-  for (const peer of ['react', 'preact', 'vue', 'svelte', 'solid-js'])
+  for (const peer of ['react', 'preact', 'vue', 'svelte', 'solid-js', 'jsdom'])
     if (existsSync(join(root, 'node_modules', peer)))
       symlinkSync(
         join(root, 'node_modules', peer),
         join(sandbox, 'node_modules', peer)
       );
+  symlinkSync(
+    join(root, 'packages/connect-lithent/node_modules/lithent'),
+    join(sandbox, 'node_modules/lithent')
+  );
   writeFileSync(
     join(sandbox, 'package.json'),
-    JSON.stringify({ name: 'sandbox', private: true })
+    JSON.stringify({ name: 'sandbox', private: true, type: 'module' })
   );
 
   const SUPPORTED = [
@@ -112,6 +117,7 @@ try {
   ];
   // Deliberately ESM-only: a require must fail loudly, never resolve empty.
   const ESM_ONLY = [
+    '@stateref/connect-lithent',
     'state-ref/plugin',
     '@stateref/sync',
     '@stateref/connect-react/sync',
@@ -119,6 +125,7 @@ try {
     '@stateref/connect-vue/sync',
     '@stateref/connect-solid/sync',
     '@stateref/connect-svelte/sync',
+    '@stateref/connect-lithent/sync',
     // Svelte 5 only, and Svelte 5 is ESM only.
     '@stateref/connect-svelte/runes',
   ];
@@ -161,24 +168,27 @@ try {
     import { useSyncQuery as useVueQuery } from '@stateref/connect-vue/sync';
     import { createSyncQuery as createSolidQuery } from '@stateref/connect-solid/sync';
     import { createSyncQuery as createSvelteQuery } from '@stateref/connect-svelte/sync';
+    import { createSyncQuery as createLithentQuery } from '@stateref/connect-lithent/sync';
+    import { connectLithentView } from '@stateref/connect-lithent';
     const plugin = await import('state-ref/plugin');
     const { connectSvelteRunes } = await import('@stateref/connect-svelte/runes');
     if (typeof connectSvelteRunes !== 'function')
       throw new Error('@stateref/connect-svelte/runes did not export connectSvelteRunes');
-    if ([create, createDraft, batch, provideShared, createSyncClient, useReactQuery, usePreactQuery, useVueQuery, createSolidQuery, createSvelteQuery].some(value => typeof value !== 'function'))
+    if ([create, createDraft, batch, provideShared, createSyncClient, useReactQuery, usePreactQuery, useVueQuery, createSolidQuery, createSvelteQuery, createLithentQuery, connectLithentView].some(value => typeof value !== 'function'))
       throw new Error('an ESM entry did not export its function');
     if (Object.keys(plugin).length === 0) throw new Error('state-ref/plugin exported nothing');
     // Check the built entries' server branches, including solid-js/web's
     // conditional export. Inlining the browser isServer value would attach.
-    for (const query of [useVueQuery, createSolidQuery]) {
+    for (const query of [useVueQuery, createSolidQuery, createLithentQuery]) {
       const client = createSyncClient();
       let reads = 0;
       const [select, controls] = query(client, {
         queryKey: ['packaging-ssr'], queryFn: () => { reads += 1; return { name: 'loaded' }; },
         initialData: { name: 'server' }, staleTime: Infinity,
       });
-      const value = select(ref => ref.data.name.value);
-      if ((typeof value === 'function' ? value() : value.value) !== 'server' ||
+      const value = query === createLithentQuery ? select().data.name.value : select(ref => ref.data.name.value);
+      const actual = query === createLithentQuery ? value : typeof value === 'function' ? value() : value.value;
+      if (actual !== 'server' ||
           client.size() !== 0 || reads !== 0 || controls.handle() !== null)
         throw new Error('a built query entry subscribed or read during SSR');
     }
@@ -197,6 +207,10 @@ try {
     export const entries = [create, createDraft, batch, provideShared].length;
   `;
   const syncTypes = `
+    import { connectLithentView } from '@stateref/connect-lithent';
+    const lithentView = connectLithentView(create({ name: 'view' }).watch);
+    const lithentName: string = lithentView().name.value;
+    void lithentName;
     import { createSyncClient, type QueryHandleCore } from '@stateref/sync';
     import { readable } from 'svelte/store';
     import { useSyncQuery as useReactQuery } from '@stateref/connect-react/sync';
@@ -204,6 +218,7 @@ try {
     import { useSyncQuery as useVueQuery } from '@stateref/connect-vue/sync';
     import { createSyncQuery as createSolidQuery } from '@stateref/connect-solid/sync';
     import { createSyncQuery as createSvelteQuery } from '@stateref/connect-svelte/sync';
+    import { createSyncQuery as createLithentQuery } from '@stateref/connect-lithent/sync';
     const client = createSyncClient();
     export function useQueryTypes() {
       const result = useReactQuery(client, {
@@ -231,6 +246,20 @@ try {
       return [label, handle, age, preactHandle, name];
     }
     export function useSetupQueryTypes() {
+      const result = createLithentQuery(client, () => ({
+        queryKey: ['lithent'], queryFn: () => ({ name: 'Lee', age: 3 }),
+        select: data => ({ label: data.name }),
+      }));
+      const [lithent, lithentControls] = result;
+      const lithentLabel: string | undefined = lithent().data.label.value;
+      const lithentHandle: QueryHandleCore<{ name: string; age: number }> | null = lithentControls.handle();
+      // @ts-expect-error display leaf values are readonly
+      lithent().data.label.value = 'changed';
+      // @ts-expect-error the query helper owns the handle
+      lithentControls.handle()?.dispose();
+      // @ts-expect-error the query tuple is readonly
+      result[0] = lithent;
+      void lithentLabel; void lithentHandle;
       const [vue, vueControls] = useVueQuery(client, () => ({
         queryKey: ['vue'], queryFn: () => ({ name: 'Lee', age: 3 }), select: data => data.name,
       }));
@@ -265,6 +294,27 @@ try {
       return [name, label, vueHandle, solidHandle, svelteHandle, storeHandle];
     }
   `;
+  const lithentExamples = await readFile(
+    join(root, 'stateRefDocs/src/content/lithent-sync.ts'),
+    'utf8'
+  );
+  const lithentReadme = await readFile(
+    join(root, 'packages/connect-lithent/README.md'),
+    'utf8'
+  );
+  const examples = [
+    ...lithentExamples.matchAll(/export const (\w+) = `([\s\S]*?)`;/g),
+  ];
+  assert.equal(
+    examples.length,
+    3,
+    'Lithent query, save and SSR examples must be checked'
+  );
+  for (const [, name, example] of examples)
+    assert.ok(
+      lithentReadme.includes(example),
+      `Lithent README diverged from the site's ${name}`
+    );
   for (const [folder, type] of [
     ['esm', 'module'],
     ['cjs', 'commonjs'],
@@ -276,7 +326,15 @@ try {
     );
     writeFileSync(
       join(sandbox, folder, 'check.ts'),
-      check + (type === 'module' ? syncTypes : '')
+      check +
+        (type === 'module'
+          ? syncTypes
+          : `
+        // @ts-expect-error Lithent's base entry is ESM-only, just like its sync entry
+        import { connectLithentView } from '@stateref/connect-lithent';
+        // @ts-expect-error sync cannot be imported by a CommonJS consumer
+        import { createSyncQuery } from '@stateref/connect-lithent/sync';
+      `)
     );
     writeFileSync(
       join(sandbox, `tsconfig.${folder}.json`),
@@ -298,6 +356,38 @@ try {
       { stdio: 'inherit', cwd: sandbox }
     );
   }
+  // The framework's own published declarations use extensionless imports.
+  // Check application examples in the bundler mode used by Lithent/Vite,
+  // while keeping our adapter's public declarations strict in node16 above.
+  for (const [, name, example] of examples)
+    writeFileSync(join(sandbox, 'esm', name + '.ts'), example);
+  writeFileSync(
+    join(sandbox, 'tsconfig.lithent-docs.json'),
+    JSON.stringify({
+      compilerOptions: {
+        strict: true,
+        outDir: './lithent-examples',
+        target: 'es2022',
+        module: 'esnext',
+        moduleResolution: 'bundler',
+        types: [],
+      },
+      files: examples.map(([, name]) => `esm/${name}.ts`),
+    })
+  );
+  execFileSync(
+    join(root, 'node_modules/.bin/tsc'),
+    ['-p', join(sandbox, 'tsconfig.lithent-docs.json')],
+    { stdio: 'inherit', cwd: sandbox }
+  );
+  writeFileSync(
+    join(sandbox, 'lithent-doc-smoke.mjs'),
+    await readFile(join(root, 'scripts/lithent-doc-smoke.mjs'), 'utf8')
+  );
+  execFileSync(process.execPath, [join(sandbox, 'lithent-doc-smoke.mjs')], {
+    stdio: 'inherit',
+    cwd: sandbox,
+  });
   console.log(
     'packaging: declared entries exist, require and import resolve, node16 types resolve for ESM and CommonJS PASS'
   );

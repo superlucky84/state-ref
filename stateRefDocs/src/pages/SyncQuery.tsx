@@ -1,5 +1,6 @@
 import { mount } from 'lithent';
 import { CodeBlock } from '@/components/CodeBlock';
+import { lithentQueryExample } from '@/content/lithent-sync';
 
 export const SyncQuery = mount(() => {
   return () => (
@@ -13,7 +14,19 @@ export const SyncQuery = mount(() => {
         apart is what lets the client tell an unsaved field from a stale one.
       </p>
 
-      <h2>Reading</h2>
+      <h2>Queries in Lithent components</h2>
+      <p>
+        Call <code>createSyncQuery</code> once in the mounter and read
+        <code>account()</code> in render. It manages loading, props key changes,
+        shared READs and unmount release. The new connector is prepared on this
+        branch and has not been published. The{' '}
+        <a href="#/guide/lithent">Lithent guide</a>
+        also covers editing, mutation links, SSR and the optional concurrent
+        core.
+      </p>
+      <CodeBlock language="typescript" code={lithentQueryExample} />
+
+      <h2>Explicit handles</h2>
 
       <CodeBlock
         language="typescript"

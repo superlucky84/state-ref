@@ -1,10 +1,12 @@
 # MANUAL_TEST_CHECKLIST — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08 (단계 0 재검증 결정과 교차 검토 반영)
-- 상태: 미수행. 단계 1~5(sync 기반·관찰자·다섯 커넥터 진입점·자동 테스트 보강)는 완료했다. Activity·KeepAlive 등 자동 검증과 비용 기준은 IMPLEMENT 마지막 진행 기록에 남겼고, 단계 6의 데모까지 준비된 뒤 이 체크리스트를 수행한다.
+- 상태: 미수행. 단계 1~5(sync 기반·관찰자·다섯 커넥터 진입점·자동 테스트 보강) 및 단계 5.1 Lithent 진입점·문서는 완료했다. 자동 검증과 비용 기준은 IMPLEMENT 진행 기록에 남겼고, 단계 6의 데모까지 준비된 뒤 M-QH-01~06을 수행한다. 문서 페이지의 자동 브라우저 표시는 네트워크·UI 수동 검증의 완료 근거가 아니다.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md).
 
 자동 테스트가 확인하지 못하는 것만 둔다. 각 항목에 수행일, 브라우저, 결과(통과/실패), commit을 적는다.
+
+Lithent 추가 범위(U-QH-12)는 자동 검증을 단계 5.1에서 수행한다. 아래 브라우저 항목은 아직 미수행이며 기본·concurrent 선택별로 기록한다.
 
 ## M-QH-01 — 실제 브라우저에서 마운트·언마운트와 네트워크
 
@@ -54,3 +56,9 @@ M-QH-02의 상세 화면에 새로고침 버튼, 무효화 버튼, 이름 편집
 - [ ] 이름 편집(`q.handle()?.ref`)이 같은 key를 보는 다른 컴포넌트에도 바로 보이고, 항목을 바꾸면 편집 대상도 새 항목으로 바뀐다.
 - [ ] 이름 편집 뒤 저장 버튼(`q.handle()`을 mutation `links`에 넣은 제출)이 동작하고, 저장 뒤 편집 표시가 사라진다.
 - [ ] 콘솔에 오류가 없다.
+
+## M-QH-06 — Lithent query accessor
+
+- [ ] `account().data.name.value`를 읽는 상세 화면을 조건부 렌더로 마운트·제거·재표시할 때 READ 공유·해제와 캐시 재사용이 Network에서 보인다.
+- [ ] props id를 바꾸면 해당 id 데이터만 보이고 새 필드를 바꿔도 화면이 갱신된다. 새로고침·무효화·이름 편집·links 저장이 각 명령의 의미대로 동작한다.
+- [ ] exact core alias로 선택한 concurrent에서도 동작한다. SSR은 요청별 `ssr: true` client로 seeded/hydrated 값을 렌더하고 서버 READ를 만들지 않는다.

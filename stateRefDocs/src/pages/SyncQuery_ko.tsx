@@ -1,5 +1,6 @@
 import { mount } from 'lithent';
 import { CodeBlock } from '@/components/CodeBlock';
+import { lithentQueryExample } from '@/content/lithent-sync';
 
 export const SyncQueryKo = mount(() => {
   return () => (
@@ -13,7 +14,18 @@ export const SyncQueryKo = mount(() => {
         해 줍니다.
       </p>
 
-      <h2>읽기</h2>
+      <h2>Lithent 컴포넌트의 조회</h2>
+      <p>
+        mounter에서 <code>createSyncQuery</code>를 한 번 만들고 렌더에서
+        <code>account()</code>를 읽습니다. 로딩·props key 변경·READ
+        공유·언마운트 정리를 맡습니다. 새 커넥터는 이 브랜치에서 준비 중이며
+        아직 게시되지 않았습니다.
+        <a href="#/ko/guide/lithent">Lithent 안내</a>에는 편집·mutation
+        links·SSR·선택적 concurrent 코어 사용도 있습니다.
+      </p>
+      <CodeBlock language="typescript" code={lithentQueryExample} />
+
+      <h2>명시적 핸들</h2>
 
       <CodeBlock
         language="typescript"

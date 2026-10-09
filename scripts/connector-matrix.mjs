@@ -133,10 +133,20 @@ const matrix = {
     excludeSsr: true,
     ssrConfig: 'vite.ssr.config.js',
   },
+  lithent: {
+    deps: {},
+    cells: {
+      base: { lithent: '1.24.0' },
+      concurrent: { lithent: '1.24.0', 'lithent-concurrent': '0.1.3' },
+    },
+    plugins: { imports: '', list: '' },
+    excludeSsr: true,
+    ssrConfig: 'vite.ssr.config.js',
+  },
 };
 
 /** Mirrors the `test` block of packages/connect-<name>/vite.config.js. */
-function vitestConfig(spec) {
+function vitestConfig(spec, concurrent = false) {
   const exclude = spec.excludeSsr
     ? "\n    exclude: ['**/node_modules/**', '**/dist/**', 'src/tests/**/*.ssr.test.*'],"
     : '';
@@ -146,7 +156,13 @@ ${spec.plugins.imports}
 
 export default defineConfig({
   plugins: [${spec.plugins.list}],
-  resolve: { alias: { '@': resolve(__dirname, './src') } },
+  resolve: { alias: [${
+    concurrent
+      ? "{ find: /^lithent$/, replacement: 'lithent-concurrent' },"
+      : ''
+  }
+    { find: '@', replacement: resolve(__dirname, './src') }
+  ] },
   test: {
     environment: 'jsdom',
     includeSource: ['src/tests/**/*.{js,ts,jsx,tsx}'],${exclude}
@@ -157,11 +173,17 @@ export default defineConfig({
 `;
 }
 
-function run(cmd, args, cwd, logFile) {
+function run(cmd, args, cwd, logFile, extraEnv = {}) {
   const result = spawnSync(cmd, args, {
     cwd,
     encoding: 'utf8',
-    env: { ...process.env, CI: '1', FORCE_COLOR: '0', NO_COLOR: '1' },
+    env: {
+      ...process.env,
+      ...extraEnv,
+      CI: '1',
+      FORCE_COLOR: '0',
+      NO_COLOR: '1',
+    },
     maxBuffer: 64 * 1024 * 1024,
   });
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
@@ -196,7 +218,10 @@ function prepare(name, cellName, versions, base, fresh) {
     if (file && existsSync(join(pkgDir, file)))
       cpSync(join(pkgDir, file), join(dir, file));
   }
-  writeFileSync(join(dir, 'matrix.config.mjs'), vitestConfig(spec));
+  writeFileSync(
+    join(dir, 'matrix.config.mjs'),
+    vitestConfig(spec, name === 'lithent' && cellName === 'concurrent')
+  );
 
   const manifest = {
     name: `matrix-${name}-${cellName}`,
@@ -279,7 +304,12 @@ function main() {
       process.stdout.write(`- ${label} ... `);
       const cell = prepare(name, cellName, versions, base, fresh);
       if (cell.error) {
-        rows.push({ label, ok: false, detail: cell.error, log: join(cell.dir, 'install.log') });
+        rows.push({
+          label,
+          ok: false,
+          detail: cell.error,
+          log: join(cell.dir, 'install.log'),
+        });
         console.log('INSTALL FAILED');
         continue;
       }
@@ -291,7 +321,12 @@ function main() {
           join(cell.dir, 'node_modules', '.bin', 'vitest'),
           ['run', '--config', config],
           cell.dir,
-          log
+          log,
+          name === 'lithent'
+            ? {
+                LITHENT_CORE: cellName === 'concurrent' ? 'concurrent' : 'base',
+              }
+            : {}
         );
         rows.push({
           label: `${label} [${pass}]`,

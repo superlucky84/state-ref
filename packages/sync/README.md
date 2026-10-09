@@ -2,6 +2,8 @@
 
 Optional query cache, editable resource, and mutation package for `state-ref`. Importing `state-ref` alone does not load this package. The package is an ESM entry point and has no draft or TanStack runtime dependency.
 
+In Lithent components, use `createSyncQuery` from `@stateref/connect-lithent/sync`: `const [account, q] = createSyncQuery(client, () => options)` in the mounter, then `account().data.name.value` in the render function. It owns mount loading, props key changes and unmount release. [The Lithent guide](../connect-lithent/README.md) includes installation, local editing, refetch/invalidate, mutation links, SSR and optional concurrent setup. The new connector is prepared on this branch; packages have not been published.
+
 ```ts
 import { createSyncClient } from '@stateref/sync';
 
