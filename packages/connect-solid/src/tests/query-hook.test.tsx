@@ -1,4 +1,4 @@
-import { createRenderEffect, createRoot, createSignal } from 'solid-js';
+import { Show, createRenderEffect, createRoot, createSignal } from 'solid-js';
 import { render, cleanup, waitFor } from '@solidjs/testing-library';
 import { createSyncClient } from '@stateref/sync';
 import type {
@@ -305,5 +305,68 @@ if (import.meta.vitest) {
         'This sync client has no observe(); align the @stateref/sync versions of the bundles on this page.'
       );
     });
+  });
+
+  // R-QH-05, DC-QH-11: Solid disposes the old branch and creates the new one
+  // in the same update, so the default schedule is enough for the new handle
+  // to attach before the old one lets go.
+  describe('Solid createSyncQuery route replacement', () => {
+    it.each(['another component', 'the same component under a new key'])(
+      'keeps the in-flight READ when one update swaps in %s',
+      async swap => {
+        const client = createSyncClient();
+        const signals: AbortSignal[] = [];
+        const queryFn = vi.fn(({ signal }: { signal: AbortSignal }) => {
+          signals.push(signal);
+          return new Promise<Account>(() => {});
+        });
+        const trail: number[] = [];
+        const stopEvents = client.subscribeCache(event => {
+          if (event.type === 'updated') trail.push(event.entry.owners);
+        });
+        function Panel(props: { label: string }) {
+          const [account] = createSyncQuery(client, { ...options(1), queryFn });
+          const fetching = account(display => display.fetchStatus.value);
+          return (
+            <p>
+              {props.label}:{fetching()}
+            </p>
+          );
+        }
+        const First = () => <Panel label="first" />;
+        const Second = () => <Panel label="second" />;
+        const another = swap === 'another component';
+        const [route, setRoute] = createSignal('first');
+        try {
+          const screen = render(() =>
+            another ? (
+              <Show when={route() === 'first'} fallback={<Second />}>
+                <First />
+              </Show>
+            ) : (
+              <Show when={route()} keyed>
+                {label => <Panel label={label} />}
+              </Show>
+            )
+          );
+          expect(queryFn).toHaveBeenCalledTimes(1);
+          setRoute('second');
+          // Let the old handle's release run.
+          await new Promise<void>(resolve => setTimeout(resolve, 20));
+          expect(screen.container.textContent).toBe('second:fetching');
+          expect(queryFn).toHaveBeenCalledTimes(1);
+          expect(signals.every(signal => !signal.aborted)).toBe(true);
+          expect(owners(client)).toBe(1);
+          expect(trail).not.toContain(0);
+          // The new route attached its own observer before the old one let go.
+          expect(trail).toContain(2);
+          screen.unmount();
+          await waitFor(() => expect(owners(client)).toBe(0));
+          expect(signals[0].aborted).toBe(true);
+        } finally {
+          stopEvents();
+        }
+      }
+    );
   });
 }

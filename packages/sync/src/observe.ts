@@ -229,8 +229,17 @@ export function createObserver<T, S = T>(
     if (options.enabled !== undefined && typeof options.enabled !== 'boolean')
       throw new TypeError('enabled must be a boolean.');
     const current = slotFor(hashQueryKey(options.queryKey));
+    // The checks read the cache, which may have changed since setOptions last
+    // ran them (an entry evicted while detached, say). Remember what this
+    // open saw, so the next setOptions compares against what is shown.
+    confirmedOpeningReason = null;
     if (options.enabled !== false) {
-      client.validate(options);
+      try {
+        client.validate(options);
+      } catch (error) {
+        confirmedOpeningReason = reasonOf(error);
+        throw error;
+      }
     }
     return {
       ...options,

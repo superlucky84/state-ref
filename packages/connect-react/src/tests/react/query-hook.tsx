@@ -171,6 +171,65 @@ if (import.meta.vitest) {
       await waitFor(() => expect(owners(client)).toBe(0));
     });
 
+    // R-QH-05, DC-QH-11: React releases the old route's observer and
+    // subscribes the new one in the same commit, so the default schedule is
+    // enough for the new handle to attach before the old one lets go.
+    it.each(['the same component under a new key', 'another component'])(
+      'keeps the in-flight READ when one commit swaps in %s',
+      async swap => {
+        const client = createSyncClient();
+        const signals: AbortSignal[] = [];
+        const queryFn = vi.fn(({ signal }: { signal: AbortSignal }) => {
+          signals.push(signal);
+          return new Promise<Account>(() => {});
+        });
+        const trail: number[] = [];
+        const stopEvents = client.subscribeCache(event => {
+          if (event.type === 'updated') trail.push(event.entry.owners);
+        });
+        const options = {
+          queryKey: ['account', 1],
+          queryFn,
+          gcTime: Infinity,
+        };
+        function First() {
+          const [display] = useSyncQuery(client, options);
+          return <p>first:{display.fetchStatus.value}</p>;
+        }
+        function Second() {
+          const [display] = useSyncQuery(client, options);
+          return <p>second:{display.fetchStatus.value}</p>;
+        }
+        const another = swap === 'another component';
+        try {
+          const screen = render(<First key="first" />);
+          await act(async () => {
+            await sleep(20);
+          });
+          expect(queryFn).toHaveBeenCalledTimes(1);
+          screen.rerender(another ? <Second /> : <First key="second" />);
+          // Let the old handle's release run.
+          await act(async () => {
+            await sleep(20);
+          });
+          expect(screen.container.textContent).toBe(
+            `${another ? 'second' : 'first'}:fetching`
+          );
+          expect(queryFn).toHaveBeenCalledTimes(1);
+          expect(signals.every(signal => !signal.aborted)).toBe(true);
+          expect(owners(client)).toBe(1);
+          expect(trail).not.toContain(0);
+          // The new route attached its own observer before the old one let go.
+          expect(trail).toContain(2);
+          screen.unmount();
+          await waitFor(() => expect(owners(client)).toBe(0));
+          expect(signals[0].aborted).toBe(true);
+        } finally {
+          stopEvents();
+        }
+      }
+    );
+
     it.each([true, false])(
       'shows the new key in its first render (cached=%s)',
       async cached => {

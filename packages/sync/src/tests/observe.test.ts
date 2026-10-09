@@ -1259,6 +1259,71 @@ describe('initialData (T-QH-17)', () => {
     subscription.end();
   });
 
+  it('rechecks the options against the cache it attaches to', async () => {
+    const client = createSyncClient();
+    const explicit = client.query<Account>({
+      queryKey: ['account'],
+      queryFn: lee,
+      gcTime: 0,
+    });
+    await explicit.load();
+    const read = vi.fn(lee);
+    const base = { queryKey: ['account'], queryFn: read, staleTime: Infinity };
+    // A loaded entry ignores initialData, so this passes while it is there.
+    const observer = client.observe<Account>({
+      ...base,
+      initialData: new Date(0) as unknown as Account,
+    });
+    expect(observer.watch().status.value).toBe('success');
+    explicit.dispose();
+    await tick();
+    expect(client.size()).toBe(0);
+    // Attaching to the emptied cache seeds the Date, which is refused.
+    const subscription = subscribe(observer);
+    expect(subscription.ref.errorSource.value).toBe('source');
+    expect(
+      observer.setOptions({
+        ...base,
+        initialData: lee(),
+        initialUpdatedAt: 100,
+      })
+    ).toBe(false);
+    expect(subscription.ref.status.value).toBe('success');
+    expect(subscription.ref.data.name.value).toBe('Lee');
+    expect(observer.controls.handle()).not.toBeNull();
+    expect(read).not.toHaveBeenCalled();
+    subscription.end();
+  });
+
+  it('does not reopen once the cache it attached to accepted the options', async () => {
+    const client = createSyncClient();
+    const read = vi.fn(lee);
+    const render = () => ({
+      queryKey: ['account'],
+      queryFn: read,
+      initialData: new Date(0) as unknown as Account,
+    });
+    const observer = client.observe<Account>(render());
+    // No entry yet, so the Date would be seeded: refused for now.
+    expect(observer.watch().errorSource.value).toBe('source');
+    const explicit = client.query<Account>({
+      queryKey: ['account'],
+      queryFn: lee,
+    });
+    await explicit.load();
+    const subscription = subscribe(observer);
+    await tick();
+    expect(subscription.ref.data.name.value).toBe('Lee');
+    const handle = observer.controls.handle();
+    const calls = read.mock.calls.length;
+    expect(observer.setOptions(render())).toBe(false);
+    expect(observer.controls.handle() === handle).toBe(true);
+    await tick();
+    expect(read).toHaveBeenCalledTimes(calls);
+    subscription.end();
+    explicit.dispose();
+  });
+
   it('shows it before attaching and seeds it on attach', async () => {
     const client = createSyncClient();
     const read = reads(() => ({ name: 'Server', age: 9 }));

@@ -12,6 +12,7 @@ import type {
 import { createSyncQuery } from '@/sync';
 import QueryPanel from '@/tests/svelte/QueryPanel.svelte';
 import QueryUnused from '@/tests/svelte/QueryUnused.svelte';
+import QueryRoute from '@/tests/svelte/QueryRoute.svelte';
 
 type Account = { name: string; age: number };
 const options = (id: number): ObserveOptions<Account> => ({
@@ -301,4 +302,55 @@ describe('Svelte createSyncQuery', () => {
     );
     expect(subscribe).not.toHaveBeenCalled();
   });
+});
+
+// R-QH-05, DC-QH-11: Svelte destroys the old block and creates the new one
+// in the same flush, so the default schedule is enough for the new handle to
+// attach before the old one lets go.
+describe('Svelte createSyncQuery route replacement', () => {
+  it.each([
+    ['an if/else branch', 'branch'],
+    ['a key block', 'key'],
+  ] as const)(
+    'keeps the in-flight READ when one flush swaps %s',
+    async (_, swap) => {
+      const client = createSyncClient();
+      const signals: AbortSignal[] = [];
+      const queryFn = vi.fn(({ signal }: { signal: AbortSignal }) => {
+        signals.push(signal);
+        return new Promise<Account>(() => {});
+      });
+      const trail: number[] = [];
+      const stopEvents = client.subscribeCache(event => {
+        if (event.type === 'updated') trail.push(event.entry.owners);
+      });
+      try {
+        const screen = render(QueryRoute, {
+          client,
+          options: { ...options(1), queryFn },
+          swap,
+        });
+        expect(queryFn).toHaveBeenCalledTimes(1);
+        await screen.rerender({ route: 'second' });
+        await tick();
+        // Let the old handle's release run.
+        await new Promise<void>(resolve => setTimeout(resolve, 20));
+        expect(screen.getByTestId('route').textContent).toBe('second');
+        expect(screen.getByTestId('state').textContent).toBe(
+          'pending:fetching:null'
+        );
+        expect(queryFn).toHaveBeenCalledTimes(1);
+        expect(signals.every(signal => !signal.aborted)).toBe(true);
+        expect(owners(client)).toBe(1);
+        expect(trail).not.toContain(0);
+        // The new route attached its own observer before the old one let go.
+        expect(trail).toContain(2);
+        screen.unmount();
+        await waitFor(() => expect(owners(client)).toBe(0));
+        expect(signals[0].aborted).toBe(true);
+      } finally {
+        stopEvents();
+      }
+    }
+  );
 });

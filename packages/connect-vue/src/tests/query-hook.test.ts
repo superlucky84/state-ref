@@ -300,3 +300,64 @@ describe('Vue useSyncQuery', () => {
     );
   });
 });
+
+// R-QH-05, DC-QH-11: Vue unmounts the old route and sets up the new one in
+// the same patch, so the default schedule is enough for the new handle to
+// attach before the old one lets go.
+describe('Vue useSyncQuery route replacement', () => {
+  it.each(['another component', 'the same component under a new key'])(
+    'keeps the in-flight READ when one patch swaps in %s',
+    async swap => {
+      const client = createSyncClient();
+      const signals: AbortSignal[] = [];
+      const queryFn = vi.fn(({ signal }: { signal: AbortSignal }) => {
+        signals.push(signal);
+        return new Promise<Account>(() => {});
+      });
+      const trail: number[] = [];
+      const stopEvents = client.subscribeCache(event => {
+        if (event.type === 'updated') trail.push(event.entry.owners);
+      });
+      const panel = (label: string) =>
+        defineComponent({
+          setup() {
+            const [account] = useSyncQuery(client, { ...options(1), queryFn });
+            const fetching = account(display => display.fetchStatus.value);
+            return () => h('p', `${label}:${fetching.value}`);
+          },
+        });
+      const First = panel('first');
+      const Second = panel('second');
+      const another = swap === 'another component';
+      const onFirst = ref(true);
+      const Route = defineComponent({
+        setup: () => () =>
+          another
+            ? h(onFirst.value ? First : Second)
+            : h(First, { key: onFirst.value ? 'first' : 'second' }),
+      });
+      try {
+        const screen = render(Route);
+        expect(queryFn).toHaveBeenCalledTimes(1);
+        onFirst.value = false;
+        await nextTick();
+        // Let the old handle's release run.
+        await new Promise<void>(resolve => setTimeout(resolve, 20));
+        expect(screen.container.textContent).toBe(
+          `${another ? 'second' : 'first'}:fetching`
+        );
+        expect(queryFn).toHaveBeenCalledTimes(1);
+        expect(signals.every(signal => !signal.aborted)).toBe(true);
+        expect(owners(client)).toBe(1);
+        expect(trail).not.toContain(0);
+        // The new route attached its own observer before the old one let go.
+        expect(trail).toContain(2);
+        screen.unmount();
+        await waitFor(() => expect(owners(client)).toBe(0));
+        expect(signals[0].aborted).toBe(true);
+      } finally {
+        stopEvents();
+      }
+    }
+  );
+});
