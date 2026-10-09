@@ -278,7 +278,6 @@ const done = useTodo(store => store.done);
     queryFn: ({ signal }) => readShip(id, signal),
     staleTime: 30_000,
   });
-  // An options store follows props; a plain getter is not tracked
   const options = writable(shipQuery(id));
   $: options.set(shipQuery(id));
 
@@ -342,8 +341,8 @@ const done = useTodo(store => store.done);
       <ul>
         <li>
           Queries use the store API, in Svelte 4 and 5; there is no runes entry
-          for them. Call <code>createSyncQuery</code> and its selections during
-          component initialization.
+          for them. Make the selections during component initialization too:
+          each one ends when the component is destroyed.
         </li>
         <li>
           Options are a plain object, fixed for the component&apos;s life, or a{' '}

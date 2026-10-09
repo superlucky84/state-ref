@@ -1,7 +1,7 @@
 # IMPLEMENT — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: **단계 1~5 및 추가 단계 5.1 Lithent 지원·5.2 일반 커넥터 완료(2026-10-09), 단계 5 뒤 상태 점검의 코드 결함·테스트 빈틈 반영 완료.** Activity·KeepAlive·경합·명시 핸들 공존·key 왕복 검증과 1,000 관찰자 비용 측정을 완료했고 전체 게이트가 통과했다. 단계 6 통합 데모·자동 브라우저 검증도 완료했다(2026-10-09, U-QH-14). 사람의 사용성 평가는 미수행이고 다음 구현 범위는 단계 7 가이드·릴리스 기록이다. 이전 구현·검증 결과는 진행 기록에 보존했다. PR #16의 `main` 병합과 이 브랜치 반영은 완료했다(`41798cf`, `e58deaa`, DC-QH-35).
+- 상태: **단계 0~7 완료(2026-10-09). 단계 7 문서·CHANGELOG·릴리스 절차까지 반영했고 PR을 연다.** **단계 1~5 및 추가 단계 5.1 Lithent 지원·5.2 일반 커넥터 완료(2026-10-09), 단계 5 뒤 상태 점검의 코드 결함·테스트 빈틈 반영 완료.** Activity·KeepAlive·경합·명시 핸들 공존·key 왕복 검증과 1,000 관찰자 비용 측정을 완료했고 전체 게이트가 통과했다. 단계 6 통합 데모·자동 브라우저 검증도 완료했다(2026-10-09, U-QH-14). 사람의 사용성 평가는 미수행이고 다음 구현 범위는 단계 7 가이드·릴리스 기록이다. 이전 구현·검증 결과는 진행 기록에 보존했다. PR #16의 `main` 병합과 이 브랜치 반영은 완료했다(`41798cf`, `e58deaa`, DC-QH-35).
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 모든 단계의 공통 완료 조건:
@@ -190,11 +190,14 @@
 ## 단계 7 — 문서
 
 - 진입: 단계 6 완료.
-- [ ] sync README와 문서 사이트(영·한)의 query 안내에 관찰자 훅을 기본 경로로 추가. 기존 명시 핸들 사용은 유지.
-- [ ] 가이드에 적을 것: SSR은 `ssr: true` client(특히 Svelte store API, DC-QH-15), client는 컴포넌트 수명 동안 바꾸지 않음(DC-QH-25), 신호 없는 콜백 구독은 관찰자를 붙잡음(DC-QH-30), 첫 렌더 `fetchStatus`(DC-QH-32), 의존 조회는 `id ?? null` + `enabled`(DC-QH-13), Vue는 옵션 안의 ref를 풀지 않음(DC-QH-17), Svelte는 store API만·옵션은 `Readable`(DC-QH-34·36), `q.invalidate()`와 `client.invalidate()`의 재조회 차이(DC-QH-23), 해제는 해제 일정 뒤(테스트에서 타이머 진행, T-QH-46), Vue `<KeepAlive>`, 번들 간 sync 버전 맞춤(DC-QH-37), 구조 공유가 안 되는 `select` 결과는 메모 또는 `equals`(DC-QH-26 2), `observe`·`peek`는 훅 작성자용 저수준 API(DC-QH-21·24).
-- [ ] [server-sync DESIGN](../server-sync/DESIGN.md) 6절과 [PHASE8_6](../server-sync/PHASE8_6.md)의 F2-02 행·절에 mount 재조회 경로 기록, PHASE8_6 행에 `packages/sync/src/tests/observe.test.ts` 인용(DC-QH-19).
-- [ ] [server-sync README](../server-sync/README.md)에서 이 문서 세트로 링크.
-- [ ] CHANGELOG 메모(릴리스 시 반영): `QueryDisplayRef` 타입 변경, `hashQueryKey`의 state-ref ref 거절(DC-QH-13), sync minor(`client.observe`, `QueryHandleCore`), `MutationLink.query`·연결 제출 영속화 타입 변경: 넘기는 쪽에는 넓힘, 읽는 쪽·구현자에는 표시·해제 멤버 제거로 좁힘(DC-QH-23), 다섯 커넥터의 `./sync` 하위 경로와 peer 범위(DC-QH-20).
+- [x] sync README와 문서 사이트(영·한)의 query 안내에 관찰자 훅을 기본 경로로 추가. 기존 명시 핸들 사용은 유지.
+- [x] 가이드에 적을 것: SSR은 `ssr: true` client(특히 Svelte store API, DC-QH-15), client는 컴포넌트 수명 동안 바꾸지 않음(DC-QH-25), 신호 없는 콜백 구독은 관찰자를 붙잡음(DC-QH-30), 첫 렌더 `fetchStatus`(DC-QH-32), 의존 조회는 `id ?? null` + `enabled`(DC-QH-13), Vue는 옵션 안의 ref를 풀지 않음(DC-QH-17), Svelte는 store API만·옵션은 `Readable`(DC-QH-34·36), `q.invalidate()`와 `client.invalidate()`의 재조회 차이(DC-QH-23), 해제는 해제 일정 뒤(테스트에서 타이머 진행, T-QH-46), Vue `<KeepAlive>`, 번들 간 sync 버전 맞춤(DC-QH-37), 구조 공유가 안 되는 `select` 결과는 메모 또는 `equals`(DC-QH-26 2), `observe`·`peek`는 훅 작성자용 저수준 API(DC-QH-21·24).
+- [x] [server-sync DESIGN](../server-sync/DESIGN.md) 6절과 [PHASE8_6](../server-sync/PHASE8_6.md)의 F2-02 행·절에 mount 재조회 경로 기록, PHASE8_6 행에 `packages/sync/src/tests/observe.test.ts` 인용(DC-QH-19).
+- [x] [server-sync README](../server-sync/README.md)에서 이 문서 세트로 링크.
+- [x] CHANGELOG 메모(릴리스 시 반영): `QueryDisplayRef` 타입 변경, `hashQueryKey`의 state-ref ref 거절(DC-QH-13), sync minor(`client.observe`, `QueryHandleCore`), `MutationLink.query`·연결 제출 영속화 타입 변경: 넘기는 쪽에는 넓힘, 읽는 쪽·구현자에는 표시·해제 멤버 제거로 좁힘(DC-QH-23), 다섯 커넥터의 `./sync` 하위 경로와 peer 범위(DC-QH-20).
+  - 결과(위 항목 전체): sync README에 `## Component queries`(빌드 타입으로 컴파일되는 React 예제, 여섯 진입점 표, 주의사항, `client.observe` 훅 작성 안내)와 `## Explicit handles`. 다섯 커넥터 README에 `## Sync queries`, Lithent README의 미게시 문구 제거. 문서 사이트(영·한): SyncQuery가 여섯 프레임워크의 훅을 기본 경로로 안내하고 "알아 둘 것"을 정리, ApiSync에 관찰자 API·`QueryHandleCore`·링크 타입, React·Preact·Vue·Svelte·Solid 페이지에 컴포넌트 조회 절. AI 스킬 `framework-connectors.md`·`server-sync.md`·`SKILL.md`, 루트 README 패키지 표. 점검에서 요구한 두 항목(구조 공유가 안 되는 `select` 결과의 메모·`equals`, `observe`·`peek`는 훅 작성자용 저수준 API)도 넣었다.
+  - server-sync: DESIGN 6절과 PHASE8_6 F2-02 행·절에 mount 재조회 = 관찰자 훅 구독의 `load()`를 기록하고 `packages/sync/src/tests/observe.test.ts`를 근거로 인용, README 읽는 순서에 이 문서 세트 링크.
+  - CHANGELOG: `@stateref/sync 0.3.0`(추가·하위 호환 깨짐 3건과 이전 방법), `@stateref/connect-lithent 0.1.0`, 다섯 커넥터 minor(`./sync`, 선택적 peer). React 19.1.0에는 PR #16의 마운트 tearing 수정도 들어가므로 "Fixed"로 적었다. 릴리스 절차 `docs/release/2026-10-09.md`(준비만, 미실행).
 - 완료: `pnpm gate`의 doc-examples·support-table 단계 통과.
 
 ## 진행 기록
@@ -377,3 +380,13 @@
 - 완료: 같은 네이티브 앱을 여는 `index.html`과 build input을 추가하고 체험 안내의 시작 주소를 `/`로 바꿨다(R-QH-22, DC-QH-44). 두 HTML은 동일한 JS/CSS 빌드를 공유한다. 기존 `/mission.html`, 공개 라이브러리와 다른 앱의 진입점은 유지한다.
 - 검증: `pnpm --filter stateref-example-lithent build`로 두 모드 빌드 통과. 실제 Chromium 151.0.7922.173에서 base/concurrent 각각 dev/preview의 `/`와 `/mission.html` **8/8 통과**. HTTP 200·정비소 렌더·화성 이름/산소 82·실제 GET 1 공유·이름 편집 공유·별 수집·화면 제거 뒤 owners/구독 0·pageerror/console error 0을 확인했다. 검증 스크립트와 로그는 `/workspace/.onboarding/mission-root-{smoke.mjs,browser.log}`에 보존했다. 앞선 전체 65개 결과는 이전 진행 기록의 별도 검증이다.
 - 다음/인계: 이 보완을 `fix(examples): open Lithent mission at the default URL`로 커밋·push하고 ctxbin key `state-ref-root/claude/sync-query-hooks`에 기록한다. 정확한 SHA는 `git log -1 -- examples/lithent/index.html`로 확인한다. 단계 7과 사람의 사용성 피드백은 이전 인계대로 남으며 막힌 점 없음.
+
+### 2026-10-09 — 단계 7 문서·릴리스 기록 완료
+
+- 기준: `db5406f`(단계 6)를 pull하고 ctxbin 인계를 확인했다. 사용자가 단계 7을 요청했다.
+- 작성: 작성자 5명이 서로 다른 파일을 맡고, 각 결과를 검토자가 코드(`packages/connect-*/src/sync.ts`, `packages/sync/src/observe.ts`·`index.ts`·`display.ts`)와 6단계 미션 앱에 대조해 고쳤다. 범위는 위 단계 7 체크리스트의 "결과"와 같다. 루트 README의 Lithent 미게시 문구와 패키지 표는 직접 고쳤다.
+- 정확성: 예제의 import·반환 모양·오류 문구·해제 일정·`q` 동작을 소스와 테스트로 확인했다. sync README의 React 예제는 `scripts/check-doc-examples.mjs`가 빌드 타입으로 컴파일한다(`@stateref/connect-react/sync` 매핑 추가). 프레임워크 페이지 예제의 TypeScript 부분은 임시 프로젝트에서 공개 타입으로 컴파일했다(Vue `<template>`·Svelte 마크업은 컴파일하지 않음). `q.handle()?.ref.x.value = ...`처럼 옵셔널 체이닝에 대입하는 잘못된 형태는 쓰지 않았다(로드 확인 뒤 대입).
+- 형식: 바뀐 사이트 페이지 전부 prettier 통과, TypeScript AST로 줄바꿈 공백 누락을 전수 검사(남은 검출은 한국어 조사·괄호 뒤뿐이고, 이 브랜치 밖의 `CustomConnector_ko.tsx:69`는 그대로). 사이트·README·스킬에서 "이 브랜치에서 준비/미게시" 문구를 없앴다(`docs/sync-query-hooks`와 과거 릴리스 기록 제외).
+- 릴리스 메모: npm 현재 버전은 sync 0.2.0, React 19.0.0, Preact 10.4.0, Vue 3.4.0, Solid 1.4.0, Svelte 5.0.0, connect-lithent 없음(E404). AI 스킬은 `state-ref` 패키지에 실려 나가므로 이번 릴리스(state-ref 미변경)로는 배포되지 않는다(릴리스 절차에 별도 판단으로 적음). npm에 `lithent@1.24.1`(CJS 수정)과 `lithent-concurrent@0.1.4`가 새로 나왔다. 커넥터는 1.24.0·0.1.3으로 검증했고 ESM 전용을 유지한다.
+- 검증: `node scripts/check-doc-examples.mjs`(22 블록 컴파일, 15 skip), `node scripts/check-support-table.mjs`(9행, 근거 파일 29개) 통과. 전체 `pnpm gate` 결과는 아래 커밋 기록과 PR 설명에 남긴다.
+- 다음: PR 생성. 머지·배포는 `docs/release/2026-10-09.md` 순서대로(머지가 문서 사이트를 바로 배포하므로 게시를 머지 직후에). 사람의 사용성 평가(M-QH 중 사람 확인 항목)는 여전히 미수행.

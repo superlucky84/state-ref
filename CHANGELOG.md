@@ -33,9 +33,11 @@ entries can break code that worked on 0.2.0; each names its migration.
 - **A query key holding a state-ref ref throws.** `['user', idRef]` - a
   forgotten `.value` - used to hash as `{}`, so every id silently shared one
   cache entry. Every API that hashes a key (`query`, `fetch`, `prefetch`,
-  `ensure`, `invalidate`, `remove`, `hashQueryKey`, ...) now throws
+  `ensure`, `invalidate`, `remove`, `hashQueryKey`, ...) now fails with
   ``TypeError: Query key must be an acyclic JSON-compatible tree; read a ref with `.value`.``
-  *Migration:* put the value in the key: `['user', idRef.value]`.
+  It is thrown, or for `fetch`, `prefetch` and `ensure` it rejects the
+  returned promise. *Migration:* put the value in the key:
+  `['user', idRef.value]`.
 - **Mutation links take `QueryHandleCore<any>`.** `MutationLink.query`,
   `StageLinkedMutationLink.query` and the `queries` of
   `PersistedLinkedMutation.send` accept a handle without `dispose`, `display`
@@ -45,11 +47,12 @@ entries can break code that worked on 0.2.0; each names its migration.
   with explicit parameter types, no longer compiles. *Migration:* read them
   from the handle you own, and type such parameters `QueryHandleCore<any>`.
 - **`QueryDisplayRef` keeps paths open below a missing value.**
-  `display.data.name.value` is `string | undefined` before the first load
-  instead of a type error, and a leaf below a nullable or optional field
-  gains `| undefined`. A check on `.value` still narrows; nothing changes at
-  run time. *Migration:* where a leaf now types as `| undefined`, narrow on
-  `.value` or give a fallback (`display.data.name.value ?? ''`).
+  `display.data.name.value` now types as `string | undefined`, what it reads
+  before the first load, where it was a type error; a leaf below a nullable
+  or optional field gains `| undefined` too. A check on `.value` still
+  narrows; nothing changes at run time. *Migration:* where a leaf now types
+  as `| undefined`, narrow on `.value` or give a fallback
+  (`display.data.name.value ?? ''`).
 
 ## @stateref/connect-lithent 0.1.0
 

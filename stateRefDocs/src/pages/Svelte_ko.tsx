@@ -260,8 +260,8 @@ const done = useTodo(store => store.done);
         <code>@stateref/connect-svelte/sync</code>의{' '}
         <code>createSyncQuery</code>를 부릅니다. 컴포넌트는 사라질 때까지 조회를
         소유합니다. 처음 선택할 때 불러오고, 옵션 store의 key를 따라가며, 같은
-        key를 보는 다른 컴포넌트와 진행 중인 READ를 나누고, 그중 마지막이 사라진
-        뒤 해제됩니다.
+        key를 보는 다른 컴포넌트와 진행 중인 READ를 공유하고, 그중 마지막이
+        사라진 뒤 해제됩니다.
       </p>
 
       <CodeBlock
@@ -280,7 +280,6 @@ const done = useTodo(store => store.done);
     queryFn: ({ signal }) => readShip(id, signal),
     staleTime: 30_000,
   });
-  // 옵션 store는 props를 따라가고, 평범한 getter는 추적되지 않습니다
   const options = writable(shipQuery(id));
   $: options.set(shipQuery(id));
 
@@ -314,8 +313,8 @@ const done = useTodo(store => store.done);
         <code>queryKey</code> 등)에서 <code>select</code>가 읽은 값을 Svelte{' '}
         <code>Readable&lt;V&gt;</code>로 돌려줍니다. 리프는 <code>select</code>{' '}
         안에서 <code>.value</code>로, store는 <code>$name</code>으로 읽습니다.
-        선택은 만들어질 때 구독하므로 첫 선택이 조회를 붙이고, 모든 선택이
-        그것을 나눠 씁니다. <code>q</code>는 컴포넌트 수명 동안 같은 객체입니다.
+        선택은 만들어질 때 구독하므로 첫 선택이 조회를 붙이고, 모든 선택이 그
+        조회를 공유합니다. <code>q</code>는 컴포넌트 수명 동안 같은 객체입니다.
       </p>
 
       <ul>
@@ -342,8 +341,8 @@ const done = useTodo(store => store.done);
       <ul>
         <li>
           조회는 Svelte 4와 5 모두 store API를 씁니다. 조회용 runes 진입점은
-          없습니다. <code>createSyncQuery</code>와 그 선택은 컴포넌트 초기화
-          중에 부릅니다.
+          없습니다. 선택도 컴포넌트 초기화 중에 만듭니다. 각 선택은 컴포넌트가
+          사라질 때 끝납니다.
         </li>
         <li>
           옵션은 컴포넌트 수명 동안 고정되는 평범한 객체이거나,{' '}

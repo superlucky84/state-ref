@@ -231,8 +231,9 @@ export function ShipPanel({ id }: { id: number }) {
           Rendering creates nothing. Preact runs effects after paint, so the
           release waits for the next paint (a 200 ms timer stands in when no
           frame comes): a route swap that hands a key from one component to
-          another neither cancels nor repeats its READ. Tests wait for that
-          release before asserting that the handle is gone.
+          another neither cancels nor repeats its READ. In tests, wait for that
+          release before asserting that the handle is gone; with fake timers,
+          advance them 200 ms.
         </li>
         <li>
           The client is fixed for the component&apos;s life; passing another one

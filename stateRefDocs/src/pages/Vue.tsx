@@ -285,7 +285,6 @@ import { readShip } from './api'; // (id, signal) => Promise<Ship>
 
 const props = defineProps<{ id: number }>();
 
-// A getter follows props; a plain object stays fixed
 const [ship, q] = useSyncQuery(client, () => {
   const id = props.id;
   return {
@@ -365,8 +364,8 @@ const rename = (event: Event) => {
         <li>
           On the server, selections read without subscribing, attaching or
           READing. Fill a per-request{' '}
-          <code>createSyncClient({'{ ssr: true }'})</code> before rendering -
-          for example{' '}
+          <code>createSyncClient({'{ ssr: true }'})</code> before the component
+          renders - for example with{' '}
           <code>onServerPrefetch(() =&gt; client.prefetch(options))</code> in{' '}
           <code>setup</code> - send <code>client.dehydrate()</code>, and call{' '}
           <code>client.hydrate(snapshot)</code> on the browser client before

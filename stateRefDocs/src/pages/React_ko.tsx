@@ -133,7 +133,7 @@ const useTodo = connectReact(watch);
         <code>@stateref/connect-react/sync</code>의 <code>useSyncQuery</code>를
         씁니다. 컴포넌트는 마운트된 동안 조회를 소유합니다. 커밋 뒤 불러오고,
         props의 key를 따라가며, 같은 key를 보는 다른 컴포넌트와 진행 중인 READ를
-        나누고, 그중 마지막이 언마운트된 뒤 해제됩니다.
+        공유하고, 그중 마지막이 언마운트된 뒤 해제됩니다.
       </p>
 
       <CodeBlock

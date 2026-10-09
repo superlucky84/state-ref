@@ -297,7 +297,6 @@ import { client } from './client'; // createSyncClient(), one per app
 import { readShip } from './api'; // (id, signal) => Promise<Ship>
 
 export function ShipPanel(props: { id: number }) {
-  // An accessor follows props; a plain object stays fixed
   const [ship, q] = createSyncQuery(client, () => {
     const id = props.id;
     return {

@@ -151,7 +151,7 @@ const useTodo = connectPreact(watch);
         <code>@stateref/connect-preact/sync</code>의 <code>useSyncQuery</code>를
         씁니다. 컴포넌트는 마운트된 동안 조회를 소유합니다. 커밋 뒤 불러오고,
         props의 key를 따라가며, 같은 key를 보는 다른 컴포넌트와 진행 중인 READ를
-        나누고, 그중 마지막이 언마운트된 뒤 해제됩니다.
+        공유하고, 그중 마지막이 언마운트된 뒤 해제됩니다.
       </p>
 
       <CodeBlock
@@ -227,8 +227,9 @@ export function ShipPanel({ id }: { id: number }) {
           렌더는 아무것도 만들지 않습니다. Preact는 effect를 paint 뒤에 돌리므로
           해제는 다음 paint를 기다립니다(프레임이 오지 않으면 200ms 타이머가
           대신합니다). 그래서 한 key를 다른 컴포넌트에 넘기는 라우트 교체가
-          READ를 취소하거나 반복하지 않습니다. 테스트는 핸들이 사라졌는지
-          확인하기 전에 이 해제를 기다립니다.
+          READ를 취소하거나 반복하지 않습니다. 테스트에서는 핸들이 사라졌는지
+          확인하기 전에 이 해제를 기다리세요. 가짜 타이머를 쓰면 타이머를 200ms
+          진행하세요.
         </li>
         <li>
           client는 컴포넌트 수명 동안 고정입니다. 다른 client를 넘기면{' '}
