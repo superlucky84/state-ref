@@ -1,7 +1,7 @@
 # IMPLEMENT — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: **단계 2(관찰자) 완료(2026-10-09): 리뷰 9건 반영, 테스트 보강·결함 주입·전체 게이트 통과.** 다음은 요청 시 단계 3(React·Preact 진입점). 구현·리뷰 중단 당시 상태는 진행 기록에 보존했다. PR [superlucky84/state-ref#16](https://github.com/superlucky84/state-ref/pull/16)은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`). 단계 3의 진입 조건 중 PR 병합은 충족됐다(DC-QH-35).
+- 상태: **단계 3(React·Preact 진입점) 완료(2026-10-09): 최소·최신 매트릭스, 결함 주입 7/7, 전체 게이트 21단계 통과.** 단계 1·2 완료. 다음은 단계 4(Vue·Solid·Svelte 진입점). 구현·리뷰 중단 당시 상태는 진행 기록에 보존했다. PR [superlucky84/state-ref#16](https://github.com/superlucky84/state-ref/pull/16)은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`). 단계 3의 진입 조건 중 PR 병합은 충족됐다(DC-QH-35).
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 모든 단계의 공통 완료 조건:
@@ -43,7 +43,7 @@
 | T-QH-26 | 비용: 관찰자 1,000개 마운트·언마운트의 시간과 해제 뒤 owners·항목 수(목록 화면 모사). 기준을 측정해 진행 기록에 남기고 이후 회귀 비교의 기준으로 쓴다 | sync 또는 react bench | DESIGN 5절 |
 | T-QH-27 | sync 산출물에 `react`·`preact`·`vue`·`svelte`·`solid-js` import가 없음(`packages/sync/test/sync-bundle.mjs`에 확인 추가) | sync 빌드 | C-QH-04 |
 | T-QH-28 | `observe`가 없는 client(옛 sync 사본이 만든 공유 client 모사)를 넘기면 진입점이 `This sync client has no observe(); ...`로 실패 | react | R-QH-16, DC-QH-37 |
-| T-QH-30 | Preact: T-QH-20, 21, 24, 25 대응 / `act` 없이 실제 타이머로 같은 key 라우트 교체 — 요청 1·취소 0(해제 일정, DC-QH-11) / `preact-render-to-string`에서 붙지 않고 요청 0 | preact | R-QH-01, R-QH-05, R-QH-12, DC-QH-11, DC-QH-28 |
+| T-QH-30 | Preact: T-QH-20, 21, 24, 25 대응 / `act` 없이 실제 타이머로 같은 key 라우트 교체 — keyed diff와 먼저 언마운트한 뒤 같은 작업 안에서 새 마운트하는 두 순서, 각각 rAF 정상·정지에서 요청 1·취소 0(해제 일정, DC-QH-11) / `preact-render-to-string`에서 붙지 않고 요청 0 | preact | R-QH-01, R-QH-05, R-QH-12, DC-QH-11, DC-QH-28 |
 | T-QH-31 | Vue: setup의 getter key 변경(렌더 전 반영), 선택 함수 여러 개가 한 관찰자, 스코프 해제, 서버 렌더에서 `onServerPrefetch` 뒤 값이 HTML에 들어감 | vue | R-QH-01, DC-QH-16, DC-QH-17, DC-QH-29 |
 | T-QH-32 | Solid: accessor key 변경(`createComputed`), `onCleanup` 해제 / `isServer`에서 요청 없음(`*.ssr.test.tsx`, `test:ssr`) | solid | R-QH-01, R-QH-12, DC-QH-17 |
 | T-QH-33 | Svelte store API: 옵션 객체·`Readable` 옵션 store key 변경, 컴포넌트 수명 / `ssr: true` client의 서버 렌더에서 항목·요청 없음(`*.ssr.test.ts`, `test:ssr`) | svelte | R-QH-01, R-QH-12, DC-QH-15, DC-QH-36 |
@@ -107,11 +107,13 @@
 ## 단계 3 — React·Preact 진입점
 
 - 진입: 단계 2 완료, PR [superlucky84/state-ref#16](https://github.com/superlucky84/state-ref/pull/16)이 `main`에 병합되고 이 브랜치가 그 `main`으로 갱신됨(DC-QH-35, 2026-10-08 충족: `41798cf`, `e58deaa`).
-- [ ] `useSyncQuery(client, options)`: 훅 순서 ① `useState`로 관찰자(`client.observe` 없으면 DC-QH-37 오류, 다른 client면 DC-QH-13 오류) ② `useEffect`에서 `setOptions` → true면 ⑤로 한 번 더 렌더 ③ `connectReactView(observer.watch)()` ④ key 전환 렌더용 `useSyncExternalStore(no-op, () => matches ? null : peek(options).value)`(커밋 뒤 재확인이 전환 뒤 렌더를 맡음, DC-QH-27). React에는 ⑤ 카운터를 두지 않는다(T-QH-24가 실패하면 둔다). 렌더는 `matches`면 ③의 값·아니면 `peek(options)`, `[표시, observer.controls]` 반환(DC-QH-16·23·27·28).
-- [ ] Preact는 `connectPreactView`와 `preact/hooks`로 같은 구조(④ 없음, ⑤ `useState` 카운터로 전환 뒤 렌더). `scheduleRelease`는 rAF → `setTimeout` → `setTimeout`, rAF 대체 타이머 200ms(Preact `RAF_TIMEOUT` 100ms보다 길게, DC-QH-11). Preact effect 일정과 같은 단계에서 해제하면 언마운트 때 먼저 예약된 해제가 새 컴포넌트의 구독보다 먼저 실행된다.
-- [ ] 진입점 위치·빌드·`exports`(`./sync`, ESM)·선택적 peer `@stateref/sync`(범위는 `observe`가 들어간 버전부터)·`scripts/check-packaging.mjs`(DC-QH-20).
+- 릴리스 준비: `observe`를 포함하는 sync `0.3.0`과 React `19.1.0`·Preact `10.5.0`의 minor 버전을 이 단계에서 반영한다. 새 하위 경로의 선택적 peer는 `@stateref/sync: ^0.3.0`. 실제 게시와 CHANGELOG 정리는 별도이며, 단계 4 커넥터도 같은 peer 하한을 쓴다(DC-QH-20).
+- [x] `useSyncQuery(client, options)`: 훅 순서 ① `useState`로 관찰자(`client.observe` 없으면 DC-QH-37 오류, 다른 client면 DC-QH-13 오류) ② `useEffect`에서 `setOptions` ③ `connectReactView(observer.watch)()` ④ key 전환 렌더용 `useSyncExternalStore(no-op, () => matches ? null : peek(options).value)`(커밋 뒤 재확인이 전환 뒤 렌더를 맡음, DC-QH-27). React에는 ⑤ 카운터를 두지 않는다(T-QH-24가 실패하면 둔다). 렌더는 `matches`면 ③의 값·아니면 `peek(options)`, `[표시, observer.controls]` 반환(DC-QH-16·23·27·28).
+- [x] Preact는 `connectPreactView`와 `preact/hooks`로 같은 구조(④ 없음, ⑤ `useState` 카운터로 전환 뒤 렌더). `scheduleRelease`는 rAF → `setTimeout` → `setTimeout`, rAF 대체 타이머 200ms(Preact `RAF_TIMEOUT` 100ms보다 길게, DC-QH-11). Preact effect 일정과 같은 단계에서 해제하면 언마운트 때 먼저 예약된 해제가 새 컴포넌트의 구독보다 먼저 실행된다.
+- [x] 진입점 위치·빌드·`exports`(`./sync`, ESM)·선택적 peer `@stateref/sync`(범위는 `observe`가 들어간 버전부터)·`scripts/check-packaging.mjs`(DC-QH-20).
 - 기준 테스트: T-QH-20~25, 28, 30. `node scripts/connector-matrix.mjs react preact`. `pnpm check:packaging`.
-- 완료: 위 명령 모두 exit 0.
+- 위치: React `src/tests/react/query-{hook,concurrent,ssr}.tsx`, Preact `src/tests/preact/query-{hook,route,ssr}.tsx`. 공개 하위 경로의 ESM import·require 거절·node16 소비자 타입은 `scripts/check-packaging.mjs`에서 확인한다.
+- 완료(2026-10-09): React 66개(새 22개), Preact 51개(새 19개), sync 337개. 최소·최신 매트릭스 네 셀과 `pnpm check:packaging` 모두 exit 0. `pnpm gate` 21단계도 모두 통과. T-QH-24가 React의 ④만으로 통과했으므로 React ⑤ 카운터는 추가하지 않았다.
 
 ## 단계 4 — Vue·Solid·Svelte 진입점
 
@@ -214,3 +216,18 @@
 - 다음: 요청 시 단계 3(React·Preact `./sync` 진입점). 그 뒤 단계 4~7과 수동 체크리스트. 이 작업에서는 단계 3을 시작하거나 PR을 만들지 않는다.
 - 막힌 점: 없음.
 - 커밋 추적: 이번 수정의 시작점은 `5307122`. 이 완료 기록을 포함하는 커밋은 `git log -1 -- docs/sync-query-hooks/IMPLEMENT.md`로 확인한다.
+
+
+### 2026-10-09 — 단계 3 React·Preact 진입점 완료
+
+- 작업: `claude/sync-query-hooks`에서 ctxbin 인계(단계 2 완료)를 읽고 `doc-driven-designer-v1` 규칙·스킬과 확정 설계를 이어서 적용했다. 단계 3 시작 전에 네 문서의 상태와 minor 버전 반영 시점을 기록했다.
+- 구현: `packages/connect-react/src/sync.ts`와 `packages/connect-preact/src/sync.ts`의 `useSyncQuery(client, options)`가 `[display, controls]`를 반환한다. 관찰자·커넥터 훅·controls는 마운트 수명 동안 유지한다. client 교체와 `observe`가 없는 구버전 client는 정해진 오류로 알린다. 렌더는 캐시·관찰자 구독 store에 쓰지 않고, key가 바뀌면 즉시 새 key의 peek를 반환한 뒤 effect에서 옵션을 확정한다.
+- React: 기존 `connectReactView`와 전환 중 peek 루트의 `useSyncExternalStore` 일관성 검사를 조합한다. 커밋 뒤 snapshot이 null로 바뀌며 새 경로를 모으는 렌더가 실행된다. T-QH-24와 동시 렌더 다섯 시나리오(T-QH-23)가 React 18.3.1·19.3.0 모두에서 통과해 별도 강제 렌더 카운터 없이 DC-QH-27·28을 충족했다. 매 시나리오는 실제 쓰기가 렌더 도중 들어갔는지와 커밋된 모든 화면의 값이 일치하는지를 함께 검사한다.
+- Preact: 기존 `connectPreactView`와 옵션 확정 뒤 카운터 렌더. 해제는 rAF → 타이머 → 타이머, rAF가 정지하거나 없을 때 200ms 대체 타이머를 쓴다. 중복 일정은 한 번만 실행하며 실제 해제는 항상 진행한다. 라우트 교체는 keyed diff와 명시적인 언마운트 후 같은 작업 안의 마운트, 각각 rAF 정상·정지 네 경우를 `act` 없이 실제 타이머로 검사했다(READ 1·취소 0·최종 owners 0).
+- 패키징: 두 패키지의 ESM `./sync` export·독립 Vite 빌드와 선택적 peer `@stateref/sync: ^0.3.0`. sync `0.3.0`, React `19.1.0`, Preact `10.5.0`으로 minor 버전 반영(게시하지 않음). 공개 하위 경로의 import·require 거절, node16 타입(T/S 인라인 추론·읽기 전용 tuple/display·빌린 핸들), peer 설정, 기본 진입점의 sync import 없음이 packaging 검사에 포함된다. 기존 workspace 개발 의존성이 있어 lockfile 변경 없이 frozen offline install이 통과했다.
+- 검증: React 전체 66개(새 22개), Preact 전체 51개(새 19개), sync 337개. React 18.3.1·19.3.0 각 66개, Preact 10.24.1·10.29.8 각 51개. SSR은 node 환경의 반복 renderToString 무구독·무READ·hydrated HTML, React는 jsdom의 실제 hydration과 첫 fetchStatus 일치도 확인했다.
+- 결함 주입: 격리한 사본에서 7/7 검출. React의 이전 key 표시, 일관성 검사 삭제, 렌더 안의 옵션 확정, controls identity 변경; Preact의 경로 재수집 렌더 삭제, 한 단계 이른 해제, 기본 해제 일정 사용. 처음에는 한 단계 이른 해제를 못 잡았으나, 마운트의 경로 수집용 추가 렌더·effect가 끝난 뒤 교체하도록 테스트를 보강해 READ 2회 실패를 재현했다. 일관성 검사 삭제는 동시 전환 화면에 값이 섞이고 새 age 갱신을 놓치는 두 결함을 잡았다. 원본 소스에는 결함을 주입하지 않았다. 도구·로그는 저장소 밖 `/workspace/.onboarding/`에만 둔다.
+- 전체 게이트: Node `24.19.0` + pnpm `9.12.3`에서 `pnpm gate` 21단계 모두 통과(exit 0). core live index 1,000개 2.8ms(기준 ≤ 5ms), 최소 gzip 3,727B(기준 ≤ 3,800B). 타입·문서 예제·lint·전체 테스트·SSR·번들 smoke·packaging·성능 검사를 모두 포함한다.
+- 보호 조건: `origin/main` 재fetch 뒤 core와 기존 다섯 커넥터 `src/index.ts`·Svelte `runes.ts` 비교가 exit 0. 관찰자·`live-key.ts`와 lockfile도 이번 단계에서 바꾸지 않았다.
+- 다음: 단계 4(Vue·Solid·Svelte store API 진입점), 이어서 단계 5~7의 hardening·통합 데모·수동 검증·사용자 가이드·릴리스 기록. 수동 체크리스트는 아직 수행하지 않았다.
+- 막힌 점: 없음. 이번 단계에서는 PR을 만들거나 패키지를 게시하지 않는다.

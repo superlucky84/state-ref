@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@stateref/connect-react",
-  "version": "19.0.0",
+  "version": "19.1.0",
   "private": false,
   "description": "React connector for state-ref",
   "packageManager": "pnpm@7.6.0",
@@ -9,7 +9,7 @@
   "module": "./dist/stateref-connect-react.mjs",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && vite build --config vite.sync.config.js",
     "test": "vitest run --reporter verbose",
     "test:dev": "vitest"
   },
@@ -22,6 +22,12 @@
       "require": {
         "types": "./dist/index.d.cts",
         "default": "./dist/stateref-connect-react.cjs"
+      }
+    },
+    "./sync": {
+      "import": {
+        "types": "./dist/sync.d.ts",
+        "default": "./dist/stateref-connect-react.sync.mjs"
       }
     }
   },
@@ -43,7 +49,8 @@
   ],
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
-    "state-ref": "^3.1.0"
+    "state-ref": "^3.1.0",
+    "@stateref/sync": "^0.3.0"
   },
   "devDependencies": {
     "@stateref/sync": "workspace:^",
@@ -56,5 +63,10 @@
   },
   "volta": {
     "node": "20.3.0"
+  },
+  "peerDependenciesMeta": {
+    "@stateref/sync": {
+      "optional": true
+    }
   }
 }

@@ -1,7 +1,7 @@
 # DESIGN — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: **결정 완료** (2026-10-08 IMPLEMENT 단계 0 재검증 + 검증 에이전트 교차 검토 2회 반영). 미결 `[ ]` 없음. 단계 1·2 완료(2026-10-09 리뷰 반영·전체 게이트 통과, 진행 상태는 IMPLEMENT 기준). PR #16은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`).
+- 상태: **결정 완료** (2026-10-08 IMPLEMENT 단계 0 재검증 + 검증 에이전트 교차 검토 2회 반영). 미결 `[ ]` 없음. 단계 1~3 완료(2026-10-09, 단계 3 최소·최신 매트릭스·전체 게이트 통과, 진행 상태는 IMPLEMENT 기준). PR #16은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`).
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 ## 1. 현재 구조 (기준 `6e462ed`, 2026-10-08 코드로 재확인)
@@ -101,7 +101,7 @@ DC-QH-20·21·24·25·26·28(렌더 +1)·31·33·35는 단계 0 보고의 추천
 
 - [x] **DC-QH-20 진입점 위치 — 각 커넥터 패키지의 하위 경로** (U-QH-11) — `@stateref/connect-react/sync`, `@stateref/connect-preact/sync`, `@stateref/connect-vue/sync`, `@stateref/connect-solid/sync`, `@stateref/connect-svelte/sync`. 선례는 `@stateref/connect-svelte/runes`.
   - 근거: sync를 안 쓰는 사용자에게 비용이 없다. sync 패키지가 프레임워크를 알지 않는다(C-QH-04).
-  - 결과: 커넥터 패키지에 `@stateref/sync`가 **선택적 peer 의존**(`peerDependenciesMeta.optional`)으로 생긴다. peer 범위는 `client.observe`가 처음 들어간 sync 버전부터 적는다(예: `^0.3.0`). 선택적 peer는 설치 경고가 없으므로 진입점이 실행 때 `client.observe`를 확인한다(DC-QH-37). sync의 0.x minor마다 다섯 커넥터의 peer 범위를 넓혀 함께 릴리스하고, 커넥터는 하위 경로 추가로 minor를 올린다(IMPLEMENT 단계 7 CHANGELOG).
+  - 결과: 커넥터 패키지에 `@stateref/sync`가 **선택적 peer 의존**(`peerDependenciesMeta.optional`)으로 생긴다. peer 범위는 `client.observe`가 처음 들어간 sync 버전부터 적는다(`^0.3.0`, 단계 3에서 sync `0.3.0`·React `19.1.0`·Preact `10.5.0`으로 minor 버전을 반영). 선택적 peer는 설치 경고가 없으므로 진입점이 실행 때 `client.observe`를 확인한다(DC-QH-37). sync의 0.x minor마다 다섯 커넥터의 peer 범위를 넓혀 함께 릴리스하고, 커넥터는 하위 경로 추가로 minor를 올린다(IMPLEMENT 단계 7 CHANGELOG).
   - 형식: sync와 같이 ESM 전용이다(`@stateref/sync`가 ESM 전용). 각 패키지의 `exports`·빌드 설정과 `scripts/check-packaging.mjs`에 새 경로를 더한다.
   - 검증: `pnpm check:packaging`, T-QH-20·30~33의 import 경로.
 - [x] **DC-QH-21 이름** (U-QH-11) — sync: `client.observe(options)`. React·Preact·Vue: `useSyncQuery(client, options)`. Solid·Svelte: `createSyncQuery(client, options)`. 반환 타입 이름은 `QueryObserver<T, S>`, 옵션 타입은 `ObserveOptions<T, S>`.
@@ -138,11 +138,11 @@ DC-QH-20·21·24·25·26·28(렌더 +1)·31·33·35는 단계 0 보고의 추천
   - 같은 key를 읽는 여러 컴포넌트는 각자 관찰자를 갖지만, 위 세 장치가 각 렌더의 값을 덮는다.
   - 검증: T-QH-23(PR #16의 `concurrent.tsx` 네 시나리오 + key 전환 중 새 key 쓰기).
 - [x] **DC-QH-28 React·Preact의 렌더 중 key 전환 — 렌더는 순수하게, 전환은 커밋 뒤, 전환 뒤 한 번 더 렌더** (U-QH-11에서 렌더 +1 수용)
-  - 훅 안의 순서: ① `useState`로 관찰자 ② `setOptions` effect ③ 커넥터 훅(`connectReactView(observer.watch)()`) ④ key 전환 렌더용 `useSyncExternalStore`(DC-QH-27) ⑤ 강제 렌더용 `useState` 카운터(Preact만. React는 ④의 커밋 뒤 재확인이 같은 역할을 한다, DC-QH-27). `setOptions` effect를 커넥터보다 **먼저** 선언한다. React는 다시 연결되는 effect를 훅 순서로 실행하므로(`<Activity>` 표시, StrictMode) 그래야 구독이 확정 옵션을 최신으로 바꾼 뒤 붙는다(숨긴 동안 key가 바뀐 경우 이전 key에 붙어 READ했다가 취소하지 않는다). 붙지 않은 상태의 `setOptions`는 확정 옵션만 바꾼다.
+  - 훅 구성과 effect 순서: ① `useState`로 관찰자 ② `setOptions` effect ③ 커넥터 훅(`connectReactView(observer.watch)()`) ④ key 전환 렌더용 `useSyncExternalStore`(DC-QH-27) ⑤ 강제 렌더용 `useState` 카운터(Preact만. React는 ④의 커밋 뒤 재확인이 같은 역할을 한다, DC-QH-27). Preact의 ⑤ 상태는 ① 뒤에서 만들어 ②의 setter를 마련한다. `setOptions` effect를 커넥터보다 **먼저** 선언한다. React는 다시 연결되는 effect를 훅 순서로 실행하므로(`<Activity>` 표시, StrictMode) 그래야 구독이 확정 옵션을 최신으로 바꾼 뒤 붙는다(숨긴 동안 key가 바뀐 경우 이전 key에 붙어 READ했다가 취소하지 않는다). 붙지 않은 상태의 `setOptions`는 확정 옵션만 바꾼다.
   - 렌더: `observer.matches(options)`가 true면 커넥터가 돌려준 값(구독 ref, 구독 전에는 첫 렌더에 만든 `watch()` ref — PR #16 기준)을, false면 `observer.peek(options)`를 반환한다. 렌더 중에는 구독자가 있는 관찰자 store(옵션 store·커서·display)에 쓰지 않는다.
   - 커밋 뒤: `useEffect`에서 `observer.setOptions(options)`. key나 `enabled`가 바뀌었으면 true를 돌려주고, **한 번 더 렌더**된다(React는 ④의 재확인, Preact는 ⑤의 카운터). 이 렌더는 구독 ref를 지나므로 새 key 화면에서 읽는 경로가 구독에 모인다(커넥터가 마운트 때 한 번 더 렌더하는 것과 같은 이유, `connect-react/src/index.ts:52-55`).
   - `useEffect`를 고른 이유: TanStack의 `useBaseQuery`와 같고, React 18의 서버 렌더에서 `useLayoutEffect` 경고가 없으며, 렌더 결과는 이미 peek로 맞으므로 페인트 전 전환이 필요 없다.
-  - Preact도 같은 순서를 `preact/hooks`로 둔다(④ 없음: Preact 10에는 concurrent 렌더와 `useSyncExternalStore` 재확인이 없다. 대신 ⑤). 해제 일정은 DC-QH-11.
+  - Preact도 같은 effect 순서를 `preact/hooks`로 둔다(④ 없음: Preact 10에는 concurrent 렌더와 `useSyncExternalStore` 재확인이 없다. 대신 ⑤). 해제 일정은 DC-QH-11.
   - 근거: 렌더 중 관찰자 store에 쓰면 React가 `Cannot update a component while rendering a different component` 오류를 낸다(6절 E2). 전환 뒤 다시 렌더하지 않으면 새 key 화면에서 처음 읽은 경로가 구독되지 않아, 그 경로만 바뀌면 화면이 갱신되지 않는다(6절 E3: `age` 2→99 변경에 렌더 0회).
   - 비용: key(또는 `enabled`) 변경마다 렌더 1회(React는 ④, Preact는 ⑤). T-QH-24가 React에서 ④만으로 경로를 모으지 못하면 React에도 ⑤를 두고 비용을 "최대 2회"로 고친다.
   - 검증: T-QH-21, T-QH-24, T-QH-25, T-QH-30, T-QH-41.
