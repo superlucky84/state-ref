@@ -272,7 +272,7 @@ type ObserverSettings = Readonly<{
 
 ### 단계 6 체험 데모·브라우저 검증 (U-QH-14)
 
-- [x] **DC-QH-44 데모** — `examples/shared`의 별빛 정비소 모델·CSS·로컬 HTTP Vite plugin을 여섯 네이티브 UI가 공유한다. 각 앱의 `/mission.html`은 우주선 목록과 실제 컴포넌트 소유 query 상세·보조 화면을 제공한다. UI는 준비 상태·편집·저장을 설명하고 세부 캐시/요청 진단은 접힌 영역에 둔다. 보조 화면은 독립 관찰자이며 모델이 명시 query 소유자를 추가하지 않는다. 장비 draft와 batch는 별도 일반 store로 체험한다. 기존 진단/쇼핑 데모와 공개 라이브러리는 유지한다.
+- [x] **DC-QH-44 데모** — `examples/shared`의 별빛 정비소 모델·CSS·로컬 HTTP Vite plugin을 여섯 네이티브 UI가 공유한다. 각 앱의 `/mission.html`은 우주선 목록과 실제 컴포넌트 소유 query 상세·보조 화면을 제공한다. Lithent는 `index.html`도 같은 `src/mission-main.ts`를 사용하고 두 HTML을 build input으로 포함해 base/concurrent의 dev/preview `/`가 동작한다. UI는 준비 상태·편집·저장을 설명하고 세부 캐시/요청 진단은 접힌 영역에 둔다. 보조 화면은 독립 관찰자이며 모델이 명시 query 소유자를 추가하지 않는다. 장비 draft와 batch는 별도 일반 store로 체험한다. 기존 진단/쇼핑 데모와 공개 라이브러리는 유지한다.
 - [x] **DC-QH-45 네트워크** — 외부 계정 없이 같은 origin의 `/mission-api` READ/WRITE를 사용한다. Vite dev/preview에서 동일 서버가 지연·단발 실패·서버 변경을 제공한다. API는 데모 메모리만 변경하며 파일/외부 데이터에 쓰지 않는다. 조회는 AbortSignal을 fetch에 전달하고 저장은 capture+links로 승인 응답을 연결한다. 불확실한 WRITE를 자동 재전송하지 않는다. 브라우저의 모의 무선 연결은 공개 SyncEnvironment로 제어한다.
 - [x] **DC-QH-46 Playwright** — 별도 mission config가 여섯 production 페이지·Lithent concurrent·React StrictMode development·React SSR을 시작한다. DOM과 실제 요청/취소를 관찰하고 key/data의 중간 불일치는 MutationObserver로 확인한다. 공유 READ·해제·fresh/stale 캐시·polling·새 경로·편집/links·오류 복구·SSR HTML/hydration을 검증한다. 자동으로 입증한 수용 항목만 완료 표시하며 사용성 평가는 사람이 수행할 항목으로 남긴다. trace/실패 screenshot/JSON 결과와 실행 안내를 제공한다(T-QH-57~59).
 

@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => ({
     outDir: mode === 'concurrent' ? 'dist-concurrent' : 'dist',
     rollupOptions: {
       input: {
+        index: fileURLToPath(new URL('./index.html', import.meta.url)),
         mission: fileURLToPath(new URL('./mission.html', import.meta.url)),
       },
     },

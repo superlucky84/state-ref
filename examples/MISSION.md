@@ -17,7 +17,7 @@ pnpm build
 pnpm --filter stateref-example-lithent dev
 ```
 
-**로컬 컴퓨터의 브라우저**에서 `http://localhost:5186/mission.html`을 여세요. 각 앱은 같은 로컬 HTTP 정비소를 사용하지만 서버 프로세스별로 데이터가 따로 있습니다. 외부 계정이나 API 키가 필요하지 않습니다.
+**로컬 컴퓨터의 브라우저**에서 Vite가 안내하는 `http://localhost:5186/`을 여세요. 기존 `/mission.html` 주소도 사용할 수 있습니다. 각 앱은 같은 로컬 HTTP 정비소를 사용하지만 서버 프로세스별로 데이터가 따로 있습니다. 외부 계정이나 API 키가 필요하지 않습니다.
 
 | 화면               | 실행 명령                                               | 로컬 포트 |
 | ------------------ | ------------------------------------------------------- | --------- |
@@ -29,7 +29,7 @@ pnpm --filter stateref-example-lithent dev
 | Svelte (store API) | `pnpm --filter stateref-example-svelte dev`             | 5184      |
 | Solid              | `pnpm --filter stateref-example-solid dev`              | 5185      |
 
-모두 `/mission.html`을 엽니다. 기존 다섯 프레임워크의 `/` 데모도 남아 있습니다. 거기서는 배열·live index·투영·infinite query 등 정비소에서 다루지 않는 세부 기능을 더 실험할 수 있습니다.
+Lithent base/concurrent는 `/`에서 정비소를 엽니다. 다른 다섯 프레임워크는 `/mission.html`을 엽니다. 기존 다섯 프레임워크의 `/` 데모도 남아 있습니다. 거기서는 배열·live index·투영·infinite query 등 정비소에서 다루지 않는 세부 기능을 더 실험할 수 있습니다.
 
 ## 오늘의 다섯 미션
 

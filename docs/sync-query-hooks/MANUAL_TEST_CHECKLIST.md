@@ -94,3 +94,9 @@ M-QH-02의 상세 화면에 새로고침 버튼, 무효화 버튼, 이름 편집
 | 추가 체험  | `draft cancel/apply…`: 미리 편집·취소는 원본 연료 40 유지, 적용은 90/계산 점수 120. 일반 보충 알림 2, batch 1, 계산 점수 160. Enter로 draft 버튼 활성화, 390px에서 가로 overflow 없음. 데스크톱·작은 화면 캡처를 실제로 확인했다.                                                                                                                   |
 
 모든 시나리오에서 pageerror와 예상하지 않은 console error는 0이다. 의도한 HTTP 503/409 resource 오류만 제외한다. 무선 토글은 브라우저 자체의 offline 설정 대신 공개 `SyncEnvironment`로 제어한다. READ/PUT은 실제 로컬 HTTP이며 외부 데이터는 변경하지 않는다. 사람이 느끼는 명확성·재미와 실제 기기의 사용성은 위 미체크 두 항목으로 남긴다.
+
+## 2026-10-09 Lithent 기본 주소 보완 검증
+
+- [x] base/concurrent 각각 dev/preview의 `/`와 `/mission.html`이 HTTP 200이며 별빛 정비소를 렌더한다. 화성 선택 뒤 실제 GET 1회로 두 화면을 채우고 이름 편집을 공유한다. pageerror/console error는 0이다(R-QH-22, DC-QH-44).
+
+Chromium 151.0.7922.173에서 Playwright로 **8/8 통과**. 화성 산소 82, 별 수집과 화면 제거 뒤 owners/일반 상태 구독 0도 확인했다. 두 모드 빌드가 통과했으며 임시 검증 스크립트·로그는 `/workspace/.onboarding/mission-root-{smoke.mjs,browser.log}`에 있다. 소스 commit은 `git log -1 -- examples/lithent/index.html`로 조회하고 정확한 SHA는 ctxbin 인계에 기록한다. 사람이 평가할 위 두 사용성 항목은 미수행 상태다.

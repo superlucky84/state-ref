@@ -76,7 +76,7 @@
 - **R-QH-19** Lithent concurrent의 버전 알림에 연결해 외부 표시 상태 변경을 렌더러가 감지하게 한다. broad 버전 구독은 렌더 알림의 경로 수집과 분리한다. 렌더러 자체의 재시도 제한(마운트·update effect가 실행된 빌드, 재시도 상한)은 유지하며 무조건적인 tearing 방지를 약속하지 않는다.
 - **R-QH-20** Lithent 설치·고정 옵션·props getter·새로고침·무효화·로컬 편집·mutation links·SSR·concurrent 선택을 README와 영어·한국어 사이트에 안내한다. 문서 예제는 실제 공개 진입점으로 타입·실행 검증한다.
 - **R-QH-21** 기본 진입점의 `connectLithent<T>(watch: Watch<T>): () => StateRefStore<T>`는 일반 ref의 `.value` 읽기·쓰기를 보존한다. `connectLithentView<R>`는 전달된 ref 타입을 보존한다(수정 가능한 watch도 허용). 두 함수는 마운트 구독·즉시 abort 해제·경로별 갱신·SSR·concurrent 알림 구현을 공유한다. API별 문서 예제를 공개 진입점으로 검증한다(T-QH-56).
-- **R-QH-22** 공통 별빛 정비소 데모에서 항목 전환·쌍둥이 화면·로컬 편집·links 저장·저장 중 추가 편집·캐시·조회 실패/복구·통신 복구·polling·장비 draft·batch를 체험한다. 각 프레임워크의 공개 sync 진입점을 사용한다. 외부 API 없이 로컬 HTTP 서버에 실제 READ/WRITE가 나가고 Playwright가 네트워크·취소·DOM·SSR hydration을 관찰한다. 자동 결과와 사람이 평가할 사용성 항목을 구분하고 재현 명령·브라우저·commit을 남긴다.
+- **R-QH-22** 공통 별빛 정비소 데모에서 항목 전환·쌍둥이 화면·로컬 편집·links 저장·저장 중 추가 편집·캐시·조회 실패/복구·통신 복구·polling·장비 draft·batch를 체험한다. 각 프레임워크의 공개 sync 진입점을 사용한다. Lithent base/concurrent는 Vite가 표시하는 기본 `/`에서도 열리며 개발 서버와 빌드 미리보기 모두 기존 `/mission.html`을 유지한다. 외부 API 없이 로컬 HTTP 서버에 실제 READ/WRITE가 나가고 Playwright가 네트워크·취소·DOM·SSR hydration을 관찰한다. 자동 결과와 사람이 평가할 사용성 항목을 구분하고 재현 명령·브라우저·commit을 남긴다.
 
 ### 제약
 

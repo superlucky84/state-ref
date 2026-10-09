@@ -370,3 +370,10 @@
 - 보호 조건: fetched `origin/main` 대비 core 전체·기존 다섯 기본 커넥터·Svelte runes diff 0. 기준 `35fe3c3` 대비 모든 package 라이브러리 소스 diff 0으로 사용자의 webpack 감지 수정도 보존했다. Lithent framework 저장소도 수정하지 않았다. 관련 로그·캡처는 저장소 밖 `/workspace/.onboarding/mission-*`, 브라우저 원시 결과는 ignored 디렉터리에 둔다.
 - 다음: 사람의 체험 피드백을 받으면 데모 사용성을 보완한다. 단계 7의 다른 프레임워크 가이드·server-sync 교차 링크·CHANGELOG/릴리스 문서와 미게시 문구·패키지 게시/사이트 배포 순서 정리는 남는다. 기존 audit 기록의 문서 항목은 단계 7 체크리스트로 옮겼고 현재 React 경로 재수집 위치 참조도 고쳤다. PR·main 병합·게시·배포는 수행하지 않았다. 막힌 점 없음.
 - 커밋·인계: 이번 기록과 구현은 `feat(examples): add playable sync missions and browser verification`로 함께 커밋해 작업 브랜치에 push한다. 정확한 SHA는 `git log -1 -- examples/e2e/src/mission.spec.ts`와 ctxbin key `state-ref-root/claude/sync-query-hooks`에서 확인한다.
+
+### 2026-10-09 — Lithent 기본 주소 404 보완
+
+- 사용자 재현: `pnpm --filter stateref-example-lithent dev`가 안내한 `/`는 `index.html`이 없어 404였다. 앞선 브라우저 검증은 `/mission.html`만 사용해 기본 주소 누락을 찾지 못했다.
+- 완료: 같은 네이티브 앱을 여는 `index.html`과 build input을 추가하고 체험 안내의 시작 주소를 `/`로 바꿨다(R-QH-22, DC-QH-44). 두 HTML은 동일한 JS/CSS 빌드를 공유한다. 기존 `/mission.html`, 공개 라이브러리와 다른 앱의 진입점은 유지한다.
+- 검증: `pnpm --filter stateref-example-lithent build`로 두 모드 빌드 통과. 실제 Chromium 151.0.7922.173에서 base/concurrent 각각 dev/preview의 `/`와 `/mission.html` **8/8 통과**. HTTP 200·정비소 렌더·화성 이름/산소 82·실제 GET 1 공유·이름 편집 공유·별 수집·화면 제거 뒤 owners/구독 0·pageerror/console error 0을 확인했다. 검증 스크립트와 로그는 `/workspace/.onboarding/mission-root-{smoke.mjs,browser.log}`에 보존했다. 앞선 전체 65개 결과는 이전 진행 기록의 별도 검증이다.
+- 다음/인계: 이 보완을 `fix(examples): open Lithent mission at the default URL`로 커밋·push하고 ctxbin key `state-ref-root/claude/sync-query-hooks`에 기록한다. 정확한 SHA는 `git log -1 -- examples/lithent/index.html`로 확인한다. 단계 7과 사람의 사용성 피드백은 이전 인계대로 남으며 막힌 점 없음.
