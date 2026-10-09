@@ -24,7 +24,7 @@
 | ID | 기능군 | 상태 | 테스트 근거 |
 |---|---|---|---|
 | F2-01 | key·캐시 공유·freshness·GC·진행 조회 공유·무효화·재조회 | 지원 | `packages/sync/src/tests/query.test.ts`, `packages/sync/src/tests/cache-helpers.test.ts`, `packages/sync/src/tests/hardening-lifetime.test.ts` |
-| F2-02 | 취소·조회 retry/backoff·focus/reconnect·polling·enabled | 지원 | `packages/sync/src/tests/automatic-refetch.test.ts`, `packages/sync/src/tests/network.test.ts`, `packages/sync/src/tests/query.test.ts`, `packages/sync/src/tests/display.test.ts` |
+| F2-02 | 취소·조회 retry/backoff·mount/focus/reconnect 재조회·polling·enabled | 지원 | `packages/sync/src/tests/automatic-refetch.test.ts`, `packages/sync/src/tests/network.test.ts`, `packages/sync/src/tests/query.test.ts`, `packages/sync/src/tests/display.test.ts`, `packages/sync/src/tests/observe.test.ts` |
 | F2-03 | query 상태·select·파생/의존/병렬 조회·초기/placeholder 데이터 | 지원 | `packages/sync/src/tests/display.test.ts`, `packages/sync/src/tests/cache-helpers.test.ts`, `packages/sync/src/tests/query.test.ts` |
 | F2-04 | mutation 상태·콜백·명시적 retry·경합/순서·낙관적 반영 | 지원 | `packages/sync/src/tests/mutation.test.ts`, `packages/sync/src/tests/hardening-ordering.test.ts`, `packages/sync/src/tests/draft-resource.test.ts` |
 | F2-05 | pagination·infinite query·prefetch·조회 데이터 보장 | 부분 지원 | `packages/sync/src/tests/infinite.test.ts`, `packages/sync/src/tests/infinite-helpers.test.ts`, `packages/sync/src/tests/cache-helpers.test.ts` |
@@ -41,11 +41,11 @@
 
 **차이·제약:** 캐시는 **client 범위**다. 전역 캐시나 프로세스 공유는 없고, SSR 요청마다 새 client를 만드는 것이 계약이다([Phase 8.4](./PHASE8_4.md), [DC8-5-18](./PHASE8_5.md)). dirty entry는 로컬 편집이 해소될 때까지 수거하지 않으며, `unconfirmed` 표시가 붙은 entry도 확인될 때까지 남는다. 캐시 관측은 읽기 전용 metadata만 내보내고 query payload·편집 값·mutation 입력은 내보내지 않는다([Phase 5.12](./PHASE5_12.md)).
 
-### F2-02 — 취소·retry·focus/reconnect·polling·enabled
+### F2-02 — 취소·retry·mount/focus/reconnect·polling·enabled
 
-**계약:** `AbortSignal`로 READ를 취소하고 늦은 응답은 기준 캐시 진입에서 차단한다. `retry`/`retryDelay`는 query 옵션이며 SSR에서는 기본 재시도하지 않는다. `refetchOnFocus`/`refetchOnReconnect`는 `true`(stale일 때만)·`'always'`·`false`를, `refetchInterval`과 `refetchIntervalInBackground`는 polling을 정한다. 같은 key의 관찰자들은 하나의 자동 READ와 하나의 polling tick을 공유한다.
+**계약:** `AbortSignal`로 READ를 취소하고 늦은 응답은 기준 캐시 진입에서 차단한다. `retry`/`retryDelay`는 query 옵션이며 SSR에서는 기본 재시도하지 않는다. `refetchOnFocus`/`refetchOnReconnect`는 `true`(stale일 때만)·`'always'`·`false`를, `refetchInterval`과 `refetchIntervalInBackground`는 polling을 정한다. 같은 key의 관찰자들은 하나의 자동 READ와 하나의 polling tick을 공유한다. **mount 재조회는 컴포넌트 관찰자 훅이 구독할 때의 `load()`다**([sync-query-hooks DESIGN](../sync-query-hooks/DESIGN.md) DC-QH-19). 렌더는 아무것도 열지 않고, 첫 구독(mount·commit)이 query를 열어 `load()`를 부른다. 신선한 기준(`staleTime` 안)이 있으면 READ하지 않고, stale이거나 기준이 없으면 READ하며, 진행 중 READ는 공유한다(`observe.test.ts`의 T-QH-03·04).
 
-**차이·제약:** sync는 **브라우저 전역을 직접 읽지 않는다.** focus·online 사건은 `SyncEnvironment`를 client에 주입해야 들어오고, `createBrowserSyncEnvironment()`를 명시적으로 호출해야 실제 브라우저 신호에 연결된다([Phase 5.8](./PHASE5_8.md)). `enabled`는 `client.query`의 옵션이 아니라 `liveView`의 `LiveQueryOptions`에 있다 — 켜고 끄는 조회는 입력 ref를 따라가는 live view로 표현한다([Phase 5.4](./PHASE5_4.md)). **주입 가능한 시간 원천이 없다**: staleness는 `Date.now()`, polling은 `setInterval`을 직접 쓴다([DC8-5-12](./PHASE8_5.md)). 연결 WRITE가 진행 중인 key에서는 자동 READ를 시작하지 않는다.
+**차이·제약:** sync는 **브라우저 전역을 직접 읽지 않는다.** focus·online 사건은 `SyncEnvironment`를 client에 주입해야 들어오고, `createBrowserSyncEnvironment()`를 명시적으로 호출해야 실제 브라우저 신호에 연결된다([Phase 5.8](./PHASE5_8.md)). `enabled`는 `client.query`의 옵션이 아니다 — 켜고 끄는 조회는 입력 ref를 따라가는 live view(`LiveQueryOptions`, [Phase 5.4](./PHASE5_4.md))나 관찰자 옵션(`ObserveOptions`의 `enabled`, 컴포넌트 훅)으로 표현한다. 별도의 `refetchOnMount` 옵션은 없다. mount 때 읽을지는 `staleTime`이 정하고, 명시 핸들은 앱이 `load()`를 부를 때만 읽는다. **주입 가능한 시간 원천이 없다**: staleness는 `Date.now()`, polling은 `setInterval`을 직접 쓴다([DC8-5-12](./PHASE8_5.md)). 연결 WRITE가 진행 중인 key에서는 자동 READ를 시작하지 않는다.
 
 ### F2-03 — query 상태·select·의존/병렬 조회·초기/placeholder 데이터
 

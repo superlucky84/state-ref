@@ -19,6 +19,14 @@ export const Solid = mount(() => {
         code={`pnpm add state-ref @stateref/connect-solid`}
       />
 
+      <p>
+        The ESM-only <code>@stateref/connect-solid/sync</code> entry (see
+        &quot;Component Queries&quot; below) also needs the optional{' '}
+        <code>@stateref/sync</code> package, 0.3 or later:
+      </p>
+
+      <CodeBlock language="bash" code={`pnpm add @stateref/sync`} />
+
       <h2>Supported Versions</h2>
 
       <p>
@@ -270,14 +278,127 @@ const [done, setDone] = useTodo(store => store.done);
 // done is Accessor<boolean>, setDone is Setter<boolean>`}
       />
 
+      <h2>Component Queries</h2>
+
+      <p>
+        For server data in component code, call <code>createSyncQuery</code>{' '}
+        from <code>@stateref/connect-solid/sync</code> in the component body.
+        The component owns the query for its owner&apos;s life: it loads when
+        first selected, follows the key in its props, shares a READ in flight
+        with other components showing the same key, and is released after the
+        last of them is disposed.
+      </p>
+
+      <CodeBlock
+        language="tsx"
+        code={`import { Show } from 'solid-js';
+import { createSyncQuery } from '@stateref/connect-solid/sync';
+import { client } from './client'; // createSyncClient(), one per app
+import { readShip } from './api'; // (id, signal) => Promise<Ship>
+
+export function ShipPanel(props: { id: number }) {
+  // An accessor follows props; a plain object stays fixed
+  const [ship, q] = createSyncQuery(client, () => {
+    const id = props.id;
+    return {
+      queryKey: ['ship', id],
+      queryFn: ({ signal }) => readShip(id, signal),
+      staleTime: 30_000,
+    };
+  });
+  const status = ship(ref => ref.status.value);
+  const loaded = ship(ref => ref.loaded.value);
+  const name = ship(ref => ref.data.name.value);
+
+  const rename = (value: string) => {
+    const handle = q.handle();
+    if (handle?.status.value.loaded) handle.ref.name.value = value; // local edit
+  };
+
+  return (
+    <Show when={status() !== 'pending'} fallback={<p>Loading…</p>}>
+      <Show when={loaded()} fallback={<p role="alert">Could not load the ship.</p>}>
+        <input
+          value={name() ?? ''}
+          onInput={event => rename(event.currentTarget.value)}
+        />
+        <button onClick={() => void q.refetch().catch(() => {})}>Refresh</button>
+        <button onClick={() => q.invalidate()}>Check again</button>
+      </Show>
+    </Show>
+  );
+}`}
+      />
+
+      <p>
+        <code>ship(select)</code> returns an <code>Accessor&lt;V&gt;</code> of
+        what <code>select</code> reads from the query&apos;s readonly display
+        state (<code>status</code>, <code>fetchStatus</code>,{' '}
+        <code>loaded</code>, <code>error</code>, <code>data</code>,{' '}
+        <code>dirty</code>, <code>queryKey</code> and more); read leaves with{' '}
+        <code>.value</code> inside <code>select</code>. The first selection
+        attaches the query, and every selection shares it. <code>q</code> is the
+        same object for the component&apos;s life:
+      </p>
+
+      <ul>
+        <li>
+          <code>q.refetch()</code> reads again and returns a Promise. It rejects
+          with <code>This query observer is not attached.</code> before the
+          first selection, while disabled and on the server.
+        </li>
+        <li>
+          <code>q.invalidate()</code> marks the key stale and, while attached
+          and enabled, reads it again; <code>client.invalidate(key)</code> only
+          marks it stale.
+        </li>
+        <li>
+          <code>q.handle()</code> returns the query&apos;s own handle, or{' '}
+          <code>null</code> before the first selection, while disabled and on
+          the server. Edit through <code>handle.ref</code> once it has loaded
+          and pass the handle to mutation <code>links</code>, but never dispose
+          it: the hook owns it.
+        </li>
+      </ul>
+
+      <p>In Solid:</p>
+
+      <ul>
+        <li>
+          Pass an accessor to follow props or signals; new options are confirmed
+          synchronously, before computations that read the display run. A plain
+          options object is fixed for the component&apos;s life.
+        </li>
+        <li>
+          Disposing the owner releases the query one macrotask later, so a route
+          swap neither cancels nor repeats a READ.
+        </li>
+        <li>
+          A server render (<code>isServer</code>) reads without subscribing,
+          attaching or READing. Fill a per-request{' '}
+          <code>createSyncClient({'{ ssr: true }'})</code> with{' '}
+          <code>await client.prefetch(options)</code> before rendering, send{' '}
+          <code>client.dehydrate()</code>, and call{' '}
+          <code>client.hydrate(snapshot)</code> on the browser client before
+          hydrating.
+        </li>
+      </ul>
+
+      <p>
+        More on the query lifecycle, dependent queries and server rendering:{' '}
+        <a href="#/guide/sync-query">query and resource</a>.
+      </p>
+
       <h2>Readonly Query Views</h2>
 
       <p>
         <code>connectSolidView</code> binds a readonly query view from{' '}
-        <a href="#/guide/sync-view">@stateref/sync</a>. It takes the same{' '}
-        <code>Watch</code> shape as <code>connectSolid</code> but never hands
-        out setters, because a display can be a selected value or a placeholder
-        that was never on the server.
+        <a href="#/guide/sync-view">@stateref/sync</a>. Use it for an explicit
+        handle owned outside the component - one a store or service opens with{' '}
+        <code>client.query(...)</code>, loads and disposes itself. It takes the
+        same <code>Watch</code> shape as <code>connectSolid</code> but never
+        hands out setters, because a display can be a selected value or a
+        placeholder that was never on the server.
       </p>
 
       <CodeBlock

@@ -52,6 +52,7 @@ UMD에서 패키지 하위 경로를 직접 import할 수는 없다. 브라우�
 40. [PHASE8_6](./PHASE8_6.md): **F2-01~09 지원표 교차 확인.** 각 행의 계약·근거·상태·차이와 DC8-01의 잔여.
 41. [PHASE8_8](./PHASE8_8.md): 수동 M2 수행 장치와 16단계 기록. DC8-8-01~33.
 42. [PHASE9](./PHASE9.md): **조회 공개 표면의 통합 — 설계, 미결.** 현재 표면 측정, 후보 A/B/C와 권고, 열린 결정 DC9-01~08. **`[ ]` 행을 계약으로 인용하지 않는다.**
+43. 컴포넌트 관찰자 훅(sync-query-hooks): `client.observe`와 커넥터 6종의 `./sync` 진입점, F2-02의 mount 재조회 경로. [REQUIREMENTS](../sync-query-hooks/REQUIREMENTS.md)·[DESIGN](../sync-query-hooks/DESIGN.md)·[IMPLEMENT](../sync-query-hooks/IMPLEMENT.md).
 
 ## Phase 3.5 완료 — 명시적 동기 batch
 

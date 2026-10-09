@@ -22,11 +22,11 @@ export const Lithent = mount(() => {
 
       <h2>Ordinary state with a connector</h2>
       <p>
-        The connector is prepared on this branch and has not been published yet.
-        Call it once in the mounter, read <code>counter().count.value</code> in
-        render, and write through the same ref in event handlers. It subscribes
-        after mount and aborts immediately on unmount. Server rendering reads
-        without subscribing. The base entry needs no sync dependency.
+        Call <code>connectLithent</code> once in the mounter, read{' '}
+        <code>counter().count.value</code> in render, and write through the same
+        ref in event handlers. It subscribes after mount and aborts immediately
+        on unmount. Server rendering reads without subscribing. The base entry
+        needs no sync dependency.
       </p>
       <CodeBlock
         language="bash"
@@ -43,11 +43,10 @@ export const Lithent = mount(() => {
 
       <h2>Server queries in a component</h2>
       <p>
-        The sync connector is prepared on this branch and has not been published
-        yet. Both entries use ESM imports. It uses Lithent 1.24 or later and
-        sync 0.3 or later. Create one client per app, then call the helper once
-        in the mounter. A getter follows live props; a fixed object is enough
-        for a fixed key. Read the accessor inside the render function.
+        The base and sync entries use ESM imports. Queries need Lithent 1.24 or
+        later and sync 0.3 or later. Create one client per app, then call the
+        helper once in the mounter. A getter follows live props; a fixed object
+        is enough for a fixed key. Read the accessor inside the render function.
       </p>
       <CodeBlock
         language="bash"

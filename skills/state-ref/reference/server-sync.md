@@ -1,8 +1,47 @@
-# Server Sync (`@stateref/sync` 0.2)
+# Server Sync (`@stateref/sync` 0.3)
 
 Optional package: query cache, editable server resources and mutations on top of
 state-ref. Use it only when `@stateref/sync` is installed. ESM only; requires
 `state-ref ^3.1.0`.
+
+## In components: the connector's `./sync` hook (default)
+
+Component code reads a query through its connector's `./sync` entry instead of
+opening a handle itself:
+
+```tsx
+import { useSyncQuery } from '@stateref/connect-react/sync';
+// Preact and Vue: useSyncQuery from @stateref/connect-preact/sync or
+// @stateref/connect-vue/sync. Solid, Svelte and Lithent: createSyncQuery from
+// @stateref/connect-solid/sync, connect-svelte/sync or connect-lithent/sync.
+
+const [account, q] = useSyncQuery(client, {
+  queryKey: ['account', id],
+  queryFn: ({ signal }) => api.readAccount(id, { signal }),
+  staleTime: 30_000,
+});
+account.status.value; // readonly display state
+account.data.name.value;
+const handle = q.handle(); // the query's own handle, or null
+if (handle?.status.value.loaded) handle.ref.name.value = 'Kim'; // local edit
+```
+
+- The component owns the query: it attaches when the component subscribes,
+  loads if stale, shares a READ in flight, follows key changes and releases
+  shortly after unmount. There is no `load()` or `dispose()` to call.
+- `q.refetch()` rejects while not attached (before mount, disabled, server).
+  `q.invalidate()` reads again while attached; `client.invalidate(key)` only
+  marks stale. Pass `q.handle()` to mutation `links`; never dispose it.
+- Loading UI: `status === 'pending'` (the first `fetchStatus` is `'idle'`).
+  Dependent query: `queryKey: ['user', id ?? null], enabled: id != null`.
+- SSR: the hooks never attach or READ on an `ssr: true` client; prefetch before
+  rendering (see "Do not" below).
+- Per-framework shapes (Vue getter, Solid accessor, Svelte `Readable` options)
+  and the remaining rules: reference/framework-connectors.md.
+
+Explicit handles (`client.query`, below) are for a store or service that owns a
+query beyond one component, and for code outside components. Show them with
+`connect*View(query.watchDisplay)`.
 
 ## Client and query
 
@@ -27,6 +66,9 @@ account.dispose(); // release this handle
 
 - `ref` / `watch` throw before the first successful load; `status` is always
   available.
+- A key is a JSON-compatible array: no `undefined`, and no state-ref ref. A ref
+  in a key throws a `TypeError` ("read a ref with `.value`") in every API that
+  hashes a key (`query`, `fetch`, `prefetch`, `ensure`, `invalidate`, ...).
 - `load()` uses fresh cache, `refetch()` forces a READ, `invalidate()` marks stale.
 - A later READ rebases local edits; overlapping server changes become conflicts
   (`status.conflicts`).
@@ -104,8 +146,9 @@ switch (result.kind) {
 - Do not resend after `unknown` or `sync-error`; reconcile with a READ
   (`refetch()`) or `acceptServer(value)`.
 - Do not share one client across SSR requests. On the server use
-  `createSyncClient({ ssr: true })`, `load()`, then `dehydrate()`; in the browser
-  call `hydrate(snapshot)` before creating query handles.
+  `createSyncClient({ ssr: true })`, `load()` (or `await client.prefetch(options)`
+  for components that use a `./sync` hook), then `dehydrate()`; in the browser
+  call `hydrate(snapshot)` before creating query handles or rendering.
 - Do not call `resolve()` on a query handle; it does not exist. (`resolve` is a
   draft method, and the `resolve` option of a reactive query is a key resolver.)
 

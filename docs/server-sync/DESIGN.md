@@ -320,7 +320,7 @@ account.load(); account.capture();         // 홉 없음
 | ID | 검증할 기능군 | 단계 | 현재 상태 |
 |---|---|---|---|
 | F2-01 | key·캐시 공유·freshness·GC·진행 조회 공유·무효화·재조회 | Phase 3 | 지원 |
-| F2-02 | 취소·조회 retry/backoff·focus/reconnect·polling·enabled | Phase 3, 5 | 지원 |
+| F2-02 | 취소·조회 retry/backoff·mount/focus/reconnect 재조회·polling·enabled | Phase 3, 5 | 지원 |
 | F2-03 | query 상태·select·파생/의존/병렬 조회·초기/placeholder 데이터 | Phase 3, 5 | 지원 |
 | F2-04 | mutation 상태·콜백·명시적 retry·경합/순서·낙관적 반영 | Phase 4 | 지원 |
 | F2-05 | pagination·infinite query·prefetch·조회 데이터 보장 | Phase 5 | 부분 지원 |
@@ -334,6 +334,8 @@ account.load(); account.capture();         // 홉 없음
 각 기능군에 reference version, 계약, 독립 테스트, 현재 지원 상태, 차이/제약, 배포 단계를 기록한다. 새로 발견한 기능을 목록 밖이라는 이유로 누락하지 않는다. 기존 TanStack 플러그인을 그대로 실행할 수 있다는 호환성 약속은 별도 검증 없이는 하지 않는다.
 
 F2-06의 서버 렌더 경계는 [Phase 8.4](./PHASE8_4.md)에 고정했다. React·Preact·Vue·Solid는 서버에서 renew 없는 `watch()`로 현재 값을 읽는다. 코어와 `combineWatch`·`createComputed`의 콜백 없는 ref는 경로 구독을 등록하지 않는다. 콜백 없는 computed는 실제로 읽은 ref의 `.value`를 기록한다. 읽기 시 의존 값이 바뀌었을 때만 계산하고 `equals`로 동일 결과의 identity를 유지한다. `sync()` 전에도 현재 원본을 읽고, 콜백을 넘긴 computed는 기존 구독 알림 시점을 유지한다. Vue 서버 반환값은 getter로 현재 원본을 읽어 `onServerPrefetch` 완료 후의 값과 선택 경로를 반영한다. Svelte는 서버 렌더의 `onDestroy`로 구독을 해제한다. 장수 store를 여러 요청에서 재사용할 때 구독이 누적될 수 있었으며, 요청별 store/client를 모두 폐기하는 앱의 지속 누수는 측정으로 입증하지 않았다. 브라우저 hydration과 loading/error UI는 [Phase 8 계획](./PHASE8.md)의 8.5·8.7 검증 대상이다.
+
+F2-02의 mount 재조회는 컴포넌트 관찰자 훅이 구독할 때의 `load()`다([sync-query-hooks DESIGN](../sync-query-hooks/DESIGN.md) DC-QH-19). 렌더는 아무것도 열지 않고, 첫 구독(mount·commit)이 query를 열어 `load()`를 부른다. `load()`의 stale 규칙대로 신선한 기준(`staleTime` 안)이 있으면 READ하지 않고, stale이거나 기준이 없으면 READ하며, 진행 중 READ는 공유한다. 별도의 `refetchOnMount` 옵션은 없다. 명시 핸들(`client.query`)은 앱이 `load()`를 부를 때 같은 규칙으로 읽는다.
 
 기능 정의 참고: [TanStack Query 개요](https://tanstack.com/query/latest/docs/framework/react/overview), [선택 구독과 구조 공유](https://tanstack.com/query/latest/docs/framework/react/guides/render-optimizations), [mutation](https://tanstack.com/query/latest/docs/framework/react/guides/mutations), [영속화](https://tanstack.com/query/latest/docs/framework/react/plugins/persistQueryClient). 기존 도구에도 유사 기능이 있음을 인정하고 독점 기능이나 측정하지 않은 성능 우위를 주장하지 않는다.
 

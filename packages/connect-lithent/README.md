@@ -1,6 +1,6 @@
 # @stateref/connect-lithent
 
-Lithent state, query views and component-owned sync queries. Use `lithent@^1.24.0` and `state-ref@^3.1.0`; add `@stateref/sync@^0.3.0` for the optional ESM `./sync` entry. This package is prepared on the sync-query branch and has not been published yet.
+Lithent state, query views and component-owned sync queries. Use `lithent@^1.24.0` and `state-ref@^3.1.0`; add `@stateref/sync@^0.3.0` for the optional ESM `./sync` entry.
 
 Both the base and `./sync` entries use ESM imports.
 
@@ -162,4 +162,4 @@ resolve: {
 
 Keep `lithent/helper`, `lithent/ssr` and JSX subpaths unchanged; apply the same core alias on server and client. The connector forwards display changes to the concurrent renderer's version signal while rendering only watched paths. This inherits Lithent's own retry limits: builds with mounts or update effects and exhausted retries can still commit mixed values. A query options getter uses an update callback, so do not describe this integration as React's concurrent snapshot guarantee.
 
-Run `node scripts/connector-matrix.mjs lithent` from the repository root for the base and concurrent cells. The existing five framework guides remain available from the [sync README](../sync/README.md).
+Run `node scripts/connector-matrix.mjs lithent` from the repository root for the base and concurrent cells. The React, Preact, Vue, Solid and Svelte connectors have their own `./sync` entries, described in their READMEs; queries, mutations and SSR are covered in the [sync README](https://github.com/superlucky84/state-ref/blob/main/packages/sync/README.md).

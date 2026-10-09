@@ -19,6 +19,14 @@ export const SolidKo = mount(() => {
         code={`pnpm add state-ref @stateref/connect-solid`}
       />
 
+      <p>
+        ESM 전용 <code>@stateref/connect-solid/sync</code> 진입점(아래
+        &quot;컴포넌트 조회&quot;)을 쓰려면 선택 의존성인{' '}
+        <code>@stateref/sync</code> 0.3 이상도 설치합니다.
+      </p>
+
+      <CodeBlock language="bash" code={`pnpm add @stateref/sync`} />
+
       <h2>지원 버전</h2>
 
       <p>
@@ -272,12 +280,122 @@ const [done, setDone] = useTodo(store => store.done);
 // done은 Accessor<boolean>, setDone은 Setter<boolean>`}
       />
 
+      <h2>컴포넌트 조회</h2>
+
+      <p>
+        컴포넌트 코드의 서버 데이터에는 컴포넌트 본문에서{' '}
+        <code>@stateref/connect-solid/sync</code>의 <code>createSyncQuery</code>
+        를 부릅니다. 컴포넌트는 자기 owner가 살아 있는 동안 조회를 소유합니다.
+        처음 선택할 때 불러오고, props의 key를 따라가며, 같은 key를 보는 다른
+        컴포넌트와 진행 중인 READ를 나누고, 그중 마지막이 정리된 뒤 해제됩니다.
+      </p>
+
+      <CodeBlock
+        language="tsx"
+        code={`import { Show } from 'solid-js';
+import { createSyncQuery } from '@stateref/connect-solid/sync';
+import { client } from './client'; // createSyncClient(), 앱당 하나
+import { readShip } from './api'; // (id, signal) => Promise<Ship>
+
+export function ShipPanel(props: { id: number }) {
+  // accessor는 props를 따라가고, 평범한 객체는 고정됩니다
+  const [ship, q] = createSyncQuery(client, () => {
+    const id = props.id;
+    return {
+      queryKey: ['ship', id],
+      queryFn: ({ signal }) => readShip(id, signal),
+      staleTime: 30_000,
+    };
+  });
+  const status = ship(ref => ref.status.value);
+  const loaded = ship(ref => ref.loaded.value);
+  const name = ship(ref => ref.data.name.value);
+
+  const rename = (value: string) => {
+    const handle = q.handle();
+    if (handle?.status.value.loaded) handle.ref.name.value = value; // 로컬 편집
+  };
+
+  return (
+    <Show when={status() !== 'pending'} fallback={<p>불러오는 중…</p>}>
+      <Show when={loaded()} fallback={<p role="alert">우주선을 불러오지 못했습니다.</p>}>
+        <input
+          value={name() ?? ''}
+          onInput={event => rename(event.currentTarget.value)}
+        />
+        <button onClick={() => void q.refetch().catch(() => {})}>새로고침</button>
+        <button onClick={() => q.invalidate()}>다시 확인</button>
+      </Show>
+    </Show>
+  );
+}`}
+      />
+
+      <p>
+        <code>ship(select)</code>는 조회의 읽기 전용 표시 상태(
+        <code>status</code>, <code>fetchStatus</code>, <code>loaded</code>,{' '}
+        <code>error</code>, <code>data</code>, <code>dirty</code>,{' '}
+        <code>queryKey</code> 등)에서 <code>select</code>가 읽은 값을{' '}
+        <code>Accessor&lt;V&gt;</code>로 돌려줍니다. 리프는 <code>select</code>{' '}
+        안에서 <code>.value</code>로 읽습니다. 첫 선택이 조회를 붙이고, 모든
+        선택이 그것을 나눠 씁니다. <code>q</code>는 컴포넌트 수명 동안 같은
+        객체입니다.
+      </p>
+
+      <ul>
+        <li>
+          <code>q.refetch()</code>는 다시 읽고 Promise를 돌려줍니다. 첫 선택 전,
+          비활성 상태, 서버에서는{' '}
+          <code>This query observer is not attached.</code>로 거절됩니다.
+        </li>
+        <li>
+          <code>q.invalidate()</code>는 key를 stale로 표시하고, 붙어 있고 활성
+          상태면 다시 읽습니다. <code>client.invalidate(key)</code>는 stale
+          표시만 합니다.
+        </li>
+        <li>
+          <code>q.handle()</code>은 조회 자신의 핸들을 돌려주고, 첫 선택 전,
+          비활성 상태, 서버에서는 <code>null</code>을 돌려줍니다. 로드된 뒤{' '}
+          <code>handle.ref</code>로 편집하고 mutation <code>links</code>에
+          넘기되, dispose하지는 마세요. 훅이 소유합니다.
+        </li>
+      </ul>
+
+      <p>Solid에서는:</p>
+
+      <ul>
+        <li>
+          props나 signal을 따라가려면 accessor를 넘깁니다. 새 옵션은 표시를 읽는
+          계산이 돌기 전에 동기적으로 확정됩니다. 평범한 옵션 객체는 컴포넌트
+          수명 동안 고정입니다.
+        </li>
+        <li>
+          owner가 정리되면 매크로태스크 하나 뒤에 조회가 해제되므로, 라우트
+          교체가 READ를 취소하거나 반복하지 않습니다.
+        </li>
+        <li>
+          서버 렌더(<code>isServer</code>)는 구독하지도, 붙지도, READ하지도 않고
+          읽기만 합니다. 요청마다 만든{' '}
+          <code>createSyncClient({'{ ssr: true }'})</code>를 렌더 전에{' '}
+          <code>await client.prefetch(options)</code>로 채우고{' '}
+          <code>client.dehydrate()</code>를 보낸 뒤, 브라우저 client에서 hydrate
+          전에 <code>client.hydrate(snapshot)</code>을 부릅니다.
+        </li>
+      </ul>
+
+      <p>
+        조회 수명, 의존 조회, 서버 렌더는{' '}
+        <a href="#/ko/guide/sync-query">query와 resource</a>에서 더 다룹니다.
+      </p>
+
       <h2>읽기 전용 조회 view</h2>
 
       <p>
         <code>connectSolidView</code>는{' '}
         <a href="#/ko/guide/sync-view">@stateref/sync</a>의 읽기 전용 조회
-        view를 연결합니다. <code>connectSolid</code>와 같은 <code>Watch</code>{' '}
+        view를 연결합니다. 컴포넌트 밖에서 소유하는 명시적 핸들, 곧 store나
+        서비스가 <code>client.query(...)</code>로 열고 직접 로드·dispose하는
+        조회에 씁니다. <code>connectSolid</code>와 같은 <code>Watch</code>{' '}
         모양을 받지만 setter는 내주지 않습니다. 표시는 선택된 값일 수도, 서버에
         존재한 적 없는 placeholder일 수도 있기 때문입니다.
       </p>

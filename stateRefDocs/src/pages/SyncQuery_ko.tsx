@@ -1,6 +1,5 @@
 import { mount } from 'lithent';
 import { CodeBlock } from '@/components/CodeBlock';
-import { lithentQueryExample } from '@/content/lithent-sync';
 
 export const SyncQueryKo = mount(() => {
   return () => (
@@ -14,17 +13,278 @@ export const SyncQueryKo = mount(() => {
         해 줍니다.
       </p>
 
-      <h2>Lithent 컴포넌트의 조회</h2>
+      <h2>컴포넌트의 조회</h2>
       <p>
-        mounter에서 <code>createSyncQuery</code>를 한 번 만들고 렌더에서{' '}
-        <code>account()</code>를 읽습니다. 로딩·props key 변경·READ
-        공유·언마운트 정리를 맡습니다. 새 커넥터는 이 브랜치에서 준비 중이며
-        아직 게시되지 않았습니다. <a href="#/ko/guide/lithent">Lithent 안내</a>
-        에는 편집·mutation links·SSR·선택적 concurrent 코어 사용도 있습니다.
+        컴포넌트 코드에서는 조회를 컴포넌트가 소유하게 하세요. 커넥터마다 ESM
+        전용 <code>/sync</code> 진입점이 있고 <code>@stateref/sync</code> 0.3
+        이상이 필요합니다. 렌더는 아무것도 만들지 않습니다. 첫 구독이 조회를
+        붙입니다(React·Preact·Lithent는 마운트, Vue·Solid·Svelte는 첫 선택).
+        그때 조회를 열고, stale이면 불러오며, 그 key로 이미 진행 중인 READ는
+        공유합니다. key는 옵션을 따라가고, 언마운트하면 핸들을 놓습니다.
       </p>
-      <CodeBlock language="typescript" code={lithentQueryExample} />
+      <p>아래 예제는 client 하나와 옵션 helper를 함께 씁니다.</p>
+      <CodeBlock
+        language="typescript"
+        code={`import { createSyncClient } from '@stateref/sync';
+import type { ObserveOptions } from '@stateref/sync';
+
+type Account = { name: string; city: string };
+export const client = createSyncClient(); // 브라우저 앱당 하나
+
+export const accountOptions = (id: number): ObserveOptions<Account> => ({
+  queryKey: ['account', id],
+  queryFn: ({ signal }) => api.readAccount(id, { signal }),
+  staleTime: 30_000,
+});`}
+      />
+
+      <h3>React와 Preact</h3>
+      <p>
+        렌더마다 일반 옵션 객체를 넘기세요. 그 안에서 props를 읽어도 됩니다.
+        값은 <code>.value</code>로 읽고, 컴포넌트는 읽은 경로가 바뀔 때만 다시
+        렌더합니다. <a href="#/ko/guide/react">React</a>와{' '}
+        <a href="#/ko/guide/preact">Preact</a> 안내를 보세요.
+      </p>
+      <CodeBlock
+        language="tsx"
+        code={`import { useSyncQuery } from '@stateref/connect-react/sync';
+// Preact: import { useSyncQuery } from '@stateref/connect-preact/sync';
+
+function AccountCard({ id }: { id: number }) {
+  const [account, q] = useSyncQuery(client, accountOptions(id));
+  if (account.status.value === 'pending') return <p>Loading…</p>;
+  return (
+    <p>
+      {account.data.name.value}
+      <button onClick={() => q.invalidate()}>Reload</button>
+    </p>
+  );
+}`}
+      />
+
+      <h3>Vue</h3>
+      <p>
+        props나 ref를 따라가려면 getter를 넘기세요. 일반 객체는 컴포넌트 수명
+        동안 고정되고, 그 안의 ref는 풀지 않습니다. <code>.value</code>는 getter
+        안에서 읽으세요. <code>account(select)</code>는 읽기 전용 Vue ref를
+        반환합니다. <a href="#/ko/guide/vue">Vue 안내</a>를 보세요.
+      </p>
+      <CodeBlock
+        language="vue"
+        code={`<script setup lang="ts">
+import { useSyncQuery } from '@stateref/connect-vue/sync';
+
+const props = defineProps<{ id: number }>();
+const [account, q] = useSyncQuery(client, () => accountOptions(props.id));
+const status = account(ref => ref.status.value); // Readonly<Ref<...>>
+const name = account(ref => ref.data.name.value);
+</script>
+
+<template>
+  <p v-if="status === 'pending'">Loading…</p>
+  <p v-else>{{ name }} <button @click="q.invalidate()">Reload</button></p>
+</template>`}
+      />
+
+      <h3>Solid</h3>
+      <p>
+        props나 signal을 따라가려면 accessor를 넘기세요. 일반 객체는 고정됩니다.{' '}
+        <code>account(select)</code>는 <code>Accessor</code>를 반환합니다.{' '}
+        <a href="#/ko/guide/solid">Solid 안내</a>를 보세요.
+      </p>
+      <CodeBlock
+        language="tsx"
+        code={`import { Show } from 'solid-js';
+import { createSyncQuery } from '@stateref/connect-solid/sync';
+
+function AccountCard(props: { id: number }) {
+  const [account, q] = createSyncQuery(client, () => accountOptions(props.id));
+  const status = account(ref => ref.status.value); // Accessor<...>
+  const name = account(ref => ref.data.name.value);
+  return (
+    <Show when={status() !== 'pending'} fallback={<p>Loading…</p>}>
+      <p>
+        {name()} <button onClick={() => q.invalidate()}>Reload</button>
+      </p>
+    </Show>
+  );
+}`}
+      />
+
+      <h3>Svelte</h3>
+      <p>
+        조회는 store API(Svelte 4·5)로 씁니다. 조회용 runes 진입점은 없습니다.{' '}
+        <code>createSyncQuery</code>와 그 선택은 컴포넌트 초기화 중에
+        호출하세요. 옵션은 일반 객체(고정)나 <code>Readable</code> 옵션
+        store입니다. 일반 getter는 추적하지 않습니다.{' '}
+        <code>account(select)</code>는 <code>Readable</code>을 반환합니다.{' '}
+        <a href="#/ko/guide/svelte">Svelte 안내</a>를 보세요.
+      </p>
+      <CodeBlock
+        language="html"
+        code={`<script lang="ts">
+  import { writable } from 'svelte/store';
+  import { createSyncQuery } from '@stateref/connect-svelte/sync';
+
+  export let id: number;
+  const options = writable(accountOptions(id));
+  $: options.set(accountOptions(id));
+
+  const [account, q] = createSyncQuery(client, options);
+  const status = account(ref => ref.status.value); // Readable<...>
+  const name = account(ref => ref.data.name.value);
+</script>
+
+{#if $status === 'pending'}
+  <p>Loading…</p>
+{:else}
+  <p>{$name} <button on:click={() => q.invalidate()}>Reload</button></p>
+{/if}`}
+      />
+
+      <h3>Lithent</h3>
+      <p>
+        mounter에서 한 번 만드세요. props getter는 props를 따라가고 일반 객체는
+        고정됩니다. 렌더에서 <code>account()</code>를 읽습니다.{' '}
+        <a href="#/ko/guide/lithent">Lithent 안내</a>에는 편집·mutation
+        links·SSR·선택적 concurrent 코어 사용도 있습니다.
+      </p>
+      <CodeBlock
+        language="typescript"
+        code={`import { h, mount } from 'lithent';
+import { createSyncQuery } from '@stateref/connect-lithent/sync';
+
+export const AccountCard = mount<{ id: number }>((_renew, props) => {
+  const [account, q] = createSyncQuery(client, () => accountOptions(props.id));
+  return () =>
+    account().status.value === 'pending'
+      ? h('p', {}, 'Loading…')
+      : h('p', {}, account().data.name.value ?? '',
+          h('button', { onClick: () => q.invalidate() }, 'Reload'));
+});`}
+      />
+
+      <h3>표시 상태와 q</h3>
+      <p>
+        모든 진입점은 <a href="#/ko/guide/sync-view">표시와 반응형 key</a>의
+        읽기 전용 표시 상태를 읽습니다. <code>status</code>,{' '}
+        <code>fetchStatus</code>, <code>loaded</code>, <code>error</code>,{' '}
+        <code>errorSource</code>, <code>data</code>, <code>dirty</code>,{' '}
+        <code>queryKey</code>, <code>enabled</code>와 나머지 status 필드입니다.{' '}
+        <code>q</code>는 컴포넌트 수명 동안 같은 객체입니다.
+      </p>
+      <ul>
+        <li>
+          <code>q.refetch()</code>는 강제로 READ하고 Promise를 반환합니다.
+          조회가 붙기 전, 비활성 상태, 서버에서는{' '}
+          <code>This query observer is not attached.</code>로 거부합니다.
+        </li>
+        <li>
+          <code>q.invalidate()</code>는 key를 무효화하고, 붙어 있고 활성 상태면
+          다시 읽습니다. <code>client.invalidate(key)</code>는 stale 표시만
+          합니다.
+        </li>
+        <li>
+          <code>q.handle()</code>은 조회 자신의 핸들을 반환하고, 붙기 전·비활성
+          상태·서버에서는 <code>null</code>을 반환합니다.{' '}
+          <code>handle.status.value.loaded</code>가 true가 된 뒤{' '}
+          <code>handle.ref</code>로 편집하고, mutation <code>links</code>에도 이
+          핸들을 넘기세요. dispose하지 마세요. 핸들은 훅이 소유합니다.
+        </li>
+      </ul>
+
+      <h3>알아 둘 점</h3>
+      <ul>
+        <li>
+          <strong>로딩 UI.</strong> <code>status === &apos;pending&apos;</code>
+          으로 판단하세요. 첫 렌더는 캐시를 그대로 보여 주므로 곧 READ가
+          시작되더라도 <code>fetchStatus</code>가 <code>&apos;idle&apos;</code>
+          일 수 있습니다. 덕분에 서버 렌더와 첫 클라이언트 렌더가 일치합니다.
+        </li>
+        <li>
+          <strong>key 변경.</strong> 새 key는 첫 렌더부터 보입니다(캐시된
+          데이터나 pending). 이전 key의 데이터는 보이지 않고, 이전 key에 늦게
+          도착한 응답도 보이지 않습니다.
+        </li>
+        <li>
+          <strong>의존 조회.</strong> key에는 <code>undefined</code>를 넣을 수
+          없으니{' '}
+          <code>{"queryKey: ['user', id ?? null], enabled: id != null"}</code>
+          처럼 쓰세요. 잘못된 key(<code>undefined</code>나 <code>.value</code>{' '}
+          대신 state-ref ref를 담은 key)나 boolean이 아닌 <code>enabled</code>는
+          렌더에서 던지지 않고 <code>status: &apos;error&apos;</code>,{' '}
+          <code>errorSource: &apos;source&apos;</code>로 보입니다.{' '}
+          <code>enabled: false</code>는 아무것도 소유하지 않고{' '}
+          <code>status: &apos;pending&apos;</code>,{' '}
+          <code>fetchStatus: &apos;idle&apos;</code>,{' '}
+          <code>enabled: false</code>로 보이므로 로딩 표시 전에{' '}
+          <code>enabled</code>를 확인하세요.
+        </li>
+        <li>
+          <strong>옵션.</strong> 인라인 <code>queryFn</code>·<code>select</code>{' '}
+          리터럴은 괜찮습니다. <code>staleTime</code>,{' '}
+          <code>refetchInterval</code> 같은 원시 옵션을 바꾸면 같은 key를 다시
+          열되 진행 중 READ는 취소하지 않습니다. Map·Set·클래스 인스턴스·함수를
+          반환하는 <code>select</code>는 구조 공유가 되지 않아 커밋마다 다시
+          발행합니다. 메모하거나 <code>equals</code>를 넘기세요.
+        </li>
+        <li>
+          <strong>client 하나.</strong> client는 컴포넌트 수명 동안 고정입니다.
+          React·Preact는 바뀌면{' '}
+          <code>This query observer is bound to another client.</code>를 던지고,
+          다른 진입점은 처음 client를 유지합니다. 바꾸려면 다시 마운트하세요.
+        </li>
+        <li>
+          <strong>해제.</strong> 마지막 구독이 끝나면 짧은 해제
+          일정(매크로태스크 하나, Preact는 다음 paint 뒤) 뒤에 핸들을 놓습니다.
+          그래서 StrictMode나 한 커밋 안의 라우트 교체가 READ를 취소하거나
+          반복하지 않습니다. 가짜 타이머를 쓰는 테스트에서는 핸들이 사라졌는지
+          확인하기 전에 타이머를 진행하세요(
+          <code>await vi.advanceTimersByTimeAsync(0)</code>, Preact는 200 ms).
+        </li>
+        <li>
+          <strong>숨겨진 컴포넌트.</strong> React{' '}
+          <code>&lt;Activity mode=&quot;hidden&quot;&gt;</code>는 숨겨진 동안
+          조회를 놓고, 다시 보이면 stale인 key만 다시 읽습니다. Vue{' '}
+          <code>&lt;KeepAlive&gt;</code>로 비활성화된 컴포넌트는 캐시에서
+          빠지거나 언마운트될 때까지 붙어 있습니다.
+        </li>
+        <li>
+          <strong>서버 렌더.</strong> 요청마다{' '}
+          <code>{'createSyncClient({ ssr: true })'}</code>를 만드세요. 진입점은
+          이 client에서 붙거나 READ하지 않으므로 렌더 전에 캐시를 채우고(
+          <code>await client.prefetch(options)</code>나{' '}
+          <code>client.ensure</code>) <code>client.dehydrate()</code>를 보낸 뒤,
+          브라우저 client에서 렌더 전에 <code>client.hydrate(snapshot)</code>을
+          호출하세요. Svelte의 store API는 서버 렌더에서도 구독하므로 일반
+          client라면 거기서 조회를 열고 READ합니다.{' '}
+          <a href="#/ko/guide/sync-persistence">영속화와 SSR</a>을 보세요.
+        </li>
+        <li>
+          <strong>번들 간 공유.</strong>{' '}
+          <a href="#/ko/guide/shared">state-ref/shared</a>로 client 하나를
+          공유하는 번들들은 같은 <code>@stateref/sync</code>(0.3 이상)를 담아야
+          합니다. 이전 버전의 client에는 <code>observe()</code>가 없어 진입점이{' '}
+          <code>
+            This sync client has no observe(); align the @stateref/sync versions
+            of the bundles on this page.
+          </code>
+          를 던집니다.
+        </li>
+        <li>
+          <strong>다른 프레임워크.</strong> 진입점은 <code>client.observe</code>{' '}
+          위에 있습니다. 다른 프레임워크용 훅을 만들려면{' '}
+          <a href="#/ko/api/sync">Sync API</a>를 보세요.
+        </li>
+      </ul>
 
       <h2>명시적 핸들</h2>
+
+      <p>
+        한 컴포넌트보다 오래 조회를 소유하는 store나 서비스는 핸들을 직접 열고{' '}
+        <code>load()</code>와 <code>dispose()</code>를 호출합니다. 컴포넌트는 그
+        핸들을 커넥터로 보여 줄 수 있습니다(아래).
+      </p>
 
       <CodeBlock
         language="typescript"

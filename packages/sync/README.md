@@ -2,7 +2,77 @@
 
 Optional query cache, editable resource, and mutation package for `state-ref`. Importing `state-ref` alone does not load this package. The package is an ESM entry point and has no draft or TanStack runtime dependency.
 
-In Lithent components, use `createSyncQuery` from `@stateref/connect-lithent/sync`: `const [account, q] = createSyncQuery(client, () => options)` in the mounter, then `account().data.name.value` in the render function. It owns mount loading, props key changes and unmount release. [The Lithent guide](../connect-lithent/README.md) includes installation, local editing, refetch/invalidate, mutation links, SSR and optional concurrent setup. The new connector is prepared on this branch; packages have not been published.
+## Component queries
+
+In component code, use your connector's `./sync` entry. It gives the component its own observer of a query: mounting loads it, a key change switches to the new key, and unmounting releases it. Install `@stateref/sync@^0.3.0` next to the connector (an optional peer); every `./sync` entry is ESM-only.
+
+```tsx
+import { createSyncClient } from '@stateref/sync';
+import { useSyncQuery } from '@stateref/connect-react/sync';
+
+type Account = { name: string; city: string };
+const client = createSyncClient(); // one per browser app
+
+export function AccountCard({ id }: { id?: number }) {
+  const [account, q] = useSyncQuery(client, {
+    queryKey: ['account', id ?? null],
+    enabled: id != null,
+    staleTime: 30_000,
+    queryFn: async ({ signal }): Promise<Account> => {
+      const response = await fetch(`/api/accounts/${id}`, { signal });
+      if (!response.ok) throw new Error('Could not read the account');
+      return response.json();
+    },
+  });
+
+  if (!account.enabled.value) return <p>Pick an account</p>;
+  if (account.status.value === 'pending') return <p>Loading...</p>;
+  if (account.status.value === 'error') return <p>Could not load</p>;
+  return (
+    <section>
+      <input
+        value={account.data.name.value ?? ''}
+        onChange={event => {
+          const handle = q.handle();
+          if (handle?.status.value.loaded)
+            handle.ref.name.value = event.target.value; // local edit
+        }}
+      />
+      <p>{account.data.city.value}</p>
+      <button onClick={() => void q.refetch().catch(() => {})}>Refresh</button>
+      <button onClick={() => q.invalidate()}>Invalidate</button>
+    </section>
+  );
+}
+```
+
+`account` is the readonly display state, the same shape as an explicit handle's `display` described below: the query status (`status`, `fetchStatus`, `loaded`, `error`, ...) plus `data`, `isPlaceholder`, `errorSource`, `queryKey` and `enabled`. Read leaves with `.value`; only the paths a render reads are subscribed. Pass a plain options object on every render (props in it are fine). The options are the query options plus `select`, `placeholderData`, `equals` and `enabled`. Each entry returns the same pair in its framework's shape:
+
+| Entry                                                                                                                      | Function          | Options                                                                                                  | First value                                                                |
+| -------------------------------------------------------------------------------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| [`@stateref/connect-react/sync`](https://github.com/superlucky84/state-ref/blob/main/packages/connect-react/README.md)     | `useSyncQuery`    | object, every render                                                                                     | display ref: `account.data.name.value`                                     |
+| [`@stateref/connect-preact/sync`](https://github.com/superlucky84/state-ref/blob/main/packages/connect-preact/README.md)   | `useSyncQuery`    | object, every render                                                                                     | display ref: `account.data.name.value`                                     |
+| [`@stateref/connect-vue/sync`](https://github.com/superlucky84/state-ref/blob/main/packages/connect-vue/README.md)         | `useSyncQuery`    | getter `() => ({ ... })` that reads refs with `.value`; a plain object is fixed and does not unwrap refs | selector: `account(ref => ref.data.name.value)` returns `Readonly<Ref<V>>` |
+| [`@stateref/connect-solid/sync`](https://github.com/superlucky84/state-ref/blob/main/packages/connect-solid/README.md)     | `createSyncQuery` | object or accessor `() => ({ ... })`                                                                     | selector returning `Accessor<V>`                                           |
+| [`@stateref/connect-svelte/sync`](https://github.com/superlucky84/state-ref/blob/main/packages/connect-svelte/README.md)   | `createSyncQuery` | object or `Readable` options store, during component initialization (store API only)                     | selector returning `Readable<V>`                                           |
+| [`@stateref/connect-lithent/sync`](https://github.com/superlucky84/state-ref/blob/main/packages/connect-lithent/README.md) | `createSyncQuery` | object or props getter, created once in the mounter                                                      | `() => display ref`: `account().data.name.value`                           |
+
+The second value, `q`, is the same object for the observer's life in every entry. What holds for all of them:
+
+- **Lifecycle.** Rendering creates nothing. The first subscription (mount or commit) attaches: it opens the query, loads it if stale, and shares an in-flight READ with other observers of the key. When the last one ends, the handle is released after a short release schedule (one macrotask by default; Preact waits until after paint), so StrictMode and same-commit route swaps never cancel or repeat a READ. In tests with fake timers, advance them past the schedule (`await vi.advanceTimersByTimeAsync(0)` for the default) before asserting the handle is gone.
+- **Keys.** A key change shows the new key from the first render (its cached value, or pending), never the previous key's value; a late result of the previous key never shows. A key cannot contain `undefined`, so a dependent query writes `queryKey: ['user', id ?? null], enabled: id != null`. `enabled: false` shows idle with the key and owns nothing. An invalid key (such as one holding a state-ref ref instead of its `.value`) or a non-boolean `enabled` does not throw in render; it shows `status: 'error'` with `errorSource: 'source'`.
+- **Loading UI.** The first render's `fetchStatus` is the cache as it is: `'idle'` before mount even though a READ is about to start. Use `status === 'pending'` for loading UI; the server and the first client render then match.
+- **`q`.** `q.refetch()` returns `Promise<T>` and rejects with `This query observer is not attached.` before attach, while disabled and on the server. `q.invalidate()` invalidates the key and, while attached and enabled, reads it again; `client.invalidate(key)` only marks it stale. `q.handle()` returns the query's own handle, or `null` before attach, while disabled and on the server. Use it for local edits once `status.value.loaded` is true, as in the example, and as `query` in mutation `links`; never dispose it: the observer owns it.
+- **Options.** Inline `queryFn`, `retryDelay` and `initialData` literals are fine. Changing a primitive option such as `staleTime` reopens the same key without cancelling its READ; `select` and `placeholderData` changes reproject with structural sharing. A `select` that returns a `Map`, a `Set`, a class instance or a function is not structurally shared and republishes on every commit: memoize it or pass `equals`.
+- **SSR.** Create a `createSyncClient({ ssr: true })` client per request. The entries never attach or READ there, so fill the cache before rendering (`await client.prefetch(options)` or `ensure`), `dehydrate()` it, and `hydrate()` the browser client before rendering. Svelte's store API subscribes on the server too, which is why `ssr: true` matters most there.
+- **Client.** The client is fixed for the component's lifetime: React and Preact throw `This query observer is bound to another client.`; the other entries keep the first one.
+- **Shared bundles.** Bundles that share one client through `state-ref/shared` must ship the same `@stateref/sync` (0.3 or later); otherwise the entry throws `This sync client has no observe(); align the @stateref/sync versions of the bundles on this page.`
+
+**Writing your own hook.** The entries are built on `client.observe(options, settings?)`, which returns a low-level `QueryObserver` (`watch`, `peek`, `matches`, `setOptions`, `controls`) for people adding a hook for another framework; app code uses the entries. Rendering reads `watch()` or `peek(options)` and changes nothing, the first callback subscription attaches, and `setOptions` runs outside render (after commit, or in a reaction before render). A callback subscription with no end signal keeps the observer attached. `settings.scheduleRelease(release)` sets the release schedule. See the types in [`observe.ts`](https://github.com/superlucky84/state-ref/blob/main/packages/sync/src/observe.ts) and the React entry, [`connect-react/src/sync.ts`](https://github.com/superlucky84/state-ref/blob/main/packages/connect-react/src/sync.ts), as a reference.
+
+## Explicit handles
+
+Explicit handles remain the tool for stores and services that own a query beyond one component: `client.query(...)` returns a handle you `load()` and `dispose()` yourself, and a component shows it with `connectReactView(query.watchDisplay)` or the matching connector. The rest of this README documents the client through them.
 
 ```ts
 import { createSyncClient } from '@stateref/sync';
@@ -26,6 +96,7 @@ account.changes(); // server baseline -> current local edit
 Tools can inspect cache metadata without reading query payloads:
 
 <!-- doc-example: continue -->
+
 ```ts
 const stopObserving = client.subscribeCache(event => {
   // event.type: 'added' | 'updated' | 'removed'
@@ -48,10 +119,15 @@ WRITE operations are observable on a separate stream that shares the same
 delivery order:
 
 <!-- doc-example: continue -->
+
 ```ts
 const stopWatching = client.subscribeMutations(event => {
   // event.type: 'started' | 'updated' | 'settled'
-  console.log(event.entry.operationId, event.entry.phase, event.entry.linkedKeys);
+  console.log(
+    event.entry.operationId,
+    event.entry.phase,
+    event.entry.linkedKeys
+  );
 });
 const running = client.inspectMutations();
 stopWatching();
@@ -75,6 +151,7 @@ value and change snapshot. A captured version becomes stale if the resource is
 edited before `run` starts.
 
 <!-- doc-example: continue -->
+
 ```ts
 const submission = account.capture();
 const save = client.mutation({
@@ -120,6 +197,7 @@ tracks the operation separately from `dirty`.
 For SSR, transfer only settled, clean server baselines between separate clients:
 
 <!-- doc-example: skip - uses the `options` object the next section introduces -->
+
 ```ts
 const server = createSyncClient({ ssr: true });
 const source = server.query(options);
@@ -145,6 +223,7 @@ editable baseline and can be included in an SSR snapshot. `initialUpdatedAt`
 defaults to the installation time and controls freshness with `staleTime`.
 
 <!-- doc-example: continue -->
+
 ```ts
 const options = {
   queryKey: ['account', 1],
@@ -170,6 +249,7 @@ to the shared cache. They are options on the query, and what they produce is
 the handle's `display`:
 
 <!-- doc-example: skip - the query type comes from the reader's `api` module, and `StateRefStore<any>` has no property types -->
+
 ```ts
 const account = client.query({
   queryKey: ['account', 1],
@@ -201,6 +281,7 @@ READ automatically. For a reactive key or a dependent query, give `query` a
 `state-ref` source instead of a key:
 
 <!-- doc-example: continue -->
+
 ```ts
 import { create } from 'state-ref';
 
@@ -236,7 +317,7 @@ unowned in-flight READ is aborted and cannot install a late result; another
 owner of the same key keeps its shared READ. Neither placeholder nor selected
 display data enters the shared cache. One-way lifecycle wiring is available
 through `connectReactView`, `connectPreactView`, `connectVueView`,
-`connectSvelteView`, and `connectSolidView`. Each connector ends its UI
+`connectSvelteView`, `connectSolidView`, and `connectLithentView`. Each connector ends its UI
 subscription on unmount; the owner of `live` calls `live.dispose()` when the
 view itself is no longer needed. Edit actual data through `live.ref` after it
 loads (check `live.display.enabled` first).
@@ -249,6 +330,7 @@ Use `client.prefetch`, `fetch`, or `ensure` with the same page key to prepare it
 For an accumulating list, use one infinite query key:
 
 <!-- doc-example: continue -->
+
 ```ts
 const feed = client.infiniteQuery({
   queryKey: ['feed'],
@@ -285,11 +367,17 @@ These calls do not replace an active infinite query's reader or automatic
 refetch policy. `infiniteQuery` takes the same display options:
 
 <!-- doc-example: continue -->
+
 ```ts
 const feedOptions = {
   queryKey: ['feed'],
-  queryFn: ({ pageParam, signal }: { pageParam: number; signal: AbortSignal }) =>
-    api.readFeed(pageParam, { signal }),
+  queryFn: ({
+    pageParam,
+    signal,
+  }: {
+    pageParam: number;
+    signal: AbortSignal;
+  }) => api.readFeed(pageParam, { signal }),
   initialPageParam: 0,
   getNextPageParam: (lastPage: { nextCursor: number | null }) =>
     lastPage.nextCursor,
@@ -316,6 +404,7 @@ automatically. Provide a client-scoped environment when the host has focus and
 connectivity events. Call the browser adapter only where browser globals exist:
 
 <!-- doc-example: skip - opens a second client to show the browser environment -->
+
 ```ts
 import { createBrowserSyncEnvironment } from '@stateref/sync';
 
@@ -362,6 +451,7 @@ Clean server baselines can be stored with an app-owned string storage. Save
 and restore are explicit operations, and restore requires a new, empty client:
 
 <!-- doc-example: skip - reuses the name `options` for the persistence options -->
+
 ```ts
 import {
   createSyncClient,
@@ -388,6 +478,7 @@ IDs and conflict origins. Restore it into an empty client before opening
 query handles:
 
 <!-- doc-example: continue -->
+
 ```ts
 import {
   saveLocalSyncSnapshot,
@@ -415,6 +506,7 @@ exact selected changes per link, then explicitly send after the host is
 online:
 
 <!-- doc-example: continue -->
+
 ```ts
 import { openPersistedLinkedMutation } from '@stateref/sync';
 
@@ -496,6 +588,7 @@ with a server-supported idempotency key. Call `resume()` after confirming the
 host is online:
 
 <!-- doc-example: skip - uses the `environment` from the skipped browser-environment block -->
+
 ```ts
 import { openPersistedMutationQueue } from '@stateref/sync';
 
@@ -526,7 +619,7 @@ const stopAutoResume = queue.autoResume(environment, {
 });
 ```
 
-`autoResume(environment, handlers?)` automates only *when* `resume()` runs, never
+`autoResume(environment, handlers?)` automates only _when_ `resume()` runs, never
 which jobs may run: every rule below still applies. It reacts to `reconnect`,
 not `focus`, checks `environment.isOnline()` first, and runs once immediately
 when it attaches while already online. Runs never overlap and events arriving
@@ -567,7 +660,7 @@ a new READ or known server value, not by resending the successful WRITE.
 
 Editable data defaults to a plain, acyclic tree with dense arrays. Arrays are tracked as one atomic field. Reserved proxy keys and direct mutation of an object returned by `.value` are rejected. Use `editable: false` for arbitrary readonly query data such as a `Date`; ref setters are then rejected. Readonly query objects should also be treated as immutable by the caller.
 
-Defaults: `staleTime: 0`, inactive `gcTime: 5 minutes` (infinite for `createSyncClient({ ssr: true })`), three query retries in a client and zero in SSR. The client owns its cache; create a separate client for each SSR request. The `queryKey` must be an acyclic JSON-compatible array, with object key order ignored in its hash.
+Defaults: `staleTime: 0`, inactive `gcTime: 5 minutes` (infinite for `createSyncClient({ ssr: true })`), three query retries in a client and zero in SSR. The client owns its cache; create a separate client for each SSR request. The `queryKey` must be an acyclic JSON-compatible array, with object key order ignored in its hash. A state-ref ref inside a key throws a `TypeError` in every API that hashes it: read the ref with `.value`.
 
 Fixed-key queries require an explicit `load()` call unless a mutation response,
 `acceptServer`, or an active reactive key populates the cache. A successful local
@@ -582,7 +675,12 @@ WRITE is pending, messages are held (`status.queued`) and folded in order once
 it settles.
 
 ```ts
-import { createSyncClient, ndjsonMessages, streamQuery, webSocketMessages } from '@stateref/sync';
+import {
+  createSyncClient,
+  ndjsonMessages,
+  streamQuery,
+  webSocketMessages,
+} from '@stateref/sync';
 
 type Report = { rows: string[] };
 type Row = { row: string };
@@ -596,7 +694,9 @@ const report = client.query<Report>({
 // NDJSON: one JSON value per line, rendered as each line arrives.
 const stream = streamQuery<Report, Row>(report, {
   source: () => ndjsonMessages<Row>(signal => fetch('/report', { signal })),
-  reduce: (current, message) => ({ rows: [...(current?.rows ?? []), message.row] }),
+  reduce: (current, message) => ({
+    rows: [...(current?.rows ?? []), message.row],
+  }),
   initialValue: () => ({ rows: [] }),
 });
 
@@ -607,8 +707,11 @@ stream.close(); // stop for good; tears down the request
 
 // WebSocket: the same, with a new socket for every run.
 const live = streamQuery<Report, Row>(report, {
-  source: () => webSocketMessages<Row>(new WebSocket('wss://example.test/report')),
-  reduce: (current, message) => ({ rows: [...(current?.rows ?? []), message.row] }),
+  source: () =>
+    webSocketMessages<Row>(new WebSocket('wss://example.test/report')),
+  reduce: (current, message) => ({
+    rows: [...(current?.rows ?? []), message.row],
+  }),
   throttle: 'frame', // at most one screen update per animation frame
 });
 live.refetch({ mode: 'append' }); // reconnect and keep adding to what is shown

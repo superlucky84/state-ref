@@ -20,11 +20,10 @@ export const LithentKo = mount(() => {
 
       <h2>일반 상태 커넥터</h2>
       <p>
-        커넥터는 이 브랜치에서 준비 중이며 아직 게시되지 않았습니다. mounter에서
-        한 번 연결하고 렌더에서는 <code>counter().count.value</code>로 읽으며
-        이벤트에서 같은 ref로 수정합니다. 마운트 뒤 구독하고 언마운트에서 즉시
-        abort합니다. 서버 렌더에서는 구독 없이 읽습니다. 기본 진입점에는 sync
-        의존성이 필요하지 않습니다.
+        mounter에서 한 번 연결하고 렌더에서는 <code>counter().count.value</code>
+        로 읽으며 이벤트에서 같은 ref로 수정합니다. 마운트 뒤 구독하고
+        언마운트에서 즉시 abort합니다. 서버 렌더에서는 구독 없이 읽습니다. 기본
+        진입점에는 sync 의존성이 필요하지 않습니다.
       </p>
       <CodeBlock
         language="bash"
@@ -41,7 +40,6 @@ export const LithentKo = mount(() => {
 
       <h2>컴포넌트 안의 서버 조회</h2>
       <p>
-        새 커넥터는 이 브랜치에서 준비 중이며 아직 게시되지 않았습니다.
         기본·sync 진입점은 ESM import로 사용합니다. Lithent 1.24 이상과 sync 0.3
         이상을 사용합니다. 앱당 client 하나를 만들고 mounter에서 helper를 한 번
         호출하세요. props는 getter 안에서 읽고, 고정 key에는 옵션 객체를 넘기면

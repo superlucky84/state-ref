@@ -1,5 +1,143 @@
 # Changelog
 
+## @stateref/sync 0.3.0
+
+Adds `client.observe`, the query observer behind the connectors' new
+`./sync` entries. Requires `state-ref ^3.1.0` (unchanged). The three Changed
+entries can break code that worked on 0.2.0; each names its migration.
+
+### Added
+
+- **`client.observe(options, settings?)`** - one observer of a query that
+  attaches only while something subscribes to it. Creating it and reading it
+  (`watch()` without a callback, `peek(options)`, `matches(options)`) leave
+  the cache as it was. The first subscription opens the query and loads it
+  if stale, sharing a READ in flight; the last one ending releases the handle
+  on `settings.scheduleRelease` (one macrotask by default). `setOptions`
+  confirms new options. It is a building block for framework hooks:
+  component code uses a connector's `./sync` entry.
+- **`QueryObserverControls`** (`observer.controls`, the `q` of every hook).
+  `refetch()` rejects with "This query observer is not attached." while the
+  observer is not attached, is disabled or runs on the server.
+  `invalidate()` invalidates the key and, while attached and enabled, reads
+  it again; `client.invalidate(key)` does not read. `handle()` lends the
+  query's own handle, or `null`, for local edits and mutation `links`; the
+  observer owns it, so never dispose it.
+- Types `ObserveOptions` (query options, display options and `enabled`),
+  `ObserverSettings`, `QueryObserver`, `QueryObserverControls` and
+  `QueryHandleCore` (a query handle without `dispose`, `display` and
+  `watchDisplay`).
+
+### Changed
+
+- **A query key holding a state-ref ref throws.** `['user', idRef]` - a
+  forgotten `.value` - used to hash as `{}`, so every id silently shared one
+  cache entry. Every API that hashes a key (`query`, `fetch`, `prefetch`,
+  `ensure`, `invalidate`, `remove`, `hashQueryKey`, ...) now throws
+  ``TypeError: Query key must be an acyclic JSON-compatible tree; read a ref with `.value`.``
+  *Migration:* put the value in the key: `['user', idRef.value]`.
+- **Mutation links take `QueryHandleCore<any>`.** `MutationLink.query`,
+  `StageLinkedMutationLink.query` and the `queries` of
+  `PersistedLinkedMutation.send` accept a handle without `dispose`, `display`
+  and `watchDisplay`, so the handle a hook lends (`q.handle()`) can be
+  linked; `client.query()` handles fit as before. Code that reads those
+  members from a link (`link.query.dispose()`), or implements these types
+  with explicit parameter types, no longer compiles. *Migration:* read them
+  from the handle you own, and type such parameters `QueryHandleCore<any>`.
+- **`QueryDisplayRef` keeps paths open below a missing value.**
+  `display.data.name.value` is `string | undefined` before the first load
+  instead of a type error, and a leaf below a nullable or optional field
+  gains `| undefined`. A check on `.value` still narrows; nothing changes at
+  run time. *Migration:* where a leaf now types as `| undefined`, narrow on
+  `.value` or give a fallback (`display.data.name.value ?? ''`).
+
+## @stateref/connect-lithent 0.1.0
+
+First release: Lithent connectors for `state-ref` state, sync query views
+and component-owned sync queries. Peers: `lithent ^1.24.0`,
+`state-ref ^3.1.0`, and `@stateref/sync ^0.3.0` (optional, for `./sync`).
+
+**ESM only.** Both entries refuse `require` with
+`ERR_PACKAGE_PATH_NOT_EXPORTED`: Lithent 1.24.0's `require` resolves to an
+empty namespace under Node (superlucky84/lithent#92), so a CommonJS entry
+would not work.
+
+- **`connectLithent(watch)`** returns `() => StateRefStore<T>`. Call it once
+  in a mounter, read the accessor in render and write through its ref. It
+  subscribes after mount to the paths render read and aborts on unmount; a
+  server render reads without subscribing.
+- **`connectLithentView(watch)`** returns `() => R` with the watch's ref
+  type, so a sync display stays readonly. `connectLithentView(query.watchDisplay)`
+  shows an explicit query; the owner that called `client.query()` still loads
+  and disposes it.
+- **`@stateref/connect-lithent/sync`: `createSyncQuery(client, options)`**
+  returns `[account, q]`, with the same observer lifecycle and `q` as the
+  other connectors' `./sync` entries. Create it once in a `mount` or
+  `lmount` mounter, pass a getter to follow props, and read
+  `account().data.name.value` in render.
+- **`lithent-concurrent`** (tested with 0.1.3): alias only the exact core
+  import in the application bundler, on server and client alike
+  (`{ find: /^lithent$/, replacement: 'lithent-concurrent' }`). The
+  connector forwards display changes to the concurrent renderer's version
+  signal and inherits Lithent's own retry limits; it is not React's
+  concurrent snapshot guarantee.
+
+## @stateref/connect-react 19.1.0, @stateref/connect-preact 10.5.0, @stateref/connect-vue 3.5.0, @stateref/connect-solid 1.5.0, @stateref/connect-svelte 5.1.0
+
+Additive. Each connector gains an ESM-only `./sync` entry for queries a
+component owns. `@stateref/sync ^0.3.0` is an optional peer: install it only
+for that entry; the base entry never imports it. Framework and
+`state-ref ^3.1.0` peers are unchanged. The Preact, Vue, Solid and Svelte
+base entries are unchanged; React's carries the fix below.
+
+### Added
+
+- **`./sync`** - one query observer per component, from mount to unmount.
+  Rendering creates nothing; mount opens the query and loads it if stale,
+  sharing a READ in flight; unmount releases it after a short schedule, so
+  StrictMode and a route swap in one commit neither cancel nor repeat a
+  READ. A key change shows the new key's cached value or pending state from
+  its first render, never the previous key's value. Every entry returns
+  `[account, q]`: read leaves with `.value` (only the paths read are
+  subscribed), and use `q.refetch()`, `q.invalidate()` and `q.handle()`
+  (local edits, mutation `links`).
+  - React and Preact: `useSyncQuery(client, options)` with a plain options
+    object every render; `account.data.name.value`.
+  - Vue: `useSyncQuery(client, options | getter)`; a getter follows
+    reactive values, a plain object is fixed and refs inside it are not
+    unwrapped. `account(ref => ref.data.name.value)` returns a
+    `Readonly<Ref>`.
+  - Solid: `createSyncQuery(client, options | accessor)`;
+    `account(ref => ...)` returns an `Accessor`.
+  - Svelte: `createSyncQuery(client, options | readable)` for the store API
+    on Svelte 4 and 5 (no runes form); `account(ref => ...)` returns a
+    `Readable`. Call it during component initialization.
+- **SSR.** With a `createSyncClient({ ssr: true })` client, one per request,
+  the entries never attach or READ: fill it before rendering (`prefetch`,
+  `ensure`), `dehydrate()` it, and `hydrate()` the browser client before
+  rendering. Svelte's store API subscribes on the server too, so it needs
+  the `ssr: true` client most.
+- **The client is fixed for the component's lifetime.** React and Preact
+  throw "This query observer is bound to another client."; the others keep
+  the first one. Bundles sharing one client through `state-ref/shared` need
+  the same `@stateref/sync` 0.3 or later; an older client makes the entries
+  throw "This sync client has no observe(); align the @stateref/sync
+  versions of the bundles on this page."
+
+Explicit handles - `client.query()` with `load()` and `dispose()`, shown
+through `connectReactView(query.watchDisplay)` and its siblings - keep
+working, for a query a store or service owns beyond one component.
+
+### Fixed (connect-react 19.1.0)
+
+- **No torn frame when a store write lands during a concurrent mount**
+  (PR #16). Before the subscription existed, the snapshot React compares
+  before commit could not move, so a write between a concurrent mount render
+  (`useTransition`, `useDeferredValue`) and its commit went unnoticed and
+  React committed one frame mixing old and new values. Until the
+  subscription is made, the snapshot is now the live ref's root value, which
+  changes on every write.
+
 ## state-ref 3.2.0
 
 Additive: nothing that worked on 3.1.x changes. The new entry point is not

@@ -39,7 +39,9 @@ client.query<I, T, S>({ source, resolve, ...display }): QueryHandle<T, S>  // re
 
 client.fetch<T>(options): Promise<T>     // fresh cache or a READ; throws
 client.prefetch<T>(options): Promise<void> // caches success, swallows rejection
-client.ensure<T>(options): Promise<T>    // confirmed cache, even if stale`}
+client.ensure<T>(options): Promise<T>    // confirmed cache, even if stale
+
+client.observe<T, S>(options, settings?): QueryObserver<T, S> // for hook authors`}
       />
 
       <h3>무한 조회</h3>
@@ -236,11 +238,82 @@ QueryStatus & { data, isPlaceholder, errorSource, queryKey, enabled }
 // no phase: derive it
 const phase = q.display.isPlaceholder.value ? 'placeholder' : q.display.status.value;
 
+// a path under a missing value reads undefined:
+// display.data.name.value is string | undefined
+
 // with a reactive key and no active key, ref / watch / status throw
 // 'This query has no active key.'; display.enabled stays readable.`}
       />
 
       <p>고정 key는 READ를 시작하지 않습니다. 활성 반응형 key는 시작합니다.</p>
+
+      <h2>조회 관찰자(observer)</h2>
+
+      <p>
+        각 커넥터의 <code>/sync</code> 진입점 아래에 있는 저수준 API로, 다른
+        프레임워크용 훅을 만들 때 씁니다. 앱 코드는 그 진입점을 쓰세요.{' '}
+        <a href="#/ko/guide/sync-query">query와 resource</a>를 보세요.
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`client.observe<T, S = T>(
+  options: ObserveOptions<T, S>,
+  settings?: ObserverSettings
+): QueryObserver<T, S>
+
+type ObserveOptions<T, S = T> = QueryOptions<T> &
+  QueryDisplayOptions<T, S> & { enabled?: boolean };
+
+type ObserverSettings = {
+  scheduleRelease?: (release: () => void) => void; // default: one macrotask
+};
+
+type QueryObserver<T, S = T> = Readonly<{
+  watch: QueryDisplayWatch<QueryDisplayState<S>>; // no callback: the confirmed options' state; a callback: subscribe
+  peek: (options: ObserveOptions<T, S>) => QueryDisplayRef<QueryDisplayState<S>>; // options a render has not confirmed
+  matches: (options: ObserveOptions<T, S>) => boolean;    // same key and enabled as the confirmed options
+  setOptions: (options: ObserveOptions<T, S>) => boolean; // confirm; true when the key or enabled changed
+  controls: QueryObserverControls<T>;
+}>;
+
+type QueryObserverControls<T> = Readonly<{
+  refetch: () => Promise<T>;  // rejects 'This query observer is not attached.' while not attached
+  invalidate: () => void;     // invalidates the key; reads again while attached and enabled
+  handle: () => QueryHandleCore<T> | null; // the query's own handle; null while not attached
+}>;
+
+// a QueryHandle without the members that show or release it
+type QueryHandleCore<T> = Omit<QueryHandle<T>, 'dispose' | 'display' | 'watchDisplay'>;`}
+      />
+
+      <ul>
+        <li>
+          관찰자를 만들고 읽는 것(콜백 없는 <code>watch()</code>,{' '}
+          <code>peek</code>, <code>matches</code>)은 캐시를 바꾸지 않습니다.
+        </li>
+        <li>
+          첫 콜백 구독에서 관찰자가 붙습니다. 조회를 열고, stale이면 불러오며,
+          진행 중 READ를 공유합니다. 구독은 첫 실행이 반환한{' '}
+          <code>AbortSignal</code>이 abort되거나 이후 실행이 <code>false</code>
+          를 반환하면 끝납니다. 둘 다 없는 구독은 관찰자를 붙잡아 둡니다. 마지막
+          구독이 끝나면 <code>scheduleRelease</code>에 따라 핸들을 놓습니다.
+        </li>
+        <li>
+          <code>setOptions</code>는 렌더 밖에서 호출하세요. 커밋 뒤, 또는 렌더
+          전의 반응에서 호출합니다. 렌더의 옵션에 대해{' '}
+          <code>matches(options)</code>가 false인 동안에는 구독한 상태 대신{' '}
+          <code>peek(options)</code>를 보여 주세요.
+        </li>
+        <li>
+          <code>ssr: true</code> client에서는 붙지 않고, 구독은 확정된 옵션의
+          상태를 받습니다.
+        </li>
+        <li>
+          <code>controls.handle()</code>은 조회 자신의 핸들을 빌려줍니다.
+          dispose하지 마세요. 해제는 관찰자가 합니다.
+        </li>
+      </ul>
 
       <h2>스트리밍</h2>
 
@@ -326,7 +399,7 @@ mutation.dispose()
   retryDelay?: (attempt: number) => number;
   idempotencyKey?: string;
   links?: Array<{
-    query: QueryHandle<any>;
+    query: QueryHandleCore<any>;        // a handle you own, or q.handle()
     submission?: ResourceSubmission<any>;
     accept?:                          // default { kind: 'none' }
       | { kind: 'none' | 'refetch' | 'submitted' }
@@ -338,6 +411,15 @@ mutation.dispose()
 // result.kind
 'success' | 'sync-error' | 'rejected' | 'unknown'`}
       />
+
+      <p>
+        link의 <code>query</code>는 <code>QueryHandleCore&lt;any&gt;</code>
+        입니다. <code>dispose</code>·<code>display</code>·
+        <code>watchDisplay</code>가 없는 조회 핸들이라 직접 소유한 핸들도,
+        컴포넌트 훅이 <code>q.handle()</code>로 빌려준 핸들도 넣을 수 있습니다.{' '}
+        <code>openPersistedLinkedMutation</code>의 <code>stage</code> links와{' '}
+        <code>send(client, queries, mutation)</code>도 같은 타입을 받습니다.
+      </p>
 
       <p>
         <code>unknown</code>은 편집을 지키고 자동으로 재시도하지 않습니다.{' '}

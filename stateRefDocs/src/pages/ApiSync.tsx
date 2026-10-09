@@ -39,7 +39,9 @@ client.query<I, T, S>({ source, resolve, ...display }): QueryHandle<T, S>  // re
 
 client.fetch<T>(options): Promise<T>     // fresh cache or a READ; throws
 client.prefetch<T>(options): Promise<void> // caches success, swallows rejection
-client.ensure<T>(options): Promise<T>    // confirmed cache, even if stale`}
+client.ensure<T>(options): Promise<T>    // confirmed cache, even if stale
+
+client.observe<T, S>(options, settings?): QueryObserver<T, S> // for hook authors`}
       />
 
       <h3>Infinite queries</h3>
@@ -236,11 +238,84 @@ QueryStatus & { data, isPlaceholder, errorSource, queryKey, enabled }
 // no phase: derive it
 const phase = q.display.isPlaceholder.value ? 'placeholder' : q.display.status.value;
 
+// a path under a missing value reads undefined:
+// display.data.name.value is string | undefined
+
 // with a reactive key and no active key, ref / watch / status throw
 // 'This query has no active key.'; display.enabled stays readable.`}
       />
 
       <p>A fixed key does not start a READ. An active reactive key does.</p>
+
+      <h2>Query observers</h2>
+
+      <p>
+        The low-level API behind each connector&apos;s <code>/sync</code> entry,
+        for writing a hook for another framework. App code uses those entries
+        instead (<a href="#/guide/sync-query">query and resource</a>).
+      </p>
+
+      <CodeBlock
+        language="typescript"
+        code={`client.observe<T, S = T>(
+  options: ObserveOptions<T, S>,
+  settings?: ObserverSettings
+): QueryObserver<T, S>
+
+type ObserveOptions<T, S = T> = QueryOptions<T> &
+  QueryDisplayOptions<T, S> & { enabled?: boolean };
+
+type ObserverSettings = {
+  scheduleRelease?: (release: () => void) => void; // default: one macrotask
+};
+
+type QueryObserver<T, S = T> = Readonly<{
+  watch: QueryDisplayWatch<QueryDisplayState<S>>; // no callback: the confirmed options' state; a callback: subscribe
+  peek: (options: ObserveOptions<T, S>) => QueryDisplayRef<QueryDisplayState<S>>; // options a render has not confirmed
+  matches: (options: ObserveOptions<T, S>) => boolean;    // same key and enabled as the confirmed options
+  setOptions: (options: ObserveOptions<T, S>) => boolean; // confirm; true when the key or enabled changed
+  controls: QueryObserverControls<T>;
+}>;
+
+type QueryObserverControls<T> = Readonly<{
+  refetch: () => Promise<T>;  // rejects 'This query observer is not attached.' while not attached
+  invalidate: () => void;     // invalidates the key; reads again while attached and enabled
+  handle: () => QueryHandleCore<T> | null; // the query's own handle; null while not attached
+}>;
+
+// a QueryHandle without the members that show or release it
+type QueryHandleCore<T> = Omit<QueryHandle<T>, 'dispose' | 'display' | 'watchDisplay'>;`}
+      />
+
+      <ul>
+        <li>
+          Making an observer and reading it (<code>watch()</code> without a
+          callback, <code>peek</code>, <code>matches</code>) leave the cache as
+          it was.
+        </li>
+        <li>
+          The first callback subscription attaches: it opens the query, loads it
+          if stale and shares a READ in flight. A subscription ends when the{' '}
+          <code>AbortSignal</code> its first run returned aborts, or when a
+          later run returns <code>false</code>; one with neither keeps the
+          observer attached. When the last one ends, the handle is released on{' '}
+          <code>scheduleRelease</code>.
+        </li>
+        <li>
+          Call <code>setOptions</code> outside render: after commit, or in a
+          reaction before render. While <code>matches(options)</code> is false
+          for a render&apos;s options, show <code>peek(options)</code> instead
+          of the subscribed state.
+        </li>
+        <li>
+          On an <code>ssr: true</code> client it never attaches; a subscription
+          gets the confirmed options&apos; state.
+        </li>
+        <li>
+          <code>controls.handle()</code> lends the query&apos;s own handle.
+          Never dispose it: the observer releases it.
+        </li>
+      </ul>
 
       <h2>Streaming</h2>
 
@@ -326,7 +401,7 @@ mutation.dispose()
   retryDelay?: (attempt: number) => number;
   idempotencyKey?: string;
   links?: Array<{
-    query: QueryHandle<any>;
+    query: QueryHandleCore<any>;        // a handle you own, or q.handle()
     submission?: ResourceSubmission<any>;
     accept?:                          // default { kind: 'none' }
       | { kind: 'none' | 'refetch' | 'submitted' }
@@ -338,6 +413,16 @@ mutation.dispose()
 // result.kind
 'success' | 'sync-error' | 'rejected' | 'unknown'`}
       />
+
+      <p>
+        A link&apos;s <code>query</code> is a{' '}
+        <code>QueryHandleCore&lt;any&gt;</code>, a query handle without{' '}
+        <code>dispose</code>, <code>display</code> and <code>watchDisplay</code>
+        : a handle you own and the one a component hook lends through{' '}
+        <code>q.handle()</code> both fit. The <code>stage</code> links and{' '}
+        <code>send(client, queries, mutation)</code> of{' '}
+        <code>openPersistedLinkedMutation</code> take the same type.
+      </p>
 
       <p>
         <code>unknown</code> keeps the edits and is never retried automatically.{' '}
