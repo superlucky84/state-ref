@@ -1,7 +1,7 @@
 # IMPLEMENT — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: **단계 1~5 완료(2026-10-09).** Activity·KeepAlive·경합·명시 핸들 공존·key 왕복 검증과 1,000 관찰자 비용 측정을 완료했고 전체 게이트가 통과했다. 다음은 단계 6 통합 데모·검증이다. 이전 구현·검증 결과는 진행 기록에 보존했다. PR #16의 `main` 병합과 이 브랜치 반영은 완료했다(`41798cf`, `e58deaa`, DC-QH-35).
+- 상태: **단계 1~5 완료(2026-10-09), 단계 5 뒤 상태 점검의 코드 결함·테스트 빈틈 반영 완료.** Activity·KeepAlive·경합·명시 핸들 공존·key 왕복 검증과 1,000 관찰자 비용 측정을 완료했고 전체 게이트가 통과했다. 다음은 단계 6 통합 데모·검증이다. 이전 구현·검증 결과는 진행 기록에 보존했다. PR #16의 `main` 병합과 이 브랜치 반영은 완료했다(`41798cf`, `e58deaa`, DC-QH-35).
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 모든 단계의 공통 완료 조건:
@@ -272,3 +272,15 @@
 - 다음: 단계 6 통합 테스트·다섯 프레임워크의 공통 상세 화면·React SSR 데모·전체 버전 매트릭스·실제 브라우저 수동 검증, 이후 단계 7 사용자 가이드·릴리스 기록. 수동 체크리스트는 아직 미수행이다.
 - 막힌 점: 없음. 이번 단계에서는 PR을 만들거나 패키지를 게시하지 않는다.
 - 커밋 추적: 시작점은 `76ee859`. 이 완료 기록을 포함하는 커밋은 `git log -1 -- docs/sync-query-hooks/IMPLEMENT.md`로 확인한다.
+
+### 2026-10-09 — 단계 5 뒤 상태 점검 결함·테스트 빈틈 반영
+
+- 점검: 인계(`841004e`) 주장을 읽기 전용 점검 4개 관점(sync·React/Preact·Vue/Solid/Svelte·문서)과 관점별 반박 검증으로 확인했다. 단계 0~5 주장은 사실이었고(테스트 수, 리뷰 9건 반영, 보호 diff 0), 확인된 것은 코드 결함 1건(낮음), 테스트 빈틈 2건(낮음), 문서 누락·사소한 항목이다. 같은 날 이 작업 공간(Node 22.22.0, pnpm 9.12.3)에서 `pnpm gate` 21단계가 다시 통과했다.
+- 코드 결함(반영): 열 때 검사 결과(`confirmedOpeningReason`)를 생성·`setOptions` 때만 기억해서, 그 사이 캐시가 바뀌면(분리된 동안 항목 제거 등) 구독이 유효한 새 옵션에도 source 오류에 머물거나 한 번 불필요하게 다시 열렸다. `resolve()`가 커서가 실제로 열 때 본 결과를 기억한다(`observe.ts`, DESIGN DC-QH-26 4번). open 실패까지 기억하면 커밋마다 다시 여는 고리가 생길 수 있어 `validate` 결과만 기억한다. 테스트: `observe.test.ts` T-QH-17에 두 방향(항목이 사라진 캐시에 붙음 → 유효한 옵션으로 회복, 항목이 생긴 캐시에 붙음 → 같은 옵션에 재오픈·READ 없음). 고치기 전 두 테스트 실패를 확인했다.
+- 테스트 빈틈(반영): R-QH-05의 "React 같은 커밋 안 라우트 교체"와 "Vue·Solid·Svelte 같은 patch 안 교체"에 테스트가 없었다. React `query-hook.tsx`, Vue `query-hook.test.ts`, Solid `query-hook.test.tsx`, Svelte `query-hook.test.ts`(+`svelte/QueryRoute.svelte`)에 각각 두 가지(다른 컴포넌트·같은 컴포넌트의 새 key/`keyed`/`{#key}`) 교체를 더했다. 요청 1·취소 0·owners trail에 0 없음·새 관찰자가 붙음(trail에 2)·언마운트 뒤 0과 취소를 확인한다. 테스트 목록 T-QH-20·31~33과 DESIGN DC-QH-11 검증 줄을 갱신했다.
+- 결함 주입: sync 기본 해제 일정을 즉시 해제로 바꾸면 React 2개·Vue 2개·Solid 2개가 실패한다. Svelte 5(작업 공간 5.57.1)는 새 블록을 먼저 만들고 이전 블록을 나중에 없애서 해제 일정과 무관하게 owners가 0을 거치지 않으므로 통과한다(요구 동작은 지켜짐). 같은 결함으로 `node scripts/connector-matrix.mjs svelte --cell min`(Svelte 4.2.19)은 새 테스트 2개가 실패하고, 정상 빌드에서는 그 셀이 DOM 44개(8개 기존 runes 건너뜀)·SSR 5개 통과한다.
+- 검증: `pnpm gate` 21단계 모두 통과(exit 0). core 402, sync 342, React 77, Preact 51, Vue 60, Solid 45, Svelte 52. core live index 1,000개 3.4ms(기준 ≤ 5ms), 최소 gzip 3,727B. 보호 diff(`origin/main` 대비 core·다섯 커넥터 `src/index.ts`·`runes.ts`) exit 0. lockfile 무변경.
+- 남은 점검 항목(미반영, 단계 6·7에서 처리): 단계 7 가이드 목록에 DESIGN이 요구한 두 항목(구조 공유가 안 되는 `select` 결과는 메모나 `equals`, DC-QH-26 2번 / `observe`·`peek`는 훅 작성자용 저수준 API, DC-QH-21·24) 추가. DESIGN의 `connect-react/src/index.ts:52-55` 참조는 `:64-67`로. 단계 2에서 고친 DC-QH-26 4번·DC-QH-13 문장에 "(단계 2 리뷰 반영)" 표시. 단계 6의 bench 메모를 단계 1·4 기록(5.3~6.5ms, 8.2ms)까지 갱신. React 19.2 이상에서 Activity 테스트가 건너뛰어지지 않음을 확인하는 단언(선택).
+- 다음: 단계 6 통합(다섯 프레임워크 공통 상세 화면 데모·React SSR 데모·전체 매트릭스·수동 검증), 단계 7 문서.
+- 막힌 점: 없음.
+- 커밋: 수정·테스트 `369a04e`. 이 기록을 담은 커밋은 `git log -1 -- docs/sync-query-hooks/IMPLEMENT.md`로 확인한다.
