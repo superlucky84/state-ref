@@ -33,10 +33,10 @@ export const LithentKo = mount(() => {
       <CodeBlock language="typescript" code={lithentStoreExample} />
       <p>
         <code>connectLithent</code>는 수정 가능한 StateRef accessor를
-        반환합니다.
-        <code>connectLithentView</code>는 watch의 ref 타입을 유지하므로 조회
-        표시는 읽기 전용이고 일반 watch는 수정할 수 있습니다. 두 함수는
-        구독·해제 구현을 공유하며 읽을 때 모두 <code>.value</code>를 사용합니다.
+        반환합니다. <code>connectLithentView</code>는 watch의 ref 타입을
+        유지하므로 조회 표시는 읽기 전용이고 일반 watch는 수정할 수 있습니다. 두
+        함수는 구독·해제 구현을 공유하며 읽을 때 모두 <code>.value</code>를
+        사용합니다.
       </p>
 
       <h2>컴포넌트 안의 서버 조회</h2>

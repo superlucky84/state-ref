@@ -24,9 +24,12 @@ function connectWatch<R extends { readonly value: unknown }>(
   };
   lithent.mountCallback(() => {
     try {
-      const notify = (
-        lithent as typeof lithent & { notifyStoreWrite?: () => void }
-      ).notifyStoreWrite;
+      // Only lithent-concurrent exports this. Read it dynamically: bundlers
+      // check `namespace.member` against the module's exports, and webpack 5
+      // fails the build when base lithent has no such export.
+      const notify = Reflect.get(lithent, 'notifyStoreWrite') as
+        | (() => void)
+        | undefined;
       if (notify) {
         // All display writes invalidate a concurrent build. This subscription
         // never schedules a render; the other one follows only rendered paths.

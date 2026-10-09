@@ -338,3 +338,14 @@
 - 전체 `pnpm gate` 21단계 모두 통과(Node 24.19.0, pnpm 9.12.3). sync 342 등 기존 테스트 통과, core live index 1,000개 3.4ms(≤ 5ms), 최소 gzip 3,727B(≤ 3,800B). fetched `origin/main` 대비 코어·기존 다섯 커넥터 보호 diff 0. `b05ac87` 대비 sync 구현·lockfile diff 0. Lithent 저장소도 수정하지 않았다. 의존성과 환경 설정 변경 없음.
 - 다음: 기존 단계 6 통합 데모·전체 매트릭스·수동 검증과 단계 7 가이드는 남는다. 막힌 점 없음. Lithent CJS 문제는 별도 요청대로 [lithent#92](https://github.com/superlucky84/lithent/issues/92)에 등록·내용 재확인했다.
 - 커밋·인계: 이 기록과 구현은 `feat(lithent): add ordinary state connector`로 함께 커밋한다. 정확한 SHA는 `git log -1 -- packages/connect-lithent` 및 ctxbin `state-ref-root/claude/sync-query-hooks`에서 확인한다.
+
+### 2026-10-09 — PR 전 점검: webpack 빌드 결함·문서 띄어쓰기 반영
+
+- 점검 범위: `ee88ac9`를 pull하고 ctxbin 인계를 로드한 뒤 PR 준비 상태를 확인했다. `main`(`41798cf`)은 이미 병합돼 있고 19커밋 앞섬·충돌 없음, 이 브랜치의 PR은 아직 없음, 보호 diff 0, lockfile은 기존 그대로 설치됨(새 importer와 lithent 1.24.0·lithent-concurrent 0.1.3만 추가).
+- 이 작업 공간(Node 22.22.0, pnpm 9.12.3)의 자동 검증: `pnpm gate` 21단계 통과(Lithent 19 + 2 concurrent 전용 건너뜀 포함), `node scripts/connector-matrix.mjs` 여섯 커넥터 19셀 전부 통과(React 18.3.1 74+3 건너뜀·19.3.0 77, Preact 10.24.1·10.29.8 각 51, Vue 3.2.47·3.5.10·3.5.43 각 60, Svelte 4.2.19 DOM 44+8·SSR 5와 5.57.1 DOM 52·SSR 5, Solid 1.9.1·1.9.15 DOM 45·SSR 5, Lithent base DOM 19+2·SSR 5와 concurrent DOM 21·SSR 5), `pnpm check:examples` 통과. 단계 6 체크리스트의 자동 명령은 이로써 모두 exit 0이지만, 데모·수동 검증 항목이 남아 단계 6을 완료로 표시하지 않는다.
+- 리뷰: 읽기 전용 리뷰 4개 관점(Lithent 런타임·Lithent 테스트·패키징/문서·브랜치 전체)과 관점별 반박 검증. Lithent 런타임 결함 없음, Lithent 테스트 항목은 모두 단언이 있음.
+- 결함(반영): 빌드된 Lithent 두 진입점이 `lithent.notifyStoreWrite`를 정적 namespace 멤버로 읽어, 기본 lithent 1.24.0(그 export가 없음)을 쓰는 앱을 webpack 5로 빌드하면 `export 'notifyStoreWrite' (imported as 'u') was not found in 'lithent'` 오류로 실패했다(webpack 5.111.1로 재현). Lithent 버그가 아니라 커넥터의 기능 감지 방식 문제다. `src/index.ts`에서 `Reflect.get(lithent, 'notifyStoreWrite')`로 동적으로 읽도록 고쳤고(DC-QH-41), 같은 webpack 빌드가 두 진입점 모두 성공했다. Lithent 테스트는 base DOM 19+2·SSR 5, `LITHENT_CORE=concurrent` DOM 21(concurrent 전용 2개 실행)·SSR 5 통과, 패키지 `tsc --noEmit` 통과.
+- 재발 방지: `scripts/check-packaging.mjs`가 빌드된 `.`·`./sync` 진입점의 lithent namespace 멤버 접근과 이름 import가 모두 기본 lithent의 export인지 확인한다. 수정 전 빌드에서는 `reads notifyStoreWrite, which lithent does not export`로 실패하고, 수정 뒤 통과함을 확인했다.
+- 문서(반영): 이 브랜치가 추가한 사이트 문단에서 JSX 줄바꿈 때문에 단어가 붙던 곳 7군데를 고쳤다(Lithent en 2·ko 1, SyncQuery en 2·ko 2. 예: "readaccount()", "Lithent guidealso"). TypeScript 파서로 텍스트와 인라인 요소 사이의 줄바꿈 경계를 전부 찾아 확인했다. 남은 검출은 `{' '}` 자체이거나 한국어 조사(`</strong>입니다`, `</a>에는`)라 의도대로다. 이 브랜치 밖의 `CustomConnector_ko.tsx:69`("반환합니다.<code>connectReact</code>")는 기존 문제라 손대지 않았다.
+- 머지 전에 남은 일(이번에 하지 않음): 단계 6 데모·브라우저 수동 검증(M-QH-01~07), 단계 7 가이드·CHANGELOG·릴리스 문서. 사이트·README·스킬의 "이 브랜치에서 준비, 미게시" 문구 정리와 sync README의 상대 링크(`../connect-lithent/README.md`) 정리. `main` 머지가 문서 사이트를 바로 배포하므로(`deploy-docs.yml`) 패키지 게시 순서를 맞출 것. 선택: 게이트에 Lithent concurrent 실행과 Lithent 타입 검사 추가, concurrent 감지 실패 시 건너뛰지 않고 실패하는 테스트.
+- 막힌 점: 없음. PR은 아직 만들지 않았다(사용자 판단 대기).

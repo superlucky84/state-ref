@@ -14,6 +14,7 @@ import {
 import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const root = resolve(import.meta.dirname, '..');
 const PACKAGES = [
@@ -69,6 +70,42 @@ for (const name of PACKAGES) {
         !manifest.exports['./runes/sync'],
         'Svelte sync is store API only'
       );
+    }
+    if (name === 'connect-lithent') {
+      // A bundler checks every `namespace.member` read against the module's
+      // exports, and webpack 5 fails the build on a missing one. Base lithent
+      // is what the peer range admits, so each member must exist there; an
+      // export only lithent-concurrent has must be read dynamically.
+      const lithentExports = new Set(
+        Object.keys(
+          await import(
+            pathToFileURL(join(dir, 'node_modules/lithent/dist/lithent.mjs'))
+              .href
+          )
+        )
+      );
+      for (const entry of ['.', './sync']) {
+        const file = manifest.exports[entry].import.default;
+        const bundle = await readFile(join(dir, file), 'utf8');
+        const spaces = [
+          ...bundle.matchAll(/import \* as (\w+) from ["']lithent["']/g),
+        ].map(match => match[1]);
+        const members = spaces.flatMap(space =>
+          [...bundle.matchAll(new RegExp(`\\b${space}\\.(\\w+)`, 'g'))].map(
+            match => match[1]
+          )
+        );
+        for (const [, names] of bundle.matchAll(
+          /import \{([^}]*)\} from ["']lithent["']/g
+        ))
+          for (const name of names.split(','))
+            members.push(name.trim().split(/\s+as\s+/)[0]);
+        for (const member of members.filter(Boolean))
+          assert.ok(
+            lithentExports.has(member),
+            `${manifest.name}: ${file} reads ${member}, which lithent does not export`
+          );
+      }
     }
   }
 }

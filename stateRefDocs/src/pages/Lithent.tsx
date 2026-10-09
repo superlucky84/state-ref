@@ -34,7 +34,7 @@ export const Lithent = mount(() => {
       />
       <CodeBlock language="typescript" code={lithentStoreExample} />
       <p>
-        <code>connectLithent</code> returns an editable StateRef accessor.
+        <code>connectLithent</code> returns an editable StateRef accessor.{' '}
         <code>connectLithentView</code> preserves the watch's ref type: a query
         display stays readonly, and an editable watch stays editable. Both share
         the same subscription and cleanup, and both read with{' '}
@@ -93,9 +93,8 @@ resolve: {
         rendering watched paths. It inherits the renderer's retry limits: builds
         with mounts or update effects can still commit mixed values. Options
         getters use an update callback. For an explicit query,{' '}
-        <code>connectLithentView(query.watchDisplay)</code>
-        manages the UI subscription; the query owner still loads and disposes
-        it.
+        <code>connectLithentView(query.watchDisplay)</code> manages the UI
+        subscription; the query owner still loads and disposes it.
       </p>
 
       <h2>Direct watch integration</h2>
