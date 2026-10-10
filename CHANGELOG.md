@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Query keys also reject pending `sharedWatch` refs, `combineWatch` refs and
+  `createComputed` refs with the `.value` hint. Previously pending shared and
+  combined refs could hash as `{}` and collide; computed refs were refused
+  with only the generic JSON-compatible-tree error. Ref identity is separate
+  from a core ref connection, so identifying these refs does not provide a
+  store or make them usable with `connectRef`.
+- The sharing guide and English/Korean Shared pages explain matching sync
+  versions and both 0.2/0.3 client creation orders. Separately built bundle
+  E2E scenarios cover query observers and connector hooks on a shared client,
+  plus both creation orders with the real, pinned sync 0.2.0 package. The
+  bundle server answers favicon requests without a spurious console error.
+
 ## @stateref/sync 0.3.0
 
 Adds `client.observe`, the query observer behind the connectors' new
@@ -30,7 +46,7 @@ entries can break code that worked on 0.2.0; each names its migration.
 
 ### Changed
 
-- **A query key holding a state-ref ref throws.** `['user', idRef]` - a
+- **A query key holding a core state-ref ref throws.** `['user', idRef]` - a
   forgotten `.value` - used to hash as `{}`, so every id silently shared one
   cache entry. Every API that hashes a key (`query`, `fetch`, `prefetch`,
   `ensure`, `invalidate`, `remove`, `hashQueryKey`, ...) now fails with

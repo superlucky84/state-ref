@@ -9,6 +9,7 @@ import type {
 import type { Lens } from '@/lens';
 import { lens } from '@/lens';
 import { memoRefs } from './memo';
+import { REF_IDENTITY } from '@/internal/ref-connection-key';
 
 /**
  * Defaults for `watch(renew, userOption)`.
@@ -307,6 +308,7 @@ export function createComputed<W extends readonly Watch<any>[], R>(
         console.warn('Can not setting');
       },
     };
+    Object.defineProperty(proxy, REF_IDENTITY, { value: true });
 
     watches.forEach((watch, index) => {
       if (!computedCallback) {
@@ -385,6 +387,7 @@ export function combineWatch<W extends readonly Watch<any>[]>(
 
     const combinedStore: StateRefStore<R> = new Proxy({} as StateRefStore<R>, {
       get(_, prop) {
+        if (prop === REF_IDENTITY) return true;
         if (prop === 'value') {
           console.warn(
             `You cannot directly access the nested 'value' of a store created by combineWatch.`

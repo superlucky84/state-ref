@@ -122,6 +122,20 @@ const subscribe = client.mutation({
         부른 <code>load()</code>는 한 번 더 읽습니다. 한 번들 안에서와 같습니다.
       </p>
       <p>
+        <strong>모든 번들의 @stateref/sync 버전을 같게 맞추세요.</strong> 공유
+        클라이언트는 처음 만든 번들의 sync 코드로 동작하고, 다른 번들의 호출도
+        그 구현을 따릅니다. 0.2.0 번들이 먼저 만들면 커넥터의 0.3{' '}
+        <code>./sync</code> 훅은 다음 오류를 던집니다:{' '}
+        <code>
+          This sync client has no observe(); align the @stateref/sync versions
+          of the bundles on this page.
+        </code>
+        . 반대로 0.3 번들이 먼저 만들면 0.2용 코드도 0.3 규칙을 따릅니다. 예를
+        들어 query key에 ref를 넣으면 <code>TypeError</code>가 나므로{' '}
+        <code>.value</code>를 넣어야 합니다. 로드 순서가 공유할 구현을 결정하니
+        배포할 때 버전을 맞추세요.
+      </p>
+      <p>
         초기값이 고정돼 있고 어느 번들도 무언가를 불러와 채울 필요가 없는 일반
         스토어도 같은 방식으로 씁니다.
       </p>

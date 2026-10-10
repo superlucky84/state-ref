@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>sync 0.3 클라이언트 먼저</title>
+  </head>
+  <body>
+    <h1>0.3이 공유 클라이언트를 먼저 만들면 0.2 코드도 0.3 규칙을 따릅니다</h1>
+    <nav><a href="/">← 조합 목록</a></nav>
+    <div id="sync-provider"></div>
+    <div id="sync-legacy"></div>
+    <script type="module" src="/shared/sync-provider.js"></script>
+    <script type="module" src="/shared/sync-legacy.js"></script>
+  </body>
+</html>

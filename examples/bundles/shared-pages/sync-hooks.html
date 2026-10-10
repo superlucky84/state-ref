@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>공유 sync 클라이언트의 observer와 훅</title>
+  </head>
+  <body>
+    <h1>서로 다른 번들의 sync observer와 Preact 훅</h1>
+    <p>세 번들은 따로 빌드되어 각자 state-ref와 @stateref/sync를 포함합니다.</p>
+    <nav><a href="/">← 조합 목록</a></nav>
+    <h2>클라이언트와 mutation을 만드는 번들</h2>
+    <div id="sync-provider"></div>
+    <h2>client.observe를 쓰는 번들</h2>
+    <div id="sync-observer"></div>
+    <h2>./sync 훅을 쓰는 번들</h2>
+    <div id="sync-hook"></div>
+    <div id="sync-hook-root"></div>
+    <script type="module" src="/shared/sync-provider.js"></script>
+    <script type="module" src="/shared/sync-observer.js"></script>
+    <script type="module" src="/shared/sync-hook.js"></script>
+  </body>
+</html>

@@ -47,6 +47,21 @@ export const modalWatch = ensureShared('ui.modal', () =>
   `queryKey`. Loads that overlap share one read; a `load()` made after the
   first has finished reads again, as it does inside one bundle.
 
+### Match the sync version in every bundle
+
+A shared client runs the `@stateref/sync` code of the bundle that created it,
+not the code of each caller. Every bundle on the page must use the same
+`@stateref/sync` version (DC-QH-37). Load order decides which implementation
+all bundles receive:
+
+- If a 0.2.0 bundle creates it first, the connectors' 0.3 `./sync` hooks throw
+  `This sync client has no observe(); align the @stateref/sync versions of the bundles on this page.`
+- If a 0.3 bundle creates it first, even code written for 0.2 follows the
+  0.3 rules. For example, a ref inside a query key throws a `TypeError`;
+  put its `.value` in the key instead.
+
+Align the versions when deploying bundles; do not rely on their load order.
+
 ## One owner: `provideShared` + `sharedWatch`
 
 The owner registers its watch and states when the data can be used.
