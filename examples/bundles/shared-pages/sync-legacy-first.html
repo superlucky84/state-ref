@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>sync 0.2 클라이언트 먼저</title>
+  </head>
+  <body>
+    <h1>0.2가 공유 클라이언트를 먼저 만들면 0.3 훅이 오류를 알립니다</h1>
+    <nav><a href="/">← 조합 목록</a></nav>
+    <div id="sync-legacy"></div>
+    <div id="sync-hook"></div>
+    <div id="sync-hook-root"></div>
+    <script type="module" src="/shared/sync-legacy.js"></script>
+    <script type="module" src="/shared/sync-hook.js"></script>
+  </body>
+</html>

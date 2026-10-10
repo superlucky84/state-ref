@@ -1,6 +1,7 @@
 import type { Renew, StateRefStore, Watch } from '@/types';
 import { await_, registry } from './registry';
 import type { Entry } from './registry';
+import { REF_IDENTITY } from '@/internal/ref-connection-key';
 
 /**
  * Names known to the type checker. Augment it to have a store's type follow
@@ -298,6 +299,7 @@ function sharedRef(
     {},
     {
       get(_, key) {
+        if (key === REF_IDENTITY) return true;
         if (key === STATE) return state;
         const found = find();
         if (found) return found.ref[key];

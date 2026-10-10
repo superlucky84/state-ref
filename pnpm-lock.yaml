@@ -71,6 +71,10 @@ importers:
       state-ref:
         specifier: workspace:*
         version: link:../../packages/state-ref
+    devDependencies:
+      '@stateref/sync-legacy':
+        specifier: npm:@stateref/sync@0.2.0
+        version: '@stateref/sync@0.2.0(state-ref@packages+state-ref)'
 
   examples/e2e:
     dependencies:
@@ -859,6 +863,11 @@ packages:
     peerDependenciesMeta:
       '@solidjs/router':
         optional: true
+
+  '@stateref/sync@0.2.0':
+    resolution: {integrity: sha512-gDWrHNpYiZuwgXBap2TqdhctKmuUZmVzSAgRcXcfGYXUZo28c5yZpmn98ig5dMh2kys5P9IoXxpq8Psnyjcmdg==}
+    peerDependencies:
+      state-ref: ^3.1.0
 
   '@sveltejs/acorn-typescript@1.0.13':
     resolution: {integrity: sha512-wgKggnhZVL9Bfx1OaKKTrYY9BFRk6C8UAkQNUcIv1+llzYrIqy+RZm5HPKzn0NpEBvTVhTqB4kQyllZywsRBRQ==}
@@ -3582,6 +3591,10 @@ snapshots:
     dependencies:
       '@testing-library/dom': 10.4.0
       solid-js: 1.9.1
+
+  '@stateref/sync@0.2.0(state-ref@packages+state-ref)':
+    dependencies:
+      state-ref: link:packages/state-ref
 
   '@sveltejs/acorn-typescript@1.0.13(acorn@8.18.0)':
     dependencies:
