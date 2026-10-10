@@ -80,6 +80,40 @@ describe('refusals that the types cannot express', () => {
     expect(() => hashQueryKey(['user', legacy])).toThrow(REF_HINT);
   });
 
+  it('refuses the identity symbol in editable data before it can shadow a field', async () => {
+    const identity = Symbol.for('state-ref.ref');
+    const message = 'Resource payload key Symbol(state-ref.ref) is reserved.';
+    const client = createSyncClient({ ssr: true });
+    expect(() =>
+      client.query({
+        queryKey: ['identity-in-initial-data'],
+        initialData: { [identity]: 'hidden' },
+        queryFn: () => ({ [identity]: 'hidden' }),
+      })
+    ).toThrow(message);
+    expect(client.size()).toBe(0);
+
+    const invalidRead = client.query({
+      queryKey: ['identity-in-server-data'],
+      queryFn: () => ({ nested: { [identity]: 'hidden' } }),
+    });
+    await expect(invalidRead.load()).rejects.toThrow(message);
+    expect(invalidRead.status.loaded.value).toBe(false);
+    invalidRead.dispose();
+
+    const query = client.query<Record<string | symbol, unknown>>({
+      queryKey: ['identity-in-local-data'],
+      queryFn: () => ({ name: 'before' }),
+    });
+    await query.load();
+    expect(() => {
+      query.ref.value = { nested: { [identity]: 'hidden' } };
+    }).toThrow(message);
+    expect(query.ref.value).toEqual({ name: 'before' });
+    expect(query.isDirty()).toBe(false);
+    query.dispose();
+  });
+
   it('refuses a query key that cannot be hashed as JSON', () => {
     const client = createSyncClient({ ssr: true });
     expect(() => hashQueryKey(['account', () => 1])).toThrow(

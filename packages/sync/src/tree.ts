@@ -19,6 +19,7 @@ const reserved = new Set<string | symbol>([
   Symbol.for('state-ref.navi'),
   Symbol.for('state-ref.type'),
   Symbol.for('state-ref.ref-link'),
+  Symbol.for('state-ref.ref'),
   Symbol.for('nodejs.util.inspect.custom'),
 ]);
 

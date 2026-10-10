@@ -142,6 +142,14 @@ const subscribe = client.mutation({
         since load order decides which implementation is shared.
       </p>
       <p>
+        The ref-in-key fix for pending shared, combined and computed refs also
+        requires the new identity marker in <code>state-ref</code>. Upgrade both
+        packages and the state-ref copies in every bundle. Older core refs are
+        still rejected, but older pending shared and combined refs can still
+        hash as <code>{'{}'}</code>; older computed refs get only the generic
+        JSON-compatible-tree error.
+      </p>
+      <p>
         A plain store works the same way when its initial value is fixed and no
         bundle has to load anything into it.
       </p>

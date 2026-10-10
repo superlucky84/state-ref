@@ -62,6 +62,12 @@ all bundles receive:
 
 Align the versions when deploying bundles; do not rely on their load order.
 
+The ref-in-key fix for pending shared, combined and computed refs also needs
+the new ref identity marker in `state-ref`. Upgrade both packages and the
+state-ref copies in every bundle. With older state-ref copies, core refs are
+still rejected, but pending shared and combined refs can still hash as `{}`,
+and computed refs get only the generic JSON-compatible-tree error.
+
 ## One owner: `provideShared` + `sharedWatch`
 
 The owner registers its watch and states when the data can be used.

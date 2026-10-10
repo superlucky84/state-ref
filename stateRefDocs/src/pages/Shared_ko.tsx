@@ -136,6 +136,14 @@ const subscribe = client.mutation({
         배포할 때 버전을 맞추세요.
       </p>
       <p>
+        제공 전 공유 ref와 합성·계산 ref의 key 검증 수정에는{' '}
+        <code>state-ref</code>의 새 식별 심볼도 필요합니다. 두 패키지와 모든
+        번들의 state-ref 사본을 함께 업데이트하세요. 이전 사본의 일반 core ref는
+        계속 거부되지만, 제공 전 공유 ref와 합성 ref는 여전히{' '}
+        <code>{'{}'}</code>로 해시될 수 있고 계산 ref는 일반적인
+        JSON-compatible-tree 오류만 받습니다.
+      </p>
+      <p>
         초기값이 고정돼 있고 어느 번들도 무언가를 불러와 채울 필요가 없는 일반
         스토어도 같은 방식으로 씁니다.
       </p>

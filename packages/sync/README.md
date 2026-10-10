@@ -662,6 +662,14 @@ Editable data defaults to a plain, acyclic tree with dense arrays. Arrays are tr
 
 Defaults: `staleTime: 0`, inactive `gcTime: 5 minutes` (infinite for `createSyncClient({ ssr: true })`), three query retries in a client and zero in SSR. The client owns its cache; create a separate client for each SSR request. The `queryKey` must be an acyclic JSON-compatible array, with object key order ignored in its hash. A state-ref ref inside a key throws a `TypeError` in every API that hashes it: read the ref with `.value`.
 
+The pending shared, combined and computed ref checks require the ref identity
+marker added to `state-ref` together with this fix. Upgrade both `state-ref`
+and `@stateref/sync`, including the state-ref copies in other bundles. Older
+core refs still use the connection-symbol fallback, but older pending shared
+and combined refs can still hash as `{}`, and older computed refs only receive
+the generic JSON-compatible-tree error. The identity symbol
+`Symbol.for('state-ref.ref')` is reserved in editable query and draft data.
+
 Fixed-key queries require an explicit `load()` call unless a mutation response,
 `acceptServer`, or an active reactive key populates the cache. A successful local
 edit does not save to a server.

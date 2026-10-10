@@ -9,7 +9,11 @@
   combined refs could hash as `{}` and collide; computed refs were refused
   with only the generic JSON-compatible-tree error. Ref identity is separate
   from a core ref connection, so identifying these refs does not provide a
-  store or make them usable with `connectRef`.
+  store or make them usable with `connectRef`. This fix needs the updated
+  state-ref and sync together; older core refs retain the connection-symbol
+  fallback, but older pending shared and combined refs can still collide.
+  The identity symbol is reserved in both editable resource and draft data,
+  so accepted payload fields cannot be shadowed by ref metadata.
 - The sharing guide and English/Korean Shared pages explain matching sync
   versions and both 0.2/0.3 client creation orders. Separately built bundle
   E2E scenarios cover query observers and connector hooks on a shared client,
