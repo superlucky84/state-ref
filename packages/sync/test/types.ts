@@ -21,7 +21,9 @@ import type {
   InFlightDehydration,
   LocalSyncSnapshot,
   MutationResult,
+  MutationLink,
   NetworkMode,
+  QueryDisplayRef,
   QueryKey,
   ResourceSubmission,
   SyncClientOptions,
@@ -40,6 +42,12 @@ import type {
   QueryStream,
   QueryStreamStatus,
   StreamRefetchMode,
+  ObserveOptions,
+  ObserverSettings,
+  QueryHandle,
+  QueryHandleCore,
+  QueryObserver,
+  QueryObserverControls,
 } from '@stateref/sync';
 import { createDraft } from 'state-ref/draft';
 import { create } from 'state-ref';
@@ -553,3 +561,201 @@ streamQuery(streamed, {
   // @ts-expect-error reduce must return the query data shape
   reduce: (_current, message) => message.row,
 });
+
+// Missing data keeps its paths open (docs/sync-query-hooks DC-QH-18, T-QH-08).
+// Exact type checks: each `Exact` fails if a `| undefined` or `| null` is
+// lost or added, which a plain assignment to a wider type cannot detect.
+type Equal<A, B> = (<V>() => V extends A ? 1 : 2) extends <V>() => V extends B
+  ? 1
+  : 2
+  ? true
+  : false;
+function exact<A, B>(_check: Equal<A, B>) {}
+
+async function displayLeafPaths() {
+  type Profile = {
+    name: string;
+    address: { city: string } | null;
+    nickname?: string;
+    tags: string[];
+    pair: [number, string];
+    counts: Record<string, number>;
+  };
+  const profile = (): Profile => ({
+    name: 'Lee',
+    address: null,
+    tags: [],
+    pair: [1, 'a'],
+    counts: {},
+  });
+  const client = createSyncClient({ ssr: true });
+  const query = client.query({ queryKey: ['profile'], queryFn: profile });
+  const data = query.display.data;
+  // Under `data`, which is missing before the first load, every leaf may be
+  // undefined.
+  exact<typeof data.name.value, string | undefined>(true);
+  exact<typeof data.value, Profile | undefined>(true);
+  exact<typeof data.address.value, { city: string } | null | undefined>(true);
+  exact<typeof data.address.city.value, string | undefined>(true);
+  exact<typeof data.nickname.value, string | undefined>(true);
+  exact<typeof data.tags.value, string[] | undefined>(true);
+  exact<(typeof data.tags)[0]['value'], string | undefined>(true);
+  exact<typeof data.tags.length.value, number | undefined>(true);
+  for (const item of data.tags) {
+    exact<typeof item.value, string | undefined>(true);
+  }
+  exact<(typeof data.pair)[0]['value'], number | undefined>(true);
+  exact<typeof data.counts.anything.value, number | undefined>(true);
+  // A check on `.value` narrows, as it did before.
+  if (data.value !== undefined) {
+    exact<typeof data.name.value, string>(true);
+    exact<typeof data.address.city.value, string | undefined>(true);
+    if (data.address.value !== null) {
+      exact<typeof data.address.city.value, string>(true);
+    }
+    exact<typeof data.nickname.value, string | undefined>(true);
+    exact<typeof data.counts.anything.value, number>(true);
+  }
+  // @ts-expect-error a display leaf has no setter
+  data.name.value = 'Kim';
+  // @ts-expect-error `missing` is not a Profile field
+  void data.missing;
+  // A loaded ref where `null` is the only absence: still `| undefined` below.
+  const loaded = {} as QueryDisplayRef<Profile>;
+  exact<typeof loaded.name.value, string>(true);
+  exact<typeof loaded.address.city.value, string | undefined>(true);
+  exact<typeof loaded.counts.anything.value, number>(true);
+  // A field named `value` is not a path; the node's value keeps its absence.
+  type Option = { label: string; value: string };
+  const option = {} as QueryDisplayRef<Option | undefined>;
+  exact<typeof option.value, Option | undefined>(true);
+  exact<typeof option.label.value, string | undefined>(true);
+  const choice = {} as QueryDisplayRef<{ selected: Option | null }>;
+  exact<typeof choice.selected.value, Option | null>(true);
+  // A discriminated union still reads its common fields.
+  type Shape = { kind: 'a'; x: number } | { kind: 'b'; y: string };
+  const shape = {} as QueryDisplayRef<Shape | undefined>;
+  exact<typeof shape.kind.value, 'a' | 'b' | undefined>(true);
+  // A generic helper keeps its constraint's fields.
+  function rowId<R extends { id: string }>(row: QueryDisplayRef<R>) {
+    return row.id.value;
+  }
+  void rowId;
+  // An infinite query's ref reads a record value as before.
+  type Page = { byId: Record<string, number> };
+  const feed = client.infiniteQuery({
+    queryKey: ['feed'],
+    initialPageParam: 0,
+    queryFn: (): Page => ({ byId: {} }),
+    getNextPageParam: () => undefined,
+  });
+  exact<typeof feed.display.data.value, InfiniteData<Page, number> | undefined>(
+    true
+  );
+  exact<(typeof feed.ref.pages)[0]['byId']['anything']['value'], number>(true);
+  // Selecting a primitive keeps the plain `S | undefined`.
+  const selected = client.query({
+    queryKey: ['profile'],
+    queryFn: profile,
+    select: value => value.name.length,
+  });
+  exact<typeof selected.display.data.value, number | undefined>(true);
+  // The status fields read as before.
+  exact<typeof query.display.status.value, 'pending' | 'success' | 'error'>(
+    true
+  );
+  exact<typeof query.display.queryKey.value, QueryKey | null>(true);
+  query.dispose();
+  selected.dispose();
+  feed.dispose();
+}
+
+void displayLeafPaths;
+
+/**
+ * The observer for connector entries (docs/sync-query-hooks T-QH-08, 단계 2):
+ * its exported types, and the handle it lends, which goes wherever a linked
+ * query does.
+ */
+async function observerTypes(journal: PersistedLinkedMutation) {
+  type Account = { name: string; age: number };
+  const client = createSyncClient();
+  const inferred = client.observe({
+    queryKey: ['inferred'],
+    queryFn: () => ({ name: 'Lee', age: 3 }),
+    select: account => ({ label: account.name }),
+  });
+  exact<typeof inferred, QueryObserver<Account, { label: string }>>(true);
+  exact<ReturnType<typeof inferred.controls.refetch>, Promise<Account>>(true);
+  exact<
+    ReturnType<typeof inferred.watch>['data']['label']['value'],
+    string | undefined
+  >(true);
+  const unselected = client.observe({
+    queryKey: ['unselected'],
+    queryFn: () => ({ name: 'Lee', age: 3 }),
+  });
+  exact<typeof unselected, QueryObserver<Account, Account>>(true);
+  exact<MutationLink<unknown>['query'], QueryHandleCore<any>>(true);
+  const settings: ObserverSettings = {
+    scheduleRelease: release => {
+      setTimeout(release, 0);
+    },
+  };
+  const options: ObserveOptions<Account, string> = {
+    queryKey: ['account', 1],
+    queryFn: (): Account => ({ name: 'Lee', age: 3 }),
+    select: account => account.name,
+    enabled: true,
+  };
+  const observer: QueryObserver<Account, string> = client.observe(
+    options,
+    settings
+  );
+  exact<typeof options.select, ((data: Account) => string) | undefined>(true);
+  exact<ReturnType<typeof observer.setOptions>, boolean>(true);
+  exact<ReturnType<typeof observer.matches>, boolean>(true);
+  const shown = observer.watch();
+  exact<typeof shown.data.value, string | undefined>(true);
+  exact<ReturnType<typeof observer.peek>, typeof shown>(true);
+  const controls: QueryObserverControls<Account> = observer.controls;
+  const refetched: Account = await controls.refetch();
+  void refetched;
+  const handle = controls.handle();
+  exact<typeof handle, QueryHandleCore<Account> | null>(true);
+  if (!handle) return;
+  const name: string = handle.ref.name.value;
+  handle.ref.name.value = name;
+  await client.mutation({ mutationFn: (input: { name: string }) => input }).run(
+    { name },
+    {
+      links: [
+        {
+          query: handle,
+          submission: handle.capture(),
+          accept: { kind: 'submitted' },
+        },
+      ],
+    }
+  );
+  // An existing handle still goes everywhere a lent one does.
+  const query: QueryHandle<Account> = client.query<Account>({
+    queryKey: ['account', 2],
+    queryFn: options.queryFn,
+  });
+  const core: QueryHandleCore<Account> = query;
+  void core;
+  await journal.stage(client, {
+    id: 'observer',
+    input: { name },
+    idempotencyKey: 'observer-key',
+    links: [{ query: handle, accept: 'submitted' }],
+  });
+  const mutation = client.mutation({
+    mutationFn: (input: { name: string }) => input.name,
+  });
+  void (await journal.send(client, [handle, query], mutation));
+  query.dispose();
+}
+
+void observerTypes;

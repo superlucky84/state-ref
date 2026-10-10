@@ -23,8 +23,9 @@
     "build:vue": "pnpm --filter @stateref/connect-vue build",
     "build:svelte": "pnpm --filter @stateref/connect-svelte build",
     "build:solid": "pnpm --filter @stateref/connect-solid build",
+    "build:lithent": "pnpm --filter @stateref/connect-lithent build",
     "build:sync": "pnpm --filter @stateref/sync build",
-    "build": "pnpm build:core && pnpm build:!core && node scripts/fix-declarations.mjs packages/state-ref packages/connect-react packages/connect-preact packages/connect-vue packages/connect-svelte packages/connect-solid packages/sync && node scripts/copy-skills.mjs",
+    "build": "pnpm build:core && pnpm build:!core && node scripts/fix-declarations.mjs packages/state-ref packages/connect-react packages/connect-preact packages/connect-vue packages/connect-svelte packages/connect-solid packages/connect-lithent packages/sync && node scripts/copy-skills.mjs",
     "gate": "node scripts/gate.mjs",
     "test": "pnpm -r test",
     "test:core": "pnpm --filter state-ref test",
@@ -38,6 +39,7 @@
     "test:svelte": "pnpm --filter @stateref/connect-svelte test",
     "test:svelte:dev": "pnpm --filter @stateref/connect-svelte test:dev",
     "test:solid": "pnpm --filter @stateref/connect-solid test",
+    "test:lithent": "pnpm --filter @stateref/connect-lithent test",
     "test:solid:dev": "pnpm --filter @stateref/connect-solid test:dev",
     "test:sync": "pnpm --filter @stateref/sync test",
     "clean": "pnpm clean:dist && pnpm clean:module",
@@ -47,7 +49,8 @@
     "types:examples": "pnpm -r --filter './examples/*' run --if-present typecheck",
     "build:examples": "pnpm -r --filter './examples/*' run --if-present build",
     "check:examples": "pnpm types:examples && pnpm build:examples && node scripts/check-example-operations.mjs && node scripts/check-example-bundles.mjs && node scripts/check-example-ssr.mjs",
-    "test:e2e": "pnpm build:examples && pnpm --filter stateref-example-e2e e2e"
+    "test:e2e": "pnpm build:examples && pnpm --filter stateref-example-e2e e2e",
+    "test:mission": "pnpm build:examples && pnpm --filter stateref-example-e2e e2e:mission"
   },
   "author": "superlucky84",
   "repository": {

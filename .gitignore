@@ -14,3 +14,5 @@ vite.config.*.timestamp-*
 examples/e2e/test-results
 examples/e2e/transcripts
 playwright-report
+
+examples/lithent/dist-concurrent

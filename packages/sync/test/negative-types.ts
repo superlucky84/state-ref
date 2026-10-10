@@ -1,7 +1,11 @@
 // Things that must NOT type-check. Every @ts-expect-error here is itself
 // checked: if the line starts compiling, tsc reports the unused directive.
 import { createSyncClient } from '@stateref/sync';
-import type { QueryKey, SyncCacheEntry, SyncMutationEntry } from '@stateref/sync';
+import type {
+  QueryKey,
+  SyncCacheEntry,
+  SyncMutationEntry,
+} from '@stateref/sync';
 import { createDraft } from 'state-ref/draft';
 
 const client = createSyncClient({ ssr: true });
@@ -59,5 +63,24 @@ void client.mutation({ mutationFn: () => 1 }).run(null, {
 // and `negative-runtime.test.ts` pins it.
 const looseKey: QueryKey = ['account', () => 1];
 void looseKey;
+
+// The peek reads the cache without owning it, but it is not a client method:
+// only an observer reaches it (docs/sync-query-hooks DC-QH-24).
+// @ts-expect-error the client has no peek
+void client.peek;
+
+// An observer lends its handle but keeps releasing and showing it to itself:
+// the type has no `dispose`, `display` or `watchDisplay` (DC-QH-23).
+const lent = client
+  .observe({ queryKey: ['lent'], queryFn: () => ({ n: 1 }) })
+  .controls.handle();
+if (lent) {
+  // @ts-expect-error the observer releases its own handle
+  lent.dispose();
+  // @ts-expect-error the observer's display is the first value, not this
+  void lent.display;
+  // @ts-expect-error the observer's display is the first value, not this
+  void lent.watchDisplay;
+}
 
 export const negative = true;

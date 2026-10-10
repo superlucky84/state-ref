@@ -1,5 +1,47 @@
 import type { Renew, StateRefStore, Watch } from 'state-ref';
 
+/**
+ * A read-only view of a plain object or array, reused for the same value.
+ *
+ * Shared by `guardRef` and the peek (`peek.ts`), which hands a `select` the
+ * same protection a display does without going through a ref.
+ */
+export function snapshotValue(
+  value: unknown,
+  snapshots: WeakMap<object, object>
+): unknown {
+  if (value === null || typeof value !== 'object') return value;
+  const prototype = Object.getPrototypeOf(value);
+  if (
+    !Array.isArray(value) &&
+    prototype !== null &&
+    prototype !== Object.prototype
+  ) {
+    return value;
+  }
+  const cached = snapshots.get(value);
+  if (cached) return cached;
+  const copy = Array.isArray(value)
+    ? [...value]
+    : Object.assign(Object.create(Object.getPrototypeOf(value)), value);
+  const guarded = new Proxy(copy, {
+    get(target, key, receiver) {
+      return snapshotValue(Reflect.get(target, key, receiver), snapshots);
+    },
+    set() {
+      throw new Error('Resource snapshots cannot be modified directly.');
+    },
+    deleteProperty() {
+      throw new Error('Resource snapshots cannot be modified directly.');
+    },
+    defineProperty() {
+      throw new Error('Resource snapshots cannot be modified directly.');
+    },
+  });
+  snapshots.set(value, guarded);
+  return guarded;
+}
+
 /** The editable payload must only be changed through ref setters. */
 export function guardRef<T>(
   source: StateRefStore<T>,
@@ -15,41 +57,16 @@ export function guardRef<T>(
    * query refused or why. Both ways of getting a ref (`query.ref` and
    * `query.watch(renew)`) pass through here, so both say the same thing.
    */
-  readonly = false
+  readonly = false,
+  /**
+   * Called before a ref is inspected rather than read: `in`, `Object.keys`,
+   * a property descriptor. The peek recomputes there as it does on a read
+   * (DC-QH-29); every other ref leaves these to the target as before.
+   */
+  inspect?: () => void
 ): StateRefStore<T> {
-  const snapshot = (value: unknown): unknown => {
-    if (!snapshotValues) return value;
-    if (value === null || typeof value !== 'object') return value;
-    const prototype = Object.getPrototypeOf(value);
-    if (
-      !Array.isArray(value) &&
-      prototype !== null &&
-      prototype !== Object.prototype
-    ) {
-      return value;
-    }
-    const cached = snapshots.get(value);
-    if (cached) return cached;
-    const copy = Array.isArray(value)
-      ? [...value]
-      : Object.assign(Object.create(Object.getPrototypeOf(value)), value);
-    const guarded = new Proxy(copy, {
-      get(target, key, receiver) {
-        return snapshot(Reflect.get(target, key, receiver));
-      },
-      set() {
-        throw new Error('Resource snapshots cannot be modified directly.');
-      },
-      deleteProperty() {
-        throw new Error('Resource snapshots cannot be modified directly.');
-      },
-      defineProperty() {
-        throw new Error('Resource snapshots cannot be modified directly.');
-      },
-    });
-    snapshots.set(value, guarded);
-    return guarded;
-  };
+  const snapshot = (value: unknown): unknown =>
+    snapshotValues ? snapshotValue(value, snapshots) : value;
 
   const wrap = (ref: object): object => {
     const cached = refs.get(ref);
@@ -75,6 +92,20 @@ export function guardRef<T>(
         if (readonly) throw new TypeError('This query is readonly.');
         return Reflect.set(target, key, value, receiver);
       },
+      ...(inspect && {
+        has(target, key) {
+          inspect();
+          return Reflect.has(target, key);
+        },
+        ownKeys(target) {
+          inspect();
+          return Reflect.ownKeys(target);
+        },
+        getOwnPropertyDescriptor(target, key) {
+          inspect();
+          return Reflect.getOwnPropertyDescriptor(target, key);
+        },
+      }),
     });
     refs.set(ref, guarded);
     return guarded;

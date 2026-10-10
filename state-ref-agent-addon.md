@@ -105,7 +105,9 @@ CODING GUIDELINES:
    - Svelte 5 runes: `connectSvelteRunes(watch)(select)` from
      `@stateref/connect-svelte/runes` returns `{ value }`
    - Solid: `connectSolid(watch)(s => s.user.age)` returns `[get, set]`
-   - Lithent: Use `watch(renew)` directly
+   - Lithent: `const user = connectLithent(watch)` once in the mounter
+     (`@stateref/connect-lithent`); read `user().name.value` in render.
+     `watch(renew)` directly still works
    - WRITE RULE: only a write that passes through the connector reaches the
      store. Assign `.value` of a selection (Solid: call the setter) or replace
      the whole object. Never mutate an object read from a selection: Vue makes
@@ -113,9 +115,11 @@ CODING GUIDELINES:
      `$user.name = x` is fine (it compiles to `set`).
    - React/Preact render a component twice on mount (the second render
      collects dependencies); do not "fix" this
-   - For a `@stateref/sync` query's display use `connectReactView`,
-     `connectPreactView`, `connectVueView`, `connectSvelteView`,
-     `connectSolidView` with `query.watchDisplay` (readonly)
+   - A component's own server query: the connector's `./sync` entry
+     (section 12). For an explicit query a store owns, bind its readonly
+     display with `connectReactView`, `connectPreactView`, `connectVueView`,
+     `connectSvelteView`, `connectSolidView` or `connectLithentView` and
+     `query.watchDisplay`
 
 7. COMBINING STORES
    - Use `combineWatch([watch1, watch2] as const)` for multiple stores
@@ -150,6 +154,33 @@ CODING GUIDELINES:
 
 12. SERVER DATA (only when `@stateref/sync` is installed)
     - One `createSyncClient()` per app; one per request for SSR
+    - In a component, use the connector's `./sync` entry (sync 0.3+). The
+      component owns the query: it attaches on mount, loads if stale, shares
+      an in-flight READ and releases on unmount. Do not call `load()` or
+      `dispose()` yourself
+      - React/Preact: `const [account, q] = useSyncQuery(client, options)`;
+        pass options every render; read `account.data.name.value`
+      - Vue: `useSyncQuery(client, () => options)` (a getter follows
+        props; refs in a plain object are not unwrapped); Solid:
+        `createSyncQuery(client, () => options)`; Svelte: `createSyncQuery(
+        client, options | Readable<options>)` (store API only). Read with
+        `account(ref => ref.data.name.value)` (Ref / Accessor / Readable)
+      - Lithent: `createSyncQuery(client, () => options)` once in the
+        mounter; `account().data.name.value` in render
+      - Loading is `status.value === 'pending'`; the first render's
+        `fetchStatus` is the cache as it is ('idle'), not 'fetching'
+      - Dependent key: `queryKey: ['user', id ?? null], enabled: id != null`
+        (a key cannot hold `undefined`; a bad key shows `errorSource:
+        'source'`, it does not throw)
+      - `q.refetch()`, `q.invalidate()` (re-reads while attached;
+        `client.invalidate(key)` only marks stale), `q.handle()` (the query's
+        own handle or null: edit `handle.ref` after it loads, pass it in
+        mutation `links`, never dispose it)
+      - SSR: `createSyncClient({ ssr: true })` per request, `await
+        client.prefetch(options)` before render, `dehydrate()` /
+        `hydrate()`; hooks never READ on the server
+      - Keep the client fixed for the component's life; a `select` that
+        returns Map/Set/class instances needs memoizing or `equals`
     - `client.query({ queryKey, queryFn })`, then `await query.load()`; `ref`
       throws before the first load
     - Edits to `query.ref` are local and never save by themselves
@@ -197,7 +228,9 @@ IMPORT PATHS:
 - Svelte: `import { connectSvelte, connectSvelteView } from '@stateref/connect-svelte'`
 - Svelte 5 runes: `import { connectSvelteRunes } from '@stateref/connect-svelte/runes'`
 - Solid: `import { connectSolid, connectSolidView } from '@stateref/connect-solid'`
+- Lithent: `import { connectLithent, connectLithentView } from '@stateref/connect-lithent'`
 - Server sync: `import { createSyncClient, MutationRejectedError } from '@stateref/sync'`
+- Component queries: `import { useSyncQuery } from '@stateref/connect-react/sync'` (also `connect-preact/sync`, `connect-vue/sync`); `import { createSyncQuery } from '@stateref/connect-solid/sync'` (also `connect-svelte/sync`, `connect-lithent/sync`)
 
 GUIDANCE APPROACH:
 When user requests could benefit from state-ref patterns:
@@ -268,7 +301,9 @@ This section provides minimal context to help agents locate and use state-ref fu
 - **connectSvelte** - Svelte 4/5 store connector, takes a selector (`@stateref/connect-svelte`)
 - **connectSvelteRunes** - Svelte 5 runes (`@stateref/connect-svelte/runes`)
 - **connectSolid** - Solid signal connector, takes a selector (`@stateref/connect-solid`)
-- **connect*View** - Readonly display of a `@stateref/sync` query
+- **connectLithent / connectLithentView** - Lithent accessor, created once in a mounter (`@stateref/connect-lithent`)
+- **connect*View** - Readonly display of an explicit `@stateref/sync` query
+- **useSyncQuery / createSyncQuery** - A component-owned sync query from each connector's `./sync` entry
 
 ### Shared Across Bundles (3.2, separate entry point)
 - **ensureShared** (`state-ref/shared`) - The value under a name, created on
@@ -285,6 +320,7 @@ This section provides minimal context to help agents locate and use state-ref fu
 - **client.query / client.infiniteQuery** - Editable server resource / page list
 - **query.capture + client.mutation().run** - Explicit save with linked queries
 - **MutationRejectedError** - Throw from `mutationFn` when the server refuses
+- **client.observe** - Low-level query observer for writing a hook for another framework (0.3+)
 
 ### Key Types
 - **StateRefStore<T>** - Proxied reference with `.value` accessor

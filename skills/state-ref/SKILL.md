@@ -12,7 +12,7 @@ Document Version: {{version}}
 
 Additional materials (optional):
 - constraints/ (rules, mistakes, troubleshooting)
-- reference/ (watch, store creation, framework connectors)
+- reference/ (watch, store creation, framework connectors and their `./sync` query hooks)
 - reference/draft-and-batch.md - local edit sessions and batched writes
 - reference/shared-across-bundles.md - one store or sync client for separately built bundles
 - reference/server-sync.md - `@stateref/sync` queries and saves (only if installed)
@@ -45,7 +45,7 @@ If `state-ref` is **not** installed, use the project's existing conventions. Do 
 - Local edit session (form, dialog): `createDraft(ref)` from `state-ref/draft`, then `apply()` / `discard()`.
 - Several writes, one notification: `batch(() => { ... })` from `state-ref/batch`.
 - Separately built bundles on one page: `state-ref/shared`. A value no bundle owns (a sync client): `ensureShared(name, create)` in every bundle. A store one bundle fills: that bundle calls `provideShared`, the others use `sharedWatch` and check `isReady(ref)` before reading - see reference/shared-across-bundles.md.
-- Server data: if `@stateref/sync` is installed, use `client.query` / `capture()` / `client.mutation().run` - see reference/server-sync.md.
+- Server data: if `@stateref/sync` is installed, components read queries with their connector's `./sync` hook (`useSyncQuery` for React, Preact, Vue; `createSyncQuery` for Solid, Svelte, Lithent), which loads on mount and releases on unmount. Stores and services that own a query use `client.query`. Save with `capture()` / `client.mutation().run` - see reference/server-sync.md and reference/framework-connectors.md.
 - Combine watches with `combineWatch([watch1, watch2] as const)`.
 - Derive values with `createComputed([watches], callback)`.
 - Use `copyable()` for manual copy-on-write updates.
@@ -164,6 +164,8 @@ export const increment = () => {
 - Svelte: `import { connectSvelte, connectSvelteView } from '@stateref/connect-svelte'`
 - Svelte 5 runes: `import { connectSvelteRunes } from '@stateref/connect-svelte/runes'`
 - Solid: `import { connectSolid, connectSolidView } from '@stateref/connect-solid'`
+- Lithent: `import { connectLithent, connectLithentView } from '@stateref/connect-lithent'`
+- Sync queries in components (ESM only, needs `@stateref/sync` 0.3+): `import { useSyncQuery } from '@stateref/connect-react/sync'` (also `connect-preact/sync`, `connect-vue/sync`); `import { createSyncQuery } from '@stateref/connect-solid/sync'` (also `connect-svelte/sync`, `connect-lithent/sync`)
 - Server sync (separate package): `import { createSyncClient, MutationRejectedError } from '@stateref/sync'`
 - `state-ref/plugin` is the integration surface for sync/draft; application code does not import it.
 

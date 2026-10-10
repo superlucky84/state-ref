@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@stateref/connect-solid",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "private": false,
   "description": "Solid connector for state-ref",
   "packageManager": "pnpm@7.6.0",
@@ -9,7 +9,7 @@
   "module": "./dist/stateref-connect-solid.mjs",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && vite build --config vite.sync.config.js",
     "test": "vitest run --reporter verbose",
     "test:dev": "vitest",
     "test:ssr": "vitest run --config vite.ssr.config.js --reporter verbose"
@@ -23,6 +23,12 @@
       "require": {
         "types": "./dist/index.d.cts",
         "default": "./dist/stateref-connect-solid.cjs"
+      }
+    },
+    "./sync": {
+      "import": {
+        "types": "./dist/sync.d.ts",
+        "default": "./dist/stateref-connect-solid.sync.mjs"
       }
     }
   },
@@ -44,7 +50,8 @@
   ],
   "peerDependencies": {
     "solid-js": "^1.9.1",
-    "state-ref": "^3.1.0"
+    "state-ref": "^3.1.0",
+    "@stateref/sync": "^0.3.0"
   },
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.10",
@@ -55,5 +62,10 @@
   },
   "volta": {
     "node": "20.3.0"
+  },
+  "peerDependenciesMeta": {
+    "@stateref/sync": {
+      "optional": true
+    }
   }
 }

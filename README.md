@@ -123,15 +123,18 @@ A shared query cache with an editable resource ref, from the separate `@stateref
 | Package | What it is |
 | --- | --- |
 | [`state-ref`](https://www.npmjs.com/package/state-ref) | The core. Also ships `state-ref/batch`, `state-ref/draft`, `state-ref/shared` and `state-ref/plugin` as separate entry points. |
-| [`@stateref/sync`](https://www.npmjs.com/package/@stateref/sync) | Optional query cache, editable resource and mutations. |
-| [`@stateref/connect-react`](https://www.npmjs.com/package/@stateref/connect-react) | React connector |
-| [`@stateref/connect-preact`](https://www.npmjs.com/package/@stateref/connect-preact) | Preact connector |
-| [`@stateref/connect-vue`](https://www.npmjs.com/package/@stateref/connect-vue) | Vue connector |
-| [`@stateref/connect-svelte`](https://www.npmjs.com/package/@stateref/connect-svelte) | Svelte connector |
-| [`@stateref/connect-solid`](https://www.npmjs.com/package/@stateref/connect-solid) | Solid connector |
+| [`@stateref/sync`](https://www.npmjs.com/package/@stateref/sync) | Optional query cache, editable resource and mutations. Each connector's `./sync` entry turns it into component-owned queries. |
+| [`@stateref/connect-react`](https://www.npmjs.com/package/@stateref/connect-react) | React connector; `./sync` adds `useSyncQuery` |
+| [`@stateref/connect-preact`](https://www.npmjs.com/package/@stateref/connect-preact) | Preact connector; `./sync` adds `useSyncQuery` |
+| [`@stateref/connect-vue`](https://www.npmjs.com/package/@stateref/connect-vue) | Vue connector; `./sync` adds `useSyncQuery` |
+| [`@stateref/connect-svelte`](https://www.npmjs.com/package/@stateref/connect-svelte) | Svelte connector; `./sync` adds `createSyncQuery` |
+| [`@stateref/connect-solid`](https://www.npmjs.com/package/@stateref/connect-solid) | Solid connector; `./sync` adds `createSyncQuery` |
+| [`@stateref/connect-lithent`](https://www.npmjs.com/package/@stateref/connect-lithent) | Lithent connector (`connectLithent`, `connectLithentView`); `./sync` adds `createSyncQuery` |
 | [`lithent`](https://www.npmjs.com/package/lithent) | Lithent, which `state-ref` integrates with directly |
 
 The package README at [`packages/state-ref`](./packages/state-ref/README.md) carries the full set of runnable examples, and [`packages/sync`](./packages/sync/README.md) documents every rule of the sync package.
+
+Try the [Starlight Garage](./examples/MISSION.md) in six frameworks: shared query screens, editable names, linked saves, cache and cancellation, plus equipment drafts and batched upgrades. It includes a Playwright browser runner and a React SSR example.
 
 For a small app to try locally, see the [Preact and Vue shop examples](./examples/SHOP.md): product search and pagination, editable shipping information, an address draft, and a basket that compares regular writes with `batch`.
 

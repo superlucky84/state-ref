@@ -19,6 +19,14 @@ export const Svelte = mount(() => {
         code={`pnpm add state-ref @stateref/connect-svelte`}
       />
 
+      <p>
+        The ESM-only <code>@stateref/connect-svelte/sync</code> entry (see
+        &quot;Component Queries&quot; below) also needs the optional{' '}
+        <code>@stateref/sync</code> package, 0.3 or later:
+      </p>
+
+      <CodeBlock language="bash" code={`pnpm add @stateref/sync`} />
+
       <h2>Supported Versions</h2>
 
       <p>
@@ -243,14 +251,138 @@ const done = useTodo(store => store.done);
 // done is Writable<boolean>`}
       />
 
+      <h2>Component Queries</h2>
+
+      <p>
+        For server data in component code, call <code>createSyncQuery</code>{' '}
+        from <code>@stateref/connect-svelte/sync</code> during component
+        initialization. The component owns the query until it is destroyed: it
+        loads when first selected, follows the key in its options store, shares
+        a READ in flight with other components showing the same key, and is
+        released after the last of them is destroyed.
+      </p>
+
+      <CodeBlock
+        language="html"
+        code={`<script lang="ts">
+  import { writable } from 'svelte/store';
+  import type { ObserveOptions } from '@stateref/sync';
+  import { createSyncQuery } from '@stateref/connect-svelte/sync';
+  import { client } from './client'; // createSyncClient(), one per app
+  import { readShip, type Ship } from './api'; // (id, signal) => Promise<Ship>
+
+  export let id: number;
+
+  const shipQuery = (id: number): ObserveOptions<Ship> => ({
+    queryKey: ['ship', id],
+    queryFn: ({ signal }) => readShip(id, signal),
+    staleTime: 30_000,
+  });
+  const options = writable(shipQuery(id));
+  $: options.set(shipQuery(id));
+
+  const [ship, q] = createSyncQuery(client, options);
+  const status = ship(ref => ref.status.value);
+  const loaded = ship(ref => ref.loaded.value);
+  const name = ship(ref => ref.data.name.value);
+
+  function rename(event: Event) {
+    const handle = q.handle();
+    if (handle?.status.value.loaded)
+      handle.ref.name.value = (event.target as HTMLInputElement).value; // local edit
+  }
+</script>
+
+{#if $status === 'pending'}
+  <p>Loading…</p>
+{:else if !$loaded}
+  <p role="alert">Could not load the ship.</p>
+{:else}
+  <input value={$name ?? ''} on:input={rename} />
+  <button on:click={() => q.refetch().catch(() => {})}>Refresh</button>
+  <button on:click={() => q.invalidate()}>Check again</button>
+{/if}`}
+      />
+
+      <p>
+        <code>ship(select)</code> returns a Svelte{' '}
+        <code>Readable&lt;V&gt;</code> of what <code>select</code> reads from
+        the query&apos;s readonly display state (<code>status</code>,{' '}
+        <code>fetchStatus</code>, <code>loaded</code>, <code>error</code>,{' '}
+        <code>data</code>, <code>dirty</code>, <code>queryKey</code> and more);
+        read leaves with <code>.value</code> inside <code>select</code> and the
+        store with <code>$name</code>. Each selection subscribes when it is
+        created, so the first one attaches the query and every selection shares
+        it. <code>q</code> is the same object for the component&apos;s life:
+      </p>
+
+      <ul>
+        <li>
+          <code>q.refetch()</code> reads again and returns a Promise. It rejects
+          with <code>This query observer is not attached.</code> before the
+          first selection, while disabled and on the server.
+        </li>
+        <li>
+          <code>q.invalidate()</code> marks the key stale and, while attached
+          and enabled, reads it again; <code>client.invalidate(key)</code> only
+          marks it stale.
+        </li>
+        <li>
+          <code>q.handle()</code> returns the query&apos;s own handle, or{' '}
+          <code>null</code> before the first selection, while disabled and on
+          the server. Edit through <code>handle.ref</code> once it has loaded
+          and pass the handle to mutation <code>links</code>, but never dispose
+          it: the hook owns it.
+        </li>
+      </ul>
+
+      <p>In Svelte:</p>
+
+      <ul>
+        <li>
+          Queries use the store API, in Svelte 4 and 5; there is no runes entry
+          for them. Make the selections during component initialization too:
+          each one ends when the component is destroyed.
+        </li>
+        <li>
+          Options are a plain object, fixed for the component&apos;s life, or a{' '}
+          <code>Readable</code> options store such as <code>writable</code> or{' '}
+          <code>derived</code>. A plain getter is not tracked.
+        </li>
+        <li>
+          Destroying the component releases the query one macrotask later, so a
+          route swap neither cancels nor repeats a READ.
+        </li>
+        <li>
+          <strong>
+            Server rendering needs a per-request{' '}
+            <code>createSyncClient({'{ ssr: true }'})</code>.
+          </strong>{' '}
+          The store API subscribes during a server render too, so with a plain
+          client the render would attach the query and start a READ. An{' '}
+          <code>ssr: true</code> client never attaches or READs: fill it with{' '}
+          <code>await client.prefetch(options)</code> before rendering, send{' '}
+          <code>client.dehydrate()</code>, and call{' '}
+          <code>client.hydrate(snapshot)</code> on the browser client before
+          hydrating.
+        </li>
+      </ul>
+
+      <p>
+        More on the query lifecycle, dependent queries and server rendering:{' '}
+        <a href="#/guide/sync-query">query and resource</a>.
+      </p>
+
       <h2>Readonly Query Views</h2>
 
       <p>
         <code>connectSvelteView</code> binds a readonly query view from{' '}
-        <a href="#/guide/sync-view">@stateref/sync</a>. It takes the same{' '}
-        <code>Watch</code> shape as <code>connectSvelte</code> but never hands
-        out setters, because a display can be a selected value or a placeholder
-        that was never on the server.
+        <a href="#/guide/sync-view">@stateref/sync</a>. Use it for an explicit
+        handle owned outside the component - one a store or service opens with{' '}
+        <code>client.query(...)</code>, loads and disposes itself. It takes the
+        same <code>Watch</code> shape as <code>connectSvelte</code> but never
+        hands out setters, because a display can be a selected value or a
+        placeholder that was never on the server.
       </p>
 
       <CodeBlock

@@ -1,0 +1,460 @@
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Noto Sans KR',
+    sans-serif;
+  color: #e4e9fa;
+  background: #0c1020;
+  font-synthesis: none;
+  color-scheme: dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: radial-gradient(ellipse at 80% 0%, #252457 0%, transparent 43%),
+    #0c1020;
+  min-width: 320px;
+}
+button,
+input {
+  font: inherit;
+}
+button,
+a,
+input,
+summary {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  cursor: pointer;
+  border: 1px solid #3e4565;
+  background: #20273c;
+  color: #ecf1ff;
+  border-radius: 10px;
+  padding: 10px 14px;
+  transition: background 0.15s, border-color 0.15s;
+}
+button:hover {
+  background: #303956;
+  border-color: #8e91c5;
+}
+button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+button:focus-visible,
+input:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #9edbcc;
+  outline-offset: 3px;
+}
+button.active {
+  border-color: #9edbcc;
+  color: #9edbcc;
+}
+button.primary {
+  background: #b5a7ff;
+  color: #17132b;
+  border-color: #b5a7ff;
+  font-weight: 700;
+}
+button.primary:hover {
+  background: #ccbeff;
+}
+input {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid #4a506a;
+  border-radius: 10px;
+  background: #101627;
+  color: #fff;
+  margin-top: 7px;
+  outline: none;
+}
+input:focus {
+  border-color: #a69cec;
+}
+label {
+  font-size: 13px;
+  color: #b6bfd8;
+}
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+h2 {
+  font-size: 19px;
+}
+h3 {
+  font-size: 22px;
+  line-height: 1.4;
+  margin: 17px 0;
+}
+p {
+  line-height: 1.8;
+}
+.station {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 30px 38px 32px;
+}
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.brand {
+  color: #ddd9ff;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+.framework {
+  border: 1px solid #41455e;
+  border-radius: 999px;
+  padding: 5px 12px;
+  color: #b7bdd2;
+  font-size: 12px;
+}
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 236px;
+  padding: 30px 4px;
+}
+.eyebrow {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #99d5c8;
+}
+.hero h1 {
+  font-size: clamp(34px, 5vw, 55px);
+  letter-spacing: -2px;
+  margin: 10px 0;
+}
+.hero p {
+  color: #b1b9d4;
+  font-size: 15px;
+}
+.orbit-art {
+  width: 235px;
+  height: 190px;
+  position: relative;
+}
+.planet {
+  display: grid;
+  place-items: center;
+  position: absolute;
+  left: 60px;
+  top: 33px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #cdc0ff, #7c61cb 60%, #35276d);
+  box-shadow: 0 0 65px #977bec35;
+  color: #f5f0ff;
+  font-size: 45px;
+}
+.orbit {
+  position: absolute;
+  left: 15px;
+  top: 68px;
+  width: 210px;
+  height: 57px;
+  border: 2px solid #a7a0dd;
+  border-radius: 50%;
+  transform: rotate(-23deg);
+  box-shadow: 0 0 22px #918bec30;
+}
+.mission-grid {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 24px;
+}
+.fleet {
+  background: #151b2d;
+  border: 1px solid #2b334d;
+  border-radius: 18px;
+  padding: 25px 19px;
+  align-self: start;
+}
+.fleet h2 {
+  margin: 10px 0 24px;
+}
+.ship-choice {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  text-align: left;
+  margin: 0 0 11px;
+  padding: 15px 12px;
+  background: #1b2236;
+}
+.ship-choice.selected {
+  border-color: #a49aee;
+  background: #292746;
+}
+.ship-choice strong {
+  display: block;
+  font-size: 14px;
+}
+.ship-choice small {
+  font-size: 9px;
+  letter-spacing: 2px;
+  display: block;
+  margin-top: 8px;
+  color: #9ea9c7;
+}
+.mini-planet {
+  font-size: 30px;
+  color: #d6c9ff;
+}
+.planet-2 {
+  color: #f4a491;
+}
+.planet-3 {
+  color: #cfdfa8;
+}
+.workspace {
+  min-width: 0;
+}
+.toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 2px 0 15px;
+}
+.toolbar h2 {
+  margin-right: auto;
+}
+.toolbar button {
+  font-size: 12px;
+  padding: 8px 10px;
+}
+.ship-card {
+  background: linear-gradient(135deg, #1e253b, #171c2d);
+  border: 1px solid #37405b;
+  border-radius: 18px;
+  padding: 25px;
+  margin-bottom: 14px;
+}
+.card-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.pill {
+  font-size: 11px;
+  color: #a5dfc6;
+  background: #24433c;
+  border-radius: 100px;
+  padding: 5px 9px;
+}
+.pill.busy {
+  color: #efd8a8;
+  background: #493e2d;
+}
+.ship-facts {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  color: #929fbd;
+  font-size: 12px;
+  margin-top: 18px;
+}
+.ship-facts b {
+  color: #e5e9f6;
+  margin-left: 8px;
+  font-size: 15px;
+}
+.cargo {
+  color: #b2bed5;
+  font-size: 13px;
+  margin: 12px 0 19px;
+}
+.tool-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.tool-buttons button {
+  font-size: 12px;
+}
+.hint {
+  font-size: 12px;
+  color: #9da9c7;
+  line-height: 1.8;
+  margin-top: 14px;
+}
+.message {
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #262442;
+  color: #d7cfef;
+  font-size: 13px;
+  margin-top: 12px;
+}
+.empty {
+  min-height: 245px;
+  border: 1px dashed #41445f;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+}
+.empty span {
+  font-size: 45px;
+  color: #b4a3ff;
+}
+.empty h3 {
+  font-size: 19px;
+}
+.empty p {
+  font-size: 13px;
+  color: #a1acc6;
+}
+.tools {
+  margin-top: 20px;
+  padding: 14px 0;
+}
+summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: #afb8d3;
+  padding: 4px 0;
+}
+.tools .tool-buttons {
+  margin-top: 17px;
+}
+.equipment {
+  margin-top: 30px;
+  padding: 25px;
+  background: #172328;
+  border: 1px solid #2e464b;
+  border-radius: 18px;
+}
+.equipment h2 {
+  margin: 10px 0;
+}
+.equipment p {
+  font-size: 14px;
+  color: #b7cfcf;
+}
+.equipment .tool-buttons {
+  margin-top: 17px;
+}
+.draft {
+  margin-top: 18px;
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+.draft label {
+  max-width: 180px;
+}
+.diagnostics {
+  margin-top: 28px;
+  color: #9aa8c4;
+}
+.stats {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  margin-top: 15px;
+}
+.stats b {
+  color: #b7d8ed;
+}
+.diagnostics p {
+  font-size: 12px;
+  margin-top: 14px;
+}
+.star-counter {
+  width: 100%;
+  border-style: dashed;
+  color: #e0d19f;
+  border-color: #706a45;
+  margin-bottom: 14px;
+}
+.star-counter b {
+  padding-left: 12px;
+}
+footer {
+  font-size: 11px;
+  color: #7784a2;
+  text-align: center;
+  margin-top: 30px;
+}
+[role='alert'] {
+  color: #ffb7aa;
+  margin: 10px 0;
+  font-size: 13px;
+}
+@media (max-width: 760px) {
+  .station {
+    padding: 20px 18px;
+  }
+  .hero {
+    overflow: hidden;
+    min-height: 195px;
+  }
+  .orbit-art {
+    transform: scale(0.65);
+    transform-origin: right center;
+    width: 125px;
+  }
+  .mission-grid {
+    grid-template-columns: 1fr;
+  }
+  .fleet {
+    padding: 18px;
+  }
+  .fleet h2 {
+    margin-bottom: 16px;
+  }
+  .fleet .ship-choice {
+    display: inline-flex;
+    width: calc(33.333% - 6px);
+    vertical-align: top;
+    margin-right: 6px;
+    padding: 12px 7px;
+    gap: 7px;
+  }
+  .ship-choice strong {
+    font-size: 11px;
+  }
+  .ship-choice small {
+    font-size: 8px;
+  }
+  .mini-planet {
+    font-size: 22px;
+  }
+  .ship-card {
+    padding: 20px;
+  }
+  .hero p {
+    font-size: 13px;
+  }
+  .toolbar h2 {
+    width: 100%;
+    margin-bottom: 6px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
+}

@@ -1,0 +1,71 @@
+import * as lithent from 'lithent';
+import type { Renew, StateRefStore, Watch } from 'state-ref';
+
+export type ViewWatch<R> = (
+  renew?: Renew<R>,
+  option?: { cache?: boolean }
+) => R;
+
+function connectWatch<R extends { readonly value: unknown }>(
+  viewWatch: ViewWatch<R>
+): () => R {
+  if (typeof window === 'undefined') return () => viewWatch();
+  const renew = lithent.useRenew();
+  const controller = new AbortController();
+  let current: R | undefined;
+  let queued = false;
+  const redraw = () => {
+    if (queued || controller.signal.aborted) return;
+    queued = true;
+    queueMicrotask(() => {
+      queued = false;
+      if (!controller.signal.aborted) renew();
+    });
+  };
+  lithent.mountCallback(() => {
+    try {
+      // Only lithent-concurrent exports this. Read it dynamically: bundlers
+      // check `namespace.member` against the module's exports, and webpack 5
+      // fails the build when base lithent has no such export.
+      const notify = Reflect.get(lithent, 'notifyStoreWrite') as
+        | (() => void)
+        | undefined;
+      if (notify) {
+        // All display writes invalidate a concurrent build. This subscription
+        // never schedules a render; the other one follows only rendered paths.
+        viewWatch((ref, first) => {
+          void ref.value;
+          if (first) return controller.signal;
+          notify();
+          return undefined;
+        });
+      }
+      current = viewWatch((_ref, first) => {
+        if (first) return controller.signal;
+        redraw();
+        return undefined;
+      });
+      redraw(); // Collect paths through the subscribed ref after the initial peek.
+    } catch (error) {
+      controller.abort();
+      throw error;
+    }
+    return () => {
+      controller.abort();
+      current = undefined;
+    };
+  });
+  return () => current ?? viewWatch();
+}
+
+/** Connect an editable state-ref store once in a Lithent mounter. */
+export function connectLithent<T>(watch: Watch<T>): () => StateRefStore<T> {
+  return connectWatch<StateRefStore<T>>(watch);
+}
+
+/** Preserve a view's ref type; subscribe only after the component's mount. */
+export function connectLithentView<R extends { readonly value: unknown }>(
+  viewWatch: ViewWatch<R>
+): () => R {
+  return connectWatch(viewWatch);
+}

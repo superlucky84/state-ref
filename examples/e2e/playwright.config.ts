@@ -17,6 +17,7 @@ import { SSR_DEMOS, ssrUrlOf } from './src/ssr';
  */
 export default defineConfig({
   testDir: './src',
+  testIgnore: 'mission.spec.ts',
   // One worker: the five servers are shared and a failure has to be readable
   // as "this demo, at this step", not interleaved with four others.
   workers: 1,

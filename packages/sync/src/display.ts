@@ -31,22 +31,81 @@ export type QueryDisplayState<S> = QueryStatus &
     enabled: boolean;
   }>;
 
-/** A state-ref-shaped display cursor with no public setters. */
-export type QueryDisplayRef<S> = S extends readonly any[]
-  ? number extends S['length']
+type Absent = null | undefined;
+
+/**
+ * A state-ref-shaped display cursor with no public setters.
+ *
+ * Data that may be missing - `data` before the first load, a nullable or
+ * optional field - keeps the paths under it open: a leaf read through a
+ * missing parent is the leaf's type plus `undefined`, which is what it
+ * returns at run time (DC-QH-18). The type still distributes over the union,
+ * so a check on `.value` narrows it (`if (ref.data.value === undefined)
+ * return;` leaves `ref.data.name.value` a `string`), a discriminated union
+ * reads as before, and a generic `S` keeps its constraint's fields.
+ */
+export type QueryDisplayRef<S> = DisplayMember<S, S>;
+
+/** One member `X` of the full value `S`. */
+type DisplayMember<X, S> = X extends Absent
+  ? OpenPaths<Exclude<S, Absent>> & { readonly value: X }
+  : PresentNode<X>;
+
+/**
+ * An optional field reads as `undefined` when it is left out. An index
+ * signature is not optional in that sense: `Record<string, X>` reads `X`,
+ * as an array element reads its element type.
+ */
+type OptionalKey<D, K extends keyof D> = string extends K
+  ? never
+  : number extends K
+  ? never
+  : symbol extends K
+  ? never
+  : {} extends Pick<D, K>
+  ? undefined
+  : never;
+
+/**
+ * A field called `value` is never a path: `.value` always reads the node's
+ * own value. Mapping it would intersect the child ref with that value and
+ * erase the value's `null` or `undefined`.
+ */
+type PresentNode<D> = D extends readonly any[]
+  ? number extends D['length']
     ? {
-        readonly [index: number]: QueryDisplayRef<S[number]>;
+        readonly [index: number]: QueryDisplayRef<D[number]>;
         readonly length: QueryDisplayRef<number>;
-        readonly value: S;
-      } & Iterable<QueryDisplayRef<S[number]>>
-    : { readonly [K in keyof S]: QueryDisplayRef<S[K]> } & {
-        readonly value: S;
+        readonly value: D;
+      } & Iterable<QueryDisplayRef<D[number]>>
+    : { readonly [K in keyof D]: QueryDisplayRef<D[K]> } & {
+        readonly value: D;
       }
-  : S extends object
-  ? { readonly [K in keyof S]: QueryDisplayRef<S[K]> } & {
-      readonly value: S;
+  : D extends object
+  ? {
+      readonly [K in keyof D as Exclude<K, 'value'>]-?: QueryDisplayRef<
+        D[K] | OptionalKey<D, K>
+      >;
+    } & { readonly value: D }
+  : { readonly value: D };
+
+/** The paths under a value that is missing: every leaf may be `undefined`. */
+type OpenPaths<D> = [D] extends [never]
+  ? unknown
+  : D extends readonly any[]
+  ? number extends D['length']
+    ? {
+        readonly [index: number]: QueryDisplayRef<D[number] | undefined>;
+        readonly length: QueryDisplayRef<number | undefined>;
+      } & Iterable<QueryDisplayRef<D[number] | undefined>>
+    : { readonly [K in keyof D]: QueryDisplayRef<D[K] | undefined> }
+  : D extends object
+  ? {
+      readonly [K in keyof D as Exclude<K, 'value'>]-?: QueryDisplayRef<
+        D[K] | undefined
+      >;
     }
-  : { readonly value: S };
+  : unknown;
 
 export type QueryDisplayWatch<S> = (
   renew?: (
@@ -86,8 +145,224 @@ export type DisplaySource<T> = Pick<
 export type QueryDisplayHandle<S> = Readonly<{
   ref: QueryDisplayRef<QueryDisplayState<S>>;
   watch: QueryDisplayWatch<QueryDisplayState<S>>;
+  /**
+   * Project again with the latest options and publish only a real change.
+   *
+   * For an observer whose `select` or `placeholderData` was replaced
+   * (DC-QH-26). A display made with fixed options never needs it.
+   */
+  reproject: () => void;
   dispose: () => void;
 }>;
+
+/** The display fields a status and the observer's options determine. */
+export type ProjectedDisplay<S> = Omit<
+  QueryDisplayState<S>,
+  'queryKey' | 'enabled'
+>;
+
+/**
+ * The last projection, so an unchanged input reuses its result.
+ *
+ * `select` is part of the key: an observer whose options change gets a new
+ * projection for the same input. A display with fixed options always passes
+ * the same function, so for it this is the input-only cache it always was.
+ */
+export type ProjectionMemo<T, S> = {
+  last: {
+    input: T;
+    placeholder: boolean;
+    select: ((data: T) => S) | undefined;
+    result: { ok: true; data: S } | { ok: false; error: unknown };
+  } | null;
+};
+
+/**
+ * Derive one observer's display fields from the shared status.
+ *
+ * `readValue` is only called once the query has a baseline, because reading
+ * the data before that throws. A `select` failure belongs to this observer
+ * alone (`errorSource: 'select'`) and leaves the query's own status as is.
+ */
+export function projectDisplay<T, S>(
+  status: QueryStatus,
+  readValue: () => T,
+  options: QueryDisplayOptions<T, S>,
+  memo: ProjectionMemo<T, S>
+): ProjectedDisplay<S> {
+  let data: S | undefined;
+  let resolved = status.status;
+  let error = status.error;
+  let errorSource: QueryDisplayState<S>['errorSource'] =
+    status.status === 'error' ? 'query' : null;
+  let isPlaceholder = false;
+  if (
+    status.loaded ||
+    (status.status !== 'error' && options.placeholderData !== undefined)
+  ) {
+    isPlaceholder = !status.loaded;
+    const input = status.loaded ? readValue() : options.placeholderData!;
+    const select = options.select;
+    const last = memo.last;
+    if (
+      !last ||
+      !Object.is(input, last.input) ||
+      isPlaceholder !== last.placeholder ||
+      select !== last.select
+    ) {
+      const project = select ?? ((value: T) => value as unknown as S);
+      let result: NonNullable<ProjectionMemo<T, S>['last']>['result'];
+      try {
+        result = { ok: true, data: project(input) };
+      } catch (selectionError) {
+        result = { ok: false, error: selectionError };
+      }
+      memo.last = { input, placeholder: isPlaceholder, select, result };
+    }
+    const result = memo.last!.result;
+    if (result.ok) {
+      data = result.data;
+    } else {
+      resolved = 'error';
+      error = result.error;
+      errorSource = 'select';
+      isPlaceholder = false;
+    }
+  }
+  return {
+    ...status,
+    status: resolved,
+    error,
+    data,
+    isPlaceholder,
+    errorSource,
+  };
+}
+
+const isPlain = (value: unknown): value is Record<PropertyKey, unknown> => {
+  if (value === null || typeof value !== 'object' || Array.isArray(value))
+    return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+};
+
+/**
+ * `next` with every part that deeply equals `previous` replaced by the
+ * previous object - TanStack's structural sharing.
+ *
+ * Plain objects and arrays are shared, and a `Date` with the same time is
+ * kept. Anything else (Map, Set, class instances) is compared by identity
+ * only, so a `select` that builds one fresh each time still changes.
+ */
+export function shareStructure(
+  previous: unknown,
+  next: unknown,
+  visiting: Set<object> = new Set()
+): unknown {
+  if (Object.is(previous, next)) return previous;
+  if (previous instanceof Date && next instanceof Date) {
+    return previous.getTime() === next.getTime() ? previous : next;
+  }
+  const arrays = Array.isArray(previous) && Array.isArray(next);
+  if (!arrays && !(isPlain(previous) && isPlain(next))) return next;
+  // A cyclic result is taken as it is rather than walked forever.
+  const pair = next as object;
+  if (visiting.has(pair)) return next;
+  visiting.add(pair);
+  try {
+    if (arrays) {
+      const before = previous as unknown[];
+      const after = next as unknown[];
+      let same = before.length === after.length;
+      const shared = after.map((item, index) => {
+        const value = shareStructure(before[index], item, visiting);
+        if (!Object.is(value, before[index])) same = false;
+        return value;
+      });
+      return same ? previous : shared;
+    }
+    const before = previous as Record<PropertyKey, unknown>;
+    const after = next as Record<PropertyKey, unknown>;
+    const previousKeys = Object.keys(before);
+    const nextKeys = Object.keys(after);
+    let same = previousKeys.length === nextKeys.length;
+    const shared: Record<PropertyKey, unknown> = Object.create(
+      Object.getPrototypeOf(after)
+    );
+    for (const key of nextKeys) {
+      const value = shareStructure(before[key], after[key], visiting);
+      if (
+        !Object.prototype.hasOwnProperty.call(before, key) ||
+        !Object.is(value, before[key])
+      ) {
+        same = false;
+      }
+      shared[key] = value;
+    }
+    return same ? previous : shared;
+  } finally {
+    visiting.delete(pair);
+  }
+}
+
+/** Same kind and message: a `select` that keeps failing the same way. */
+export function sameSelectError(next: unknown, previous: unknown): boolean {
+  if (Object.is(next, previous)) return true;
+  return (
+    next instanceof Error &&
+    previous instanceof Error &&
+    next.constructor === previous.constructor &&
+    next.message === previous.message
+  );
+}
+
+/**
+ * Carry the previous result over when re-projecting gave the same thing in a
+ * new object - the step that keeps an inline `select` from republishing on
+ * every commit (DC-QH-26). The memo is updated too, so the next ordinary
+ * recalculation reuses the kept object instead of reintroducing the new one.
+ */
+export function carryProjection<T, S>(
+  next: ProjectedDisplay<S>,
+  previous: ProjectedDisplay<S>,
+  memo: ProjectionMemo<T, S>
+): ProjectedDisplay<S> {
+  const last = memo.last;
+  if (
+    next.errorSource === 'select' &&
+    previous.errorSource === 'select' &&
+    sameSelectError(next.error, previous.error)
+  ) {
+    if (last) last.result = { ok: false, error: previous.error };
+    return { ...next, error: previous.error };
+  }
+  if (next.data !== undefined && previous.data !== undefined) {
+    const data = shareStructure(previous.data, next.data) as S;
+    if (!Object.is(data, next.data)) {
+      if (last) last.result = { ok: true, data };
+      return { ...next, data };
+    }
+  }
+  return next;
+}
+
+/**
+ * Options given as an object keep the `select` and `equals` they had when the
+ * display was made, as displays always have; `placeholderData` was always
+ * read live. Only an observer, which passes a function, changes them later.
+ */
+function fixedOptions<T, S>(
+  options: QueryDisplayOptions<T, S>
+): () => QueryDisplayOptions<T, S> {
+  const fixed = {
+    select: options.select,
+    equals: options.equals,
+    get placeholderData() {
+      return options.placeholderData;
+    },
+  };
+  return () => fixed;
+}
 
 /**
  * One observer's display state over a query.
@@ -95,24 +370,23 @@ export type QueryDisplayHandle<S> = Readonly<{
  * Never installs placeholder or selection in the shared cache. The query is
  * *not* owned here: the handle that exposes this display owns it, so
  * `dispose()` releases only this observer's subscriptions.
+ *
+ * `options` may be a function, read at every calculation, for an observer
+ * whose options change after it is made (DC-QH-26); `reproject()` then
+ * applies a new `select` or `placeholderData` without waiting for the cache.
  */
 export function createQueryDisplay<T, S = T>(
   query: DisplaySource<T>,
-  options: QueryDisplayOptions<T, S> = {}
+  options: QueryDisplayOptions<T, S> | (() => QueryDisplayOptions<T, S>) = {}
 ): QueryDisplayHandle<S> {
-  const project = options.select ?? ((data: T) => data as unknown as S);
-  const equals = options.equals ?? Object.is;
+  const readOptions =
+    typeof options === 'function' ? options : fixedOptions(options);
   const controllers = new Set<AbortController>();
   const statusAbort = new AbortController();
   const displayAbort = new AbortController();
   let dataAbort: AbortController | null = null;
   let active = true;
-  let lastInput: T | undefined;
-  let lastPlaceholder = false;
-  let lastProjection:
-    | { ok: true; data: S }
-    | { ok: false; error: unknown }
-    | null = null;
+  const memo: ProjectionMemo<T, S> = { last: null };
 
   /**
    * Read once and reused.
@@ -123,63 +397,33 @@ export function createQueryDisplay<T, S = T>(
    */
   const queryKey = query.queryKey;
 
-  const calculate = (value?: T): QueryDisplayState<S> => {
-    const status = query.status.value;
-    let data: S | undefined;
-    let resolved = status.status;
-    let error = status.error;
-    let errorSource: QueryDisplayState<S>['errorSource'] =
-      status.status === 'error' ? 'query' : null;
-    let isPlaceholder = false;
-    if (
-      status.loaded ||
-      (status.status !== 'error' && options.placeholderData !== undefined)
-    ) {
-      isPlaceholder = !status.loaded;
-      const input = status.loaded
-        ? value ?? query.ref.value
-        : options.placeholderData!;
-      if (
-        !lastProjection ||
-        !Object.is(input, lastInput) ||
-        isPlaceholder !== lastPlaceholder
-      ) {
-        lastInput = input;
-        lastPlaceholder = isPlaceholder;
-        try {
-          lastProjection = { ok: true, data: project(input) };
-        } catch (selectionError) {
-          lastProjection = { ok: false, error: selectionError };
-        }
-      }
-      if (lastProjection.ok) {
-        data = lastProjection.data;
-      } else {
-        resolved = 'error';
-        error = lastProjection.error;
-        errorSource = 'select';
-        isPlaceholder = false;
-      }
-    }
-    return Object.freeze({
-      ...status,
-      status: resolved,
-      error,
-      data,
-      isPlaceholder,
-      errorSource,
+  const calculate = (value?: T): QueryDisplayState<S> =>
+    Object.freeze({
+      ...projectDisplay(
+        query.status.value,
+        () => value ?? query.ref.value,
+        readOptions(),
+        memo
+      ),
       queryKey,
       enabled: true,
     });
-  };
 
   const store = create<QueryDisplayState<S>>(calculate(), { autoSync: false });
   const rawRef = store.watch(() => displayAbort.signal);
   let current = rawRef.value;
   let comparisonFailure: { data: S; error: unknown } | null = null;
-  const publish = (value?: T) => {
+  const publish = (value?: T, carry = false) => {
     if (!active) return;
     let next = calculate(value);
+    if (carry) {
+      next = Object.freeze({
+        ...carryProjection(next, current, memo),
+        queryKey,
+        enabled: true,
+      });
+    }
+    const equals = readOptions().equals ?? Object.is;
     let sameData = false;
     let comparisonError: unknown;
     let comparisonFailed = false;
@@ -264,6 +508,7 @@ export function createQueryDisplay<T, S = T>(
   return Object.freeze({
     ref: guard(rawRef) as QueryDisplayRef<QueryDisplayState<S>>,
     watch: watch as QueryDisplayWatch<QueryDisplayState<S>>,
+    reproject: () => publish(undefined, true),
     dispose: () => {
       if (!active) return;
       active = false;

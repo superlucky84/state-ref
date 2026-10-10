@@ -23,11 +23,19 @@ const vite = await createServer({
 const app = createHttpServer((request, response) => {
   vite.middlewares(request, response, async () => {
     try {
+      const mission = request.url?.split('?')[0] === '/sync-query';
       const template = await vite.transformIndexHtml(
         request.url ?? '/',
-        await readFile(new URL('./ssr.html', import.meta.url), 'utf8')
+        await readFile(
+          new URL(mission ? './sync-ssr.html' : './ssr.html', import.meta.url),
+          'utf8'
+        )
       );
-      const { render } = await vite.ssrLoadModule('/src/ssr/entry-server.tsx');
+      const { render } = await vite.ssrLoadModule(
+        mission
+          ? '/src/ssr/mission-entry-server.tsx'
+          : '/src/ssr/entry-server.tsx'
+      );
       const { html, snapshot, model } = await render();
       model.dispose(); // The request's client goes away with the request.
 
@@ -37,9 +45,9 @@ const app = createHttpServer((request, response) => {
           .replace('<!--app-html-->', html)
           .replace(
             '<!--app-snapshot-->',
-            `<script>window.__STATEREF_SNAPSHOT__ = ${JSON.stringify(
-              snapshot
-            ).replace(/</g, '\\u003c')};</script>`
+            `<script>window.${
+              mission ? '__MISSION_SNAPSHOT__' : '__STATEREF_SNAPSHOT__'
+            } = ${JSON.stringify(snapshot).replace(/</g, '\\u003c')};</script>`
           )
       );
     } catch (error) {

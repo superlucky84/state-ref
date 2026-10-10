@@ -445,8 +445,8 @@ export function connectMyFramework<T>(watch: Watch<T>) {
           <a href="#/guide/vue">Vue</a> - Vue connector usage
         </li>
         <li>
-          <a href="#/guide/lithent">Lithent</a> - direct integration without
-          connector
+          <a href="#/guide/lithent">Lithent</a> - state and query connectors,
+          with direct watch integration
         </li>
       </ul>
     </div>

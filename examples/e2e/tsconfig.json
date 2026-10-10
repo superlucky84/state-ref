@@ -15,5 +15,5 @@
     "skipLibCheck": true,
     "baseUrl": "./"
   },
-  "include": ["src", "playwright.config.ts"]
+  "include": ["src", "playwright*.ts"]
 }

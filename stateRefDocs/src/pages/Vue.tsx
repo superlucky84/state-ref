@@ -18,6 +18,14 @@ export const Vue = mount(() => {
         code={`pnpm add state-ref @stateref/connect-vue`}
       />
 
+      <p>
+        The ESM-only <code>@stateref/connect-vue/sync</code> entry (see
+        &quot;Component Queries&quot; below) also needs the optional{' '}
+        <code>@stateref/sync</code> package, 0.3 or later:
+      </p>
+
+      <CodeBlock language="bash" code={`pnpm add @stateref/sync`} />
+
       <h2>Supported Versions</h2>
 
       <p>
@@ -257,14 +265,129 @@ const done = useTodo(store => store.done);
 // done is Reactive<{ value: boolean }>`}
       />
 
+      <h2>Component Queries</h2>
+
+      <p>
+        For server data in component code, call <code>useSyncQuery</code> from{' '}
+        <code>@stateref/connect-vue/sync</code> in <code>setup</code>. The
+        component owns the query for its scope: it loads when first selected,
+        follows the key in its props, shares a READ in flight with other
+        components showing the same key, and is released after the last of them
+        unmounts.
+      </p>
+
+      <CodeBlock
+        language="vue"
+        code={`<script setup lang="ts">
+import { useSyncQuery } from '@stateref/connect-vue/sync';
+import { client } from './client'; // createSyncClient(), one per app
+import { readShip } from './api'; // (id, signal) => Promise<Ship>
+
+const props = defineProps<{ id: number }>();
+
+const [ship, q] = useSyncQuery(client, () => {
+  const id = props.id;
+  return {
+    queryKey: ['ship', id],
+    queryFn: ({ signal }) => readShip(id, signal),
+    staleTime: 30_000,
+  };
+});
+const status = ship(ref => ref.status.value);
+const loaded = ship(ref => ref.loaded.value);
+const name = ship(ref => ref.data.name.value);
+
+const rename = (event: Event) => {
+  const handle = q.handle();
+  if (handle?.status.value.loaded)
+    handle.ref.name.value = (event.target as HTMLInputElement).value; // local edit
+};
+</script>
+
+<template>
+  <p v-if="status === 'pending'">Loading…</p>
+  <p v-else-if="!loaded" role="alert">Could not load the ship.</p>
+  <section v-else>
+    <input :value="name ?? ''" @input="rename" />
+    <button @click="q.refetch().catch(() => {})">Refresh</button>
+    <button @click="q.invalidate()">Check again</button>
+  </section>
+</template>`}
+      />
+
+      <p>
+        <code>ship(select)</code> returns a{' '}
+        <code>Readonly&lt;Ref&lt;V&gt;&gt;</code> of what <code>select</code>{' '}
+        reads from the query&apos;s readonly display state (<code>status</code>,{' '}
+        <code>fetchStatus</code>, <code>loaded</code>, <code>error</code>,{' '}
+        <code>data</code>, <code>dirty</code>, <code>queryKey</code> and more);
+        read leaves with <code>.value</code> inside <code>select</code>. The
+        first selection attaches the query, and every selection shares it.{' '}
+        <code>q</code> is the same object for the component&apos;s life:
+      </p>
+
+      <ul>
+        <li>
+          <code>q.refetch()</code> reads again and returns a Promise. It rejects
+          with <code>This query observer is not attached.</code> before the
+          first selection, while disabled and on the server.
+        </li>
+        <li>
+          <code>q.invalidate()</code> marks the key stale and, while attached
+          and enabled, reads it again; <code>client.invalidate(key)</code> only
+          marks it stale.
+        </li>
+        <li>
+          <code>q.handle()</code> returns the query&apos;s own handle, or{' '}
+          <code>null</code> before the first selection, while disabled and on
+          the server. Edit through <code>handle.ref</code> once it has loaded
+          and pass the handle to mutation <code>links</code>, but never dispose
+          it: the hook owns it.
+        </li>
+      </ul>
+
+      <p>In Vue:</p>
+
+      <ul>
+        <li>
+          Pass a getter to follow props or refs; Vue tracks it and confirms the
+          new options before the next render. A plain options object is fixed
+          for the component&apos;s life, and refs inside it are not unwrapped:
+          read <code>.value</code> inside a getter instead.
+        </li>
+        <li>
+          When the scope ends, the query is released one macrotask later, so a
+          route swap neither cancels nor repeats a READ. A component deactivated
+          by <code>&lt;KeepAlive&gt;</code> stays attached until it is evicted
+          or unmounted.
+        </li>
+        <li>
+          On the server, selections read without subscribing, attaching or
+          READing. Fill a per-request{' '}
+          <code>createSyncClient({'{ ssr: true }'})</code> before the component
+          renders - for example with{' '}
+          <code>onServerPrefetch(() =&gt; client.prefetch(options))</code> in{' '}
+          <code>setup</code> - send <code>client.dehydrate()</code>, and call{' '}
+          <code>client.hydrate(snapshot)</code> on the browser client before
+          mounting.
+        </li>
+      </ul>
+
+      <p>
+        More on the query lifecycle, dependent queries and server rendering:{' '}
+        <a href="#/guide/sync-query">query and resource</a>.
+      </p>
+
       <h2>Readonly Query Views</h2>
 
       <p>
         <code>connectVueView</code> binds a readonly query view from{' '}
-        <a href="#/guide/sync-view">@stateref/sync</a>. It takes the same{' '}
-        <code>Watch</code> shape as <code>connectVue</code> but never hands out
-        setters, because a display can be a selected value or a placeholder that
-        was never on the server.
+        <a href="#/guide/sync-view">@stateref/sync</a>. Use it for an explicit
+        handle owned outside the component - one a store or service opens with{' '}
+        <code>client.query(...)</code>, loads and disposes itself. It takes the
+        same <code>Watch</code> shape as <code>connectVue</code> but never hands
+        out setters, because a display can be a selected value or a placeholder
+        that was never on the server.
       </p>
 
       <CodeBlock

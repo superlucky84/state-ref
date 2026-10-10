@@ -74,6 +74,7 @@ const MODULES = {
   'state-ref/plugin': 'packages/state-ref/dist/plugin/index.d.ts',
   '@stateref/sync': 'packages/sync/dist/index.d.ts',
   '@stateref/connect-react': 'packages/connect-react/dist/index.d.ts',
+  '@stateref/connect-react/sync': 'packages/connect-react/dist/sync.d.ts',
   '@stateref/connect-preact': 'packages/connect-preact/dist/index.d.ts',
   '@stateref/connect-vue': 'packages/connect-vue/dist/index.d.ts',
   '@stateref/connect-svelte': 'packages/connect-svelte/dist/index.d.ts',
