@@ -1,7 +1,7 @@
 # DESIGN — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: **결정 완료** (2026-10-08 IMPLEMENT 단계 0 재검증 + 검증 에이전트 교차 검토 2회 반영). 미결 `[ ]` 없음. 단계 1~5 및 추가 단계 5.1 Lithent 지원·5.2 일반 커넥터 완료(2026-10-09, 전체 게이트 통과, 진행 상태는 IMPLEMENT 기준). 단계 6 통합 데모·자동 브라우저 검증도 완료했다(2026-10-09, U-QH-14). 사람의 사용성 평가는 미수행이고 다음 구현 범위는 단계 7 가이드·릴리스 기록이다. PR #16은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`).
+- 상태: 단계 0~7 완료(2026-10-09), PR #17이 main에 병합됨(`8535fb7`). main에서 분기한 `fix/issue-18-shared-sync`의 후속 단계 8도 구현·자동 검증 완료(2026-10-10~11, U-QH-15~17, Draft PR #19). 코드 커밋은 `364d1a3`·`b71b1b6`·`8558e87`이며 최신 결과는 IMPLEMENT의 단계 8 및 진행 기록을 따른다. 사람의 전반적인 사용성 평가는 미수행이고 실제 릴리스·병합은 이번 범위 밖이다.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 ## 1. 현재 구조 (기준 `6e462ed`, 2026-10-08 코드로 재확인)
@@ -259,7 +259,7 @@ type ObserverSettings = Readonly<{
 
 ## 5. 영향 범위
 
-### Lithent 추가 지원 (2026-10-09, U-QH-12)
+### Lithent 추가 지원 (U-QH-12, 현재 API는 U-QH-16 보완 포함)
 
 - [x] **DC-QH-38 진입점·반환** — 새 패키지 `@stateref/connect-lithent`의 기본 진입점은 `connectLithentView(viewWatch): () => R`, `./sync`는 `createSyncQuery(client, options | getter): readonly [QueryDisplayRef<QueryDisplayState<S>>, QueryObserverControls<T>]`다. 둘 다 ESM 전용이다. 공개 Lithent 1.24.0은 `type: module` 안의 `.umd.js`를 require에 지정해 Node 24에서 빈 namespace를 돌려준다(`mount`·`useRenew` 없음). 따라서 새 커넥터에 동작하지 않는 CJS 경로를 광고하지 않고 `ERR_PACKAGE_PATH_NOT_EXPORTED`로 거절한다(T-QH-55). 클로저 렌더는 안정적인 표시 ref를 직접 읽는다(`account.data.name.value`). 루트와 저장한 하위 ref는 미리보기·구독 ref·새 key를 따라가며 `.value`만 현재 경로에서 읽어 구독한다. iterator와 직렬화 함수도 실행 시점의 ref를 사용하고, 값 snapshot과 연결 메타데이터는 하위 ref로 감싸지 않는다. 표시 ref의 구조 변경은 거부한다. 버전은 신규 `0.1.0`, `lithent: ^1.24.0`, 선택적 sync peer `^0.3.0`. 기본 진입점은 sync를 import하지 않는다. 실제 게시하지 않는다.
 - [x] **DC-QH-39 수명** — `connectLithentView`는 mounter에서 등록하고 최초 렌더는 콜백 없는 ref를 읽는다. `mountCallback`에서 첫 구독의 `AbortSignal`을 등록한 뒤 구독 ref의 경로를 모으는 렌더를 예약한다. 반환 cleanup은 signal을 abort하며 첫 구독 예외도 정리한다. `typeof window === 'undefined'`에서는 구독하지 않는다. `observer.watch(renew)`만 쓰는 방식은 언마운트 후 다음 알림까지 owner를 유지하므로 sync 가이드에 쓰지 않는다(T-QH-50·53).
@@ -275,6 +275,8 @@ type ObserverSettings = Readonly<{
 - [x] **DC-QH-44 데모** — `examples/shared`의 별빛 정비소 모델·CSS·로컬 HTTP Vite plugin을 여섯 네이티브 UI가 공유한다. 각 앱의 `/mission.html`은 우주선 목록과 실제 컴포넌트 소유 query 상세·보조 화면을 제공한다. Lithent는 `index.html`도 같은 `src/mission-main.ts`를 사용하고 두 HTML을 build input으로 포함해 base/concurrent의 dev/preview `/`가 동작한다. UI는 준비 상태·편집·저장을 설명하고 세부 캐시/요청 진단은 접힌 영역에 둔다. 보조 화면은 독립 관찰자이며 모델이 명시 query 소유자를 추가하지 않는다. 장비 draft와 batch는 별도 일반 store로 체험한다. 기존 진단/쇼핑 데모와 공개 라이브러리는 유지한다.
 - [x] **DC-QH-45 네트워크** — 외부 계정 없이 같은 origin의 `/mission-api` READ/WRITE를 사용한다. Vite dev/preview에서 동일 서버가 지연·단발 실패·서버 변경을 제공한다. API는 데모 메모리만 변경하며 파일/외부 데이터에 쓰지 않는다. 조회는 AbortSignal을 fetch에 전달하고 저장은 capture+links로 승인 응답을 연결한다. 불확실한 WRITE를 자동 재전송하지 않는다. 브라우저의 모의 무선 연결은 공개 SyncEnvironment로 제어한다.
 - [x] **DC-QH-46 Playwright** — 별도 mission config가 여섯 production 페이지·Lithent concurrent·React StrictMode development·React SSR을 시작한다. DOM과 실제 요청/취소를 관찰하고 key/data의 중간 불일치는 MutationObserver로 확인한다. 공유 READ·해제·fresh/stale 캐시·polling·새 경로·편집/links·오류 복구·SSR HTML/hydration을 검증한다. 자동으로 입증한 수용 항목만 완료 표시하며 사용성 평가는 사람이 수행할 항목으로 남긴다. trace/실패 screenshot/JSON 결과와 실행 안내를 제공한다(T-QH-57~59).
+
+다음 표는 초기 단계 0~7의 범위다. main 병합 뒤 단계 8의 core 변경 예외와 추가 파일은 7절에 별도로 기록한다.
 
 | 대상 | 변경 |
 |---|---|
@@ -328,3 +330,16 @@ type ObserverSettings = Readonly<{
 다섯 관점(코드 사실, 문서 간 정합성, sync 설계 반박, 프레임워크 설계 반박, 규칙·완결성)이 첫 갱신본(`025c172`)을 검토하고, 판정 에이전트가 각 지적을 저장소에서 다시 확인했다. 65건 중 중복 32·반박 2를 빼고 31건(높음 3, 중간 6, 낮음 22)을 이 판에 반영했다. 높음 3건은 모두 DC-QH-26이었다: 함수·객체 옵션의 identity 비교로 인한 커밋마다의 핸들 재오픈과 READ(재실험 READ 1→4), key를 확인하지 않는 `queryFn` 래퍼로 이전 key 캐시에 새 key 값이 들어가는 문제(재실험 확인), `select` 재투영의 계기 부재와 인라인 `select`의 렌더 반복. 중간 6건은 DC-QH-27(key 전환 렌더 tearing), DC-QH-29(렌더 중 store 쓰기 모순·메모 분리), DC-QH-11(Preact 라우트 교체), DC-QH-23(위임 래퍼와 mutation links·`invalidate` 의미), DC-QH-13(렌더 중 옵션 오류)에 반영했다.
 
 두 번째 확인 검토(`a688c89` 대상, 에이전트 2개)는 17건을 냈고 모두 이 판에 반영했다. 높음 1건: `q.handle()`의 `Omit` 타입은 mutation `links`(`QueryHandle<any>`)에 들어가지 않는다(임시 파일 `tsc`로 TS2739 확인) → `links` 쪽 타입을 넓힘(DC-QH-23). 그 밖: 인라인 `select`의 오류·`Date` 결과에서 커밋 반복(DC-QH-26 2), 잘못된 key의 비교·메모(DC-QH-13·29), `retryDelay` 래퍼의 `undefined` 호출과 key별 칸(DC-QH-26 1), React ④의 커밋 뒤 재확인이 추가 렌더를 일으킴(DC-QH-27·28), Preact rAF 정지 탭(DC-QH-11), `invalidate`의 거부 처리(DC-QH-23), React 18에 없는 `<Activity>`(T-QH-40·41), 단계별 기준 테스트와 PR #16 병합 뒤 문서 상태.
+
+## 7. main 병합 뒤 보완 (2026-10-10~11, PR #19)
+
+- [x] **DC-QH-47 공유 경계와 식별** — U-QH-15, R-QH-23~25, T-QH-60~62. 공유 client는 creator의 sync 구현을 사용한다. 모든 번들의 sync 버전을 맞추고 실제 0.2 creator는 0.3 훅의 `observe()` 요구를 충족하지 못하며, 0.3 creator는 0.2 caller에도 0.3 계약을 적용한다. 독립 번들의 observer/Preact 훅과 두 마운트 순서를 검증한다. 식별 심볼 `Symbol.for('state-ref.ref')`은 연결 심볼과 분리해 pending/shared/combined/computed ref를 값 읽기 없이 판별한다. 이 심볼을 query/draft payload 예약 목록에 함께 등록한다. core 변경은 C-QH-03의 좁은 예외다. 구버전 core 3.2.1의 일반 ref에는 연결 fallback이 적용되지만 pending shared/combined는 여전히 `{}`로 해시될 수 있고 computed는 일반 오류를 내므로 core·sync·모든 core 사본을 함께 갱신한다. 추가 식별이 `connectRef`의 적용 대상을 넓히지는 않는다.
+- [x] **DC-QH-48 Lithent 직접 표시 ref** — U-QH-16, R-QH-17·26, T-QH-51·53·55·63. `createSyncQuery`는 readonly `[QueryDisplayRef<QueryDisplayState<S>>, QueryObserverControls<T>]`를 반환한다(DC-QH-38의 현행 반환형). `followDisplayRef`가 각 경로를 캐시하고 읽을 때 `matches(rendered) ? view() : peek(rendered)`를 따라간다. 초기 peek를 고정하지 않으며 저장한 하위 ref도 새 구독·key의 경로를 읽는다. `.value` snapshot과 연결 메타데이터는 하위 ref로 감싸지 않고, iterator·직렬화 함수는 호출 시점의 ref로 실행한다. 루트·하위 ref의 대입/삭제/속성 정의/prototype 변경/동결은 거절한다. 기존 `connectLithent`·`connectLithentView` accessor와 다른 프레임워크 API는 변경하지 않는다. migration은 `account().data.name.value` → `account.data.name.value`다.
+- [x] **DC-QH-49 문서 추적 보완** — U-QH-17, R-QH-27, T-QH-64. 네 문서의 상태는 단계 8 완료로 맞추고 요청·결정·테스트 연결 및 코드 commit을 남긴다. 2026-10-09 진행 기록은 당시 accessor 사용과 검증 수치를 그대로 보존한다. 이번 ID/최신 결과 보완은 사후 정합성 점검이며 문서 선행 절차를 새로 수행했다고 주장하지 않는다. 현재 환경에서 doc-driven-designer-v1 SKILL.md 원문을 찾지 못했으므로 원문 규칙 전체의 준수 여부는 검증하지 못했다.
+
+| 대상 | 후속 변경과 보호 조건 |
+|---|---|
+| `packages/state-ref` | 내부 식별 심볼, core proxy·shared·computed·combine 응답, draft 예약 키. sync/UI import 추가 없음; 성능·bundle gate 유지 |
+| `packages/sync` | key 식별 및 editable payload 예약 키, 현재/독립 사본 회귀 검사. query 엔진·정상 key·controls 계약 유지 |
+| `packages/connect-lithent` | sync의 안정적인 표시 ref와 회귀 검사. base index/API와 구독·SSR·concurrent 수명 유지 |
+| 예제·가이드·검증 | 공유 bundle/version E2E, favicon 응답, Lithent demo와 공개 타입/문서 예제, 영/한 가이드·CHANGELOG·skill reference |

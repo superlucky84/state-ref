@@ -100,3 +100,26 @@ M-QH-02의 상세 화면에 새로고침 버튼, 무효화 버튼, 이름 편집
 - [x] base/concurrent 각각 dev/preview의 `/`와 `/mission.html`이 HTTP 200이며 별빛 정비소를 렌더한다. 화성 선택 뒤 실제 GET 1회로 두 화면을 채우고 이름 편집을 공유한다. pageerror/console error는 0이다(R-QH-22, DC-QH-44).
 
 Chromium 151.0.7922.173에서 Playwright로 **8/8 통과**. 화성 산소 82, 별 수집과 화면 제거 뒤 owners/일반 상태 구독 0도 확인했다. 두 모드 빌드가 통과했으며 임시 검증 스크립트·로그는 `/workspace/.onboarding/mission-root-{smoke.mjs,browser.log}`에 있다. 소스 commit은 `git log -1 -- examples/lithent/index.html`로 조회하고 정확한 SHA는 ctxbin 인계에 기록한다. 사람이 평가할 위 두 사용성 항목은 미수행 상태다.
+
+## 2026-10-10~11 후속 검증 — 공유 sync와 Lithent 직접 표시 ref
+
+코드 기준은 `364d1a3`·`b71b1b6`·`8558e87`(Draft PR #19)이다. 다음 체크는 자동 검사/소스 점검의 완료 표시이며 사람이 전체 기능을 체험했다는 뜻이 아니다.
+
+### M-QH-08 — 공유 client 버전과 ref 식별 (R-QH-23~25, T-QH-60~62)
+
+- [x] creator 구현 사용과 실제 sync 0.2/0.3의 두 생성 순서를 sharing guide·영/한 페이지에서 설명한다. 독립 bundle E2E는 두 UI 마운트 순서·진행 READ 공유·예약 해제·foreign `q.handle()` mutation links·key 전환 및 console/pageerror를 검증했다. 기존 bundle suite 결과는 **15/15**(`b71b1b6`).
+- [x] pending/shared/combined/computed 및 foreign UMD ref key를 `.value` 힌트로 거절하며 cache를 만들거나 pending 제공/추가 computed 계산을 하지 않는다. editable query의 identity 심볼 payload 초기값·응답·로컬 변경 거절과 원자성을 검사했다.
+- [x] 구버전 state-ref 3.2.1의 pending/combined key 충돌 한계와 core·sync·모든 core 사본 갱신 조건을 설명했다. 구버전 core 일반 ref의 연결 fallback과 새 helper 식별을 구분한다. draft 예약 키 목록 등록은 소스 점검 및 core suite 결과이며 sync 전용 payload 세 사례를 draft 전용 테스트로 표시하지 않는다.
+
+### M-QH-09 — Lithent 직접 ref (R-QH-17·26, T-QH-51·53·55·63)
+
+- [x] `account.data.name.value`와 mounter에서 저장한 하위 ref가 초기 peek·mounted subscription·캐시 있음/없음 key 전환을 따라간다. 배열 경로·저장한 iterator/직렬화와 이전 key의 늦은 실제 캐시 완료도 확인했다. 읽지 않은 필드 변경은 불필요한 렌더를 만들지 않는다.
+- [x] snapshot/표시 ref의 쓰기 및 구조 변경을 거절하고 현재 `Object.keys`·spread·descriptor·JSON·iterator를 보존한다. public 타입은 accessor 호출을 거절한다. base **22 통과·기존 2 제외**, concurrent **24/24**, 두 SSR 셀 각각 **5/5**다.
+- [x] fresh base/concurrent production demo의 Lithent mission **16/16**(Chromium 151, Node 24, 약 54초). 공유 GET·최종 unmount abort·key 전환·무효화·편집/저장/거절·offline/오류 복구/polling 종료·draft/batch/keyboard/small viewport 및 예상하지 않은 browser 오류 0을 확인했다. 모든 여섯 framework의 65개 mission을 새로 실행한 기록은 아니다.
+- [x] fresh build 뒤 전체 gate·공개 packaging·README/site 예제 통과. workspace **1,178 통과·기존 2 제외**, sync **347/347**, 성능 **6/6**, core **3,783 B gzip**. 자세한 환경·명령·로그는 IMPLEMENT의 단계 8 진행 기록을 따른다.
+
+### M-QH-10 — 문서 추적 (R-QH-27, T-QH-64)
+
+- [x] U-QH-15~17·R-QH-23~27·DC-QH-47~49·T-QH-60~64가 연결된다. 네 문서의 현행 상태와 좁은 core 변경 예외, 코드 commit과 실제 검증 범위를 갱신하고 날짜가 붙은 이전 완료 기록은 보존한다.
+
+사람의 전반적인 사용성·체험 재미·실제 기기 조작감은 위의 기존 미체크 항목으로 남긴다. 이번 문서 사후 점검을 스킬 원문 전체의 절차 준수 증거로 표시하지 않는다.

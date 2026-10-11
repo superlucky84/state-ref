@@ -175,3 +175,9 @@ import {
 ### 2026-10-08 — 1차 구현
 
 - `provideShared`/`getShared`/`onShared`/`whenReady`. commit `f7c717b`, 문서 `ab0afd4`, `122f3a0`.
+
+## 후속 — 공유 sync와 ref 식별 보완 (2026-10-10~11, issue #18 / PR #19)
+
+위 최초 구현의 경계 표와 진행 기록은 당시 결과를 보존한다. 이후 독립 client/observer/Preact sync-hook 번들에서 두 마운트 순서·READ 공유·예약 해제·foreign `q.handle()` mutation links·key 전환을 실행했다. 실제 sync 0.2.0과 0.3 구현의 두 client 생성 순서도 확인했다. 공유 client는 creator의 구현을 사용하므로 모든 번들의 sync 버전을 맞춘다. 후속 계약/테스트/실행 결과는 [sync query hooks REQUIREMENTS](../sync-query-hooks/REQUIREMENTS.md) R-QH-23~25, [DESIGN](../sync-query-hooks/DESIGN.md) DC-QH-47, [IMPLEMENT](../sync-query-hooks/IMPLEMENT.md) T-QH-60~62와 단계 8을 따른다. 서로 다른 모든 state-ref 버전 조합의 호환성을 확인했다는 뜻은 아니다.
+
+pending shared ref는 별도의 `Symbol.for('state-ref.ref')`에 true를 답하므로 query key 검사가 제공 전에도 식별할 수 있다. 이 응답은 store를 제공하거나 값을 읽지 않으며 기존 shared 상태 심볼과 registry protocol을 바꾸지 않는다. core 3.2.1의 pending shared/combined ref에는 이 식별자가 없어 key 충돌이 남을 수 있으므로 새 검사에는 core·sync와 모든 core 사본의 갱신이 필요하다. 가이드와 영/한 Shared 페이지에 이 한계를 명시했다.
