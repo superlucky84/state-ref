@@ -122,7 +122,7 @@ is no `load()` / `dispose()` to call.
 | Vue | `import { useSyncQuery } from '@stateref/connect-vue/sync'` | getter `() => ({ ... })` to follow props/refs, or a fixed object | `account(r => r.data.name.value)` → `Readonly<Ref<V>>` |
 | Solid | `import { createSyncQuery } from '@stateref/connect-solid/sync'` | accessor `() => ({ ... })`, or a fixed object | `account(r => r.data.name.value)` → `Accessor<V>` |
 | Svelte (store API) | `import { createSyncQuery } from '@stateref/connect-svelte/sync'` | `Readable` options store (`writable`/`derived`), or a fixed object | `account(r => r.data.name.value)` → `Readable<V>` (`$name`) |
-| Lithent | `import { createSyncQuery } from '@stateref/connect-lithent/sync'` | props getter, or a fixed object; create once in the mounter | `account().data.name.value` in render |
+| Lithent | `import { createSyncQuery } from '@stateref/connect-lithent/sync'` | props getter, or a fixed object; create once in the mounter | `account.data.name.value` in render |
 
 ```tsx
 // React / Preact

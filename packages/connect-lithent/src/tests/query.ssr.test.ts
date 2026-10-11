@@ -37,7 +37,7 @@ describe('Lithent server query (T-QH-53)', () => {
           initialData: { name: 'seeded' },
         });
         expect(q.handle()).toBeNull();
-        return () => h('p', {}, account().data.name.value ?? '');
+        return () => h('p', {}, account.data.name.value ?? '');
       });
       expect(renderToString(h(Panel, {}))).toBe('<p>seeded</p>');
       expect(queryFn).not.toHaveBeenCalled();
@@ -59,7 +59,7 @@ describe('Lithent server query (T-QH-53)', () => {
         queryKey: ['account', props.id],
         queryFn,
       }));
-      return () => h('p', {}, account().data.name.value ?? '');
+      return () => h('p', {}, account.data.name.value ?? '');
     });
     expect(renderToString(h(Panel, { id: 1 }))).toBe('<p>cached</p>');
     expect(queryFn).not.toHaveBeenCalled();

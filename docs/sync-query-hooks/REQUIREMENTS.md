@@ -71,7 +71,7 @@
 - **R-QH-14** 구독 전 렌더 값은 React `useSyncExternalStore`의 스냅샷 계약(바뀐 게 없으면 같은 값)과 Vue 서버 렌더의 지연 읽기(`onServerPrefetch` 뒤의 캐시)를 모두 만족한다(2026-10-08 실험 E4, DC-QH-29).
 - **R-QH-15** 옵션 오류(잘못된 `queryKey` — `.value`를 빠뜨린 state-ref ref 포함 —, boolean이 아닌 `enabled`, 쿼리를 열 때 거절될 옵션)는 렌더에서 던지지 않고 `status: 'error'`, `errorSource: 'source'` 표시로 보인다(기존 반응형 key 커서와 같음, DC-QH-13).
 - **R-QH-16** `state-ref/shared`로 공유한 sync client를 `observe`가 없는 sync 사본이 만들었으면, 진입점은 버전을 맞추라는 명확한 오류로 실패한다(DC-QH-37).
-- **R-QH-17** Lithent mounter에서 `createSyncQuery(client, options | getter)`를 한 번 호출해 `[표시 accessor, q]`를 얻는다. 렌더는 `account().data.name.value`로 읽고 getter는 현재 props를 읽는다. 새 key를 처음 표시하는 렌더에 이전 key 값이 섞이지 않는다.
+- **R-QH-17** Lithent mounter에서 `createSyncQuery(client, options | getter)`를 한 번 호출해 `[표시 ref, q]`를 얻는다. 렌더는 `account.data.name.value`로 읽고 getter는 현재 props를 읽는다. 저장한 하위 ref도 현재 key를 따라가며 `.value`를 읽은 경로만 구독한다. 새 key를 처음 표시하는 렌더에 이전 key 값이 섞이지 않는다.
 - **R-QH-18** Lithent의 첫 실제 마운트 뒤 구독·load하고 언마운트에서 `AbortSignal`로 끊는다. 같은 key의 다른 명시 핸들과 관찰자는 유지된다. 같은 작업의 라우트 교체는 READ를 취소·재발행하지 않는다. 서버는 콜백 없이 읽고 owners·READ를 만들지 않는다.
 - **R-QH-19** Lithent concurrent의 버전 알림에 연결해 외부 표시 상태 변경을 렌더러가 감지하게 한다. broad 버전 구독은 렌더 알림의 경로 수집과 분리한다. 렌더러 자체의 재시도 제한(마운트·update effect가 실행된 빌드, 재시도 상한)은 유지하며 무조건적인 tearing 방지를 약속하지 않는다.
 - **R-QH-20** Lithent 설치·고정 옵션·props getter·새로고침·무효화·로컬 편집·mutation links·SSR·concurrent 선택을 README와 영어·한국어 사이트에 안내한다. 문서 예제는 실제 공개 진입점으로 타입·실행 검증한다.

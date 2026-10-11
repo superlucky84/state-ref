@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Changed
+
+- **Lithent sync queries return a display ref directly.**
+  `createSyncQuery(client, options)` now returns `[account, q]` with a stable
+  readonly `account` ref. Read `account.data.name.value` in render. Saved child
+  refs also follow the current key and collect subscriptions when their
+  `.value` is read. Mount, unmount, SSR and query controls retain their
+  lifecycle. *Migration:* replace `account().data.name.value` with
+  `account.data.name.value`. The base `connectLithent` and
+  `connectLithentView` accessors keep their existing signatures.
+
 ### Fixed
 
 - Query keys also reject pending `sharedWatch` refs, `combineWatch` refs and

@@ -65,9 +65,9 @@ M-QH-02의 상세 화면에 새로고침 버튼, 무효화 버튼, 이름 편집
 - [x] 이름 편집 뒤 저장 버튼(`q.handle()`을 mutation `links`에 넣은 제출)이 동작하고, 저장 뒤 편집 표시가 사라진다.
 - [x] 콘솔에 오류가 없다.
 
-## M-QH-06 — Lithent query accessor
+## M-QH-06 — Lithent query display ref
 
-- [x] `account().data.name.value`를 읽는 상세 화면을 조건부 렌더로 마운트·제거·재표시할 때 READ 공유·해제와 캐시 재사용이 Network에서 보인다.
+- [x] `account.data.name.value`를 읽는 상세 화면을 조건부 렌더로 마운트·제거·재표시할 때 READ 공유·해제와 캐시 재사용이 Network에서 보인다.
 - [x] props id를 바꾸면 해당 id 데이터만 보이고 새 필드를 바꿔도 화면이 갱신된다. 새로고침·무효화·이름 편집·links 저장이 각 명령의 의미대로 동작한다.
 - [x] exact core alias로 선택한 concurrent에서도 동작한다. SSR은 요청별 `ssr: true` client로 seeded/hydrated 값을 렌더하고 서버 READ를 만들지 않는다.
 

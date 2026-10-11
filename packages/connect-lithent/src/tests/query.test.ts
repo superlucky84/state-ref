@@ -47,20 +47,20 @@ describe('Lithent sync query lifetime (T-QH-50)', () => {
         queryFn,
         gcTime: Infinity,
       });
-      return () => h('p', {}, read().data.name.value ?? read().status.value);
+      return () => h('p', {}, read.data.name.value ?? read.status.value);
     });
     const node = h(Panel, {});
     expect(client.size()).toBe(0);
     expect(q.handle()).toBeNull();
     expect(queryFn).not.toHaveBeenCalled();
-    expect(read().fetchStatus.value).toBe('idle');
+    expect(read.fetchStatus.value).toBe('idle');
     const { host, stop } = draw(node);
     await vi.waitFor(() => expect(host.textContent).toBe('loaded'));
     expect(owners(client)).toBe(1);
     expect(queryFn).toHaveBeenCalledTimes(1);
     expect(() => {
       // @ts-expect-error displays are readonly at both type and runtime boundaries
-      read().data.name.value = 'forbidden';
+      read.data.name.value = 'forbidden';
     }).toThrow();
     q.handle()!.ref.name.value = 'edited';
     await tick();
@@ -87,7 +87,7 @@ describe('Lithent sync query lifetime (T-QH-50)', () => {
         queryFn,
         gcTime: 0,
       });
-      return () => h('p', {}, account().status.value);
+      return () => h('p', {}, account.status.value);
     });
     const one = draw(h(Panel, {}));
     const two = draw(h(Panel, {}));
@@ -118,7 +118,7 @@ describe('Lithent sync query lifetime (T-QH-50)', () => {
     const loading = explicit.load();
     const Panel = mount(() => {
       const [account] = createSyncQuery(client, options);
-      return () => h('p', {}, account().status.value);
+      return () => h('p', {}, account.status.value);
     });
     const { stop } = draw(h(Panel, {}));
     expect(owners(client)).toBe(2);
@@ -181,13 +181,15 @@ describe('options and keys (T-QH-51/52)', () => {
           options(props.id ?? 1)
         );
         q = controls;
+        const { data, queryKey } = account;
+        const { name, age } = data;
         return () => {
-          const view = account();
-          const text =
-            props.id === 1 ? view.data.name.value : view.data.age.value;
+          expect(account.data).toBe(data);
+          expect(account.data.name).toBe(name);
+          const text = props.id === 1 ? name.value : age.value;
           frames.push({
             id: props.id ?? 1,
-            key: view.queryKey.value?.[1],
+            key: queryKey.value?.[1],
             text,
           });
           return h('p', {}, String(text ?? 'waiting'));
@@ -230,7 +232,7 @@ describe('options and keys (T-QH-51/52)', () => {
           return { name: String(id), age: id };
         },
       }));
-      return () => h('p', {}, account().data.name.value ?? 'waiting');
+      return () => h('p', {}, account.data.name.value ?? 'waiting');
     });
     const node = h(Panel, {});
     id = 2;
@@ -262,8 +264,8 @@ describe('options and keys (T-QH-51/52)', () => {
         h(
           'p',
           {},
-          `${account().status.value}:${account().errorSource.value}:${
-            account().data.value ?? ''
+          `${account.status.value}:${account.errorSource.value}:${
+            account.data.value ?? ''
           }`
         );
     });
@@ -307,8 +309,7 @@ describe('options and keys (T-QH-51/52)', () => {
         },
       });
       q = controls;
-      return () =>
-        h('p', {}, account().data.name.value ?? account().status.value);
+      return () => h('p', {}, account.data.name.value ?? account.status.value);
     });
     const { host } = draw(h(Panel, {}));
     await vi.waitFor(() => expect(host.textContent).toBe('error'));
@@ -332,7 +333,7 @@ describe('options and keys (T-QH-51/52)', () => {
       const make = () =>
         mount(() => {
           const [account] = createSyncQuery(client, options);
-          return () => h('p', {}, account().status.value);
+          return () => h('p', {}, account.status.value);
         });
       const One = make();
       const Two = make();
@@ -409,7 +410,7 @@ describe('options and keys (T-QH-51/52)', () => {
           };
         });
         q = controls;
-        return () => h('p', {}, String(account().queryKey.value?.[1]));
+        return () => h('p', {}, String(account.queryKey.value?.[1]));
       });
       const { host, stop } = draw(h(Panel, {}));
       const controls = q;
@@ -454,7 +455,7 @@ describe('options and keys (T-QH-51/52)', () => {
         staleTime: Infinity,
       });
       q = controls;
-      return () => h('p', {}, account().data.name.value ?? 'waiting');
+      return () => h('p', {}, account.data.name.value ?? 'waiting');
     });
     const { host } = draw(h(Panel, {}));
     await vi.waitFor(() => expect(host.textContent).toBe('loaded'));

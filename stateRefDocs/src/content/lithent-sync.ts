@@ -40,10 +40,10 @@ export const AccountDetail = mount<{ id?: number }>((_renew, props) => {
   };
 
   return () => h('section', {},
-    h('p', {}, account().data.name.value ?? account().status.value),
+    h('p', {}, account.data.name.value ?? account.status.value),
     h('input', {
-      value: account().data.name.value ?? '',
-      disabled: !account().loaded.value,
+      value: account.data.name.value ?? '',
+      disabled: !account.loaded.value,
       onInput: editName,
     }),
     h('button', { onClick: () => void q.refetch().catch(() => {}) }, 'Refresh'),
@@ -98,7 +98,7 @@ export async function renderAccount(id: number, data: Account) {
   await client.prefetch(options);
   const Detail = mount(() => {
     const [account] = createSyncQuery(client, options);
-    return () => h('p', {}, account().data.name.value ?? '');
+    return () => h('p', {}, account.data.name.value ?? '');
   });
   return { html: renderToString(h(Detail, {})), snapshot: client.dehydrate() };
 }

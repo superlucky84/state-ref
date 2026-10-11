@@ -43,7 +43,9 @@ export const LithentKo = mount(() => {
         기본·sync 진입점은 ESM import로 사용합니다. Lithent 1.24 이상과 sync 0.3
         이상을 사용합니다. 앱당 client 하나를 만들고 mounter에서 helper를 한 번
         호출하세요. props는 getter 안에서 읽고, 고정 key에는 옵션 객체를 넘기면
-        됩니다. 렌더에서는 accessor를 호출해 읽습니다.
+        됩니다. 반환한 표시 ref는 안정적이며 렌더에서
+        <code>account.data.name.value</code>로 읽습니다. 변수에 저장한 하위
+        ref도 현재 key를 따라갑니다.
       </p>
       <CodeBlock
         language="bash"

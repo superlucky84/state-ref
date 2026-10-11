@@ -7,15 +7,13 @@ import type {
   SyncClient,
 } from '@stateref/sync';
 import { connectLithentView } from './index';
+import { followDisplayRef } from './display-ref';
 
 /** Create once in a mounter; a getter follows live props, then commits options. */
 export function createSyncQuery<T, S = T>(
   client: SyncClient,
   options: ObserveOptions<T, S> | (() => ObserveOptions<T, S>)
-): readonly [
-  () => QueryDisplayRef<QueryDisplayState<S>>,
-  QueryObserverControls<T>
-] {
+): readonly [QueryDisplayRef<QueryDisplayState<S>>, QueryObserverControls<T>] {
   if (typeof client.observe !== 'function') {
     throw new Error(
       'This sync client has no observe(); align the @stateref/sync versions of the bundles on this page.'
@@ -45,7 +43,9 @@ export function createSyncQuery<T, S = T>(
   }
   const view = connectLithentView(observer.watch);
   return [
-    () => (observer.matches(rendered) ? view() : observer.peek(rendered)),
+    followDisplayRef(() =>
+      observer.matches(rendered) ? view() : observer.peek(rendered)
+    ),
     observer.controls,
   ];
 }

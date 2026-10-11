@@ -223,7 +223,7 @@ try {
         queryKey: ['packaging-ssr'], queryFn: () => { reads += 1; return { name: 'loaded' }; },
         initialData: { name: 'server' }, staleTime: Infinity,
       });
-      const value = query === createLithentQuery ? select().data.name.value : select(ref => ref.data.name.value);
+      const value = query === createLithentQuery ? select.data.name.value : select(ref => ref.data.name.value);
       const actual = query === createLithentQuery ? value : typeof value === 'function' ? value() : value.value;
       if (actual !== 'server' ||
           client.size() !== 0 || reads !== 0 || controls.handle() !== null)
@@ -301,10 +301,12 @@ try {
         select: data => ({ label: data.name }),
       }));
       const [lithent, lithentControls] = result;
-      const lithentLabel: string | undefined = lithent().data.label.value;
+      const lithentLabel: string | undefined = lithent.data.label.value;
       const lithentHandle: QueryHandleCore<{ name: string; age: number }> | null = lithentControls.handle();
       // @ts-expect-error display leaf values are readonly
-      lithent().data.label.value = 'changed';
+      lithent.data.label.value = 'changed';
+      // @ts-expect-error Lithent returns a display ref, not an accessor
+      lithent();
       // @ts-expect-error the query helper owns the handle
       lithentControls.handle()?.dispose();
       // @ts-expect-error the query tuple is readonly

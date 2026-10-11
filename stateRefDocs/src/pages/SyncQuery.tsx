@@ -146,7 +146,8 @@ function AccountCard(props: { id: number }) {
       <h3>Lithent</h3>
       <p>
         Create it once in the mounter; a props getter follows props, and a plain
-        object is fixed. Read <code>account()</code> in render. The{' '}
+        object is fixed. Read <code>account.data.name.value</code> in render.
+        Saved child refs also follow the current key. The{' '}
         <a href="#/guide/lithent">Lithent guide</a> also covers editing,
         mutation links, SSR and the optional concurrent core.
       </p>
@@ -158,9 +159,9 @@ import { createSyncQuery } from '@stateref/connect-lithent/sync';
 export const AccountCard = mount<{ id: number }>((_renew, props) => {
   const [account, q] = createSyncQuery(client, () => accountOptions(props.id));
   return () =>
-    account().status.value === 'pending'
+    account.status.value === 'pending'
       ? h('p', {}, 'Loading…')
-      : h('p', {}, account().data.name.value ?? '',
+      : h('p', {}, account.data.name.value ?? '',
           h('button', { onClick: () => q.invalidate() }, 'Reload'));
 });`}
       />

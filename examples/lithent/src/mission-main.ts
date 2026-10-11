@@ -25,13 +25,13 @@ const Panel = mount<{
   slot?: string;
   saving?: boolean;
 }>((_renew, props) => {
-  const [read, q] = createSyncQuery(model.client, () =>
+  const [account, q] = createSyncQuery(model.client, () =>
     model.options(props.id ?? 1, props.poll ?? false)
   );
   return () =>
     shipCard(
       node,
-      shipScreen(read()),
+      shipScreen(account),
       model,
       q,
       props.slot ?? 'a',

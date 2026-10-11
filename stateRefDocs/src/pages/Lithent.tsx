@@ -46,7 +46,9 @@ export const Lithent = mount(() => {
         The base and sync entries use ESM imports. Queries need Lithent 1.24 or
         later and sync 0.3 or later. Create one client per app, then call the
         helper once in the mounter. A getter follows live props; a fixed object
-        is enough for a fixed key. Read the accessor inside the render function.
+        is enough for a fixed key. The returned display ref is stable: read{' '}
+        <code>account.data.name.value</code> inside render. Saved child refs
+        also follow the current key.
       </p>
       <CodeBlock
         language="bash"

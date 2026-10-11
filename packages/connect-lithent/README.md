@@ -36,7 +36,7 @@ export const Counter = mount(() => {
 pnpm add lithent state-ref @stateref/sync @stateref/connect-lithent
 ```
 
-Call `createSyncQuery` once inside a `mount` or `lmount` mounter. It returns a readonly `[account, q]` tuple. `account()` gives the current readonly display; read leaf values with `.value`. Pass a getter to follow live props, capturing the current id in each set of options. A fixed options object works for a fixed key. Keep the client fixed for the component's lifetime.
+Call `createSyncQuery` once inside a `mount` or `lmount` mounter. It returns a readonly `[account, q]` tuple. `account` is a stable readonly display ref; read leaf values directly with `.value`, for example `account.data.name.value`. Saved child refs such as `const name = account.data.name` also follow the current key; read `name.value` inside render to track that path. Pass a getter to follow live props, capturing the current id in each set of options. A fixed options object works for a fixed key. Keep the client fixed for the component's lifetime.
 
 <!-- lithent-example: lithentQueryExample -->
 ```ts
@@ -69,10 +69,10 @@ export const AccountDetail = mount<{ id?: number }>((_renew, props) => {
   };
 
   return () => h('section', {},
-    h('p', {}, account().data.name.value ?? account().status.value),
+    h('p', {}, account.data.name.value ?? account.status.value),
     h('input', {
-      value: account().data.name.value ?? '',
-      disabled: !account().loaded.value,
+      value: account.data.name.value ?? '',
+      disabled: !account.loaded.value,
       onInput: editName,
     }),
     h('button', { onClick: () => void q.refetch().catch(() => {}) }, 'Refresh'),
@@ -121,7 +121,7 @@ export function accountSave(client: SyncClient, q: QueryObserverControls<Account
 }
 ```
 
-Create a request-scoped `ssr: true` client, populate it before rendering, and hydrate the browser client before mounting components. The component's server accessor does not subscribe, create owners or start another READ.
+Create a request-scoped `ssr: true` client, populate it before rendering, and hydrate the browser client before mounting components. The component's server display ref does not subscribe, create owners or start another READ.
 
 <!-- lithent-example: lithentSsrExample -->
 ```ts
@@ -141,7 +141,7 @@ export async function renderAccount(id: number, data: Account) {
   await client.prefetch(options);
   const Detail = mount(() => {
     const [account] = createSyncQuery(client, options);
-    return () => h('p', {}, account().data.name.value ?? '');
+    return () => h('p', {}, account.data.name.value ?? '');
   });
   return { html: renderToString(h(Detail, {})), snapshot: client.dehydrate() };
 }
