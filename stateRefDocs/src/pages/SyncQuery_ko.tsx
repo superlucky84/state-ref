@@ -145,7 +145,8 @@ function AccountCard(props: { id: number }) {
       <h3>Lithent</h3>
       <p>
         mounter에서 한 번 만드세요. props getter는 props를 따라가고 일반 객체는
-        고정됩니다. 렌더에서 <code>account()</code>를 읽습니다.{' '}
+        고정됩니다. 렌더에서 <code>account.data.name.value</code>로 읽습니다.
+        변수에 저장한 하위 ref도 현재 key를 따라갑니다.{' '}
         <a href="#/ko/guide/lithent">Lithent 안내</a>에는 편집·mutation
         links·SSR·선택적 concurrent 코어 사용도 있습니다.
       </p>
@@ -157,9 +158,9 @@ import { createSyncQuery } from '@stateref/connect-lithent/sync';
 export const AccountCard = mount<{ id: number }>((_renew, props) => {
   const [account, q] = createSyncQuery(client, () => accountOptions(props.id));
   return () =>
-    account().status.value === 'pending'
+    account.status.value === 'pending'
       ? h('p', {}, 'Loading…')
-      : h('p', {}, account().data.name.value ?? '',
+      : h('p', {}, account.data.name.value ?? '',
           h('button', { onClick: () => q.invalidate() }, 'Reload'));
 });`}
       />

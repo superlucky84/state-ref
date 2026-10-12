@@ -92,16 +92,21 @@ export const PAGES_OUT_DIR = 'dist/pages';
 export const GRAPH_FILE = 'module-graph.json';
 
 /**
- * Two bundles built separately on purpose (docs/shared-store, M-SH-01). Each
+ * Bundles built separately on purpose (docs/shared-store, M-SH-01). Each
  * inlines its own copy of state-ref and of @stateref/sync, which is the
  * arrangement `state-ref/shared` exists for. They are library-mode builds with
  * fixed file names, so the static pages in `shared-pages/` can load them with
  * plain script tags in whatever order a page wants - a page vite built would
- * hoist the two copies into one shared chunk and prove nothing.
+ * hoist the copies into one shared chunk and prove nothing. The sync scenarios
+ * add a client creator, a direct observer, a Preact hook and a pinned 0.2 client.
  */
 export const SHARED_OUT_DIR = 'dist/shared';
 export const SHARED_BUNDLES = [
   { name: 'provider', entry: 'src/shared/provider.ts' },
   { name: 'consumer', entry: 'src/shared/consumer.ts' },
+  { name: 'sync-provider', entry: 'src/shared/sync-provider.ts' },
+  { name: 'sync-observer', entry: 'src/shared/sync-observer.ts' },
+  { name: 'sync-hook', entry: 'src/shared/sync-hook.ts' },
+  { name: 'sync-legacy', entry: 'src/shared/sync-legacy.ts' },
 ];
 export const SHARED_PAGES_DIR = 'shared-pages';

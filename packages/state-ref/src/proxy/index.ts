@@ -5,7 +5,7 @@ import { childOf, pathToString } from '@/path';
 import type { PathNode } from '@/path';
 import { collector } from '@/connectors/collector';
 import { runBatch } from '@/connectors/runner';
-import { REF_CONNECTION } from '@/internal/ref-connection-key';
+import { REF_CONNECTION, REF_IDENTITY } from '@/internal/ref-connection-key';
 import type { Run, WithRoot, StoreRenderList, RefWrite } from '@/types';
 
 /**
@@ -111,6 +111,7 @@ export function makeProxy<S extends WithRoot, T extends object>(
        * 3. When accessing child object types from a proxy
        */
       get(_: T, prop: keyof T & (string | symbol)) {
+        if (prop === REF_IDENTITY) return true;
         if (prop === REF_CONNECTION) {
           return [rootValue, lensValue, ownNode(), editable, storeRenderList];
         }

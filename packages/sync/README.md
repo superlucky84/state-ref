@@ -55,7 +55,7 @@ export function AccountCard({ id }: { id?: number }) {
 | [`@stateref/connect-vue/sync`](https://github.com/superlucky84/state-ref/blob/main/packages/connect-vue/README.md)         | `useSyncQuery`    | getter `() => ({ ... })` that reads refs with `.value`; a plain object is fixed and does not unwrap refs | selector: `account(ref => ref.data.name.value)` returns `Readonly<Ref<V>>` |
 | [`@stateref/connect-solid/sync`](https://github.com/superlucky84/state-ref/blob/main/packages/connect-solid/README.md)     | `createSyncQuery` | object or accessor `() => ({ ... })`                                                                     | selector returning `Accessor<V>`                                           |
 | [`@stateref/connect-svelte/sync`](https://github.com/superlucky84/state-ref/blob/main/packages/connect-svelte/README.md)   | `createSyncQuery` | object or `Readable` options store, during component initialization (store API only)                     | selector returning `Readable<V>`                                           |
-| [`@stateref/connect-lithent/sync`](https://github.com/superlucky84/state-ref/blob/main/packages/connect-lithent/README.md) | `createSyncQuery` | object or props getter, created once in the mounter                                                      | `() => display ref`: `account().data.name.value`                           |
+| [`@stateref/connect-lithent/sync`](https://github.com/superlucky84/state-ref/blob/main/packages/connect-lithent/README.md) | `createSyncQuery` | object or props getter, created once in the mounter                                                      | `display ref`: `account.data.name.value`                           |
 
 The second value, `q`, is the same object for the observer's life in every entry. What holds for all of them:
 
@@ -661,6 +661,14 @@ a new READ or known server value, not by resending the successful WRITE.
 Editable data defaults to a plain, acyclic tree with dense arrays. Arrays are tracked as one atomic field. Reserved proxy keys and direct mutation of an object returned by `.value` are rejected. Use `editable: false` for arbitrary readonly query data such as a `Date`; ref setters are then rejected. Readonly query objects should also be treated as immutable by the caller.
 
 Defaults: `staleTime: 0`, inactive `gcTime: 5 minutes` (infinite for `createSyncClient({ ssr: true })`), three query retries in a client and zero in SSR. The client owns its cache; create a separate client for each SSR request. The `queryKey` must be an acyclic JSON-compatible array, with object key order ignored in its hash. A state-ref ref inside a key throws a `TypeError` in every API that hashes it: read the ref with `.value`.
+
+The pending shared, combined and computed ref checks require the ref identity
+marker added in `state-ref 3.2.2` and the checks in `@stateref/sync 0.3.1`.
+Upgrade both packages, including the state-ref copies in other bundles. Older
+core refs still use the connection-symbol fallback, but older pending shared
+and combined refs can still hash as `{}`, and older computed refs only receive
+the generic JSON-compatible-tree error. The identity symbol
+`Symbol.for('state-ref.ref')` is reserved in editable query and draft data.
 
 Fixed-key queries require an explicit `load()` call unless a mutation response,
 `acceptServer`, or an active reactive key populates the cache. A successful local

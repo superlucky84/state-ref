@@ -3,7 +3,7 @@
   "name": "stateref-example-bundles",
   "version": "0.0.0",
   "private": true,
-  "description": "core-only, draft-only, sync-only and combined entry points that show the dependency boundary, plus two separately built bundles that share one store",
+  "description": "core-only, draft-only, sync-only and combined entry points that show the dependency boundary, plus separately built bundles sharing a store and sync client",
   "scripts": {
     "dev": "vite",
     "build": "node build.mjs",
@@ -14,5 +14,8 @@
     "@stateref/sync": "workspace:*",
     "preact": "^10.24.1",
     "state-ref": "workspace:*"
+  },
+  "devDependencies": {
+    "@stateref/sync-legacy": "npm:@stateref/sync@0.2.0"
   }
 }

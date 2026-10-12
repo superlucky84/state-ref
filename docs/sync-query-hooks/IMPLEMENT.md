@@ -1,12 +1,12 @@
 # IMPLEMENT — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: **단계 0~7 완료(2026-10-09). 단계 7 문서·CHANGELOG·릴리스 절차까지 반영했고 PR을 연다.** **단계 1~5 및 추가 단계 5.1 Lithent 지원·5.2 일반 커넥터 완료(2026-10-09), 단계 5 뒤 상태 점검의 코드 결함·테스트 빈틈 반영 완료.** Activity·KeepAlive·경합·명시 핸들 공존·key 왕복 검증과 1,000 관찰자 비용 측정을 완료했고 전체 게이트가 통과했다. 단계 6 통합 데모·자동 브라우저 검증도 완료했다(2026-10-09, U-QH-14). 사람의 사용성 평가는 미수행이고 다음 구현 범위는 단계 7 가이드·릴리스 기록이다. 이전 구현·검증 결과는 진행 기록에 보존했다. PR #16의 `main` 병합과 이 브랜치 반영은 완료했다(`41798cf`, `e58deaa`, DC-QH-35).
+- 상태: 단계 0~7 완료(2026-10-09), PR #17이 main에 병합됨(`8535fb7`). main에서 분기한 `fix/issue-18-shared-sync`의 후속 단계 8도 구현·자동 검증 완료(2026-10-10~11, U-QH-15~17, Draft PR #19). 코드 커밋은 `364d1a3`·`b71b1b6`·`8558e87`이며 최신 결과는 IMPLEMENT의 단계 8 및 진행 기록을 따른다. 사람의 전반적인 사용성 평가는 미수행이고 실제 릴리스·병합은 이번 범위 밖이다.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 모든 단계의 공통 완료 조건:
 - `pnpm test:sync`와 해당 커넥터 테스트 통과.
-- `git fetch origin main` 뒤 `git diff --exit-code origin/main -- packages/state-ref packages/connect-react/src/index.ts packages/connect-preact/src/index.ts packages/connect-vue/src/index.ts packages/connect-solid/src/index.ts packages/connect-svelte/src/index.ts packages/connect-svelte/src/runes.ts`가 exit 0(C-QH-01, C-QH-03). 이 브랜치는 PR #16 병합 뒤의 `main`을 들였으므로(`e58deaa`) 2026-10-08 기준 이 diff는 exit 0이다. `main`이 다시 앞서가면 먼저 `main`을 병합한다.
+- 초기 단계 0~7의 core·기존 커넥터 무변경 검사는 당시 main 기준으로 완료했다(C-QH-01·03). 후속 단계 8은 PR #17 병합 commit `8535fb7`이 기준이며 기존 여섯 base 커넥터의 index/runes 변경 diff는 0이어야 한다. core 차이는 DC-QH-47의 내부 심볼·proxy·helper·shared·draft 예약 키 파일로 제한하고 새 UI/sync 의존성을 추가하지 않는다. core 변경을 포함한 단계 8의 성능·bundle gate 결과를 따로 기록한다.
 - 커넥터 테스트는 빌드된 `@stateref/sync`를 import하므로 sync를 바꾼 뒤 `pnpm build:sync`를 먼저 한다. 처음 받은 작업 공간에서는 `pnpm install --frozen-lockfile`, `pnpm build:core`, `pnpm build:sync` 순서로 준비한다.
 
 ## 테스트 목록
@@ -65,6 +65,12 @@
 | T-QH-57 | 여섯 production 데모·Lithent concurrent·React StrictMode의 실제 READ 공유/취소·fresh/stale·polling·key 전환/새 필드·편집/저장/저장 중 입력·통신/실패 복구·페이지 오류 | e2e mission | R-QH-22, DC-QH-44~46 |
 | T-QH-58 | React 관찰자 SSR 사전 데이터 HTML·렌더 중 READ/owners 0·hydration 값/상태 일치·경고 없음 | react SSR·e2e mission | R-QH-12·22, DC-QH-46 |
 | T-QH-59 | 장비 draft 취소/적용·batch 알림·Lithent 일반 연결의 반복 수명·모바일 표시·키보드 조작 가능한 체험 UI | mission model·e2e | R-QH-22, DC-QH-44 |
+| T-QH-60 | pending/shared/combined/computed 및 foreign UMD 사본의 ref key 거절·명확한 `.value` 힌트·cache 0·제공/재계산 없음·구버전 core 연결 fallback | sync `negative-runtime.test.ts`, `ref-key-copies.test.ts` | R-QH-25, DC-QH-13·47 |
+| T-QH-61 | 독립 bundle observer/Preact hook의 두 마운트 순서·peek cache 0·READ 공유·예약 해제·foreign borrowed handle links·key 전환, 실제 sync 0.2/0.3 두 creator 순서·예상하지 않은 browser 오류 0 | `examples/e2e/src/shared-sync.spec.ts`와 `examples/bundles/src/shared/sync-*.ts` | R-QH-23·24, DC-QH-47 |
+| T-QH-62 | editable query 초기값·중첩 서버 응답·로컬 변경의 identity 심볼 거절과 loaded/dirty/cache의 원자적 유지 | sync `negative-runtime.test.ts` | R-QH-25, DC-QH-47 |
+| T-QH-63 | Lithent 저장한 경로·배열/iterator/직렬화의 새 key 추적, 이전 READ가 실제 old cache에 완료돼도 new UI 유지, unread 필드 변경 시 렌더 없음, readonly snapshot·모양 검사·ref key 거절 | lithent `display-ref.test.ts`, `query.test.ts`; `scripts/check-packaging.mjs`의 호출 불가/readonly 타입 | R-QH-17·26, DC-QH-38·48 |
+| T-QH-64 | 네 문서의 U/R/DC/T 추적·현재 상태·존재하는 source 링크·실제 결과와 미수행 수동 항목의 구분·과거 기록 보존 | 문서 정합성 점검과 `git diff --check` | R-QH-27, DC-QH-49 |
+
 
 ## 단계 0 — 재검증 (완료, 2026-10-08)
 
@@ -154,7 +160,7 @@
 ## 단계 5.1 — Lithent 추가 지원 (U-QH-12, 완료)
 
 - 진입: 단계 0~5 및 이후 점검 수정 `41c612b` 완료. 사용자 요청으로 sync 진입점과 자연스러운 사용 문서를 추가한다.
-- [x] 새 패키지·`connectLithentView`·`./sync`의 accessor와 controls, 마운트 구독·abort 정리, props getter의 렌더 peek/커밋 확정.
+- [x] 최초 구현(2026-10-09)의 새 패키지·`connectLithentView`·`./sync` accessor와 controls, 마운트 구독·abort 정리, props getter의 렌더 peek/커밋 확정. U-QH-16의 현행 sync 직접 ref 변경은 단계 8에 기록한다.
 - [x] T-QH-50 수명·READ 공유·명시 핸들 공존·마운트 전 무READ·해제 및 첫 구독 오류 정리.
 - [x] T-QH-51 캐시 있음/없음 key 전환·새 경로·enabled·select·source 오류·자동 load 실패 및 refetch.
 - [x] T-QH-52 같은 작업의 라우트 교체·빠른 key 왕복·controls identity·옛 client 오류.
@@ -199,6 +205,14 @@
   - server-sync: DESIGN 6절과 PHASE8_6 F2-02 행·절에 mount 재조회 = 관찰자 훅 구독의 `load()`를 기록하고 `packages/sync/src/tests/observe.test.ts`를 근거로 인용, README 읽는 순서에 이 문서 세트 링크.
   - CHANGELOG: `@stateref/sync 0.3.0`(추가·하위 호환 깨짐 3건과 이전 방법), `@stateref/connect-lithent 0.1.0`, 다섯 커넥터 minor(`./sync`, 선택적 peer). React 19.1.0에는 PR #16의 마운트 tearing 수정도 들어가므로 "Fixed"로 적었다. 릴리스 절차 `docs/release/2026-10-09.md`(준비만, 미실행).
 - 완료: `pnpm gate`의 doc-examples·support-table 단계 통과.
+
+## 단계 8 — main 병합 뒤 공유 sync와 Lithent 직접 ref 보완 (완료)
+
+- 기준: `8535fb7`(PR #17 병합 main), 브랜치 `fix/issue-18-shared-sync`, Draft PR [#19](https://github.com/superlucky84/state-ref/pull/19). 사용자 요청 U-QH-15~17은 기존 단계의 승인/완료 기록에 합쳐 쓰지 않는다.
+- [x] R-QH-23~25 / DC-QH-47 / T-QH-60~62: 공유 버전 설명, 독립 bundle/browser 검증, helper-ref 식별과 payload 예약 키 보강. draft의 새 예약 심볼은 목록 등록과 core 전체 suite로 확인했으며 T-QH-62의 세 전용 payload 사례는 sync를 대상으로 한다.
+- [x] R-QH-17·26 / DC-QH-48 / T-QH-51·53·55·63: Lithent 직접 ref, 저장한 하위 경로, 타입/예제/SSR/concurrent 및 production browser 흐름.
+- [x] R-QH-27 / DC-QH-49 / T-QH-64: 요청·테스트 추적과 최신 결과, 현재 상태·좁은 core 변경 예외 및 과거 기록을 네 문서에 정리.
+- 결과와 재현 범위: 아래 2026-10-10~11 진행 기록과 MANUAL_TEST_CHECKLIST의 후속 검증. 전체 framework version matrix와 65개 mission 전체를 이번에 재실행했다고 표시하지 않는다. 사람의 전반적인 사용성 평가는 기존 미수행 상태다.
 
 ## 진행 기록
 
@@ -397,3 +411,23 @@
 - agent add-on: 6절(프레임워크 연결)에 Lithent `connectLithent`와 `./sync` 안내, 12절(서버 데이터)에 컴포넌트 조회 규칙(프레임워크별 옵션 모양과 읽기, 로딩은 `status === 'pending'`, 의존 key, `q`의 세 명령과 `q.handle()`을 dispose하지 않음, SSR, client 고정, `select` 메모/`equals`), import 경로와 API 목록에 `./sync`·Lithent·`client.observe`를 넣었다. 스킬 본문은 단계 7에서 이미 갱신했다.
 - CHANGELOG에 `state-ref 3.2.1` 절, 릴리스 절차(`docs/release/2026-10-09.md`)에 여덟째 패키지(표·순서·dry run·게시·설치 확인·태그·GitHub 릴리스)와 dist의 스킬·add-on 확인 명령을 넣었다.
 - 확인: 루트 `pnpm build`가 버전 3.2.1을 넣어 복사했다(`dist/skills/.../framework-connectors.md`의 `useSyncQuery` 5회, add-on `Document Version: 3.2.1`과 `useSyncQuery` 4회). `npm pack --dry-run`: 94 파일, 190.5 kB(3.2.0은 94 파일, 186.8 kB).
+
+### 2026-10-10~11 — 단계 8 공유 sync·Lithent 직접 ref와 문서 추적 보완
+
+- 요청/설계: U-QH-15~17 → R-QH-23~27 및 R-QH-17 → DC-QH-47~49 → T-QH-60~64 및 기존 T-QH-51·53·55. 새 U/T/결과 기록과 상태 헤더는 이번 사용자 문서 확인 요청 뒤 사후 보완했다. doc-driven-designer-v1 스킬 원문은 cloud/executor 목록과 로컬 workspace에 없어 원문 전체의 절차 준수를 검증하지 못했다.
+- 코드: `364d1a3`에서 issue #18의 ref 식별/공유 bundle을 구현하고 `b71b1b6`에서 sync 예약 키 누락·foreign UMD 검사·구버전 core 한계·반대 마운트 순서를 보강했다. `8558e87`은 Lithent 직접 ref와 문서/예제 변경이다. 2026-10-09 accessor 구현 기록은 해당 시점 그대로 보존했다.
+- 실제 호환 확인: npm의 state-ref 3.2.1은 일반 core ref에 연결 fallback이 적용되지만 pending shared/combined ref는 `{}`로 해시되고 computed는 일반 JSON tree 오류다. 새 core·sync와 모든 bundle core 사본의 동시 갱신이 필요하다. 식별 심볼은 연결 정보가 아니며 제공 전 store나 computed `.value`를 평가하지 않는다. query/draft payload 예약 목록을 함께 보강했다.
+- 2026-10-11 통합 검증: fresh `npm_config_workspace_concurrency=1 pnpm build` 뒤 `npm_config_workspace_concurrency=1 pnpm gate --quick`, Node 20.3.0/pnpm 9.12.3에서 exit 0. workspace 테스트 **1,178 통과·기존 concurrent 전용 2 제외**, sync **347/347**. 타입·린트·문서 예제·SSR·bundle smoke 통과, 성능 **6/6**, core **3,783 B gzip ≤ 3,800 B**. quick에서 제외한 packaging은 Node 24의 `node scripts/check-packaging.mjs`로 별도 통과했다.
+- Lithent 추가 실행: `LITHENT_CORE=concurrent pnpm --filter @stateref/connect-lithent test` **24/24**, base DOM **22 통과·2 제외**, `pnpm --filter @stateref/connect-lithent test:ssr`와 concurrent 환경의 같은 명령이 각각 **5/5**. 공개 타입은 display ref 호출과 readonly 쓰기를 거절하며 정확한 README/site 예제의 DOM 조회·편집·refetch·invalidate·linked save·SSR이 실행됐다.
+- 브라우저: base/concurrent production build 후 `mission.spec.ts`의 Lithent 두 그룹 **16/16**, Chromium 151·Playwright/Node 24, 약 54초. 기존 독립 bundle **15/15** 결과는 `b71b1b6`에서 확인한 기록이며 이후 변경은 Lithent와 문서다. 새 키/늦은 결과/공유 READ/해제/저장/오류 복구를 확인했다. 전체 65개 mission과 다른 framework version matrix를 재실행한 결과는 아니다.
+- 재현: 기존 `playwright.mission.config.ts`는 전체 server를 띄우므로 전체 example 빌드를 준비한 뒤 Node 24/pnpm 9.12.3 환경에서 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm --filter stateref-example-e2e e2e:mission --grep Lithent`로 같은 16개를 고를 수 있다. 이번 환경에서는 `/workspace/work/lithent-ref/playwright.config.mjs`로 두 Lithent preview server와 system Chromium만 선택했다. 로그는 `/workspace/work/lithent-ref/{build,gate,packaging,concurrent-tests,ssr-tests,concurrent-ssr-tests,example-build,e2e}.log`, 앞선 bundle 결과는 `/workspace/work/pr19-review/e2e.log`다. 이 경로는 작업 환경의 임시 증거이며 저장소에서 재현해야 한다.
+- 결과: 코드 `8558e87`까지 push하고 PR #19의 제목·설명·migration·검증을 갱신했다. PR은 draft/open이며 이번 범위에서 병합·게시하지 않았다. 문서 보완 commit은 `git log -1 -- docs/sync-query-hooks/IMPLEMENT.md`로 확인한다. 사람의 전반적인 체험 평가와 실제 릴리스는 이 자동 결과로 완료 처리하지 않는다.
+
+### 2026-10-13 — PR #19 릴리스 준비
+
+- 사용자 요청: 해당 PR 브랜치에서 버전·문서·검증을 준비해, 사용자가 병합 뒤 명령만 실행해 게시할 수 있게 한다.
+- 버전: npm에 게시된 버전과 미게시 목표 버전을 확인하고 state-ref **3.2.2**, sync **0.3.1**, connect-lithent **0.2.0**을 반영했다. Lithent의 accessor → 직접 표시 ref 변경은 기존 `^0.1.0` 설치 범위 밖인 0.x minor로 배포한다. 다른 다섯 커넥터와 peer 범위는 그대로다. workspace 설치 후 lockfile 추가 diff는 없다.
+- 문서: CHANGELOG의 Unreleased를 세 릴리스 절로 분리하고, AI add-on의 `account()` 안내 누락을 고쳤다. README·AI 스킬·영/한 Lithent 페이지에 새 API의 최소 버전을 표시했다. 새 [배포 절차](../release/2026-10-13.md)는 병합 뒤 main 갱신·새 root build·세 패키지 게시·태그·사이트 확인·선택적 GitHub 릴리스 명령을 제공한다. 과거 릴리스 기록은 보존했다.
+- 검증: Node 24.11.1/pnpm 9.12.3의 fresh root build 뒤 gate quick **통과**, workspace **1,178 통과·2 제외**, 별도 SSR **15/15**, 공개 packaging 별도 통과. Lithent concurrent DOM **24/24**, SSR **5/5**, 성능 **6/6**, core 최소 gzip **3,754 B ≤ 3,800 B**. 세 패키지 게시 dry run과 tarball 이름·버전·workspace 치환·AI 안내문 버전/직접 ref 표기도 확인했다.
+- 실행 범위: 이번 준비는 라이브러리 런타임을 더 바꾸지 않았다. 버전 준비 전 같은 PR 리뷰에서 수행한 공유 bundle Chromium **15/15**, Lithent base/concurrent mission **16/16**과 구분한다. 전체 mission 65개나 framework version matrix를 다시 실행했다고 기록하지 않는다.
+- 상태: 준비한 변경은 `fix/issue-18-shared-sync` 브랜치에 반영한다. 실제 main 병합·npm 게시·릴리스 태그는 사용자가 배포 절차대로 수행한다. 준비 commit은 `git log -1 -- docs/release/2026-10-13.md`로 확인한다.

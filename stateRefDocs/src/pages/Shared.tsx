@@ -127,6 +127,29 @@ const subscribe = client.mutation({
         inside one bundle.
       </p>
       <p>
+        <strong>Use the same @stateref/sync version in every bundle.</strong> A
+        shared client runs the sync code of the bundle that created it; callers
+        from other bundles use that implementation too. If a 0.2.0 bundle
+        creates the client first, the connectors' 0.3 <code>./sync</code> hooks
+        throw{' '}
+        <code>
+          This sync client has no observe(); align the @stateref/sync versions
+          of the bundles on this page.
+        </code>
+        . If a 0.3 bundle creates it first, even code written for 0.2 follows
+        0.3 rules: a ref inside a query key throws a <code>TypeError</code>; use
+        its <code>.value</code> instead. Align versions when deploying bundles,
+        since load order decides which implementation is shared.
+      </p>
+      <p>
+        The ref-in-key fix for pending shared, combined and computed refs also
+        requires the new identity marker in <code>state-ref</code>. Upgrade both
+        packages and the state-ref copies in every bundle. Older core refs are
+        still rejected, but older pending shared and combined refs can still
+        hash as <code>{'{}'}</code>; older computed refs get only the generic
+        JSON-compatible-tree error.
+      </p>
+      <p>
         A plain store works the same way when its initial value is fixed and no
         bundle has to load anything into it.
       </p>

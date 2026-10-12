@@ -110,7 +110,7 @@ setUser(prev => ({ ...prev, name: 'Jane' })); // return a new object
 
 With `@stateref/sync` 0.3+ installed, every connector has an ESM-only `./sync`
 entry (connect-react 19.1+, connect-preact 10.5+, connect-vue 3.5+,
-connect-solid 1.5+, connect-svelte 5.1+, connect-lithent 0.1+).
+connect-solid 1.5+, connect-svelte 5.1+, connect-lithent 0.2+).
 **In component code this is the default way to read a query**: the
 component owns it (loads on mount, follows the key, releases on unmount). There
 is no `load()` / `dispose()` to call.
@@ -122,7 +122,7 @@ is no `load()` / `dispose()` to call.
 | Vue | `import { useSyncQuery } from '@stateref/connect-vue/sync'` | getter `() => ({ ... })` to follow props/refs, or a fixed object | `account(r => r.data.name.value)` → `Readonly<Ref<V>>` |
 | Solid | `import { createSyncQuery } from '@stateref/connect-solid/sync'` | accessor `() => ({ ... })`, or a fixed object | `account(r => r.data.name.value)` → `Accessor<V>` |
 | Svelte (store API) | `import { createSyncQuery } from '@stateref/connect-svelte/sync'` | `Readable` options store (`writable`/`derived`), or a fixed object | `account(r => r.data.name.value)` → `Readable<V>` (`$name`) |
-| Lithent | `import { createSyncQuery } from '@stateref/connect-lithent/sync'` | props getter, or a fixed object; create once in the mounter | `account().data.name.value` in render |
+| Lithent | `import { createSyncQuery } from '@stateref/connect-lithent/sync'` | props getter, or a fixed object; create once in the mounter | `account.data.name.value` in render |
 
 ```tsx
 // React / Preact

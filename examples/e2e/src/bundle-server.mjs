@@ -59,6 +59,12 @@ const TYPES = {
 
 const server = createServer((request, response) => {
   const path = decodeURIComponent(new URL(request.url, 'http://x').pathname);
+  // Full Chrome asks for this even when the page has no favicon link.
+  if (path === '/favicon.ico') {
+    response.writeHead(204);
+    response.end();
+    return;
+  }
   const wanted = path.endsWith('/') ? `${path}index.html` : path;
   // No traversal: a resolved file must stay inside the root that offered it.
   const matches = [];

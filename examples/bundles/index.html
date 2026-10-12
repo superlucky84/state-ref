@@ -58,17 +58,23 @@
     </section>
 
     <section>
-      <h2>따로 빌드한 두 번들의 공유 (state-ref/shared)</h2>
+      <h2>따로 빌드한 번들의 공유 (state-ref/shared)</h2>
       <ul>
         <li><a href="/shared/provider-first.html">제공 번들 먼저</a></li>
         <li><a href="/shared/consumer-first.html">소비 번들 먼저</a></li>
         <li>
           <a href="/shared/late-provider.html">제공 번들을 나중에 로드</a>
         </li>
+        <li>
+          <a href="/shared/sync-hooks.html">다른 번들의 클라이언트로 observer와 훅 사용</a>
+        </li>
+        <li><a href="/shared/sync-legacy-first.html">sync 0.2 클라이언트 먼저</a></li>
+        <li><a href="/shared/sync-current-first.html">sync 0.3 클라이언트 먼저</a></li>
       </ul>
       <p>
         제공 번들과 소비 번들은 각각 따로 빌드되어 자기 몫의 state-ref와
-        @stateref/sync 사본을 품는다. 이 세 페이지는
+        @stateref/sync 사본을 품는다. observer와 훅 페이지는 세 번들을 따로
+        빌드한다. 이 페이지들은
         <code>pnpm build:examples</code>의 산출물로만 열리고
         (<code>dist/shared</code>), <code>pnpm dev</code>에서는 열리지 않는다.
         <code>pnpm test:e2e</code>가 실제 브라우저에서 확인한다.

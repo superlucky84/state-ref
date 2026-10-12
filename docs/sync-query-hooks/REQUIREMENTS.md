@@ -1,8 +1,8 @@
 # REQUIREMENTS — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: 요구사항 확정. 설계 결정 완료(2026-10-08 단계 0 재검증과 검증 에이전트 교차 검토 2회 반영, DESIGN에 미결 `[ ]` 없음). 단계 1~5 및 추가 단계 5.1 Lithent 지원·5.2 일반 커넥터 완료(2026-10-09, 전체 게이트 통과, 진행 상태는 IMPLEMENT 기준). 단계 6 통합 데모·자동 브라우저 검증도 완료했다(2026-10-09, U-QH-14). 사람의 사용성 평가는 미수행이고 다음 구현 범위는 단계 7 가이드·릴리스 기록이다. PR #16 병합 완료(`41798cf`), 이 브랜치에 반영(`e58deaa`).
-- 기준 commit: `6e462ed` (`main`), `@stateref/sync@0.2.0`, `@stateref/connect-react@19.0.0`. 작업 브랜치 `claude/sync-query-hooks`.
+- 상태: 단계 0~7 완료(2026-10-09), PR #17이 main에 병합됨(`8535fb7`). main에서 분기한 `fix/issue-18-shared-sync`의 후속 단계 8도 구현·자동 검증 완료(2026-10-10~11, U-QH-15~17, Draft PR #19). 코드 커밋은 `364d1a3`·`b71b1b6`·`8558e87`이며 최신 결과는 IMPLEMENT의 단계 8 및 진행 기록을 따른다. 사람의 전반적인 사용성 평가는 미수행이고 실제 릴리스·병합은 이번 범위 밖이다.
+- 최초 설계 기준 commit: `6e462ed` (`main`), `@stateref/sync@0.2.0`, `@stateref/connect-react@19.0.0`. 작업 브랜치 `claude/sync-query-hooks`.
 - 연계: [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 - 문서 위치: `docs/sync-query-hooks/`. 관련 코드는 `packages/sync/src/`(`index.ts`의 `openQuery`·`QueryEntry`, `display.ts`, `live-key.ts`, `ref-guard.ts`)와 각 커넥터 패키지의 새 진입점이다. sync 전체 설계는 [server-sync](../server-sync/README.md)에 있다.
 
@@ -53,6 +53,12 @@
 
 추가 요청 **U-QH-14**(2026-10-09): 데모 수동 검증 중 Playwright로 확인할 수 있는 항목을 자동화하고, 사람이 전체 기능을 재미있게 체험할 데모와 실행 안내를 제공한다. 단계 6의 여섯 프레임워크 상세 화면·React SSR을 포함한다.
 
+추가 요청 **U-QH-15**(2026-10-10, [issue #18](https://github.com/superlucky84/state-ref/issues/18)): main에서 새 브랜치를 만들어 공유 sync의 버전 경계·독립 번들 관찰자/훅 검증·ref query key의 식별 누락·관련 문서를 보완한다. 이후 더 깊은 재검증 요청에 따라 예약 키 누락과 구버전 core의 호환 한계도 확인한다.
+
+추가 요청 **U-QH-16**(2026-10-11): Lithent의 `account()` accessor를 없애고 표시 ref를 직접 읽도록 개선한다. Solid 등 다른 프레임워크의 관례는 유지하고, 기존 PR #19 위에 코드·예제·문서를 함께 반영한다.
+
+추가 요청 **U-QH-17**(2026-10-11): doc-driven-designer-v1 관련 문서까지 반영됐는지 확인한다. 요구·결정·테스트 연결, 현재 상태와 최신 검증 기록을 네 문서에 맞추며 날짜가 붙은 과거 완료 기록은 보존한다.
+
 ### 기능
 
 - **R-QH-01** 각 프레임워크에서 컴포넌트 함수 안에서 query 옵션을 넘겨 반응형 표시 상태를 얻는다. React·Preact는 렌더마다 호출하는 훅, Vue·Solid·Svelte(store API)는 setup에서 한 번 호출하는 함수다.
@@ -71,18 +77,24 @@
 - **R-QH-14** 구독 전 렌더 값은 React `useSyncExternalStore`의 스냅샷 계약(바뀐 게 없으면 같은 값)과 Vue 서버 렌더의 지연 읽기(`onServerPrefetch` 뒤의 캐시)를 모두 만족한다(2026-10-08 실험 E4, DC-QH-29).
 - **R-QH-15** 옵션 오류(잘못된 `queryKey` — `.value`를 빠뜨린 state-ref ref 포함 —, boolean이 아닌 `enabled`, 쿼리를 열 때 거절될 옵션)는 렌더에서 던지지 않고 `status: 'error'`, `errorSource: 'source'` 표시로 보인다(기존 반응형 key 커서와 같음, DC-QH-13).
 - **R-QH-16** `state-ref/shared`로 공유한 sync client를 `observe`가 없는 sync 사본이 만들었으면, 진입점은 버전을 맞추라는 명확한 오류로 실패한다(DC-QH-37).
-- **R-QH-17** Lithent mounter에서 `createSyncQuery(client, options | getter)`를 한 번 호출해 `[표시 accessor, q]`를 얻는다. 렌더는 `account().data.name.value`로 읽고 getter는 현재 props를 읽는다. 새 key를 처음 표시하는 렌더에 이전 key 값이 섞이지 않는다.
+- **R-QH-17** Lithent mounter에서 `createSyncQuery(client, options | getter)`를 한 번 호출해 `[표시 ref, q]`를 얻는다. 렌더는 `account.data.name.value`로 읽고 getter는 현재 props를 읽는다. 저장한 하위 ref도 현재 key를 따라가며 `.value`를 읽은 경로만 구독한다. 새 key를 처음 표시하는 렌더에 이전 key 값이 섞이지 않는다.
 - **R-QH-18** Lithent의 첫 실제 마운트 뒤 구독·load하고 언마운트에서 `AbortSignal`로 끊는다. 같은 key의 다른 명시 핸들과 관찰자는 유지된다. 같은 작업의 라우트 교체는 READ를 취소·재발행하지 않는다. 서버는 콜백 없이 읽고 owners·READ를 만들지 않는다.
 - **R-QH-19** Lithent concurrent의 버전 알림에 연결해 외부 표시 상태 변경을 렌더러가 감지하게 한다. broad 버전 구독은 렌더 알림의 경로 수집과 분리한다. 렌더러 자체의 재시도 제한(마운트·update effect가 실행된 빌드, 재시도 상한)은 유지하며 무조건적인 tearing 방지를 약속하지 않는다.
 - **R-QH-20** Lithent 설치·고정 옵션·props getter·새로고침·무효화·로컬 편집·mutation links·SSR·concurrent 선택을 README와 영어·한국어 사이트에 안내한다. 문서 예제는 실제 공개 진입점으로 타입·실행 검증한다.
 - **R-QH-21** 기본 진입점의 `connectLithent<T>(watch: Watch<T>): () => StateRefStore<T>`는 일반 ref의 `.value` 읽기·쓰기를 보존한다. `connectLithentView<R>`는 전달된 ref 타입을 보존한다(수정 가능한 watch도 허용). 두 함수는 마운트 구독·즉시 abort 해제·경로별 갱신·SSR·concurrent 알림 구현을 공유한다. API별 문서 예제를 공개 진입점으로 검증한다(T-QH-56).
 - **R-QH-22** 공통 별빛 정비소 데모에서 항목 전환·쌍둥이 화면·로컬 편집·links 저장·저장 중 추가 편집·캐시·조회 실패/복구·통신 복구·polling·장비 draft·batch를 체험한다. 각 프레임워크의 공개 sync 진입점을 사용한다. Lithent base/concurrent는 Vite가 표시하는 기본 `/`에서도 열리며 개발 서버와 빌드 미리보기 모두 기존 `/mission.html`을 유지한다. 외부 API 없이 로컬 HTTP 서버에 실제 READ/WRITE가 나가고 Playwright가 네트워크·취소·DOM·SSR hydration을 관찰한다. 자동 결과와 사람이 평가할 사용성 항목을 구분하고 재현 명령·브라우저·commit을 남긴다.
 
+- **R-QH-23** 공유 client는 만든 번들의 sync 구현을 사용한다. 가이드·영/한 Shared 페이지에 모든 번들의 sync 버전 일치와 실제 0.2/0.3의 두 생성 순서를 설명한다. 새로운 helper-ref key 검사는 core와 sync 및 모든 core 사본을 함께 갱신해야 한다는 한계를 명시한다(U-QH-15).
+- **R-QH-24** 독립 빌드한 client·observer·Preact sync-hook 번들로 렌더 전 캐시 무변경, UI의 두 마운트 순서, 진행 READ 공유, 예약 해제, 다른 번들의 `q.handle()`을 통한 mutation links, key 전환을 확인한다. 실제 sync 0.2.0을 고정해 두 버전의 생성 순서도 실행한다(U-QH-15).
+- **R-QH-25** pending `sharedWatch`, `combineWatch`, `createComputed` 및 다른 사본의 ref를 query key에서 `.value` 힌트로 거절한다. 식별은 제공 전 store나 computed 값을 읽지 않고 core 연결을 꾸미지 않는다. `state-ref.ref` 심볼은 editable query와 draft payload의 예약 키다. 구버전 core의 연결 심볼 fallback과 helper-ref 식별 한계를 문서에 구분한다(U-QH-15).
+- **R-QH-26** Lithent sync의 루트·저장한 하위 ref는 미리보기/구독 표시와 새 key를 따라가며 `.value`를 읽은 경로를 구독한다. 배열 경로·저장한 iterator·직렬화 함수·현재 모양 검사·readonly snapshot을 보존하고 구조 변경은 거절한다. 공개 반환형은 호출 가능한 accessor가 아니며 `q`와 기본 커넥터의 계약은 유지한다(U-QH-16).
+- **R-QH-27** 후속 변경의 요청·결정·테스트 ID와 구현 commit·실제 실행 결과를 네 문서에서 추적할 수 있다. 자동 결과와 사람의 체험을 구분하고, 과거 기록을 현재 결과로 덮어쓰지 않는다(U-QH-17).
+
 ### 제약
 
 - **C-QH-01** 기존 커넥터(`connectReact(View)`, `connectPreact(View)`, `connectVue(View)`, `connectSolid(View)`, `connectSvelte(View)`, `connectSvelteRunes`)의 소스와 공개 동작을 바꾸지 않는다(U-QH-03). 새 진입점은 기존 커넥터를 호출해 만든다. 단, PR [superlucky84/state-ref#16](https://github.com/superlucky84/state-ref/pull/16)의 React 커넥터 수정은 이 작업과 별개로 `main`에 들어간 변경이며(`41798cf`), 이 제약의 기준선은 그 병합 뒤의 `main`이다(DC-QH-35).
-- **C-QH-02** 기존 sync 공개 API(`client.query` 등)의 동작을 바꾸지 않는다. 지금의 명시적 `load()`/`dispose()` 사용과 반응형 key 핸들은 그대로 동작한다.
-- **C-QH-03** state-ref 코어(`packages/state-ref`)를 수정하지 않는다.
+- **C-QH-02** 기존 sync 공개 API(`client.query` 등)의 명시적 `load()`/`dispose()`와 반응형 key 핸들 동작을 유지한다. U-QH-15의 후속 범위에서는 helper ref query key 및 예약 심볼 payload의 거절 보강(R-QH-25)을 허용한다. 정상 값 key·payload의 계약은 그대로다.
+- **C-QH-03** 초기 단계 0~7은 state-ref 코어(`packages/state-ref`)를 수정하지 않는다. U-QH-15/issue #18의 단계 8은 ref 식별 심볼과 core/shared/helper ref의 식별 응답, draft 예약 키 등록만 예외로 허용한다(DC-QH-47). 구독·편집 계약과 core의 UI/sync 의존성 분리, 기존 성능·3,800 B gzip 상한을 유지한다.
 - **C-QH-04** sync 패키지는 UI 프레임워크를 import하지 않는다.
 - **C-QH-05** 기존 테스트, 커넥터 매트릭스(`scripts/connector-matrix.mjs`), `pnpm gate`가 통과한다.
 
@@ -108,7 +120,9 @@
 - R-QH-01~16은 [IMPLEMENT](./IMPLEMENT.md)의 테스트 ID에 연결되고 통과한다. C-QH-01·03은 IMPLEMENT의 공통 완료 조건, C-QH-02는 T-QH-14, C-QH-04는 T-QH-27, C-QH-05는 단계 6의 명령으로 확인한다.
 - React StrictMode에서 마운트 → 요청 1회, 언마운트 → 소유자 0이 실제 컴포넌트로 확인된다.
 - 다섯 프레임워크(Svelte는 store API)에서 같은 시나리오(마운트 load, key 변경, 언마운트 해제)가 통과한다.
-- 추가 범위 Lithent는 T-QH-50~55와 base/concurrent 매트릭스에서 마운트·key 변경·해제·SSR·외부 변경 버전 알림을 확인한다. 다른 다섯 커넥터의 보호 조건은 그대로다.
+- 추가 범위 Lithent는 T-QH-50~56와 base/concurrent 매트릭스에서 마운트·key 변경·해제·SSR·외부 변경 버전 알림을 확인한다. 다른 다섯 커넥터의 보호 조건은 그대로다.
 - React에서 key 변경 시 렌더 중 갱신 경고가 없고, 새 key 화면에서 처음 읽은 경로의 이후 변경이 화면에 반영된다.
 - PR #16이 병합된 React 커넥터에서 concurrent 마운트·갱신 tearing 테스트가 관찰자 훅으로도 통과한다.
 - [server-sync DESIGN](../server-sync/DESIGN.md) 6절과 [PHASE8_6](../server-sync/PHASE8_6.md)의 F2-02 행·절에 mount 재조회의 경로(관찰자 훅 구독 시 `load()`)가 기록되고, PHASE8_6 행이 `packages/sync/src/tests/observe.test.ts`를 인용한다(`pnpm gate`의 support-table 단계로 확인).
+
+- 후속 공유 sync/ref 경계는 T-QH-60~62, Lithent 직접 ref는 T-QH-51·53·55·63, 문서 추적은 T-QH-64로 확인한다. 정확한 파일·명령·실행 범위는 IMPLEMENT 단계 8과 MANUAL_TEST_CHECKLIST의 2026-10-11 기록에 있다.

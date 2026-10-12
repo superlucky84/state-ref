@@ -1,7 +1,7 @@
 # DESIGN — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
 - 작성일: 2026-10-08
-- 상태: **결정 완료** (2026-10-08 IMPLEMENT 단계 0 재검증 + 검증 에이전트 교차 검토 2회 반영). 미결 `[ ]` 없음. 단계 1~5 및 추가 단계 5.1 Lithent 지원·5.2 일반 커넥터 완료(2026-10-09, 전체 게이트 통과, 진행 상태는 IMPLEMENT 기준). 단계 6 통합 데모·자동 브라우저 검증도 완료했다(2026-10-09, U-QH-14). 사람의 사용성 평가는 미수행이고 다음 구현 범위는 단계 7 가이드·릴리스 기록이다. PR #16은 `main`에 병합됐고(`41798cf`) 이 브랜치에 들어왔다(`e58deaa`).
+- 상태: 단계 0~7 완료(2026-10-09), PR #17이 main에 병합됨(`8535fb7`). main에서 분기한 `fix/issue-18-shared-sync`의 후속 단계 8도 구현·자동 검증 완료(2026-10-10~11, U-QH-15~17, Draft PR #19). 코드 커밋은 `364d1a3`·`b71b1b6`·`8558e87`이며 최신 결과는 IMPLEMENT의 단계 8 및 진행 기록을 따른다. 사람의 전반적인 사용성 평가는 미수행이고 실제 릴리스·병합은 이번 범위 밖이다.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 
 ## 1. 현재 구조 (기준 `6e462ed`, 2026-10-08 코드로 재확인)
@@ -62,7 +62,7 @@
   - 마지막 구독 해제: DC-QH-11.
   - 커넥터가 붙잡는 watch는 이 함수 하나이고, key가 바뀌어도 바뀌지 않는다(DC-QH-14).
   - 옵션 오류: `observe`·`matches`·`peek`·`watch()`는 잘못된 key(`undefined`, ref 같은 평범하지 않은 객체)나 boolean이 아닌 `enabled`로 렌더에서 던지지 않고, 커서와 같은 `status: 'error'`, `errorSource: 'source'` 표시를 돌려준다(`live-key.ts:111-121`과 같은 모양, R-QH-15). key에는 `undefined`를 쓸 수 없으므로 의존 조회는 `queryKey: ['user', id ?? null], enabled: id != null`로 쓴다(가이드). 관찰자는 READ를 시작하기 전에 `retry`를 기존 `load()`의 비음수 검사와 같은 규칙으로 검사한다(기존 `client.query`의 검사 시점은 바꾸지 않음). peek와 구독은 `enabled` → key → 열 때 옵션 검사 → `retry` → 캐시 호환성 → 초기값 검사 순서로 같은 오류를 표시한다. 쿼리를 열 때 거절될 옵션(다른 query 종류의 key, 편집 가능·읽기 전용 혼용, 잘못된 `initialUpdatedAt`·`staleTime` 등, 편집 가능 query의 평범하지 않은 `initialData`)도 열 때와 같은 검사로 같은 오류 표시를 보인다(단계 1 리뷰 반영, 첫 렌더와 붙은 뒤가 어긋나지 않게).
-  - **key 안의 state-ref ref는 `hashQueryKey`가 거절한다(단계 1 리뷰 반영, 기존 동작 변경).** ref는 평범한 객체를 대상으로 하는 프록시라 평범한 객체 검사를 통과하고, 숫자 ref는 key가 없어 `{}`로 해시됐다. 그래서 `.value`를 빠뜨린 `['user', idRef]`가 오류 없이 모든 id에서 같은 항목을 나눠 썼다. 이제 `client.query`·`fetch` 등도 이런 key에 `read a ref with \`.value\``가 든 `TypeError`를 던진다. 예약 심볼 `Symbol.for('state-ref.ref-link')`로 판별한다(DESIGN server-sync 2절의 예약 키). CHANGELOG에 적는다. 비교할 때 잘못된 옵션은 key hash 자리에 고정 표지(`'invalid'`)와 오류 문구를 둔다. 확정 옵션과 렌더 옵션이 같은 표지·문구면 `matches`는 true, `setOptions`는 false를 돌려주고 옵션 store에 다시 쓰지 않는다. 유효 여부나 오류 문구가 바뀔 때만 쓴다. 오류 표시도 DC-QH-29의 메모를 따른다(입력: 표지·문구·`enabled`·표시 옵션 identity). 그러지 않으면 React·Preact가 커밋마다 다시 렌더하거나 `getSnapshot`이 매번 새 객체를 돌려준다.
+  - **key 안의 state-ref ref는 `hashQueryKey`가 거절한다(단계 1 리뷰 반영, 기존 동작 변경).** ref는 평범한 객체를 대상으로 하는 프록시라 평범한 객체 검사를 통과하고, 숫자 ref는 key가 없어 `{}`로 해시됐다. 그래서 `.value`를 빠뜨린 `['user', idRef]`가 오류 없이 모든 id에서 같은 항목을 나눠 썼다. 이제 `client.query`·`fetch` 등도 이런 key에 `read a ref with \`.value\``가 든 `TypeError`를 던진다. ref 식별용 예약 심볼 `Symbol.for('state-ref.ref')`이 `true`인지 판별한다. 연결 정보용 `Symbol.for('state-ref.ref-link')` 검사도 남겨 이전 core 사본을 지원한다. 식별과 연결을 분리하므로 제공 전 `sharedWatch`와 `combineWatch`·`createComputed` ref도 거절하면서, 이 ref에 core 연결 정보를 꾸며 주거나 제공 전 store를 읽지 않는다(issue #18). CHANGELOG에 적는다. 비교할 때 잘못된 옵션은 key hash 자리에 고정 표지(`'invalid'`)와 오류 문구를 둔다. 확정 옵션과 렌더 옵션이 같은 표지·문구면 `matches`는 true, `setOptions`는 false를 돌려주고 옵션 store에 다시 쓰지 않는다. 유효 여부나 오류 문구가 바뀔 때만 쓴다. 오류 표시도 DC-QH-29의 메모를 따른다(입력: 표지·문구·`enabled`·표시 옵션 identity). 그러지 않으면 React·Preact가 커밋마다 다시 렌더하거나 `getSnapshot`이 매번 새 객체를 돌려준다.
   - 관찰자는 처음 받은 client에 묶인다. 진입점이 첫 호출과 다른 `client`를 받으면 `This query observer is bound to another client.`로 던진다(DC-QH-25).
   - 그 밖의 멤버: `peek(options)`·`matches(options)`·`setOptions(options)`(DC-QH-14·28), `controls`(DC-QH-23). 모양은 3절.
   - 검증: T-QH-02, T-QH-04, T-QH-12, T-QH-25.
@@ -259,13 +259,13 @@ type ObserverSettings = Readonly<{
 
 ## 5. 영향 범위
 
-### Lithent 추가 지원 (2026-10-09, U-QH-12)
+### Lithent 추가 지원 (U-QH-12, 현재 API는 U-QH-16 보완 포함)
 
-- [x] **DC-QH-38 진입점·반환** — 새 패키지 `@stateref/connect-lithent`의 기본 진입점은 `connectLithentView(viewWatch): () => R`, `./sync`는 `createSyncQuery(client, options | getter): readonly [() => QueryDisplayRef<QueryDisplayState<S>>, QueryObserverControls<T>]`다. 둘 다 ESM 전용이다. 공개 Lithent 1.24.0은 `type: module` 안의 `.umd.js`를 require에 지정해 Node 24에서 빈 namespace를 돌려준다(`mount`·`useRenew` 없음). 따라서 새 커넥터에 동작하지 않는 CJS 경로를 광고하지 않고 `ERR_PACKAGE_PATH_NOT_EXPORTED`로 거절한다(T-QH-55). 클로저 렌더는 accessor의 현재 ref를 읽는다. 버전은 신규 `0.1.0`, `lithent: ^1.24.0`, 선택적 sync peer `^0.3.0`. 기본 진입점은 sync를 import하지 않는다. 실제 게시하지 않는다.
+- [x] **DC-QH-38 진입점·반환** — 새 패키지 `@stateref/connect-lithent`의 기본 진입점은 `connectLithentView(viewWatch): () => R`, `./sync`는 `createSyncQuery(client, options | getter): readonly [QueryDisplayRef<QueryDisplayState<S>>, QueryObserverControls<T>]`다. 둘 다 ESM 전용이다. 공개 Lithent 1.24.0은 `type: module` 안의 `.umd.js`를 require에 지정해 Node 24에서 빈 namespace를 돌려준다(`mount`·`useRenew` 없음). 따라서 새 커넥터에 동작하지 않는 CJS 경로를 광고하지 않고 `ERR_PACKAGE_PATH_NOT_EXPORTED`로 거절한다(T-QH-55). 클로저 렌더는 안정적인 표시 ref를 직접 읽는다(`account.data.name.value`). 루트와 저장한 하위 ref는 미리보기·구독 ref·새 key를 따라가며 `.value`만 현재 경로에서 읽어 구독한다. iterator와 직렬화 함수도 실행 시점의 ref를 사용하고, 값 snapshot과 연결 메타데이터는 하위 ref로 감싸지 않는다. 표시 ref의 구조 변경은 거부한다. 버전은 신규 `0.1.0`, `lithent: ^1.24.0`, 선택적 sync peer `^0.3.0`. 기본 진입점은 sync를 import하지 않는다. 실제 게시하지 않는다.
 - [x] **DC-QH-39 수명** — `connectLithentView`는 mounter에서 등록하고 최초 렌더는 콜백 없는 ref를 읽는다. `mountCallback`에서 첫 구독의 `AbortSignal`을 등록한 뒤 구독 ref의 경로를 모으는 렌더를 예약한다. 반환 cleanup은 signal을 abort하며 첫 구독 예외도 정리한다. `typeof window === 'undefined'`에서는 구독하지 않는다. `observer.watch(renew)`만 쓰는 방식은 언마운트 후 다음 알림까지 owner를 유지하므로 sync 가이드에 쓰지 않는다(T-QH-50·53).
 - [x] **DC-QH-40 key·옵션 확정** — 고정 객체 또는 props를 읽는 getter다. 초기 마운트 확정 callback을 커넥터보다 먼저 등록한다. getter의 update callback은 해당 렌더의 옵션을 읽고, 반환 callback에서 커밋 뒤 `setOptions`한다. 렌더는 `matches`가 false이면 `peek`를 읽는다. key·enabled 전환 뒤 새 경로를 모으는 렌더는 microtask로 예약한다(현재 Lithent flush 안의 같은 key 재예약은 큐의 clear에 지워질 수 있음). hook 작성자의 render/commit 구분을 라이브러리가 처리한다(T-QH-51·52).
 - [x] **DC-QH-41 concurrent** — core는 `import * as lithent from 'lithent'`로 외부화한다. `notifyStoreWrite`가 있으면 별도 root `.value` 구독으로 표시 변경마다 버전을 알린다. `notifyStoreWrite`는 lithent-concurrent에만 있으므로 `Reflect.get(lithent, 'notifyStoreWrite')`로 동적으로 읽는다. `lithent.notifyStoreWrite` 같은 정적 namespace 접근은 번들러가 export 존재를 검사해, 기본 lithent를 쓰는 앱의 webpack 5 빌드가 `export 'notifyStoreWrite' was not found`로 실패한다(PR 전 점검 반영). `pnpm check:packaging`이 빌드된 두 진입점의 lithent namespace 멤버와 이름 import가 모두 기본 lithent의 export인지 확인한다. 실제 화면 갱신 구독은 렌더가 읽은 경로만 따른다. 두 구독은 같은 observer·handle과 abort를 공유한다. `/^lithent$/` alias만으로 concurrent를 선택하며 별도 concurrent peer/import는 없다. 기준은 Lithent 1.24.0 / concurrent 0.1.3이다. getter update effect가 실행된 빌드 등은 해당 렌더러 계약대로 재시도 대상에서 제외된다(T-QH-54).
-- [x] **DC-QH-42 문서** — 패키지 README·sync README·사이트 Lithent 및 sync query 페이지(en/ko)에 accessor 기반 사용과 편집/links·SSR·선택적 concurrent를 적는다. 핵심 예제를 공개 패키지 타입 검사에 포함하고 DOM 실행 테스트와 맞춘다. 기존 일반 상태 직접 연동과 명시 핸들은 계속 안내한다(T-QH-55).
+- [x] **DC-QH-42 문서** — 패키지 README·sync README·사이트 Lithent 및 sync query 페이지(en/ko)에 직접 표시 ref 기반 사용과 편집/links·SSR·선택적 concurrent를 적는다. 핵심 예제를 공개 패키지 타입 검사에 포함하고 DOM 실행 테스트와 맞춘다. 기존 일반 상태 직접 연동과 명시 핸들은 계속 안내한다(T-QH-55).
 - [x] **DC-QH-43 일반 커넥터** (U-QH-13) — 기본 진입점에 `connectLithent<T>(watch: Watch<T>): () => StateRefStore<T>`를 추가한다. 기존 `connectLithentView<R extends { readonly value: unknown }>`와 비공개 `connectWatch`를 공유하며 런타임에서 읽기 전용 여부를 판별하거나 ref를 변환하지 않는다. View는 입력 반환형 `R`을 그대로 유지한다. mounter에서 한 번 연결하고 렌더·이벤트에서 `store().name.value`로 읽고 쓴다. 직접 `watch(renew)` 연동은 계속 가능하지만 일반 가이드의 기본 경로는 즉시 해제를 제공하는 커넥터로 한다. ESM 전용·peer·sync의 View 사용은 유지한다. T-QH-56에서 두 API의 수명·SSR·concurrent 및 공개 타입·예제를 확인한다.
 
 기존 단계 0~5 결과는 이 추가 범위의 승인 전 기록이며 재작성하지 않는다. 추가 범위는 IMPLEMENT 단계 5.1·5.2에서 완료한 뒤 단계 6 전체 통합을 이어간다.
@@ -275,6 +275,8 @@ type ObserverSettings = Readonly<{
 - [x] **DC-QH-44 데모** — `examples/shared`의 별빛 정비소 모델·CSS·로컬 HTTP Vite plugin을 여섯 네이티브 UI가 공유한다. 각 앱의 `/mission.html`은 우주선 목록과 실제 컴포넌트 소유 query 상세·보조 화면을 제공한다. Lithent는 `index.html`도 같은 `src/mission-main.ts`를 사용하고 두 HTML을 build input으로 포함해 base/concurrent의 dev/preview `/`가 동작한다. UI는 준비 상태·편집·저장을 설명하고 세부 캐시/요청 진단은 접힌 영역에 둔다. 보조 화면은 독립 관찰자이며 모델이 명시 query 소유자를 추가하지 않는다. 장비 draft와 batch는 별도 일반 store로 체험한다. 기존 진단/쇼핑 데모와 공개 라이브러리는 유지한다.
 - [x] **DC-QH-45 네트워크** — 외부 계정 없이 같은 origin의 `/mission-api` READ/WRITE를 사용한다. Vite dev/preview에서 동일 서버가 지연·단발 실패·서버 변경을 제공한다. API는 데모 메모리만 변경하며 파일/외부 데이터에 쓰지 않는다. 조회는 AbortSignal을 fetch에 전달하고 저장은 capture+links로 승인 응답을 연결한다. 불확실한 WRITE를 자동 재전송하지 않는다. 브라우저의 모의 무선 연결은 공개 SyncEnvironment로 제어한다.
 - [x] **DC-QH-46 Playwright** — 별도 mission config가 여섯 production 페이지·Lithent concurrent·React StrictMode development·React SSR을 시작한다. DOM과 실제 요청/취소를 관찰하고 key/data의 중간 불일치는 MutationObserver로 확인한다. 공유 READ·해제·fresh/stale 캐시·polling·새 경로·편집/links·오류 복구·SSR HTML/hydration을 검증한다. 자동으로 입증한 수용 항목만 완료 표시하며 사용성 평가는 사람이 수행할 항목으로 남긴다. trace/실패 screenshot/JSON 결과와 실행 안내를 제공한다(T-QH-57~59).
+
+다음 표는 초기 단계 0~7의 범위다. main 병합 뒤 단계 8의 core 변경 예외와 추가 파일은 7절에 별도로 기록한다.
 
 | 대상 | 변경 |
 |---|---|
@@ -328,3 +330,16 @@ type ObserverSettings = Readonly<{
 다섯 관점(코드 사실, 문서 간 정합성, sync 설계 반박, 프레임워크 설계 반박, 규칙·완결성)이 첫 갱신본(`025c172`)을 검토하고, 판정 에이전트가 각 지적을 저장소에서 다시 확인했다. 65건 중 중복 32·반박 2를 빼고 31건(높음 3, 중간 6, 낮음 22)을 이 판에 반영했다. 높음 3건은 모두 DC-QH-26이었다: 함수·객체 옵션의 identity 비교로 인한 커밋마다의 핸들 재오픈과 READ(재실험 READ 1→4), key를 확인하지 않는 `queryFn` 래퍼로 이전 key 캐시에 새 key 값이 들어가는 문제(재실험 확인), `select` 재투영의 계기 부재와 인라인 `select`의 렌더 반복. 중간 6건은 DC-QH-27(key 전환 렌더 tearing), DC-QH-29(렌더 중 store 쓰기 모순·메모 분리), DC-QH-11(Preact 라우트 교체), DC-QH-23(위임 래퍼와 mutation links·`invalidate` 의미), DC-QH-13(렌더 중 옵션 오류)에 반영했다.
 
 두 번째 확인 검토(`a688c89` 대상, 에이전트 2개)는 17건을 냈고 모두 이 판에 반영했다. 높음 1건: `q.handle()`의 `Omit` 타입은 mutation `links`(`QueryHandle<any>`)에 들어가지 않는다(임시 파일 `tsc`로 TS2739 확인) → `links` 쪽 타입을 넓힘(DC-QH-23). 그 밖: 인라인 `select`의 오류·`Date` 결과에서 커밋 반복(DC-QH-26 2), 잘못된 key의 비교·메모(DC-QH-13·29), `retryDelay` 래퍼의 `undefined` 호출과 key별 칸(DC-QH-26 1), React ④의 커밋 뒤 재확인이 추가 렌더를 일으킴(DC-QH-27·28), Preact rAF 정지 탭(DC-QH-11), `invalidate`의 거부 처리(DC-QH-23), React 18에 없는 `<Activity>`(T-QH-40·41), 단계별 기준 테스트와 PR #16 병합 뒤 문서 상태.
+
+## 7. main 병합 뒤 보완 (2026-10-10~11, PR #19)
+
+- [x] **DC-QH-47 공유 경계와 식별** — U-QH-15, R-QH-23~25, T-QH-60~62. 공유 client는 creator의 sync 구현을 사용한다. 모든 번들의 sync 버전을 맞추고 실제 0.2 creator는 0.3 훅의 `observe()` 요구를 충족하지 못하며, 0.3 creator는 0.2 caller에도 0.3 계약을 적용한다. 독립 번들의 observer/Preact 훅과 두 마운트 순서를 검증한다. 식별 심볼 `Symbol.for('state-ref.ref')`은 연결 심볼과 분리해 pending/shared/combined/computed ref를 값 읽기 없이 판별한다. 이 심볼을 query/draft payload 예약 목록에 함께 등록한다. core 변경은 C-QH-03의 좁은 예외다. 구버전 core 3.2.1의 일반 ref에는 연결 fallback이 적용되지만 pending shared/combined는 여전히 `{}`로 해시될 수 있고 computed는 일반 오류를 내므로 core·sync·모든 core 사본을 함께 갱신한다. 추가 식별이 `connectRef`의 적용 대상을 넓히지는 않는다.
+- [x] **DC-QH-48 Lithent 직접 표시 ref** — U-QH-16, R-QH-17·26, T-QH-51·53·55·63. `createSyncQuery`는 readonly `[QueryDisplayRef<QueryDisplayState<S>>, QueryObserverControls<T>]`를 반환한다(DC-QH-38의 현행 반환형). `followDisplayRef`가 각 경로를 캐시하고 읽을 때 `matches(rendered) ? view() : peek(rendered)`를 따라간다. 초기 peek를 고정하지 않으며 저장한 하위 ref도 새 구독·key의 경로를 읽는다. `.value` snapshot과 연결 메타데이터는 하위 ref로 감싸지 않고, iterator·직렬화 함수는 호출 시점의 ref로 실행한다. 루트·하위 ref의 대입/삭제/속성 정의/prototype 변경/동결은 거절한다. 기존 `connectLithent`·`connectLithentView` accessor와 다른 프레임워크 API는 변경하지 않는다. migration은 `account().data.name.value` → `account.data.name.value`다.
+- [x] **DC-QH-49 문서 추적 보완** — U-QH-17, R-QH-27, T-QH-64. 네 문서의 상태는 단계 8 완료로 맞추고 요청·결정·테스트 연결 및 코드 commit을 남긴다. 2026-10-09 진행 기록은 당시 accessor 사용과 검증 수치를 그대로 보존한다. 이번 ID/최신 결과 보완은 사후 정합성 점검이며 문서 선행 절차를 새로 수행했다고 주장하지 않는다. 현재 환경에서 doc-driven-designer-v1 SKILL.md 원문을 찾지 못했으므로 원문 규칙 전체의 준수 여부는 검증하지 못했다.
+
+| 대상 | 후속 변경과 보호 조건 |
+|---|---|
+| `packages/state-ref` | 내부 식별 심볼, core proxy·shared·computed·combine 응답, draft 예약 키. sync/UI import 추가 없음; 성능·bundle gate 유지 |
+| `packages/sync` | key 식별 및 editable payload 예약 키, 현재/독립 사본 회귀 검사. query 엔진·정상 key·controls 계약 유지 |
+| `packages/connect-lithent` | sync의 안정적인 표시 ref와 회귀 검사. base index/API와 구독·SSR·concurrent 수명 유지 |
+| 예제·가이드·검증 | 공유 bundle/version E2E, favicon 응답, Lithent demo와 공개 타입/문서 예제, 영/한 가이드·CHANGELOG·skill reference |

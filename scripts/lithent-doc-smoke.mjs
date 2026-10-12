@@ -75,7 +75,7 @@ const Panel = mount(() => {
   });
   q = controls;
   save = accountSave(client, q);
-  return () => h('p', {}, account().data.name.value ?? 'waiting');
+  return () => h('p', {}, account.data.name.value ?? 'waiting');
 });
 const stopSave = render(h(Panel, {}), host);
 await tick();
