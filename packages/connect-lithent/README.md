@@ -2,7 +2,9 @@
 
 Lithent state, query views and component-owned sync queries. Use `lithent@^1.24.0` and `state-ref@^3.1.0`; add `@stateref/sync@^0.3.0` for the optional ESM `./sync` entry.
 
-Both the base and `./sync` entries use ESM imports.
+Both the base and `./sync` entries use ESM imports. The query examples below
+use `@stateref/connect-lithent@^0.2.0`. When upgrading from 0.1, replace
+`account().data.name.value` with `account.data.name.value`.
 
 ## Ordinary state
 

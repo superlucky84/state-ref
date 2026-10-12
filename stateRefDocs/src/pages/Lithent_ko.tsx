@@ -40,6 +40,7 @@ export const LithentKo = mount(() => {
 
       <h2>컴포넌트 안의 서버 조회</h2>
       <p>
+        아래 조회 예제는 <code>@stateref/connect-lithent 0.2+</code> 기준입니다.
         기본·sync 진입점은 ESM import로 사용합니다. Lithent 1.24 이상과 sync 0.3
         이상을 사용합니다. 앱당 client 하나를 만들고 mounter에서 helper를 한 번
         호출하세요. props는 getter 안에서 읽고, 고정 key에는 옵션 객체를 넘기면

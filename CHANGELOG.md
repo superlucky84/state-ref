@@ -1,6 +1,44 @@
 # Changelog
 
-## Unreleased
+## state-ref 3.2.2
+
+### Fixed
+
+- Core, pending `sharedWatch`, `combineWatch` and `createComputed` refs carry
+  an identity marker that `@stateref/sync 0.3.1` can check without resolving a
+  pending store or reading a computed value. Identity is separate from a core
+  connection and does not make helper refs usable with `connectRef`.
+- `Symbol.for('state-ref.ref')` is reserved in draft payloads, so accepted
+  fields cannot be shadowed by ref metadata.
+- The bundled AI skill and agent add-on describe Lithent 0.2's direct readonly
+  display ref (`account.data.name.value`) and saved child refs. The sharing
+  guide explains matching sync versions and the helper-ref checks below.
+
+## @stateref/sync 0.3.1
+
+### Fixed
+
+- Query keys also reject pending `sharedWatch`, `combineWatch` and
+  `createComputed` refs with the `.value` hint when they come from
+  `state-ref 3.2.2` or later. Previously pending shared and combined refs could
+  hash as `{}` and collide; computed refs received only the generic
+  JSON-compatible-tree error. Read the ref's value when forming a key; a
+  pending shared ref must be provided before its value can be read.
+- `Symbol.for('state-ref.ref')` is reserved in editable resource payloads,
+  including initial data, server responses and local edits.
+- The sharing guide and English/Korean Shared pages explain matching sync
+  versions and both 0.2/0.3 client creation orders. Separately built bundle
+  E2E scenarios cover query observers and connector hooks on a shared client,
+  plus both creation orders with the real, pinned sync 0.2.0 package. The
+  bundle server answers favicon requests without a spurious console error.
+
+The full helper-ref fix needs `state-ref 3.2.2` and `@stateref/sync 0.3.1`,
+including the state-ref copies in every bundle. Older core refs retain the
+connection-symbol fallback; older pending shared and combined refs can still
+hash as `{}`, and older computed refs get the generic JSON-compatible-tree
+error. Peer ranges are unchanged.
+
+## @stateref/connect-lithent 0.2.0
 
 ### Changed
 
@@ -9,27 +47,10 @@
   readonly `account` ref. Read `account.data.name.value` in render. Saved child
   refs also follow the current key and collect subscriptions when their
   `.value` is read. Mount, unmount, SSR and query controls retain their
-  lifecycle. *Migration:* replace `account().data.name.value` with
+  lifecycle. *Migration from 0.1:* replace `account().data.name.value` with
   `account.data.name.value`. The base `connectLithent` and
-  `connectLithentView` accessors keep their existing signatures.
-
-### Fixed
-
-- Query keys also reject pending `sharedWatch` refs, `combineWatch` refs and
-  `createComputed` refs with the `.value` hint. Previously pending shared and
-  combined refs could hash as `{}` and collide; computed refs were refused
-  with only the generic JSON-compatible-tree error. Ref identity is separate
-  from a core ref connection, so identifying these refs does not provide a
-  store or make them usable with `connectRef`. This fix needs the updated
-  state-ref and sync together; older core refs retain the connection-symbol
-  fallback, but older pending shared and combined refs can still collide.
-  The identity symbol is reserved in both editable resource and draft data,
-  so accepted payload fields cannot be shadowed by ref metadata.
-- The sharing guide and English/Korean Shared pages explain matching sync
-  versions and both 0.2/0.3 client creation orders. Separately built bundle
-  E2E scenarios cover query observers and connector hooks on a shared client,
-  plus both creation orders with the real, pinned sync 0.2.0 package. The
-  bundle server answers favicon requests without a spurious console error.
+  `connectLithentView` accessors keep their existing signatures. The 0.x minor
+  bump keeps this change outside existing `^0.1.0` installs.
 
 ## @stateref/sync 0.3.0
 

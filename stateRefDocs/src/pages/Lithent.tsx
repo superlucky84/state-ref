@@ -43,6 +43,7 @@ export const Lithent = mount(() => {
 
       <h2>Server queries in a component</h2>
       <p>
+        These query examples use <code>@stateref/connect-lithent 0.2+</code>.
         The base and sync entries use ESM imports. Queries need Lithent 1.24 or
         later and sync 0.3 or later. Create one client per app, then call the
         helper once in the mounter. A getter follows live props; a fixed object

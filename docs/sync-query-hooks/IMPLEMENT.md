@@ -422,3 +422,12 @@
 - 브라우저: base/concurrent production build 후 `mission.spec.ts`의 Lithent 두 그룹 **16/16**, Chromium 151·Playwright/Node 24, 약 54초. 기존 독립 bundle **15/15** 결과는 `b71b1b6`에서 확인한 기록이며 이후 변경은 Lithent와 문서다. 새 키/늦은 결과/공유 READ/해제/저장/오류 복구를 확인했다. 전체 65개 mission과 다른 framework version matrix를 재실행한 결과는 아니다.
 - 재현: 기존 `playwright.mission.config.ts`는 전체 server를 띄우므로 전체 example 빌드를 준비한 뒤 Node 24/pnpm 9.12.3 환경에서 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm --filter stateref-example-e2e e2e:mission --grep Lithent`로 같은 16개를 고를 수 있다. 이번 환경에서는 `/workspace/work/lithent-ref/playwright.config.mjs`로 두 Lithent preview server와 system Chromium만 선택했다. 로그는 `/workspace/work/lithent-ref/{build,gate,packaging,concurrent-tests,ssr-tests,concurrent-ssr-tests,example-build,e2e}.log`, 앞선 bundle 결과는 `/workspace/work/pr19-review/e2e.log`다. 이 경로는 작업 환경의 임시 증거이며 저장소에서 재현해야 한다.
 - 결과: 코드 `8558e87`까지 push하고 PR #19의 제목·설명·migration·검증을 갱신했다. PR은 draft/open이며 이번 범위에서 병합·게시하지 않았다. 문서 보완 commit은 `git log -1 -- docs/sync-query-hooks/IMPLEMENT.md`로 확인한다. 사람의 전반적인 체험 평가와 실제 릴리스는 이 자동 결과로 완료 처리하지 않는다.
+
+### 2026-10-13 — PR #19 릴리스 준비
+
+- 사용자 요청: 해당 PR 브랜치에서 버전·문서·검증을 준비해, 사용자가 병합 뒤 명령만 실행해 게시할 수 있게 한다.
+- 버전: npm에 게시된 버전과 미게시 목표 버전을 확인하고 state-ref **3.2.2**, sync **0.3.1**, connect-lithent **0.2.0**을 반영했다. Lithent의 accessor → 직접 표시 ref 변경은 기존 `^0.1.0` 설치 범위 밖인 0.x minor로 배포한다. 다른 다섯 커넥터와 peer 범위는 그대로다. workspace 설치 후 lockfile 추가 diff는 없다.
+- 문서: CHANGELOG의 Unreleased를 세 릴리스 절로 분리하고, AI add-on의 `account()` 안내 누락을 고쳤다. README·AI 스킬·영/한 Lithent 페이지에 새 API의 최소 버전을 표시했다. 새 [배포 절차](../release/2026-10-13.md)는 병합 뒤 main 갱신·새 root build·세 패키지 게시·태그·사이트 확인·선택적 GitHub 릴리스 명령을 제공한다. 과거 릴리스 기록은 보존했다.
+- 검증: Node 24.11.1/pnpm 9.12.3의 fresh root build 뒤 gate quick **통과**, workspace **1,178 통과·2 제외**, 별도 SSR **15/15**, 공개 packaging 별도 통과. Lithent concurrent DOM **24/24**, SSR **5/5**, 성능 **6/6**, core 최소 gzip **3,754 B ≤ 3,800 B**. 세 패키지 게시 dry run과 tarball 이름·버전·workspace 치환·AI 안내문 버전/직접 ref 표기도 확인했다.
+- 실행 범위: 이번 준비는 라이브러리 런타임을 더 바꾸지 않았다. 버전 준비 전 같은 PR 리뷰에서 수행한 공유 bundle Chromium **15/15**, Lithent base/concurrent mission **16/16**과 구분한다. 전체 mission 65개나 framework version matrix를 다시 실행했다고 기록하지 않는다.
+- 상태: 준비한 변경은 `fix/issue-18-shared-sync` 브랜치에 반영한다. 실제 main 병합·npm 게시·릴리스 태그는 사용자가 배포 절차대로 수행한다. 준비 commit은 `git log -1 -- docs/release/2026-10-13.md`로 확인한다.

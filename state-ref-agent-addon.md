@@ -165,8 +165,11 @@ CODING GUIDELINES:
         `createSyncQuery(client, () => options)`; Svelte: `createSyncQuery(
         client, options | Readable<options>)` (store API only). Read with
         `account(ref => ref.data.name.value)` (Ref / Accessor / Readable)
-      - Lithent: `createSyncQuery(client, () => options)` once in the
-        mounter; `account().data.name.value` in render
+      - Lithent: `const [account, q] = createSyncQuery(client, () => options)`
+        once in the mounter (connect-lithent 0.2+); `account` is a stable
+        readonly display ref.
+        Read `account.data.name.value` in render. Saved child refs follow
+        the current key; read their `.value` in render to track each path
       - Loading is `status.value === 'pending'`; the first render's
         `fetchStatus` is the cache as it is ('idle'), not 'fetching'
       - Dependent key: `queryKey: ['user', id ?? null], enabled: id != null`
