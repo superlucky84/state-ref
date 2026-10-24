@@ -1,10 +1,10 @@
 # IMPLEMENT — state-ref DevTools
 
 - 작성일: 2026-10-24. 브랜치: `feat/state-ref-devtools`.
-- 상태: 문서 초안 작성·정합성 검사 완료. 다음은 Phase 0이며 런타임 구현·성능 기준선 측정·브라우저 검증은 미수행.
+- 상태: Phase 0 완료. 문서 기준선은 `34c49e6b19e0aff18662dd222c58a53e411c87d8`. 생산 런타임·패널 구현과 브라우저 검증은 아직 미수행. 기존 Node 20.3 Svelte packaging 실패는 별도 blocker로 남아 있다.
 - 현재 기준 commit: `412db01a63321eef3087f3bc04c46708447a29f8`.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
-- 모든 구현 체크박스와 T-DT 항목은 계획이다. 명령·commit·실행 환경·결과 기록이 없으면 통과로 해석하지 않는다.
+- 완료 표시가 없는 구현 체크박스와 T-DT 항목은 계획이다. 명령·commit·실행 환경·결과 기록이 없으면 통과로 해석하지 않는다. Phase 0의 부분 시나리오 성공을 T 항목 전체 완료로 읽지 않는다.
 
 ## 1. 검증 목록
 
@@ -44,7 +44,7 @@ pnpm check:examples
 
 ## 3. 단계별 계획
 
-### 문서 단계 — 현재 작업
+### 문서 단계 — 완료
 
 - 진입: 사용자 요청 U-DT-01~05, agent rule/skill 원문 로드, 소스 조사 완료.
 - [x] 새 브랜치 생성 및 방법론 로드.
@@ -58,18 +58,22 @@ pnpm check:examples
 ### Phase 0 — 기준선과 관측 경계 실험
 
 - 진입: 문서 단계 종료. DC-DT-01의 앱 내 패널 방향 확정.
-- [ ] T-DT-00 기준선을 실행하고 Node/pnpm/commit·명령·결과를 보관한다.
-- [ ] DC-DT-11 두 배치안을 작은 폐기 가능한 실험으로 비교한다. 기존 ref·late attach·구독 snapshot·2-copy·미지원 wrapper 거절을 확인한다.
-- [ ] commit 시점 캡처와 listener 예외 격리, batch/manual-sync 원인 연결을 T-DT-02~04 형태로 먼저 검증한다.
-- [ ] DC-DT-12의 비용 측정 방법·수치 목표·최소 호환 버전과 공개 API/type 이름을 결정한다.
-- [ ] 네 문서와 공개 API 예시를 실험 결론으로 갱신한다.
+- 진행 기록: 2026-10-24 완료. 저장소 밖의 Node 20.3.0/pnpm 9.12.3 도구와 기존 lockfile을 사용했다. [실험](./experiments/README.md)은 임시 복제본만 계측한다. 생산 패키지의 코드/버전/export는 변경하지 않았다.
+- 기준선 발견: 기존 gate는 앞 18단계를 통과하고 packaging에서 `import.meta.dirname`(Node 20.3.0 미지원)으로 실패했다. URL 경로 계산으로 수정한 뒤 기존 Svelte CJS→ESM 경계 실패가 드러났다. 검사를 약화하지 않았고 Node 24에서 별도 packaging 통과를 확인했다. 기존 core gzip은 3,783 B로 3,800 B cap의 여유가 17 B다.
+- [x] T-DT-00 기준선을 실행하고 Node/pnpm/commit·명령·실패를 포함한 결과를 보관했다.
+- [x] DC-DT-11 A/B 배치를 비교했다. 기존 ref·late attach·구독 snapshot·2-copy·미지원 wrapper 거절을 확인했다.
+- [x] commit 시점 캡처와 listener 예외 격리, batch/manual-sync 원인 그룹의 대표 시나리오를 검증했다.
+- [x] DC-DT-12의 비용 측정 방법·수치 목표·최소 호환 버전과 공개 API/type 초안을 결정했다.
+- [x] 네 문서와 공개 API 초안을 실험 결론으로 갱신했다.
 - baseline: `pnpm gate`, `pnpm check:examples`; 실험의 T-DT-01~04/06/10/12/13 결과는 별도 표로 기록한다.
 - 종료: DC-DT-11·DC-DT-12가 근거와 함께 닫히고 기존 cap을 만족하는 구현 경로가 있다. 충족하지 못하면 다음 단계로 넘어가지 않고 설계를 좁힌다.
 
 ### Phase 1 — 코어의 선택적 관측 경계
 
 - 진입: Phase 0 종료, 공개 타입·호환 범위 확정.
+- [ ] 실제 root/batch의 development/default ESM/CJS 산출물과 `state-ref/devtools` ESM 진입점을 만들고 consumer fixture로 해석·타입·production 제외를 검증한다. 기존 CJS API를 제거하지 않는다.
 - [ ] 명시적 attach, 현재 snapshot, commit 진단, detach를 구현한다.
+- [ ] 실험의 raw-table factory를 불변 DTO wire protocol로 교체한다. 연결별 정적 redact, 캡처 실패/gap, 해제 후 조회 거절과 참조 제거를 구현한다.
 - [ ] 기존 onWrite/journal을 보존하고 새 listener를 commit 경로에서 분리한다.
 - [ ] batch/manual-sync ID와 cause 연결, 미연결 경로의 할당 방지를 구현한다.
 - baseline: `pnpm build:core`, `pnpm test:core`, `pnpm --filter state-ref exec tsc --noEmit`, core bench/bundle 검사. T-DT-01~05/10/12 추가.
@@ -147,11 +151,39 @@ pnpm check:examples
 | 한계 | 실제로 확인하지 않은 부분 |
 | 증거 | 유지되는 로그/trace 위치 또는 재현 절차 |
 
-## 5. 인계 — 2026-10-24
+## 5. Phase 0 실행 결과 — 2026-10-24
 
-- **done:** `feat/state-ref-devtools` 생성. ctxbin agent/skill 원문 로드. 소스·기존 설계·타 라이브러리 조사. 사용자 U-DT-05에 따라 공통 관측 API + 앱 내 패널 우선 방향 확정. 네 문서 초안과 기존 아이디어 인덱스의 링크 작성, 문서 정합성 검사 완료.
-- **next:** Phase 0의 baseline과 관측 경계 실험. 공개 API/프로토콜 배치와 활성화 비용 목표를 근거로 닫는다.
-- **blockers:** 문서 작성의 외부 blocker 없음. DC-DT-11·DC-DT-12는 Phase 1 진입 전 해결할 기술 결정이다. 별도 사용자 승인 대기 항목이 아니다.
-- **commit:** 문서 작성 기준 commit `412db01a63321eef3087f3bc04c46708447a29f8`. `git log -1 --format='%H %s' -- docs/devtools`로 이 문서 세트의 최신 변경을 확인한다. 자기 커밋 SHA를 본문에 추정해 적지 않는다.
-- **validation:** 네 문서와 인덱스의 상대 링크 38개, U/R/C/DC/T/M ID 정의·참조, 8개 구현 phase의 진입/baseline/종료 항목 검사 통과. `git diff --check` 통과. `node scripts/check-support-table.mjs` 통과(기존 9행·증거 파일 29개). 기존 지원 범위를 상향하지 않았다. 이번 단계에서 `pnpm gate`·runtime tests·성능 측정·브라우저 검증은 수행하지 않았다.
+기준은 `34c49e6b19e0aff18662dd222c58a53e411c87d8`; 실험·문서·packaging 경로 수정이 있는 dirty tree에서 후속 검증했다. `packages/` 소스·package.json·lockfile은 기준선과 동일하다. 실행 OS는 Linux x86_64. 별도 표기가 없으면 Node 20.3.0/pnpm 9.12.3이다.
+
+| 명령 | 결과 / 종료 코드 | 범위·한계 |
+|---|---|---|
+| `pnpm install --frozen-lockfile` | pass / 0 | lockfile 변경 없음 |
+| `pnpm gate` | fail / 1 | build/types/lint/runtime/SSR/선택 진입점 bundle 등 첫 18단계 pass. packaging의 기존 `import.meta.dirname`에서 중단. 전체 gate pass 아님 |
+| `pnpm check:packaging` (경로 수정 후) | fail / 1 | 기존 `@stateref/connect-svelte: require threw ERR_REQUIRE_ESM`; Svelte 5 require와 Node 20.3 호환 문제 유지 |
+| `node scripts/check-packaging.mjs` (Node 24.19.0) | pass / 0 | ESM/CJS·node16 types·Lithent 문서 예제. Node 20.3 결과를 대체하지 않음 |
+| `pnpm check:examples` | pass / 0 | 예제 타입·build·operation/bundle·SSR 검사. 새 패널 E2E 아님 |
+| `node packages/state-ref/bench/read-write.mjs` | pass / 0, 6/6 | 별도 부하 없이 재실행: depth8 22.4 ms, idle1600 writes 0.8 ms, live1000 indices 2.7 ms, write-only tree nodes 3 |
+| `node packages/state-ref/bench/bundle-size.mjs` | pass / 0 | minified gzip 3,783 B ≤ 3,800 B |
+| `node --expose-gc docs/devtools/experiments/run.mjs` | pass / 0 | 15개 동작/해석/타입 시나리오 + prototype 비용 예산 8/8. [결과 JSON](./experiments/results.json), [재현법·한계](./experiments/README.md) |
+
+실험의 최종 core gzip은 원본 **3,783 B**, 계측 제거 **3,740 B**, 개발 계측 **3,903 B**다. 항상 계측하는 기본 빌드는 cap을 넘으므로 제외했다. 별도 브리지 A/plugin 확장 B는 전체 namespace **1,159/1,717 B**, observeStore만 사용하는 consumer **1,159/1,193 B**다. A를 채택한 이유는 계약 분리이며 558 B가 모든 사용자에게 절약된다고 주장하지 않는다.
+
+아래는 prototype 측정의 median / p95(ms)다. 21회·5회 워밍업, microtask 전달 포함, 생성/attach/GC 제외. 전체 원본 수치·환경·실험 코드 해시는 결과 JSON이 기준이다.
+
+| workload | 원본 | production | 개발 미연결 | 개발 연결 |
+|---|---:|---:|---:|---:|
+| 500 writes, idle 구독 1,600개 | 0.846 / 1.042 | 0.876 / 1.605 | 0.821 / 1.616 | 1.667 / 2.156 |
+| 10,000 primitive writes | 5.623 / 26.868 | 6.543 / 13.121 | 8.381 / 10.921 | 21.083 / 39.393 |
+| 50,000 reads, depth 8 | 30.287 / 37.280 | 29.383 / 33.006 | 29.418 / 36.367 | 29.220 / 34.361 |
+| 50,000 reads, depth 32 | 89.974 / 96.477 | 89.350 / 94.970 | 92.399 / 109.251 | 92.367 / 103.692 |
+
+이 수치는 실험 listener의 비용이다. 10,000 writes는 queue 1,000건을 넘겨 drop한다. UI·완성 recorder·heap 안정성·배포 ESM/CJS 조합·HMR·6개 framework는 미검증이다. capture 실패/gap 복구·byte 한도·마스킹·해제 후 참조 제거 등 알려진 미구현을 실험 README와 다음 단계에 추적했다. M-DT-01~08은 모두 미수행이다.
+
+## 6. 인계 — 2026-10-24
+
+- **done:** 문서 단계와 Phase 0. 별도 `state-ref/devtools`, 개발 조건부 코어, 공개 타입 초안, 지원 범위·비용 예산을 결정했다. 실험 15개 시나리오와 prototype 예산 8개 통과. 네 문서를 결과에 맞췄다. 테스트 스크립트의 Node 호환 경로 계산만 수정했다.
+- **next:** Phase 1의 실제 선택적 관측 경계·개발 산출물·불변 protocol을 구현한다. 실험 코드를 제품 API로 그대로 내보내지 않는다. Phase 1 검사에 실제 batch/core export 조합과 teardown을 포함한다.
+- **blockers:** 기존 Node 20.3 Svelte CommonJS packaging 실패. 관측 경계 작업은 진행할 수 있으나 전체 gate/출시 준비 완료를 막는다. 별도 호환성 수정 때 재현·해결하고 검사를 약화하지 않는다. DC-DT-11/12는 해결됐으며 사용자 승인 대기 항목은 없다.
+- **commit:** 문서 기준선 `34c49e6b19e0aff18662dd222c58a53e411c87d8`. `git log -1 --format='%H %s' -- docs/devtools`로 이 단계의 실제 최종 commit을 확인한다. 자기 커밋 SHA를 본문에 추정해 적지 않는다.
+- **validation:** 위 실행 결과와 실험 JSON을 따른다. 상대 링크 40개, U/R/C/DC/T/M ID, 8개 단계 계약, 결과에 보관한 실험 코드 해시, credential 패턴 검사 통과. `git diff --check`, 실험 파일/packaging 스크립트 Prettier 검사, 기존 지원표 검사(9행·29파일) 통과. 기존 지원표를 상향하지 않았다. 브라우저·수동 검사 미수행.
 - **context:** ctxbin 연결 정보는 작업 명령의 환경변수로만 사용한다. 이 문서·코드·커밋·인계에 credential을 보관하지 않는다.

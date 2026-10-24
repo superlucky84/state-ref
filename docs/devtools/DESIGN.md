@@ -1,6 +1,6 @@
 # DESIGN — state-ref DevTools
 
-- 작성일: 2026-10-24. 상태: 앱 내 패널 우선 방향 확정, 구현 전 설계 초안.
+- 작성일: 2026-10-24. 상태: Phase 0 실험으로 관측 경계·개발 빌드·비용 목표 결정. 생산 구현 전.
 - 기준: `412db01a63321eef3087f3bc04c46708447a29f8`. 브랜치: `feat/state-ref-devtools`.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 - 체크 완료는 설계 선택을 뜻한다. 구현·검증 완료 표시가 아니다. 사용자 선택과 설계상 선택을 구분한다.
@@ -14,7 +14,7 @@
   - 검증: T-DT-11, T-DT-13, M-DT-01, M-DT-08.
 - [x] **DC-DT-02 공통 recorder와 UI 분리. 설계 선택.**
   - 후보 패키지는 `@stateref/devtools`, 브라우저 진입점은 `@stateref/devtools/panel`이다. 패키지 루트는 headless session/recorder를 제공한다.
-  - core·sync·connectors가 UI 패키지를 역으로 import하지 않는다. 브리지·프로토콜 배치는 DC-DT-11에서 결정한다. 패키지 이름도 공개 전에 phase 0에서 export 충돌을 검사한다.
+  - core·sync·connectors가 UI 패키지를 역으로 import하지 않는다. 브리지·프로토콜 배치는 DC-DT-11을 따른다. Phase 0에서 저장소 내 이름/export 충돌이 없음을 확인했다. npm 이름의 소유권·발행 가능 여부는 확인하지 않았으며 publish는 이번 범위가 아니다.
   - 검증: T-DT-10, T-DT-12, T-DT-14.
 - [x] **DC-DT-03 명시적 등록과 소유권. 설계 선택.**
   - `attachStore(watch, { name })` / `attachSync(client, { name })` 후보를 사용한다. 기존 `createStore` 호출을 감싼 새 store factory로 교체하지 않는다.
@@ -52,18 +52,21 @@
   - 후보 구현은 작은 DOM renderer와 ShadowRoot다. 호스트 앱에 React/Vue 런타임을 추가하지 않는다. 스타일·이벤트·접근성을 별도 검증한다.
   - 패널 진입점도 import만으로 document/window를 읽거나 DOM을 만들지 않는다. mount는 브라우저에서만 호출하고 잘못된 host는 명확한 오류로 알린다.
   - 검증: T-DT-11, T-DT-12, M-DT-01, M-DT-08.
-- [ ] **DC-DT-11 코어 관측 브리지의 공개 계약 — TBD, phase 0에서 닫는다.**
-  - 비교안 A: `state-ref/devtools` 진입점과 소유 코어가 제공하는 버전 있는 관측 프로토콜. 비교안 B: `state-ref/plugin`에 좁은 관측 API를 추가한다.
-  - 기존 private tuple을 UI에서 직접 해석하거나 `create`/`pathRoot`에 의존하는 방식은 채택하지 않는다. 어느 안이든 root store의 읽기 전용 snapshot/이벤트/해제를 제공하고 기존 ref를 만든 뒤 attach해도 기록돼야 한다.
-  - 일반 `createStore`와 manual-sync root watch가 필수 대상이다. computed/combineWatch/지연 shared watch는 capability 검사로 거절한다. shared에 등록된 **원래 watch**는 소유 번들에서 붙일 수 있어야 한다.
-  - 다른 코어 사본이 만든 일반 watch를 지원할지, 프로토콜 불일치를 어떻게 거절할지는 2-copy fixture로 결정하고 지원표에 명시한다. 다른 realm은 제외한다.
-  - 종료 기준: attach 전후 호출 순서·기존 ref 관측·subscribe snapshot·protocol mismatch·미연결 비용의 실험 결과와 공개 타입 초안을 기록한다. 생산 코드 구현 전 결정한다.
-  - 검증: T-DT-01, T-DT-02, T-DT-06, T-DT-10, T-DT-12, T-DT-13.
-- [ ] **DC-DT-12 활성화 비용·패키지 호환 버전 — TBD, phase 0에서 닫는다.**
-  - baseline Node/pnpm과 동일 조건에서 미연결·연결 후 기록·패널 표시를 각각 측정한다. core 3,800 B cap과 기존 bench 기준은 유지한다.
-  - 측정 workload: 깊이 8/32 읽기, 1,600 idle 구독에 대한 500회 쓰기, 10,000회 연속 쓰기에서 queue/이력/메모리 상한, 열기/닫기 20회. 새 UI gzip 크기도 따로 기록한다.
-  - 종료 기준: 반복 median/p95 측정 방법과 활성화 비용의 수치 목표를 고정하고, 새로운 브리지를 요구하는 최소 core 버전 및 peer range를 정한다. 초과 시 설계를 줄이며 조용히 cap을 올리지 않는다.
-  - 검증: T-DT-00, T-DT-08, T-DT-10, T-DT-13, M-DT-06.
+- [x] **DC-DT-11 코어 관측 브리지 — 별도 `state-ref/devtools` + 개발 조건부 코어. Phase 0 결정.**
+  - A(별도 진입점)와 B(plugin 확장)는 모두 late attach·동일 realm의 다른 core 사본을 관측했다. A를 선택해 journal/draft와 진단의 공개 계약을 분리한다. 관측 함수만 import할 때의 tree-shaking 결과도 비교했으며, 전체 B namespace 크기를 소비자가 항상 지불한다고 해석하지 않는다.
+  - 기본 코어의 gzip 3,783 B는 cap 3,800 B에 근접한다. 계측을 항상 포함하는 안은 cap을 넘었다. `development` export 조건에서만 계측 코어를 선택하고 기본 production에서는 제거한다. Vite 개발 해석·production build 및 Node `--conditions=development` 실험 통과. 다른 bundler와 실제 ESM/CJS 배포 조합은 Phase 1/6 검증 대상이다.
+  - 공개 함수는 `observeStore(watch, listener, options?)`, handle은 `snapshot`, `subscriptions`, `disconnect`, `protocolVersion`이다. 표시 전용 타입은 [API 초안](./experiments/api-draft.ts)에 정의하고 [소비자 타입 검사](./experiments/api-types.ts)로 검증했다. 이 초안은 아직 배포 API가 아니다.
+  - 일반/manual-sync root watch와 동일 realm·프로토콜 1의 다른 core 사본을 지원한다. attach 전 ref도 관측한다. computed/combineWatch/shared wrapper는 거절하고 shared의 원래 watch를 등록하도록 안내한다. 구버전·기본 production 코어·다른 프로토콜도 기존 앱을 수정하지 않고 연결 오류로 거절한다.
+  - 소유 코어/브리지만 내부 자료구조를 해석한다. 공개 listener·recorder·UI에는 불변 Preview/구독 DTO만 전달한다. 실험의 raw-table handshake는 공개 프로토콜이 아니며 그대로 제품에 복사하지 않는다. 최종 wire v1은 Phase 1에서 해당 타입의 읽기 전용 결과만 내보내도록 만든다.
+  - 검증: T-DT-01/02/06/10/12/13의 Phase 0 부분 결과는 [실험 기록](./experiments/README.md). 실제 배포·프레임워크 통과 주장은 후속 검증까지 보류한다.
+- [x] **DC-DT-12 활성화 비용·호환 범위 — 아래 예산과 측정법을 채택. Phase 0 결정.**
+  - 최소 core **3.3.0 예정**, 신규 DevTools core peer **`^3.3.0` 예정**, protocol **1**. 현 core 3.2.2에는 브리지가 없다. Sync 통합은 현 메타데이터 API가 있는 **`@stateref/sync ^0.3.1`**을 optional peer로 계획하며 미설치 시 core 관측을 막지 않는다. 패키지 버전은 아직 변경하지 않는다.
+  - Node 20.3.0/pnpm 9.12.3, 같은 소스·bundler·fixture로 원본/production/개발 미연결/개발 연결을 비교한다. 5회 워밍업 뒤 21회, 순서 순환, median/p95를 기록한다. 초기화·연결·강제 GC는 시간 밖, 쓰기와 microtask 전달은 시간 안이다. 벤치 외 작업을 동시에 돌리지 않는다.
+  - 기본 core gzip cap **3,800 B**와 기존 bench 기준은 유지한다. 추가 gzip 목표: 개발 core **4,500 B**, recorder 전체 의존 **10 KiB**, panel+recorder 전체 의존 **30 KiB**. UI 크기는 아직 측정하지 않은 구현 예산이다.
+  - 개발 미연결의 500 writes는 원본 median + **1 ms** 이내, 10,000 writes는 원본 + **5 ms** 이내. 개발 연결 500 writes(1,600 idle 구독)는 median **5 ms**/p95 **16 ms** 이내, 10,000 primitive writes+전달은 median **50 ms**/p95 **100 ms** 이내. 읽기 50,000회(depth 8/32)는 각 median이 원본 × **1.15 + 1 ms** 이내다.
+  - 실제 recorder에도 같은 workload를 적용한다. 패널 표시 중에는 별도 Chromium fixture에서 입력→DOM 반영 p95 **100 ms** 이내를 목표로 한다(기록 200개·한 화면 최대 100행, 21회). 기기·브라우저를 기록하고 prototype의 no-op listener 수치와 혼용하지 않는다.
+  - 10,000회 쓰기에서 DC-DT-07의 queue/history/Preview 한도와 gap 복구, 20회 수명 반복 뒤 남은 source/listener/DOM 0을 검사한다. byte 한도를 heap 상한으로 오해하지 않으며 GC/heap 증거는 Phase 5/6 및 M-DT-06에 남긴다.
+  - 검증: T-DT-00/08/10/13, M-DT-06. 초과하면 구현을 줄이고 재측정한다. 조용히 cap을 올리지 않는다.
 
 ## 2. 구조와 책임
 
@@ -88,7 +91,7 @@ flowchart LR
 
 ## 3. 이벤트와 snapshot 계약
 
-이름은 아직 공개된 API가 아닌 설계 어휘다. 정확한 export/type 선언은 DC-DT-11의 산출물로 확정한다.
+이름은 아직 배포된 API가 아닌 설계 계약이다. 브리지의 공개 타입 초안은 DC-DT-11의 파일이 기준이며 session/Sync 이벤트는 Phase 2/3에서 구체화한다.
 
 | 레코드 | 필수 정보 | 의미 |
 |---|---|---|
@@ -106,6 +109,9 @@ flowchart LR
 - source별 sequence와 session 수신 sequence를 구분한다. Sync 이벤트는 이미 microtask에서 전달되므로 다른 source와의 정확한 발생 순서를 wall clock으로 보장하지 않는다.
 - runner의 기존 비교에서 바뀐 것으로 확인한 경로를 사용한다. DevTools 때문에 getter를 추가 실행하거나 판정 순서를 바꾸지 않는다. 알 수 없는 원인은 `unknown`으로 표시한다.
 - read dependency는 collector가 실제 관리하는 집합이다. `trackDeps: false`에서는 경로가 누적될 수 있고, `true`에서는 재수집 및 예외 시 복구 결과를 그대로 표시한다.
+- `subscription-run.cause`의 `flush-group`은 같은 runner flush에 모인 write IDs다. 특정 구독에 대한 정확한 쓰기별 인과관계로 표시하지 않는다. 실제 변경 경로는 별도 `changedPaths`이며, 관측 공백/중간 attach로 그룹을 알 수 없으면 `unknown`이다.
+- `disconnect` 후 handle의 snapshot/구독 조회는 명확한 오류로 거절하고 source를 붙드는 참조를 해제한다. 실험은 큐 전달 중단만 검증했으며, 참조 해제는 아직 구현하지 않았다.
+- `redact`는 정적 경로 목록이며 캡처 전에 적용한다. 앱 callback을 commit 경로에서 실행하지 않는다. 서로 다른 연결의 마스킹 정책을 섞지 않도록 Phase 1에서 연결별 격리를 검증한다.
 
 ## 4. 수명과 사용 예시
 
@@ -146,8 +152,10 @@ tools.dispose();
 
 키보드로 열기/닫기/탭/검색/이력 선택이 가능해야 한다. focus를 패널 안에 가두지 않으며 닫으면 실행한 버튼으로 돌려준다. 긴 값·좁은 화면·앱의 강한 전역 CSS를 M-DT-08에서 확인한다.
 
-## 6. 남은 결정과 진행 조건
+## 6. 남은 검증과 진행 조건
 
-UI 방향 DC-DT-01은 사용자 답변으로 닫혔다. DC-DT-11·DC-DT-12는 공개 API/성능을 측정 없이 확정하지 않기 위한 기술 과제이며 phase 0에서 실험과 문서 개정으로 닫는다. 별도의 사용자 승인을 전제하는 게이트가 아니다. 결과가 사용자 확정 방향이나 기존 동작을 바꿔야 할 때만 변경 내용을 설명하고 방향을 협의한다.
+Phase 0의 두 결정은 [실험과 측정](./experiments/README.md)으로 닫았다. 생산 소스를 임시 디렉터리에 복제해 계측했으며 앱 런타임이나 package exports를 아직 변경하지 않았다. 표기된 활성화·UI 목표는 제품 통과 결과가 아니다.
 
-세부 UI 예제·패키지 버전·공개 타입을 구현 전에 네 문서에 반영한다. IMPLEMENT의 단계 1 이후는 이 두 결정이 닫힌 상태에서 진행한다.
+Phase 1은 실제 개발/기본 export, 불변 wire protocol, 타입·consumer packaging, capture 실패/gap, 해제 후 참조 제거를 구현한다. 특히 core와 `state-ref/batch`가 동일한 개발 런타임을 쓰는지 실제 ESM/CJS 산출물로 검증한다. 단일 fixture 번들 성공만으로 이 항목을 닫지 않는다.
+
+기존 Node 20.3 Svelte CommonJS packaging 실패는 IMPLEMENT에서 별도 추적한다. 관측 경계 구현을 막지는 않지만 전체 gate·출시 준비 완료라고 표시할 수 없다. 별도 사용자 승인 대기 없이 단계별 검증을 진행한다.

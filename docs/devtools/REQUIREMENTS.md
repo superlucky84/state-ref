@@ -1,7 +1,7 @@
 # REQUIREMENTS — state-ref DevTools
 
 - 작성일: 2026-10-24.
-- 상태: 앱 내 패널 우선 방향 확정, 상세 설계 초안. 런타임 구현 전이며 phase 0 기술 결정은 DESIGN에 추적한다.
+- 상태: 앱 내 패널 우선 방향 및 Phase 0의 관측 경계·비용 기준 확정. 생산 런타임 구현 전이며 결정 근거는 DESIGN과 실험 기록에 추적한다.
 - 브랜치: `feat/state-ref-devtools`.
 - 조사 기준: `412db01a63321eef3087f3bc04c46708447a29f8`의 `state-ref@3.2.2`, `@stateref/sync@0.3.1`.
 - 절차: ctxbin에서 실제 로드한 `doc-driven-designer-v1` agent rule과 skill. 요구사항 → 설계 → 구현 계획 → 수동 검증 순서로 작성한다.
@@ -15,6 +15,7 @@
 - **U-DT-03** `npx ctxbin help`를 확인하고 `doc-driven-designer-v1` 에이전트 룰과 스킬을 로드해 문서부터 작성한다.
 - **U-DT-04** 첫 UI를 고르기 전에 다른 상태관리 라이브러리의 제공 방식을 비교한다.
 - **U-DT-05** 비교 설명 후 사용자가 추천 방향을 채택했다. 관측 API를 공통 기반으로 만들고 첫 UI는 앱 내 패널로 제공하며, Redux DevTools 어댑터를 나중에 추가할 수 있도록 분리한다.
+- **U-DT-06** 문서 초안 이후 Phase 0 진행을 요청했다. 기존 기준선과 실제 코어를 이용한 관측 경계 실험을 수행하고 결과로 설계를 갱신한다.
 
 아래 기능 범위·기본값은 조사에 따른 **설계 제안**이다. 사용자 확정 요구로 바꿔 기록하지 않는다. 이번 작업 산출물은 네 문서와 기존 문서에서의 발견 경로이며, 실행 가능한 DevTools를 제공했다고 주장하지 않는다.
 
@@ -64,7 +65,7 @@
 
 - **C-DT-01** 기존 쓰기·구독·batch·draft·Sync 동작과 공개 API를 유지한다. 기존 `onWrite`의 검증/거절 계약을 바꾸지 않는다.
 - **C-DT-02** DevTools listener/표시 실패는 앱의 쓰기·다른 구독·조회 결과를 바꾸지 않는다. producer와 consumer 사이에는 읽기 전용 진단 레코드만 넘긴다.
-- **C-DT-03** UI와 recorder는 선택적 import다. 미연결 상태에 이벤트 객체·snapshot·이력 버퍼·전역 스토어 목록을 만들지 않는다. 코어 변경의 비용을 0이라고 단정하지 않고 측정한다.
+- **C-DT-03** UI와 recorder는 선택적 import다. 기본 production 산출물에서는 관측 계측을 제거하고 `development` 조건의 별도 코어 산출물에서 활성화한다. 기존 `createStore` import/호출은 유지한다. 미연결 상태에 이벤트 객체·snapshot·이력 버퍼·전역 스토어 목록을 만들지 않는다. 개발 코어의 capability 설치·분기 비용을 0이라고 단정하지 않고 측정한다.
 - **C-DT-04** 기존 `pnpm gate`의 성능·번들 기준을 유지한다. 현재 코어 gzip 기본 cap은 [실행 스크립트](../../packages/state-ref/bench/bundle-size.mjs)의 **3,800 B**다. 예전 문서의 4 kB 표현으로 이 cap을 자동 완화하지 않는다.
 - **C-DT-05** recorder, 대기 queue, snapshot, UI DOM의 보관량을 제한한다. 활성화 비용은 대표 workload로 측정해 phase 0에서 수치 목표를 정한다(DC-DT-12).
 - **C-DT-06** 패키지 import는 SSR에서 안전해야 한다. UI는 명시적으로 브라우저에서 mount한다. React·Vue 등 특정 호스트 프레임워크를 필수 의존으로 만들지 않는 방향을 우선 비교한다.
@@ -101,4 +102,4 @@
 
 ## 8. 마이그레이션·인터페이스 변경
 
-기존 앱의 스토어 생성 코드를 교체하도록 강제하지 않는다. 구체적인 공개 API·관측 프로토콜·호환 버전은 phase 0 실험 뒤 DESIGN에서 확정한다. 데이터 마이그레이션은 없고 진단 이력은 페이지 안의 임시 데이터다. 릴리스 버전은 구현·호환성 검증 결과에 따라 정하며 이번 문서 작업에서 package.json을 변경하지 않는다.
+기존 앱의 스토어 생성 코드를 교체하도록 강제하지 않는다. Phase 0에서 `state-ref/devtools`의 읽기 전용 `observeStore`와 `development` 조건부 코어를 선택했다(DC-DT-11). 기본 production 코어·구버전·미지원 wrapper는 연결 시 실행 가능한 오류 안내와 함께 거절한다. 계획된 최소 core는 3.3.0, DevTools의 core peer는 `^3.3.0`이며 프로토콜 1을 별도로 검사한다. 현재 저장소의 3.2.2에서 이 API를 제공한다고 주장하지 않는다. 데이터 마이그레이션은 없고 진단 이력은 페이지 안의 임시 데이터다. package.json과 실제 출시 버전은 후속 구현·호환성 검증 때 변경한다.

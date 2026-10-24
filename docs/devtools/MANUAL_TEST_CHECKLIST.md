@@ -4,6 +4,7 @@
 - 브랜치: `feat/state-ref-devtools`. 조사 기준 commit: `412db01a63321eef3087f3bc04c46708447a29f8`.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md).
 - 실제 브라우저의 DOM 단언은 자동 검증 증거로 적을 수 있다. 사람이 확인할 가독성·focus·heap 판단을 대신 완료 표시하지 않는다.
+- Phase 0의 Node 실험은 이 체크리스트의 패널·브라우저·가독성 통과 증거가 아니다. 해당 결과는 IMPLEMENT에 별도 기록한다.
 
 ## 실행 전 기록
 
@@ -20,6 +21,7 @@
 - [ ] 한 store를 선택하고 앱에서 값을 바꾼다. 선택한 대상의 상태·이력만 해당 변경을 보여야 한다.
 - [ ] 등록하지 않은 store는 자동으로 나타나지 않는다. 미지원 watch 또는 버전은 명확한 진단으로 보인다.
 - [ ] 연결 코드와 종료 코드가 짧고, 기존 `createStore` 사용법을 교체할 필요가 없는지 가이드를 따라 확인한다.
+- [ ] 개발 조건을 끈 기본 코어, 3.2.x 구버전, protocol mismatch에서 각각 개발 조건/버전/원래 watch에 대한 안내가 실제 해결 방법과 일치하는지 확인한다.
 
 통과: 연결·대상 구분·해제 절차를 가이드만으로 수행한다. 실패: 이름이 같다고 다른 store를 합치거나, 연결을 위해 앱 상태관리 코드를 재작성해야 한다.
 
@@ -103,6 +105,7 @@
 - [ ] React/Preact/Vue/Svelte/Solid/Lithent별로 동일한 연결·해제 절차를 수행한다. 프레임워크마다 성공 여부를 따로 기록한다.
 - [ ] SSR 앱에서 import 오류가 없고 client mount 후에만 패널이 생기는지 확인한다.
 - [ ] 개발용 조건부 연결을 따른 production 예제에서 패널·도구 코드·불필요한 listener가 없는지 자동 artifact 검사 결과와 대조한다.
+- [ ] `development` 조건의 core와 batch가 함께 선택되는지 확인한다. Vite 외 지원 bundler와 Node `--conditions=development`의 설치 안내를 구분하고, production에서 조건을 강제하지 않도록 설명한다.
 - [ ] 가이드만 보고 설치/연결/종료할 수 있는지 확인한다. 아직 없는 타임트래블·stack trace·Redux 연동을 지원한다고 읽히는 표현이 없어야 한다.
 
 통과: 지원 대상과 사용법이 실제 배포 산출물·사용 경험과 일치한다. 실패: 5종 테스트만으로 6종 지원을 주장하거나 DOM 없는 환경에서 import가 깨진다.
