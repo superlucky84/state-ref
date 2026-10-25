@@ -49,7 +49,7 @@ This recorder neither edits application state nor replays history. Redaction rul
 
 ## Browser panel and Sync
 
-Mount the panel from a development-only bootstrap. It uses a ShadowRoot and has State, Timeline, Subscriptions and Sync tabs. Folding the panel keeps recording; unmounting removes its DOM/listeners while the session continues. Session disposal also removes connected panels.
+Mount the panel from a development-only bootstrap. It uses a ShadowRoot and has State, Timeline, Subscriptions and Sync tabs. The default `layout: 'floating'` fixes the panel to the viewport; `layout: 'inline'` places it in the supplied target at the container's width. Folding the panel keeps recording; unmounting removes its DOM/listeners while the session continues. Session disposal also removes connected panels.
 
 ```ts
 import { createStore } from 'state-ref';
@@ -70,6 +70,8 @@ export function stopDebugging() {
 Sync is optional. The adapter uses only `inspectCache`, `subscribeCache`, `inspectMutations`, and `subscribeMutations`. It does not create queries or acquire owners. Query keys and scopes are bounded display labels; truncated keys are marked and are not used to merge rows. Query data, mutation inputs/responses and caller error objects are omitted. A settled mutation can remain in the recorder history after leaving the client's active list. Diagnostic phases do not authorize retries or prove server acceptance.
 
 The six framework demos support `?devtools=1` on their development server, for example `pnpm --filter stateref-example-react dev` and `http://localhost:5181/?devtools=1`. Production builds remove that bootstrap. No browser extension is required.
+
+For a first visit, run `pnpm dev:devtools` after building the workspace. It opens `http://localhost:5181/mission.html?devtools=1`: the Starlight Garage app with a six-step Korean walkthrough and an inline inspector. The mission demos for all six frameworks share this guide. See [local setup and reset instructions](../../docs/DEVELOPMENT.md#try-devtools-locally).
 
 From the workspace root:
 

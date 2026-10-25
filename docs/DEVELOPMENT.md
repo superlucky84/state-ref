@@ -15,6 +15,29 @@ Use the pnpm version from the root `packageManager` field. Corepack or pnpm's ve
 
 The documentation deployment workflow already reads `.nvmrc`, so local and CI builds use the same Node version.
 
+## Try DevTools locally
+
+From a local checkout of `feat/state-ref-devtools`:
+
+```sh
+git fetch origin
+git switch feat/state-ref-devtools
+git pull --ff-only
+nvm install
+nvm use
+corepack enable
+corepack prepare pnpm@9.12.3 --activate
+pnpm install --frozen-lockfile
+pnpm build
+pnpm dev:devtools
+```
+
+The last command starts the React demo and opens **http://localhost:5181/mission.html?devtools=1**. The six-story guide explains what to try in the application and what to inspect beside it. Guide navigation does not run the application for you or certify a test result. On narrow screens, expand “관측창” when needed. Extra failure experiments stay folded away.
+
+Vite also runs the local, memory-only mission API; no separate server, account, Upstash configuration or environment file is needed. `--strictPort` reports an occupied port instead of silently changing the address. Stop the server with **Ctrl+C**. Page reload clears the screen and debugging history; restarting the server also resets saved ship names.
+
+After the initial build, later sessions normally need only `nvm use` and `pnpm dev:devtools`. Rebuild after pulling library changes. Open `/mission.html` without the query parameter to see the normal app without guidance or the inspector. The default `/` page is the detailed server-sync test fixture, so begin with the mission address above.
+
 ## Development pins and consumer requirements
 
 The development version does not force every consumer of `state-ref` or its connectors to use Node 24. Runtime compatibility depends on the package and the entry point used.

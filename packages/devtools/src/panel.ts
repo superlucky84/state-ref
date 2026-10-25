@@ -3,8 +3,10 @@ import type { Preview, Path } from 'state-ref/devtools';
 
 export interface PanelOptions {
   readonly target?: HTMLElement;
+  readonly layout?: 'floating' | 'inline';
 }
 const css = `
+:host([data-layout=inline]){position:static;display:block;z-index:auto}:host([data-layout=inline]) .shell{width:100%;height:clamp(280px,45vh,440px)}
 :host{all:initial;position:fixed;right:16px;bottom:16px;z-index:2147483646;color-scheme:dark;font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;color:#e2e8f0}
 *{box-sizing:border-box}button,input,select{font:inherit;color:inherit}button,select{cursor:pointer}button{background:#1e293b;border:1px solid #334155;border-radius:6px;padding:5px 9px}button:hover{background:#334155}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #38bdf8;outline-offset:2px}button[aria-selected=true],button[aria-pressed=true]{border-color:#38bdf8;color:#7dd3fc} .shell{width:min(740px,calc(100vw - 32px));height:min(500px,calc(100vh - 32px));background:#0f172a;border:1px solid #334155;border-radius:12px;box-shadow:0 16px 60px #0008;display:flex;flex-direction:column;overflow:hidden}header,.controls,nav{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #253247}header strong{font-size:14px;letter-spacing:-.5px}header .status{color:#4ade80;margin-right:auto;font-size:11px}.controls select{min-width:0;max-width:45%;background:#1e293b;border:1px solid #334155;padding:5px;border-radius:5px}.controls input{min-width:0;flex:1;background:#020617;border:1px solid #334155;padding:6px;border-radius:5px}nav{padding:6px 12px;overflow-x:auto;flex-shrink:0}nav button{flex-shrink:0;border-color:transparent;background:transparent}.content{overflow:auto;flex:1;padding:12px;min-height:0}.hint{color:#94a3b8;margin:8px 0}.line{display:flex;gap:12px;padding:5px 2px;border-bottom:1px solid #1e293b;overflow-wrap:anywhere}.path{color:#7dd3fc;min-width:35%;max-width:55%;word-break:break-all}.value{color:#e2e8f0;word-break:break-all}.record{display:block;text-align:left;width:100%;margin:4px 0;overflow-wrap:anywhere}.meta{color:#94a3b8;font-size:11px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#020617;padding:10px;border-radius:6px;max-height:180px;overflow:auto}footer{padding:6px 12px;color:#94a3b8;border-top:1px solid #253247;font-size:11px}.launcher{box-shadow:0 6px 24px #0006;background:#0f172a;color:#7dd3fc;padding:8px 13px}[hidden]{display:none!important}
 `;
@@ -86,6 +88,7 @@ export function mountPanel(
   const previousFocus = doc.activeElement as HTMLElement | null;
   const host = doc.createElement('div');
   host.setAttribute('data-stateref-devtools', '');
+  host.setAttribute('data-layout', options.layout ?? 'floating');
   const shadow = host.attachShadow({ mode: 'open' });
   const make = <K extends keyof HTMLElementTagNameMap>(
     tag: K,

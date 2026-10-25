@@ -151,3 +151,5 @@ I would like to extend my gratitude to the following people and projects:
 ## Contributing
 
 Development and verification use Node **24.19.0 LTS** and pnpm **9.12.3**. Run `nvm use` before `pnpm install --frozen-lockfile` and `pnpm gate`. See [development setup and consumer compatibility](docs/DEVELOPMENT.md).
+
+To try DevTools after `pnpm build`, run **`pnpm dev:devtools`**. It opens the Starlight Garage demo with a six-step walkthrough at `http://localhost:5181/mission.html?devtools=1`.

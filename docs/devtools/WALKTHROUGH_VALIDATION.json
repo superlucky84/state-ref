@@ -1,0 +1,159 @@
+{
+  "recordedAt": "2026-10-25T10:20:37.469636+00:00",
+  "baseCommit": "aed3845ff3ead9b1af89612748815df9ad25a039",
+  "environment": {
+    "node": "v24.19.0",
+    "pnpm": "9.12.3",
+    "browser": "154.0.8037.57"
+  },
+  "walkthrough": [
+    "react: all six stories, real writes/save/subscriptions/batch, navigation, inline/mobile, Vite reload and opt-out PASS",
+    "preact: all six stories, real writes/save/subscriptions/batch, navigation, inline/mobile, Vite reload and opt-out PASS",
+    "vue: all six stories, real writes/save/subscriptions/batch, navigation, inline/mobile, Vite reload and opt-out PASS",
+    "svelte: all six stories, real writes/save/subscriptions/batch, navigation, inline/mobile, Vite reload and opt-out PASS",
+    "solid: all six stories, real writes/save/subscriptions/batch, navigation, inline/mobile, Vite reload and opt-out PASS",
+    "lithent: all six stories, real writes/save/subscriptions/batch, navigation, inline/mobile, Vite reload and opt-out PASS"
+  ],
+  "previousBrowserRegression": [
+    {
+      "panelLatency": {
+        "samples": 21,
+        "medianMs": 16.600000001490116,
+        "p95Ms": 54.19999999925494
+      }
+    },
+    "panel: state/timeline/subscriptions/Sync, redaction/XSS, pause/clear, focus/keyboard, CSS isolation, 20 mount cycles/dispose",
+    "react: real connector application + writes + subscriptions + Sync + HMR/reload",
+    "preact: real connector application + writes + subscriptions + Sync + HMR/reload",
+    "vue: real connector application + writes + subscriptions + Sync + HMR/reload",
+    "svelte: real connector application + writes + subscriptions + Sync + HMR/reload",
+    "solid: real connector application + writes + subscriptions + Sync + HMR/reload",
+    "lithent: real connector application + writes + subscriptions + Sync + HMR/reload"
+  ],
+  "checks": [
+    {
+      "command": "pnpm build:devtools",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm types:examples",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm check:examples",
+      "exitCode": 0,
+      "includes": [
+        "framework-specific types",
+        "all production builds",
+        "operations",
+        "dependency boundaries",
+        "SSR"
+      ]
+    },
+    {
+      "command": "pnpm test:devtools",
+      "exitCode": 0,
+      "passed": 19
+    },
+    {
+      "command": "pnpm test:devtools:browser",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm test:devtools:walkthrough",
+      "exitCode": 0,
+      "frameworks": 6,
+      "viewports": [
+        {
+          "width": 1440,
+          "height": 1100
+        },
+        {
+          "width": 375,
+          "height": 812
+        }
+      ]
+    },
+    {
+      "command": "node packages/devtools/test/bundle.mjs",
+      "exitCode": 0,
+      "coreRecorderPanelGzipBytes": 13223,
+      "capBytes": 30720
+    },
+    {
+      "command": "node packages/devtools/test/optional-peer.mjs",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm --filter @stateref/devtools exec tsc --noEmit",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm --filter @stateref/devtools exec tsc --noEmit --strict --target es2020 --module node16 --moduleResolution node16 test/types.ts",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm check:packaging",
+      "exitCode": 0,
+      "includes": "Svelte CommonJS + ESM SSR rendering and teardown"
+    },
+    {
+      "command": "pnpm exec eslint (changed TS source files)",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm exec prettier --check (changed scripts and sources)",
+      "exitCode": 0
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0
+    }
+  ],
+  "productionExclusion": {
+    "frameworks": 6,
+    "checkedAssetTypes": ["js", "css"],
+    "absentMarkers": [
+      "data-devtools-walkthrough",
+      "devtools-tour",
+      "data-stateref-devtools"
+    ]
+  },
+  "localCommand": {
+    "command": "pnpm dev:devtools",
+    "port": 5181,
+    "strictPort": true,
+    "http": [
+      {
+        "path": "/mission.html?devtools=1",
+        "status": 200
+      },
+      {
+        "path": "/mission-api/ships/1",
+        "status": 200
+      }
+    ],
+    "stoppedWith": "Ctrl+C",
+    "externalServicesRequired": false
+  },
+  "screenshots": {
+    "commandEnvironment": "DEVTOOLS_WALKTHROUGH_SCREENSHOTS=<output directory>",
+    "files": ["walkthrough-desktop.png", "walkthrough-mobile.png"],
+    "visuallyInspected": true
+  },
+  "limits": [
+    "Guide navigation does not perform app actions or mark human tests passed.",
+    "Sync shows metadata; ship name payloads are not collected by the inspector.",
+    "The full core performance gate was not rerun for this UI change; NODE24_VALIDATION.json preserves the earlier full-gate evidence.",
+    "Human M-DT-01 through M-DT-08 checks remain unperformed."
+  ],
+  "sourceHashes": {
+    "examples/shared/src/devtools.ts": "58caa6eb023a7812d461edc3dbe6089aec18440cf9661ad142936b22842a5067",
+    "examples/shared/src/devtools-walkthrough.ts": "ecfa732fc7eb1463e3b97ff5b808f01732944b3cd1cda673e80fd16d2a512a55",
+    "examples/shared/src/devtools-walkthrough.css": "5f5bd1a6b2bb299458b383008ffa653a52f383a250b9f70fdb7ca0e50e3f21ac",
+    "examples/shared/src/mission.ts": "03fed505df2a604dc1c226c9773a575eba65cf99cb738952f5cde53682ed1f3f",
+    "packages/devtools/src/panel.ts": "c95cc11517dcba2b975235b79d512e9f54955ca16c30d7e89749dd52da3ae348",
+    "packages/devtools/test/walkthrough.mjs": "45c0ff618c28d229c2453c035fd268844b51ed5acc9d1e0f2cbc35166a86b9e5",
+    "package.json": "27722d455f9d67969c632efd2ffc69e9fb3aa915209edae43d43901eda38df42"
+  }
+}

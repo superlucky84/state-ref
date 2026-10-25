@@ -1,7 +1,7 @@
 # IMPLEMENT — state-ref DevTools
 
 - 작성일: 2026-10-24. 브랜치: `feat/state-ref-devtools`.
-- 상태: Phase 2~7의 recorder·Sync·패널 및 자동 hardening/integration 검증 완료. Node 24.19.0 전환 뒤 전체 gate와 문서 build도 통과했다. 사람의 수동 검사는 미수행으로 추적한다. 미출시 브랜치 기능이며 npm 발행/main 병합은 수행하지 않았다. 기존 Node 20.3 Svelte packaging 실패는 과거 기록이며 현재 개발 기준의 blocker가 아니다.
+- 상태: Phase 2~7의 recorder·Sync·패널 및 자동 hardening/integration 검증 완료. Node 24.19.0 전환 뒤 전체 gate와 문서 build도 통과했다. 이후 첫 체험 안내와 inline 패널을 추가하고 관련 타입·예제·브라우저·패키징 검사를 통과했다(9절). 사람의 수동 검사는 미수행으로 추적한다. 미출시 브랜치 기능이며 npm 발행/main 병합은 수행하지 않았다. 기존 Node 20.3 Svelte packaging 실패는 과거 기록이며 현재 개발 기준의 blocker가 아니다.
 - 최초 조사 기준 commit: `412db01a63321eef3087f3bc04c46708447a29f8`. Node24 전환 기준은 `a788d958fed3796041a60853d48db798cd61b45a`.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 - 완료 표시가 없는 구현 체크박스와 T-DT 항목은 계획이다. 명령·commit·실행 환경·결과 기록이 없으면 통과로 해석하지 않는다. Phase 0의 부분 시나리오 성공을 T 항목 전체 완료로 읽지 않는다.
@@ -244,11 +244,21 @@ Node24 packaging을 반복하다 기존 `fix-declarations.mjs`의 비멱등 문�
 - 한계: DevTools 활성화 timing과 브라우저 검사는 이번 환경 변경에서 재측정하지 않았다. 기존 Node20/Chromium 결과는 7절과 VALIDATION_RESULTS.json에 보존한다. 사람의 M-DT 검사는 미수행이다.
 - 종료: 현재 개발 기준에서 Svelte CJS packaging blocker 해소. [실행 결과·코드 해시](./NODE24_VALIDATION.json), [개발/소비자 runtime 안내](../DEVELOPMENT.md)를 기록했다. 공개 패키지 전체의 Node24 최소 지원 선언은 추가하지 않았다.
 
-## 9. 인계 — 2026-10-25
+## 9. 첫 체험 안내 — 완료, 2026-10-25
 
-- **done:** 요구/설계→코어→recorder→Sync→앱 내 패널→자동 hardening/6종 integration→가이드·브랜치 버전 메타데이터. Node24 개발 pin 통일 후 전체 gate와 문서 build 통과. 공개 CJS 진입점과 Svelte SSR 수명도 실제 산출물에서 검증했다.
-- **next:** 브랜치 리뷰 및 MANUAL_TEST_CHECKLIST의 사람 검사. 더 오래된 소비자 Node의 Svelte CJS 지원을 선언하려면 해당 버전에서 별도 검증한다. npm 발행·main 병합은 수행하지 않는다.
+- 기준: `aed3845ff3ead9b1af89612748815df9ad25a039`. 사용자 U-DT-10.
+- 구현: 여섯 mission이 공유하는 6단계 한국어 안내, 선택적 inline 패널, 실제 counter/loadout 등록, `pnpm dev:devtools`와 [실행 가이드](../DEVELOPMENT.md#try-devtools-locally). 자세한 실패 실험은 접어두고 현재 행동과 기대 관측을 함께 설명한다.
+- Test Hardening: `pnpm test:devtools` **19/19 pass**. 기존 `test:devtools:browser`의 floating/접기/키보드/종료 및 여섯 앱 HMR/reload 검증 pass. SDK 타입·strict Node16 consumer 타입·bundle의 GC/production 경계·optional-peer·packaging(Svelte CJS/SSR 포함) pass. inline 패널을 포함한 gzip **13,223 B/30 KiB**.
+- Integration Test: 새 `pnpm test:devtools:walkthrough`에서 여섯 mission 모두 안내대로 별 변경→이력, 화면 종료→구독 해제, 이름 공유/저장→Sync 이력, draft 취소/적용→batch, pause/resume/clear를 실제 앱으로 검증했다. 이전/다음은 앱 조작을 대신하지 않고, 키보드 focus 복귀·375px 가로 넘침 없음·Vite reload 후 안내/패널 1개·opt-out을 확인했다.
+- 예제 전체 `pnpm check:examples`(타입·production build·operation·bundle·SSR) 및 변경 코드 lint/Prettier pass. 여섯 production JS/CSS에 안내/패널 marker가 없음을 별도 확인했다. 이 UI 변경에서 전체 core 성능 gate를 다시 실행하지 않았으며 8절의 전체 gate는 당시 기준의 증거다.
+- 실행 검증: `pnpm dev:devtools`의 실제 명령으로 5181 서버 시작, mission 화면과 `/mission-api/ships/1` HTTP 200, Ctrl+C 종료를 확인했다. 메모리 API가 Vite에 포함되므로 별도 환경변수·외부 서비스가 필요 없다.
+- 종료: [브라우저 결과·코드 해시](./WALKTHROUGH_VALIDATION.json)를 기록했다. 실제 화면 이미지를 확인했으며 사람의 M-DT 항목 전체를 통과 처리하지 않았다.
+
+## 10. 인계 — 2026-10-25
+
+- **done:** 요구/설계→코어→recorder→Sync→앱 내 패널→자동 hardening/6종 integration→가이드·브랜치 버전 메타데이터. Node24 전환과 첫 체험용 6단계 안내/inline 관측창/실행 명령을 구현·검증했다.
+- **next:** 사용자는 `pnpm dev:devtools`로 별빛 정비소의 안내를 따라 처음 체험한다. 이후 브랜치 리뷰 및 MANUAL_TEST_CHECKLIST의 사람 검사. 더 오래된 소비자 Node의 Svelte CJS 지원을 선언하려면 해당 버전에서 별도 검증한다. npm 발행·main 병합은 수행하지 않는다.
 - **blockers:** 현재 Node24 전체 gate의 알려진 blocker 없음. M-DT-01~08 사람 검사는 미수행이므로 사람의 출시 검토 완료라고 표시하지 않는다. 사용자 승인 대기 항목은 없다.
-- **commit:** Node24 변경의 부모는 `a788d958fed3796041a60853d48db798cd61b45a`. `git log -1 --format='%H %s' -- docs/devtools packages/devtools`로 최종 변경 commit을 확인한다. 자기 commit SHA는 추정하지 않는다.
-- **evidence:** NODE24_VALIDATION.json(현재 개발 기준), VALIDATION_RESULTS.json(이전 환경), 재현 가능한 test/bench/browser scripts, 사용 가이드. `?devtools=1`을 붙인 각 개발 예제에서 직접 확인할 수 있다.
+- **commit:** 첫 체험 안내 변경의 부모는 `aed3845ff3ead9b1af89612748815df9ad25a039`. `git log -1 --format='%H %s' -- docs/devtools packages/devtools`로 최종 변경 commit을 확인한다. 자기 commit SHA는 추정하지 않는다.
+- **evidence:** WALKTHROUGH_VALIDATION.json(첫 체험), NODE24_VALIDATION.json(Node24 전환), VALIDATION_RESULTS.json(이전 환경), 재현 가능한 test/bench/browser scripts, 사용 가이드.
 - **context:** ctxbin credential은 명령 환경에서만 사용했다. 코드·문서·커밋에 보관하지 않았다.

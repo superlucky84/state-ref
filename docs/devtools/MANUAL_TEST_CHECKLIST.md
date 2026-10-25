@@ -9,6 +9,8 @@
 
 ## 실행 전 기록
 
+- 첫 체험은 [실행 가이드](../DEVELOPMENT.md)의 별빛 정비소 `mission.html?devtools=1`에서 시작한다. 여섯 단계의 행동과 관측을 따라간 뒤 아래 상세 항목을 사용한다. 안내의 다음 버튼은 검사 통과를 뜻하지 않는다.
+
 - 현재 개발 기준은 Node 24.19.0/pnpm 9.12.3이다. Svelte 5 CommonJS의 사용자 Node 조건과 개발용 pin을 구분해 안내하는지 확인한다. 과거 Node20 실행 결과를 새 기준의 실패로 해석하지 않는다.
 - 검사할 구현 commit/dirty 여부, Node/pnpm, OS·브라우저 버전, 예제 주소, DevTools 설정과 한도를 기록한다.
 - 초기화한 테스트 앱에 core store 두 개, 같은 key를 사용하는 Sync client 두 개, 실제 요청 횟수 계측을 준비한다. 실제 업무 데이터가 아닌 fixture를 쓴다.

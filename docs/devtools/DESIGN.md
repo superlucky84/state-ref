@@ -171,6 +171,14 @@ tools.dispose();
 
 ## 6. 남은 검증과 진행 조건
 
+### 첫 체험 안내 — U-DT-10
+
+- [x] 기존 별빛 정비소의 `mission.html?devtools=1`에만 공통 개발용 walkthrough를 붙인다. 여섯 프레임워크의 실제 앱 동작은 유지한다. 기본 검증용 화면은 바꾸지 않는다.
+- [x] 여섯 단계: 우주선 선택 → 별 모으기로 상태/이력 → 보조 화면과 구독 → 이름 저장과 Sync → 장비 편집/batch → pause/clear와 마무리. 각 단계는 할 행동과 기대 관측을 한 장으로 보여준다. 이전/다음만 주요 이동 수단으로 둔다. 단계 이동은 앱 동작이나 성공 판정을 대신하지 않는다.
+- [x] 패널의 선택적 `layout: 'inline'`을 추가해 데모의 안내 옆에 넣는다. 기본 floating 동작은 유지한다. 넓은 화면은 앱과 안내/관측창을 나란히 두고, 좁은 화면에서는 세로로 배치하고 관측창을 접을 수 있게 한다.
+- [x] 실제 counter 원본과 loadout 원본을 추가 등록한다. wrapper를 억지로 관측하지 않는다. Sync 화면에는 우주선 이름 payload가 없다는 점을 명시한다. 안내는 등록 이름과 실제 보이는 경로/작업만 사용한다.
+- 검증: 여섯 mission의 실제 상태 변경/저장/구독/batch와 안내 이동, 모바일 가로 넘침·키보드·접기, query 없는 화면과 production에서 안내 제외, HMR 뒤 한 개 수명. 설치/실행 명령을 실제 실행해 주소를 확인한다.
+
 ### Node 24 개발 기준 — U-DT-09
 
 개발·검증용 Node는 24.19.0, pnpm은 기존 9.12.3으로 고정한다. `.nvmrc`, root/private package의 engine 및 모든 기존 Volta pin을 맞춘다. docs CI는 이미 `.nvmrc`를 읽으므로 같은 버전을 사용한다. gate는 다른 Node major에서 build 전에 안내하고 중단한다. 공개 패키지 전체에 Node 24 runtime engine을 추가하지 않는다. Svelte 5의 CommonJS 경로는 `require(ESM)`을 지원하는 사용자 Node도 필요하며, 이 저장소의 검증 버전은 24.19.0이다. ESM SSR에는 CommonJS가 필요하지 않다.

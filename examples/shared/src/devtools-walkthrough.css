@@ -1,0 +1,189 @@
+body.devtools-tour {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 440px;
+  grid-template-areas: 'app tour';
+  gap: 16px;
+  padding-right: 20px;
+  align-items: start;
+}
+.devtools-tour > #app {
+  grid-area: app;
+  min-width: 0;
+}
+.devtools-tour .station {
+  padding: 30px 24px;
+}
+.devtools-tour .mission-grid {
+  grid-template-columns: 1fr;
+}
+.devtools-tour .fleet {
+  padding: 16px;
+}
+.devtools-tour .fleet h2 {
+  margin-bottom: 14px;
+}
+.devtools-tour .ship-choice {
+  display: inline-flex;
+  width: calc(33.333% - 7px);
+  vertical-align: top;
+  margin-right: 7px;
+  padding: 12px 8px;
+  gap: 8px;
+}
+.devtools-tour .ship-choice strong {
+  font-size: 12px;
+}
+.devtools-tour .mini-planet {
+  font-size: 24px;
+}
+.devtools-tour .orbit-art {
+  display: none;
+}
+.devtools-tour .hero {
+  min-height: 190px;
+}
+[data-devtools-walkthrough] {
+  grid-area: tour;
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  margin-top: 20px;
+  border: 1px solid #3b4360;
+  border-radius: 18px;
+  background: #131a2d;
+  color: #e8edf9;
+  font: 13px/1.75 ui-sans-serif, system-ui, sans-serif;
+  scrollbar-width: thin;
+}
+[data-devtools-walkthrough] .tour-intro {
+  padding: 20px 20px 12px;
+}
+[data-devtools-walkthrough] .tour-kicker {
+  color: #a9d8cf;
+  font-size: 11px;
+}
+[data-devtools-walkthrough] h2 {
+  font-size: 21px;
+  margin: 5px 0;
+  letter-spacing: -0.5px;
+}
+[data-devtools-walkthrough] p {
+  margin: 0;
+  line-height: 1.8;
+}
+[data-devtools-walkthrough] .tour-intro p {
+  color: #a9b6d0;
+  font-size: 12px;
+}
+[data-devtools-walkthrough] details {
+  border-top: 1px solid #303b55;
+  padding: 12px 16px;
+}
+[data-devtools-walkthrough] summary {
+  color: #dce5f6;
+  font-size: 13px;
+}
+[data-devtools-walkthrough] summary span {
+  color: #9caecc;
+  font-size: 11px;
+  margin-left: 8px;
+}
+[data-devtools-walkthrough] progress {
+  display: block;
+  width: 100%;
+  height: 5px;
+  margin: 12px 0 16px;
+  accent-color: #c5b5ff;
+}
+[data-devtools-walkthrough] h3 {
+  font-size: 18px;
+  line-height: 1.5;
+  margin: 0 0 8px;
+  outline: none;
+}
+[data-devtools-walkthrough] .tour-story {
+  color: #aebbd4;
+  margin-bottom: 14px;
+}
+[data-devtools-walkthrough] .tour-task,
+[data-devtools-walkthrough] .tour-observe {
+  padding: 12px;
+  border-radius: 10px;
+  background: #1e2941;
+  margin-top: 10px;
+}
+[data-devtools-walkthrough] .tour-observe {
+  background: #1c3034;
+}
+[data-devtools-walkthrough] strong {
+  display: block;
+  font-size: 11px;
+  color: #d5ccff;
+  margin-bottom: 4px;
+}
+[data-devtools-walkthrough] .tour-observe strong {
+  color: #aae1d1;
+}
+[data-devtools-walkthrough] .tour-where {
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+[data-devtools-walkthrough] .tour-notice {
+  color: #bacbd0;
+}
+[data-devtools-walkthrough] nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 16px;
+}
+[data-devtools-walkthrough] nav span {
+  color: #8fa0bf;
+  font-size: 10px;
+}
+[data-devtools-walkthrough] button {
+  font-size: 12px;
+  padding: 8px 10px;
+}
+[data-devtools-walkthrough] button[data-tour='next'] {
+  background: #c2b3fa;
+  color: #201c36;
+  border-color: #c2b3fa;
+}
+[data-devtools-walkthrough] .tour-inspector {
+  padding: 10px;
+}
+[data-devtools-walkthrough] [data-tour-inspector] {
+  margin-top: 10px;
+}
+[data-devtools-walkthrough] .tour-extra p {
+  margin-top: 12px;
+  color: #a9b6d0;
+}
+@media (max-width: 1099px) {
+  body.devtools-tour {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'tour' 'app';
+    padding: 0;
+    gap: 0;
+  }
+  [data-devtools-walkthrough] {
+    position: static;
+    max-height: none;
+    margin: 16px 18px 0;
+  }
+  .devtools-tour .station {
+    padding: 20px 18px;
+  }
+}
+@media (max-width: 420px) {
+  [data-devtools-walkthrough] nav span {
+    display: none;
+  }
+  .devtools-tour .ship-choice {
+    display: flex;
+    width: 100%;
+  }
+}
