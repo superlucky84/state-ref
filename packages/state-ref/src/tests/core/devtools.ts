@@ -21,6 +21,82 @@ const plain = (value: Preview): unknown => {
 if (import.meta.vitest) {
   const { describe, it, expect, vi } = import.meta.vitest;
   describe('development store observation', () => {
+    it('coalesces dependency collection and error restoration into final snapshots', async () => {
+      const watch = createStore(
+        { choose: true, a: 1, b: 2 },
+        { trackDeps: true }
+      );
+      const events: StoreEvent[] = [];
+      const observation = observeStore(watch, event => events.push(event));
+      watch(ref => {
+        if (ref.choose.value) void ref.a.value;
+        else {
+          void ref.b.value;
+          throw Error('restore');
+        }
+      });
+      await flush();
+      expect(
+        events.filter(event => event.type === 'subscription-changed')
+      ).toHaveLength(1);
+      events.length = 0;
+      const report = vi.spyOn(console, 'error').mockImplementation(() => {});
+      try {
+        watch().choose.value = false;
+      } finally {
+        report.mockRestore();
+      }
+      await flush();
+      const changed = events.filter(
+        event => event.type === 'subscription-changed'
+      );
+      expect(changed).toHaveLength(1);
+      expect(changed[0].subscription.paths.map(path => path[0])).toEqual(
+        ['choose', 'b', 'a'].map(value => ({ kind: 'key', value }))
+      );
+      observation.disconnect();
+    });
+
+    it('does not publish a queued dependency update after a subscription ends', async () => {
+      const watch = createStore({ a: 0, b: 0 });
+      const controller = new AbortController();
+      const events: StoreEvent[] = [];
+      const observation = observeStore(watch, event => events.push(event));
+      const ref = watch(value => {
+        void value.a.value;
+        return controller.signal;
+      });
+      void ref.b.value;
+      controller.abort();
+      void ref.b.value;
+      await flush();
+      expect(events.some(event => event.type === 'subscription-changed')).toBe(
+        false
+      );
+      expect(events.some(event => event.type === 'subscription-ended')).toBe(
+        true
+      );
+      expect(observation.subscriptions()).toEqual([]);
+      observation.disconnect();
+    });
+
+    it('bounds pending dependency references and reports the missing updates', async () => {
+      const watch = createStore(0);
+      const events: StoreEvent[] = [];
+      const observation = observeStore(watch, event => events.push(event));
+      for (let i = 0; i < 1500; i++)
+        watch(ref => {
+          void ref.value;
+        });
+      await flush();
+      expect(events.length).toBeLessThanOrEqual(1001);
+      expect(
+        events.some(event => event.type === 'gap' && event.dropped >= 500)
+      ).toBe(true);
+      expect(observation.subscriptions()).toHaveLength(1500);
+      observation.disconnect();
+    });
+
     it('attaches after references exist without creating application subscriptions', async () => {
       const watch = createStore({ count: 0 });
       const ref = watch();

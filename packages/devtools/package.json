@@ -1,0 +1,43 @@
+{
+  "name": "@stateref/devtools",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "Optional read-only debugging sessions for state-ref",
+  "main": "./dist/stateref-devtools.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/stateref-devtools.mjs"
+      }
+    },
+    "./panel": {
+      "import": {
+        "types": "./dist/panel.d.ts",
+        "default": "./dist/panel.mjs"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run --reporter verbose"
+  },
+  "peerDependencies": {
+    "state-ref": "^3.3.0",
+    "@stateref/sync": "^0.3.1"
+  },
+  "devDependencies": {
+    "state-ref": "workspace:*",
+    "@stateref/sync": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@stateref/sync": {
+      "optional": true
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import { createComputed, createStore, createStoreManualSync } from 'state-ref';
+import { mountDemoDevtools } from './devtools';
 import type { StateRefStore, Watch } from 'state-ref';
 import { createDraft } from 'state-ref/draft';
 import type { Draft, DraftChange } from 'state-ref/draft';
@@ -1887,6 +1888,7 @@ export function createDemoModel(): DemoModel {
     }
   };
 
+  void mountDemoDevtools(watchUi, client);
   return {
     server,
     environment,

@@ -1,6 +1,6 @@
 # DESIGN — state-ref DevTools
 
-- 작성일: 2026-10-24. 상태: Phase 1 코어 관측 API·개발 빌드 구현. recorder/Sync/UI는 구현 전.
+- 작성일: 2026-10-24. 상태: core/recorder/Sync/앱 내 패널 구현. 자동 검증 결과는 IMPLEMENT와 VALIDATION_RESULTS.json이 기준이다.
 - 기준: `412db01a63321eef3087f3bc04c46708447a29f8`. 브랜치: `feat/state-ref-devtools`.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 - 체크 완료는 설계 선택을 뜻한다. 구현·검증 완료 표시가 아니다. 사용자 선택과 설계상 선택을 구분한다.
@@ -54,15 +54,15 @@
   - 검증: T-DT-11, T-DT-12, M-DT-01, M-DT-08.
 - [x] **DC-DT-11 코어 관측 브리지 — 별도 `state-ref/devtools` + 개발 조건부 코어. Phase 0 결정.**
   - A(별도 진입점)와 B(plugin 확장)는 모두 late attach·동일 realm의 다른 core 사본을 관측했다. A를 선택해 journal/draft와 진단의 공개 계약을 분리한다. 관측 함수만 import할 때의 tree-shaking 결과도 비교했으며, 전체 B namespace 크기를 소비자가 항상 지불한다고 해석하지 않는다.
-  - 기본 코어의 gzip 3,783 B는 cap 3,800 B에 근접한다. 계측을 항상 포함하는 안은 cap을 넘었다. `development` export 조건에서만 계측 코어를 선택하고 기본 production에서는 제거한다. Vite 개발 해석·production build 및 Node `--conditions=development` 실험 통과. 다른 bundler와 실제 ESM/CJS 배포 조합은 Phase 1/6 검증 대상이다.
+  - 기본 코어의 gzip 3,783 B는 cap 3,800 B에 근접한다. 계측을 항상 포함하는 안은 cap을 넘었다. `development` export 조건에서만 계측 코어를 선택하고 기본 production에서는 제거한다. Vite 개발 해석·production build 및 Node `--conditions=development` 실험 통과. 실제 ESM/CJS 및 Vite consumer 조합은 후속 구현에서 검증했다. 다른 bundler는 아직 확인하지 않았다.
   - 공개 함수는 `observeStore(watch, listener, options?)`, handle은 `snapshot`, `subscriptions`, `disconnect`, `protocolVersion`이다. Phase 0의 [API 초안](./experiments/api-draft.ts)을 거쳐 Phase 1의 [실제 공개 타입](../../packages/state-ref/src/devtools/types.ts)과 [소비자 타입 검사](../../packages/state-ref/test/devtools-types.ts)를 만들었다. 현재 브랜치의 미출시 API이며 npm 3.2.2에서 제공한다는 뜻이 아니다.
   - 일반/manual-sync root watch와 동일 realm·프로토콜 1의 다른 core 사본을 지원한다. attach 전 ref도 관측한다. computed/combineWatch/shared wrapper는 거절하고 shared의 원래 watch를 등록하도록 안내한다. 구버전·기본 production 코어·다른 프로토콜도 기존 앱을 수정하지 않고 연결 오류로 거절한다.
-  - 소유 코어/브리지만 내부 자료구조를 해석한다. 공개 listener·recorder·UI에는 불변 Preview/구독 DTO만 전달한다. 실험의 raw-table handshake는 공개 프로토콜이 아니며 그대로 제품에 복사하지 않는다. 최종 wire v1은 Phase 1에서 해당 타입의 읽기 전용 결과만 내보내도록 만든다.
-  - 검증: T-DT-01/02/06/10/12/13의 Phase 0 부분 결과는 [실험 기록](./experiments/README.md). 실제 배포·프레임워크 통과 주장은 후속 검증까지 보류한다.
+  - 소유 코어/브리지만 내부 자료구조를 해석한다. 공개 listener·recorder·UI에는 불변 Preview/구독 DTO만 전달한다. 실험의 raw-table handshake는 공개 프로토콜이 아니며 그대로 제품에 복사하지 않는다. 최종 wire v1은 해당 타입의 읽기 전용 결과만 내보낸다.
+  - 검증: T-DT-01/02/06/10/12/13의 Phase 0 부분 결과는 [실험 기록](./experiments/README.md). 실제 배포·프레임워크 결과는 IMPLEMENT의 최종 기록을 따른다.
 - [x] **DC-DT-12 활성화 비용·호환 범위 — 아래 예산과 측정법을 채택. Phase 0 결정.**
-  - 최소 core **3.3.0 예정**, 신규 DevTools core peer **`^3.3.0` 예정**, protocol **1**. 현 core 3.2.2에는 브리지가 없다. Sync 통합은 현 메타데이터 API가 있는 **`@stateref/sync ^0.3.1`**을 optional peer로 계획하며 미설치 시 core 관측을 막지 않는다. 패키지 버전은 아직 변경하지 않는다.
+  - 최소 core **3.3.0**, DevTools **0.1.0**, core peer **`^3.3.0`**, protocol **1**로 브랜치 메타데이터를 확정했다. 기존 npm core 3.2.2에는 브리지가 없다. Sync 통합은 현 메타데이터 API가 있는 **`@stateref/sync ^0.3.1`**을 optional peer로 계획하며 미설치 시 core 관측을 막지 않는다. 아직 npm에 발행하지 않았다.
   - Node 20.3.0/pnpm 9.12.3, 같은 소스·bundler·fixture로 원본/production/개발 미연결/개발 연결을 비교한다. 5회 워밍업 뒤 21회, 순서 순환, median/p95를 기록한다. 초기화·연결·강제 GC는 시간 밖, 쓰기와 microtask 전달은 시간 안이다. 벤치 외 작업을 동시에 돌리지 않는다.
-  - 기본 core gzip cap **3,800 B**와 기존 bench 기준은 유지한다. 추가 gzip 목표: 개발 core 전체 의존 **6,500 B**, recorder 전체 의존 **10 KiB**, panel+recorder 전체 의존 **30 KiB**. UI 크기는 아직 측정하지 않은 구현 예산이다. 개발 core는 Phase 1에서 아래 근거로 예산을 개정했다.
+  - 기본 core gzip cap **3,800 B**와 기존 bench 기준은 유지한다. 추가 gzip 목표: 개발 core 전체 의존 **6,500 B**, recorder 전체 의존 **10 KiB**, panel+recorder 전체 의존 **30 KiB**. 최종 UI 포함 측정은 아래 실행 기록과 VALIDATION_RESULTS.json에 보관했다. 개발 core는 Phase 1에서 아래 근거로 예산을 개정했다.
   - 개발 미연결의 500 writes는 원본 median + **1 ms** 이내, 10,000 writes는 원본 + **5 ms** 이내. 개발 연결 500 writes(1,600 idle 구독)는 median **5 ms**/p95 **16 ms** 이내, 10,000 primitive writes+전달은 median **50 ms**/p95 **100 ms** 이내. 읽기 50,000회(depth 8/32)는 각 median이 원본 × **1.15 + 1 ms** 이내다.
   - 실제 recorder에도 같은 workload를 적용한다. 패널 표시 중에는 별도 Chromium fixture에서 입력→DOM 반영 p95 **100 ms** 이내를 목표로 한다(기록 200개·한 화면 최대 100행, 21회). 기기·브라우저를 기록하고 prototype의 no-op listener 수치와 혼용하지 않는다.
   - 10,000회 쓰기에서 DC-DT-07의 queue/history/Preview 한도와 gap 복구, 20회 수명 반복 뒤 남은 source/listener/DOM 0을 검사한다. byte 한도를 heap 상한으로 오해하지 않으며 GC/heap 증거는 Phase 5/6 및 M-DT-06에 남긴다.
@@ -91,7 +91,7 @@ flowchart LR
 
 ## 3. 이벤트와 snapshot 계약
 
-브리지의 실제 공개 타입은 DC-DT-11의 소스가 기준이며 session/Sync 이벤트는 Phase 2/3에서 구체화한다. Phase 1은 write/subscription-run/subscription-ended/gap을 발행한다. subscription-changed는 타입에 예약돼 있지만 실시간 dependency 변경 스트림은 Phase 2에서 구현한다. `observedRuns`는 attach 이후 관측한 initial+update 호출 수이며 렌더 횟수가 아니다.
+브리지의 실제 공개 타입은 DC-DT-11의 소스가 기준이며 session/Sync 이벤트는 Phase 2/3에서 구체화한다. Phase 2부터 write/subscription-run/subscription-changed/subscription-ended/gap을 발행한다. dependency 추가·재수집·오류 복구는 microtask에서 합쳐 최종 snapshot으로 전달한다. `observedRuns`는 attach 이후 관측한 initial+update 호출 수이며 렌더 횟수가 아니다.
 
 | 레코드 | 필수 정보 | 의미 |
 |---|---|---|
@@ -110,8 +110,8 @@ flowchart LR
 - runner의 기존 비교에서 바뀐 것으로 확인한 경로를 사용한다. DevTools 때문에 getter를 추가 실행하거나 판정 순서를 바꾸지 않는다. 알 수 없는 원인은 `unknown`으로 표시한다.
 - read dependency는 collector가 실제 관리하는 집합이다. `trackDeps: false`에서는 경로가 누적될 수 있고, `true`에서는 재수집 및 예외 시 복구 결과를 그대로 표시한다.
 - `subscription-run.cause`의 `flush-group`은 같은 runner flush에 모인 write IDs다. 특정 구독에 대한 정확한 쓰기별 인과관계로 표시하지 않는다. 실제 변경 경로는 별도 `changedPaths`이며, 관측 공백/중간 attach로 그룹을 알 수 없으면 `unknown`이다.
-- `disconnect` 후 handle의 snapshot/구독 조회는 명확한 오류로 거절하고 source를 붙드는 참조를 해제한다. Phase 1은 queued delivery 취소·반복 해제·보관된 handle의 source GC를 검증했다. 실제 앱/HMR/패널 heap 검증은 후속 단계다.
-- `redact`는 정적 경로 목록이며 캡처 전에 적용한다. 앱 callback을 commit 경로에서 실행하지 않는다. 서로 다른 연결의 마스킹 정책을 섞지 않도록 Phase 1에서 연결별 격리를 검증한다.
+- `disconnect` 후 handle의 snapshot/구독 조회는 명확한 오류로 거절하고 source를 붙드는 참조를 해제한다. Phase 1은 queued delivery 취소·반복 해제·보관된 handle의 source GC를 검증했다. 실제 앱 HMR/reload와 panel teardown을 추가 검증했으며 사람의 heap 검토는 미수행이다.
+- `redact`는 정적 경로 목록이며 캡처 전에 적용한다. 앱 callback을 commit 경로에서 실행하지 않는다. 서로 다른 연결의 마스킹 정책이 섞이지 않는지 core/session 테스트로 검증했다.
 
 ## 4. 수명과 사용 예시
 
@@ -132,7 +132,7 @@ observation.disconnect(); // 멱등; 이후 snapshot/subscriptions는 오류
 
 앱 배포 코드에서는 `import.meta.env.DEV` 같은 빌드 조건 안에서 adapter를 동적으로 import한다. production core에 연결하면 개발 조건을 안내하는 오류를 낸다. `gap` 수신자는 현재 snapshot/구독을 다시 조회할 수 있다. snapshot 자체의 접근 실패는 Preview의 `capture-error`로만 표시하므로 gap→snapshot 재조회가 무한 이벤트 루프를 만들지 않는다. 첫 flush는 attach 전에 누적된 쓰기를 알 수 없어 원인을 보수적으로 `unknown`으로 표시한다.
 
-아래 코드는 **제안 API**이며 현재 설치된 state-ref에서는 실행되지 않는다. 최종 시그니처를 확정한 뒤 문서 예제 컴파일 검증에 편입한다.
+아래 session/panel API는 브랜치 구현을 기준으로 한다. watch/client는 호출자가 소유한다. 완전한 실행 예제는 packages/devtools/README.md에서 추출해 실제 배포 선언과 컴파일 검증한다.
 
 ```ts
 // 후보 형태: 앱의 개발용 bootstrap에서만 실행
@@ -171,6 +171,29 @@ tools.dispose();
 
 ## 6. 남은 검증과 진행 조건
 
+### Phase 2 session 계약 — 2026-10-25
+
+신규 `@stateref/devtools`는 ESM headless 패키지다. `createDevtools({ maxEvents, maxHistoryBytes, maxSources })`가 `attachStore`, `getSnapshot`, `inspectStore`, `subscribe`, `pause`, `resume`, `clear`, `dispose`를 제공한다. UI/Sync는 아직 추가하지 않는다. core peer는 계획대로 `^3.3.0`, 작업 중 개발 의존은 `workspace:*`이며 아직 발행하지 않는다.
+
+- 기본 이력 200건/1 MiB, source 100개. 옵션 범위는 events 1~10,000, bytes 256~16 MiB, sources 1~1,000의 유한 정수다. byte는 각 레코드의 UTF-8 JSON 크기의 합이며 메타데이터와 Preview를 포함한다. 배열 래퍼나 실제 heap 수치가 아니다. 오래된 레코드를 먼저 제거하고 한 레코드가 byte 한도를 넘으면 보관하지 않는다. `evicted`/`oversized` 통계로 차이를 표시한다.
+- source ID는 session 안에서 유일하다. 같은 watch 중복 attach는 거절하고 같은 이름의 다른 watch는 허용한다. pause/resume으로 bridge 연결이 바뀌면 generation을 올려 과거 구독 ID와 혼동하지 않는다. `observedRuns`는 해당 generation 이후의 관측 호출 수다.
+- `getSnapshot`은 불변 metadata/이력이며 앱 값을 읽지 않는다. `subscribe`는 coalesced microtask 알림만 보낸다. `inspectStore(id)`는 요청한 source의 최신 값을 직접 읽어 setter 직후에도 오래된 cache를 반환하지 않는다. 구독 목록은 1,000개 및 직렬화 64 KiB까지 보이고 생략을 명시한다. 현재값 Preview는 기존 64 KiB 제한을 따른다.
+- core gap을 받으면 해당 source의 값/구독을 다시 읽어 복구 경계를 확인하고 알린다. 전체 store를 매 쓰기마다 복사하지 않는다. 복구 정보는 계수/마지막 사유이며 현재 UI 값은 `inspectStore`로 읽는다. 이력을 완전한 재생 로그로 주장하지 않는다.
+- pause는 모든 bridge를 disconnect해 producer 캡처도 멈춘다. pause 중 최신 값 조회는 짧은 임시 관측을 열고 즉시 닫는다. 이때 구독 ID는 해당 조회에만 유효하므로 inspection generation은 null이다. resume은 새 generation으로 연결하고 누락 건수를 알 수 없는 pause gap을 남긴다.
+- clear는 **이미 session이 받은 이력**과 그 보관 통계만 비운다. 아직 core microtask에서 전달하지 않은 이벤트는 이후 수신할 수 있다. source/generation과 앱 상태는 유지한다. 실제 브라우저 버튼 이벤트 전에 기존 microtask는 먼저 끝난다.
+- detach는 해당 source만 해제하고 남은 표시용 이력은 한도 안에서 유지한다. 반환한 해제 함수를 보관해도 호출 후 watch를 붙들지 않는다. dispose는 source·이력·대기 알림을 제거하고 최종 빈 상태를 기존 listener에 한 번 알린 뒤 listener도 제거한다. 새 attach/subscribe는 거절한다.
+- core의 `subscription-changed`는 collector의 추가/재수집/복구를 microtask에서 합쳐 최종 dependency snapshot으로 보낸다. pending run 참조는 1,000개까지만 보관하고 넘치면 gap으로 알린다. 끝난 구독은 변경 stream으로 부활하지 않는다.
+
+검증: T-DT-01/03/05/06/08/09/10/12. 기본 core 3,800 B·개발 core 6,500 B cap을 유지하고 recorder를 포함한 소비자 gzip은 10 KiB 이하로 검사한다. 실제 개발 산출물의 package consumer, pause/clear 전달 경계, overflow/큰 값, 여러 session, 반복 해제·GC를 확인한다.
+
+### Phase 3/4 연결 계약 — 2026-10-25
+
+`attachSync(client, { name })`와 `inspectSync(id)`를 session에 추가했다. Sync는 optional peer이며 runtime import 없이 네 공개 관측 메서드만 호출한다. 초기 snapshot과 이후 stream을 구분하고 구독 이전에 발생한 사건을 새 이력으로 복제하지 않는다. key는 JSON 표시 문자열로 512자, scope는 256자, linkedKeys는 32개까지 보이며 잘림을 명시한다. payload/input/response/error 필드는 복사하지 않는다. 조회 결과는 목록별 1,000행/64 KiB로 제한하고 mutation 종료 이력은 기존 session 한도에 보관한다.
+
+`@stateref/devtools/panel`의 `mountPanel(tools, { target })`가 ShadowRoot 안에 DOM 패널을 만든다. 구현은 packages/devtools/src/panel.ts가 기준이다. import는 DOM을 읽지 않는다. 상태/이력/구독/Sync 탭, 대상 선택, 경로·이벤트 검색, pause/resume/clear, 접기/펼치기를 제공한다. 한 목록은 100행, 표시 문자열은 한도 안에서 잘라 렌더하며 textContent를 사용한다. 패널은 현재값을 `inspectStore`/`inspectSync`로 읽고 앱의 watch/query를 호출하지 않는다. 갱신은 animation frame으로 합치고 unmount/dispose 때 예약·listener·DOM을 제거한다. 키보드 탭 이동·Escape 접기·focus 복귀와 host CSS 격리를 실제 Chromium에서 확인한다.
+
+별도 fixture에서 headless API와 DOM 패널을 함께 실행하고 Sync 요청/owners·앱 구독 수 불변, overflow·pause gap·마스킹·반복 mount/unmount를 확인한다. React/Preact/Vue/Svelte/Solid/Lithent 앱에서는 같은 panel bootstrap을 연결해 실제 브라우저에서 각각 검증한다. 이 결과를 사람이 확인할 가독성/heap 항목 전체 통과로 대신 표시하지 않는다.
+
 Phase 1(기준 `528b6e998b68104cf5f5722d8ed7eac379838ae2`): `state-ref/devtools`는 ESM의 좁은 adapter로 만들고 개발 코어가 protocol 1의 `observe`를 소유한다. wire 경계에는 읽기 전용 DTO와 handle만 오간다. 실제 개발 core는 Preview/정적 마스킹/queue/gap/해제까지 포함해 의존 chunk를 합친 최종 gzip **6,176 B**다. 실험의 producer shim에만 맞춘 4,500 B 목표를 넘었다. adapter에는 중복 구현을 넣지 않아 308 B이며, production에 남던 TextEncoder 초기화를 연결 시점으로 옮겼다. 읽기 전용 경계를 약화하거나 일부 chunk를 측정에서 빼지 않고 **개발 전용 예산을 6,500 B로 명시적으로 개정**한다. 기본 production 3,800 B cap은 그대로다. 이 결정은 실제 배포 consumer 크기 검사로 고정한다.
 
 Phase 1에서 `snapshot`은 tagged Preview이며 depth 6/노드 1,000개/직렬화 64 KiB를 제한한다. 객체/배열의 생략은 `truncated: true`, 개별 값의 생략은 marker로 표시한다. key 1,024자·경로 64 segments·symbol registry 1,000개 한도를 넘으면 명시적인 `truncated` segment를 쓴다. symbol description은 256자까지다. 원본 객체나 callback을 반환하지 않는다. 정적 redact 경로는 연결마다 독립적으로 적용한다. overflow는 누락된 sequence 뒤에 gap을 전달하며 현재 snapshot 재조회는 소비자가 수행한다. 이력 자동 복구와 subscription-changed 스트림은 Phase 2 책임이다.
@@ -180,3 +203,5 @@ Phase 0의 두 결정은 [실험과 측정](./experiments/README.md)으로 닫�
 Phase 1은 실제 개발/기본 export, 불변 wire protocol, 타입·consumer packaging, capture 실패/gap, 해제 후 참조 제거를 구현했다. core와 `state-ref/batch`가 동일한 개발 런타임을 쓰는지 ESM/CJS 산출물로 확인했고, Vite 개발 해석·production 조건부 import 제외도 통과했다. 실제 6종 앱의 패널/HMR 검증은 이 결과로 대체하지 않는다.
 
 기존 Node 20.3 Svelte CommonJS packaging 실패는 IMPLEMENT에서 별도 추적한다. 관측 경계 구현을 막지는 않지만 전체 gate·출시 준비 완료라고 표시할 수 없다. 별도 사용자 승인 대기 없이 단계별 검증을 진행한다.
+
+현재 검증: 기본 core 3,785 B/3,800 B, 개발 core 6,428 B/6,500 B, 개발 core+recorder 9,302 B/10 KiB, panel까지 13,119 B/30 KiB. Node 20.3의 recorder 500 writes median 3.917 ms/p95 8.049 ms, 10,000 writes median 42.516 ms/p95 61.386 ms로 기존 목표를 유지했다. 예산을 올리지 않고 metadata byte 계산과 대기 queue를 개선했다. 정확한 결과/코드 해시는 VALIDATION_RESULTS.json에 보관한다.

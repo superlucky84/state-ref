@@ -139,6 +139,30 @@ const steps = [
     ],
   },
   {
+    name: 'recorder-types',
+    cmd: 'pnpm',
+    args: ['--filter', '@stateref/devtools', 'exec', 'tsc', '--noEmit'],
+  },
+  {
+    name: 'recorder-consumer-types',
+    cmd: 'pnpm',
+    args: [
+      '--filter',
+      '@stateref/devtools',
+      'exec',
+      'tsc',
+      '--noEmit',
+      '--strict',
+      '--target',
+      'es2020',
+      '--module',
+      'node16',
+      '--moduleResolution',
+      'node16',
+      'test/types.ts',
+    ],
+  },
+  {
     name: 'sync-consumer-types',
     cmd: 'pnpm',
     args: [
@@ -247,6 +271,16 @@ const steps = [
     name: 'devtools-bundle',
     cmd: 'node',
     args: ['packages/state-ref/test/devtools-bundle.mjs'],
+  },
+  {
+    name: 'recorder-bundle',
+    cmd: 'node',
+    args: ['packages/devtools/test/bundle.mjs'],
+  },
+  {
+    name: 'recorder-optional-peer',
+    cmd: 'node',
+    args: ['packages/devtools/test/optional-peer.mjs'],
   },
   {
     name: 'packaging',

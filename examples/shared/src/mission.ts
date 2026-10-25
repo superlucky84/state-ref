@@ -1,3 +1,4 @@
+import { mountDemoDevtools } from './devtools';
 import { combineWatch, createComputed, createStore } from 'state-ref';
 import type { Renew, StateRefStore, Watch } from 'state-ref';
 import { batch } from 'state-ref/batch';
@@ -172,6 +173,7 @@ export function createMission() {
   let draft: ReturnType<
     typeof createDraft<{ fuel: number; cargo: number }>
   > | null = null;
+  void mountDemoDevtools(ui, client);
   return {
     ui,
     counter,

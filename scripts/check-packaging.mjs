@@ -26,6 +26,7 @@ const PACKAGES = [
   'connect-solid',
   'connect-lithent',
   'sync',
+  'devtools',
 ];
 
 // Every path a package advertises must exist in the built output.
@@ -158,6 +159,8 @@ try {
     'state-ref/plugin',
     'state-ref/devtools',
     '@stateref/sync',
+    '@stateref/devtools',
+    '@stateref/devtools/panel',
     '@stateref/connect-react/sync',
     '@stateref/connect-preact/sync',
     '@stateref/connect-vue/sync',
@@ -210,6 +213,10 @@ try {
     import { connectLithent, connectLithentView } from '@stateref/connect-lithent';
     const plugin = await import('state-ref/plugin');
     const devtools = await import('state-ref/devtools');
+    const recorder = await import('@stateref/devtools');
+    const panel = await import('@stateref/devtools/panel');
+    if (typeof panel.mountPanel !== 'function') throw new Error('panel missing mountPanel');
+    if (typeof recorder.createDevtools !== 'function') throw new Error('@stateref/devtools missing createDevtools');
     if (typeof devtools.observeStore !== 'function') throw new Error('state-ref/devtools missing observeStore');
     const { connectSvelteRunes } = await import('@stateref/connect-svelte/runes');
     if (typeof connectSvelteRunes !== 'function')

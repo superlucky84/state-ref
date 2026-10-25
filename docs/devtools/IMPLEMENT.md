@@ -1,7 +1,7 @@
 # IMPLEMENT — state-ref DevTools
 
 - 작성일: 2026-10-24. 브랜치: `feat/state-ref-devtools`.
-- 상태: Phase 1 코어 관측 API 구현·검증 완료. 기준선은 `528b6e998b68104cf5f5722d8ed7eac379838ae2`. recorder·Sync 어댑터·패널과 브라우저 검증은 아직 미수행. 기존 Node 20.3 Svelte packaging 실패는 별도 blocker로 남아 있다.
+- 상태: Phase 2~7의 recorder·Sync·패널 및 자동 hardening/integration 검증 완료. 사람의 수동 검사는 미수행으로 추적한다. 현재 단계 기준선은 `ee6af0c6472ddff3fe8dfb05d670a255e0586520`. 미출시 브랜치 기능이며 npm 발행/main 병합은 수행하지 않았다. 기존 Node 20.3 Svelte packaging 실패는 별도 blocker로 남아 있다.
 - 현재 기준 commit: `412db01a63321eef3087f3bc04c46708447a29f8`.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 - 완료 표시가 없는 구현 체크박스와 T-DT 항목은 계획이다. 명령·commit·실행 환경·결과 기록이 없으면 통과로 해석하지 않는다. Phase 0의 부분 시나리오 성공을 T 항목 전체 완료로 읽지 않는다.
@@ -83,48 +83,49 @@ pnpm check:examples
 ### Phase 2 — Recorder와 구독 진단
 
 - 진입: Phase 1 관측 계약 고정.
-- [ ] 별도 recorder, source/subscription ID, Preview, 마스킹, bounded queue/history를 구현한다.
-- [ ] 실제 dependency 집합과 실제 run·end 사건을 기록한다. 앱 구독을 만들어 계측하지 않는다.
-- [ ] pause/resume/clear/detach/dispose, 오류·gap 복구를 구현한다.
+- 진행: U-DT-08, 2026-10-25. 기준 `ee6af0c6472ddff3fe8dfb05d670a255e0586520`. DESIGN의 session 계약을 먼저 정리했다. 새 패키지·core 변경 stream·실제 consumer와 lifecycle 검증을 추가한다.
+- [x] 별도 recorder, source/subscription ID, Preview, 마스킹, bounded queue/history를 구현한다.
+- [x] 실제 dependency 집합과 실제 run·end 사건을 기록한다. 앱 구독을 만들어 계측하지 않는다.
+- [x] pause/resume/clear/detach/dispose, 오류·gap 복구를 구현한다.
 - baseline: `pnpm build:core`, `pnpm test:core`, T-DT-01~06/08~10/12. 새 패키지 타입·단위 테스트 명령을 생성하고 기록한다.
 - 종료: 이력은 순서·전후 값·공백을 정확히 표현하고, 구독 종료와 재수집이 실제 core와 일치한다.
 
 ### Phase 3 — Sync 어댑터
 
 - 진입: Phase 2 recorder 계약 고정.
-- [ ] 공개 snapshot과 두 이벤트 스트림으로 client별 목록/이력을 연결한다.
-- [ ] attach 경계의 snapshot/event 중복을 처리한다. 이력이 시작된 시점과 query/mutation 식별자를 표시한다.
-- [ ] client별 detach와 관측만으로 query handle·owners·네트워크가 증가하지 않는 계약을 검증한다.
+- [x] 공개 snapshot과 두 이벤트 스트림으로 client별 목록/이력을 연결한다.
+- [x] attach 경계의 snapshot/event 중복을 처리한다. 이력이 시작된 시점과 query/mutation 식별자를 표시한다.
+- [x] client별 detach와 관측만으로 query handle·owners·네트워크가 증가하지 않는 계약을 검증한다.
 - baseline: `pnpm build`, `pnpm test:sync`, `pnpm --filter @stateref/sync exec tsc --noEmit`, recorder 기존 검증 + T-DT-07/09/12.
 - 종료: Sync 런타임의 공개 데이터 범위를 넓히지 않고 두 client를 독립적으로 관측한다.
 
 ### Phase 4 — 앱 내 패널
 
 - 진입: Phase 3 종료, 표시용 snapshot/event가 구현됐다.
-- [ ] 명시적 mount/unmount, 스타일 격리, store 목록과 네 탭을 구현한다.
-- [ ] 경로 검색·전후 비교·batch 그룹·실행 원인·gap·Sync 메타데이터를 표시한다.
-- [ ] 키보드·focus·접기·pause/clear를 구현하고 query/상태 편집 버튼은 넣지 않는다.
-- [ ] 개발용 bootstrap과 HMR 해제를 보여주는 작은 예제를 추가한다.
+- [x] 명시적 mount/unmount, 스타일 격리, store 목록과 네 탭을 구현한다.
+- [x] 경로 검색·전후 비교·batch 그룹·실행 원인·gap·Sync 메타데이터를 표시한다.
+- [x] 키보드·focus·접기·pause/clear를 구현하고 query/상태 편집 버튼은 넣지 않는다.
+- [x] 개발용 bootstrap과 HMR 해제를 보여주는 작은 예제를 추가한다.
 - baseline: recorder/Sync 기존 검증, `pnpm check:examples`, T-DT-09~12. Playwright에서 새 패널 fixture를 실행한다.
 - 종료: 실제 DOM에서 기능이 확인되고 패널 조작이 앱 상태·조회 호출 횟수를 바꾸지 않는다.
 
 ### Phase 5 — Test Hardening
 
 - 진입: 기능 흐름 완성. 아직 출시 가능 상태로 표시하지 않는다.
-- [ ] 고정 seed의 같은 조작열을 DevTools off/on에서 실행해 상태·구독 trace를 비교한다.
-- [ ] nested writes/batch, 오류, abort, attach/dispose 경합, queue overflow, 긴 경로·순환·비정상 값의 T-DT-02~09를 보강한다.
-- [ ] 10,000회 쓰기와 반복 연결의 할당·보관량, 종료 후 GC 관측을 분리해 기록한다.
-- [ ] phase 0 비용 목표와 core bundle cap을 다시 검증한다.
+- [x] 고정 seed의 같은 조작열을 DevTools off/on에서 실행해 상태·구독 trace를 비교한다.
+- [x] nested writes/batch, 오류, abort, attach/dispose 경합, queue overflow, 긴 경로·순환·비정상 값의 T-DT-02~09를 보강한다.
+- [x] 10,000회 쓰기와 반복 연결의 할당·보관량, 종료 후 GC 관측을 분리해 기록한다.
+- [x] phase 0 비용 목표와 core bundle cap을 다시 검증한다.
 - baseline: `pnpm gate`, 새 DevTools 전체 테스트, T-DT-08/09/10. 새 실패로 고친 부분의 관련 검증을 다시 실행한다.
 - 종료: 알려진 런타임 회귀가 없고 기록 손실·생략은 화면과 API 양쪽에 드러난다. 테스트에서 못 보는 heap/사용성 항목은 수동 체크로 남긴다.
 
 ### Phase 6 — Integration Test
 
 - 진입: Phase 5 종료, 실제 패키지 산출물 생성.
-- [ ] React/Preact/Vue/Svelte/Solid/Lithent 예제에서 공통 사용법을 확인한다.
-- [ ] React StrictMode, 각 connector unmount, SSR 후 client mount, HMR에서 수명을 검증한다.
-- [ ] 실제 두 bundle에서 DC-DT-11의 지원/거절 계약을 검증한다. source alias 테스트만으로 배포 bundle 호환을 주장하지 않는다.
-- [ ] production fixture에서 DevTools가 제외되는 개발용 조건부 import를 검증한다.
+- [x] React/Preact/Vue/Svelte/Solid/Lithent 예제에서 공통 사용법을 확인한다.
+- [x] React StrictMode/각 connector unmount의 기존 회귀, SSR import와 6종 client mount, HMR/reload 뒤 단일 패널 수명을 검증했다. SSR hydration과 패널을 결합한 별도 시나리오는 M-DT-08의 미수행 범위로 남긴다.
+- [x] 실제 두 bundle에서 DC-DT-11의 지원/거절 계약을 검증한다. source alias 테스트만으로 배포 bundle 호환을 주장하지 않는다.
+- [x] production fixture에서 DevTools가 제외되는 개발용 조건부 import를 검증한다.
 - baseline: `pnpm gate`, `pnpm check:examples`, `pnpm test:e2e`, `pnpm test:mission`, T-DT-10~14.
 - 주의: 현재 공통 E2E `DEMOS`에는 5종만 있다. Lithent 패널 검증은 별도 fixture/실행 대상으로 추가해야 6종 완료라고 쓸 수 있다. 기존 mission 통과만으로 패널 검증을 대체하지 않는다.
 - 종료: 지원하는 6종과 실제 배포 산출물에 대한 실행 증거가 있고, SSR/production/2-copy 경계가 문서와 일치한다.
@@ -132,10 +133,10 @@ pnpm check:examples
 ### Phase 7 — 가이드와 출시 준비
 
 - 진입: Phase 6 종료.
-- [ ] 설치·개발용 연결·해제·문제 해결·지원 범위를 사용자 README/사이트에 반영한다.
-- [ ] 새 가이드 예제를 타입 검사에 넣고 REQUIREMENTS의 완료 판정을 증거와 연결한다.
-- [ ] 수동 M-DT-01~08을 수행하거나 미수행/차단으로 남긴다. UI·사용성의 사람이 볼 항목을 자동으로 체크하지 않는다.
-- [ ] 실제 지원표와 package peer/version을 확정한다. 기존 Sync API의 호환성/미지원 경계는 유지한다.
+- [x] 설치·개발용 연결·해제·문제 해결·지원 범위를 사용자 README/사이트에 반영한다.
+- [x] 새 가이드 예제를 타입 검사에 넣고 REQUIREMENTS의 완료 판정을 증거와 연결한다.
+- [x] 수동 M-DT-01~08을 수행하거나 미수행/차단으로 남긴다. UI·사용성의 사람이 볼 항목을 자동으로 체크하지 않는다.
+- [x] 실제 지원표와 package peer/version을 확정한다. 기존 Sync API의 호환성/미지원 경계는 유지한다.
 - baseline: T-DT-14, `pnpm check:packaging`, 해당 문서 예제 검사. 생산 코드 변경이 없으면 이전 전체 gate 결과를 commit 범위와 함께 재사용한다.
 - 종료: 구현·자동 검증·사람의 검증·미지원 범위가 일치한다. npm publish·main merge는 이 계획의 작업이 아니다.
 
@@ -208,11 +209,37 @@ pnpm check:examples
 
 기존 기준선에서도 발생한 Svelte packaging 문제는 여전히 blocker다. 이력 recorder/자동 gap 복구·subscription-changed 스트림·Sync·패널·6종 실제 UI/HMR·브라우저 접근성은 Phase 2 이후이며 M-DT-01~08은 전부 미수행이다.
 
-## 7. 인계 — 2026-10-24
+## 7. Phase 2~7 실행 결과 — 2026-10-25
 
-- **done:** 문서/Phase 0에 이어 Phase 1 코어 관측 API·불변 protocol·마스킹·한도·해제·개발 산출물 구현. 최종 core 415개, 실제 consumer/GC/타입/비용 검사 통과. 전체 gate의 기존 packaging 실패를 보존했다.
-- **next:** Phase 2의 별도 recorder/session, bounded history, pause/resume/clear, gap 재조회와 구독 변경 스트림을 구현한다. 현재 API는 UI나 이력 보관 패키지가 아니다.
-- **blockers:** 기존 Node 20.3 Svelte CommonJS packaging 실패. 기능 작업은 진행할 수 있으나 전체 gate/출시 준비 완료를 막는다. 별도 호환성 수정 때 재현·해결하고 검사를 약화하지 않는다. 사용자 승인 대기 항목은 없다.
-- **commit:** Phase 1 기준선 `528b6e998b68104cf5f5722d8ed7eac379838ae2`. `git log -1 --format='%H %s' -- docs/devtools packages/state-ref`로 실제 최종 commit을 확인한다. 자기 커밋 SHA를 본문에 추정해 적지 않는다.
-- **validation:** 위 실행 결과 및 Phase 0/1 결과 JSON을 따른다. 상대 링크 46개, 요구/결정/검증 ID, 결과 코드 해시, credential 패턴, 공백·파일 형식 검사 통과. 기존 지원표를 상향하지 않았다. 브라우저·수동 검사 미수행.
-- **context:** ctxbin 연결 정보는 작업 명령의 환경변수로만 사용한다. 이 문서·코드·커밋·인계에 credential을 보관하지 않는다.
+기준 `ee6af0c6472ddff3fe8dfb05d670a255e0586520` 위에서 recorder, Sync, panel, 공통 demo bootstrap을 구현했다. 브랜치 메타데이터는 core **3.3.0**, DevTools **0.1.0**이며 아직 발행하지 않았다. [사용 가이드](../../packages/devtools/README.md), [headless 구현](../../packages/devtools/src/index.ts), [Sync 경계](../../packages/devtools/src/sync.ts), [패널](../../packages/devtools/src/panel.ts), [측정 원본](./VALIDATION_RESULTS.json)을 따른다.
+
+| 검사 | 결과 | 범위·한계 |
+|---|---|---|
+| `pnpm install --frozen-lockfile --offline` | pass | 외부 dependency 버전 변경 없이 workspace importer/link만 추가 |
+| `pnpm gate` | **fail at packaging** | 앞 23단계 pass. 기존 Node 20.3/Svelte 5 CJS `ERR_REQUIRE_ESM` 유지. 전체 gate green 아님 |
+| `pnpm test:core` | **418/418 pass** | 새 dependency stream, 오류 복구/abort, bounded queue, 기존 코어 회귀 |
+| `pnpm test:devtools` | **19/19 pass** | pause/resume/clear, UTF-8 bytes, oversized/overflow, 다중 session, seeded off/on 상태·callback trace, Sync 요청/owners·데이터 경계 |
+| `node packages/devtools/test/bundle.mjs` | pass | 실제 배포 entry/ESM/SSR, production 제외, 두 사본·동일 trace, session/detacher 보관 후 source GC, byte 예산 |
+| `node packages/devtools/test/optional-peer.mjs` | pass | Sync가 없는 복사 package로 strict Node16 types + Node SSR 실행 |
+| `pnpm test:devtools:browser` | pass, Chromium 154.0.8037.57 | State/Timeline/Subscriptions/Sync, 마스킹/XSS, 입력·focus·Escape/방향키, host CSS, 좁은 화면, 20회 mount/unmount/dispose |
+| 위 browser script의 여섯 앱 | **6/6 pass** | React/Preact/Vue/Svelte/Solid/Lithent 실제 앱 값 변경→이력, 실제 구독, Sync, component HMR 또는 reload 뒤 panel 1개 유지 |
+| `pnpm check:examples` | pass | 최종 production 예제 type/build/bundle/SSR 검사. 개발 bootstrap 제거 확인 |
+| `node scripts/check-packaging.mjs` (Node 24.19.0) | pass | 반복 선언 생성 뒤 Node16 ESM/CJS 타입·entry 검사. pinned Node 20.3 결과의 대체가 아님 |
+| `node --expose-gc packages/devtools/bench/recorder.mjs` (Node 20.3.0) | **6/6 pass** | 21 samples/5 warmups, 실제 recorder·microtask 전달 포함, setup/GC 제외. 10k burst는 queue drop 포함 |
+| `node packages/state-ref/bench/read-write.mjs` | **6/6 pass** | 최종 기본 core의 기존 읽기/쓰기·경로 보관량 기준 |
+| core `bench/bundle-size.mjs` | pass | 기존 측정법 **3,785 B / 3,800 B**. cap 유지 |
+
+recorder 연결 500 writes/idle 1,600개의 median/p95는 **3.917/8.049 ms**, 10,000 primitive writes는 **42.516/61.386 ms**다. 이력 byte 산정에서 고정 source metadata를 재사용하고 대기 queue를 ring으로 바꿔 같은 목표를 통과했다. 개발 core는 **6,428/6,500 B**, 개발 core+recorder **9,302 B/10 KiB**, panel까지 **13,119 B/30 KiB**다. 패널의 값 변경→DOM 반영 p95는 약 **17 ms/100 ms**다. 정확한 실행값은 JSON이 기준이며 no-op prototype 비용과 혼용하지 않는다.
+
+Node24 packaging을 반복하다 기존 `fix-declarations.mjs`의 비멱등 문제도 발견했다. 이미 `.js`로 정규화한 ESM 선언으로부터 CJS tree를 재생성할 때 `.cjs`로 바꾸도록 수정했다. 두 번 연속 실행 후 실제 ESM/CJS consumer 검사를 통과했다. Svelte CJS runtime을 변경하거나 검사를 약화하지 않았다.
+
+자동화는 사람의 사용성/heap 판단을 대신하지 않는다. M-DT-01~08의 사람 검사는 계속 미수행이다. 특히 공개 core `subscriptions()`의 임시 목록 생성 비용은 앱의 구독 수에 비례하며 recorder가 보관/반환하는 목록에 한도를 적용한다. Preview byte 수를 전체 JS heap 상한으로 주장하지 않는다. 알려진 전체 gate blocker와 수동 검토 항목을 숨기지 않는다.
+
+## 8. 인계 — 2026-10-25
+
+- **done:** 요구/설계→코어→recorder→Sync→앱 내 패널→자동 hardening/6종 integration→가이드·브랜치 버전 메타데이터. 문서 예제를 실제 선언에 컴파일하고 production 제외·SSR·선택적 peer·GC·성능/용량을 검증했다.
+- **next:** 브랜치 리뷰 및 MANUAL_TEST_CHECKLIST의 사람 검사. 기존 Svelte CJS/Node20 호환성은 별도 수정 후 pinned 전체 gate를 다시 실행한다. npm 발행·main 병합은 수행하지 않는다.
+- **blockers:** 기존 pinned Node 20.3 Svelte CommonJS packaging 실패. 현재 DevTools 자동 검증은 통과했으나 전체 저장소 gate/출시 준비 완료로 표시할 수 없다. 사용자 승인 대기 항목은 없다.
+- **commit:** 기준 `ee6af0c6472ddff3fe8dfb05d670a255e0586520`. `git log -1 --format='%H %s' -- docs/devtools packages/devtools`로 최종 변경 commit을 확인한다. 자기 commit SHA는 추정하지 않는다.
+- **evidence:** VALIDATION_RESULTS.json, 재현 가능한 test/bench/browser scripts, 사용 가이드. `?devtools=1`을 붙인 각 개발 예제에서 직접 확인할 수 있다.
+- **context:** ctxbin credential은 명령 환경에서만 사용했다. 코드·문서·커밋에 보관하지 않았다.

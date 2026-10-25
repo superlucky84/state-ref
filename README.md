@@ -143,3 +143,7 @@ For a small app to try locally, see the [Preact and Vue shop examples](./example
 I would like to extend my gratitude to the following people and projects:
 
 - **[Juho Vepsäläinen](https://survivejs.com)**: Thank you for the [insightful interview](https://survivejs.com/blog/state-ref-interview/) and featuring me on your blog. Your work and contributions to the JavaScript community have been a great source of inspiration.
+
+## DevTools (unreleased)
+
+`@stateref/devtools` adds read-only state/history/subscription inspection, Sync metadata, and an optional framework-independent browser panel. This branch prepares state-ref 3.3.0 and DevTools 0.1.0. See the [setup and cleanup guide](packages/devtools/README.md). The six framework demos enable the panel with `?devtools=1` on their development server.

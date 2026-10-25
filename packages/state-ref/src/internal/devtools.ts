@@ -43,11 +43,14 @@ class Observation {
   private sequence = 0;
   private writeId = 0;
   private queue: StoreEvent[] = [];
+  private queueStart = 0;
   private queued = false;
   private lost = 0;
   private lostSequence = 0;
   private causes: number[] = [];
   private unknown = true;
+  private dependencies = new Set<Run>();
+  private dependencyLoss = 0;
 
   constructor(
     read: () => unknown,
@@ -74,20 +77,48 @@ class Observation {
 
   private post(payload: Payload) {
     if (!this.listener) return;
-    this.queue.push(
-      Object.freeze({ ...payload, sequence: ++this.sequence }) as StoreEvent
-    );
-    if (this.queue.length > 1000) {
-      this.lostSequence = this.queue.shift()!.sequence;
+    const record = Object.freeze({
+      ...payload,
+      sequence: ++this.sequence,
+    }) as StoreEvent;
+    if (this.queue.length === 1000) {
+      this.lostSequence = this.queue[this.queueStart].sequence;
+      this.queue[this.queueStart] = record;
+      this.queueStart = (this.queueStart + 1) % 1000;
       this.lost += 1;
       this.unknown = true;
-    }
+    } else this.queue.push(record);
+    this.schedule();
+  }
+
+  private schedule() {
     if (this.queued) return;
     this.queued = true;
     queueMicrotask(() => {
+      // Reads during one callback/recollection describe one final dependency
+      // set. Do not retain an unbounded set of application callback references.
+      for (const run of this.dependencies)
+        this.post({
+          type: 'subscription-changed',
+          subscription: this.describe(run),
+        });
+      this.dependencies.clear();
+      if (this.dependencyLoss)
+        this.post({
+          type: 'gap',
+          reason: 'overflow',
+          dropped: this.dependencyLoss,
+        });
+      this.dependencyLoss = 0;
       this.queued = false;
-      const events = this.queue;
+      const events = this.queueStart
+        ? [
+            ...this.queue.slice(this.queueStart),
+            ...this.queue.slice(0, this.queueStart),
+          ]
+        : this.queue;
       this.queue = [];
+      this.queueStart = 0;
       if (this.lost)
         events.unshift(
           Object.freeze({
@@ -173,7 +204,31 @@ class Observation {
   }
 
   ended(run: Run) {
+    this.dependencies.delete(run);
     this.post({ type: 'subscription-ended', id: this.identity(run).id });
+  }
+
+  dependenciesChanged(run: Run) {
+    if (!this.listener || this.dependencies.has(run)) return;
+    if (this.dependencies.size === 1000) {
+      this.dependencies.delete(this.dependencies.values().next().value!);
+      this.dependencyLoss += 1;
+    }
+    this.dependencies.add(run);
+    this.schedule();
+  }
+
+  private describe(run: Run): SubscriptionSnapshot {
+    const identity = this.identity(run);
+    return Object.freeze({
+      id: identity.id,
+      observedRuns: identity.runs,
+      paths: Object.freeze(
+        [...(this.subscriptions?.get(run)?.keys() ?? [])].map(node =>
+          this.preview.path(rawPath(node))
+        )
+      ),
+    });
   }
 
   snapshot() {
@@ -189,16 +244,7 @@ class Observation {
     if (!this.subscriptions)
       throw new Error('state-ref/devtools: observation is disconnected.');
     return Object.freeze(
-      [...this.subscriptions].map(([run, paths]) => {
-        const identity = this.identity(run);
-        return Object.freeze({
-          id: identity.id,
-          observedRuns: identity.runs,
-          paths: Object.freeze(
-            [...paths.keys()].map(node => this.preview.path(rawPath(node)))
-          ),
-        });
-      })
+      [...this.subscriptions.keys()].map(run => this.describe(run))
     );
   }
 
@@ -212,8 +258,11 @@ class Observation {
     this.subscriptions = undefined;
     this.listener = undefined;
     this.queue = [];
+    this.queueStart = 0;
     this.causes = [];
     this.lost = 0;
+    this.dependencies.clear();
+    this.dependencyLoss = 0;
     this.preview.clear();
     this.ids = new WeakMap();
   }
@@ -319,4 +368,13 @@ export function diagnosticRun(
 export function diagnosticEnd(subscriptions: StoreRenderList<any>, run: Run) {
   const set = observers.get(subscriptions);
   if (set) for (const observer of set) safely(() => observer.ended(run));
+}
+
+export function diagnosticDependencies(
+  subscriptions: StoreRenderList<any>,
+  run: Run
+) {
+  const set = observers.get(subscriptions);
+  if (set)
+    for (const observer of set) safely(() => observer.dependenciesChanged(run));
 }

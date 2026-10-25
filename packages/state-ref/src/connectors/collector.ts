@@ -1,5 +1,6 @@
 import type { Run, RunInfo, RenderListSub, StoreRenderList } from '@/types';
 import type { PathNode } from '@/path';
+import { diagnosticDependencies } from '@/internal/devtools';
 
 /**
  * Runs whose subscription has ended for good.
@@ -55,6 +56,7 @@ export function collector(
 
   subList.set(pathNode, { value, getNextValue });
   (pathNode.subs ??= new Set()).add(run);
+  if (__STATE_REF_DEVTOOLS__) diagnosticDependencies(storeRenderList, run);
 }
 
 /**
@@ -74,6 +76,7 @@ export function forgetDeps(
   if (previous) {
     previous.forEach((_, pathNode) => pathNode.subs?.delete(run));
     storeRenderList.delete(run);
+    if (__STATE_REF_DEVTOOLS__) diagnosticDependencies(storeRenderList, run);
   }
 
   return previous;
@@ -110,4 +113,5 @@ export function restoreDeps(
       (pathNode.subs ??= new Set()).add(run);
     }
   });
+  if (__STATE_REF_DEVTOOLS__) diagnosticDependencies(storeRenderList, run);
 }

@@ -63,6 +63,7 @@ const DOCUMENTS = [
   'README.md',
   'packages/state-ref/README.md',
   'packages/sync/README.md',
+  'packages/devtools/README.md',
 ];
 
 /** Module specifiers a README example may use, and what they resolve to. */
@@ -72,6 +73,9 @@ const MODULES = {
   'state-ref/batch': 'packages/state-ref/dist/batch/index.d.ts',
   'state-ref/shared': 'packages/state-ref/dist/shared/index.d.ts',
   'state-ref/plugin': 'packages/state-ref/dist/plugin/index.d.ts',
+  'state-ref/devtools': 'packages/state-ref/dist/devtools/index.d.ts',
+  '@stateref/devtools': 'packages/devtools/dist/index.d.ts',
+  '@stateref/devtools/panel': 'packages/devtools/dist/panel.d.ts',
   '@stateref/sync': 'packages/sync/dist/index.d.ts',
   '@stateref/connect-react': 'packages/connect-react/dist/index.d.ts',
   '@stateref/connect-react/sync': 'packages/connect-react/dist/sync.d.ts',

@@ -28,8 +28,10 @@ function target(file, specifier) {
 
 function rewrite(file, text, extension) {
   return text.replace(SPECIFIER, (match, head, quote, specifier) => {
-    if (/\.(js|cjs|mjs|json)$/.test(specifier)) return match;
-    const resolved = target(file, specifier);
+    if (/\.(cjs|mjs|json)$/.test(specifier)) return match;
+    // The ESM tree may already have been normalized by a previous build.
+    // Resolve its .js imports again when deriving the parallel CJS tree.
+    const resolved = target(file, specifier.replace(/\.js$/, ''));
     if (!resolved) return match;
     return `${head}${quote}${resolved}${extension}${quote}`;
   });
@@ -50,7 +52,9 @@ let removed = 0;
 for (const pkg of packages) {
   const dist = resolve(pkg, 'dist');
   if (!existsSync(dist) || !(await stat(dist)).isDirectory()) continue;
-  const manifest = JSON.parse(await readFile(join(pkg, 'package.json'), 'utf8'));
+  const manifest = JSON.parse(
+    await readFile(join(pkg, 'package.json'), 'utf8')
+  );
   const dual = servesRequire(manifest.exports);
   for (const file of await declarations(dist)) {
     const text = await readFile(file, 'utf8');
