@@ -3,7 +3,8 @@ import { defineConfig } from 'vite';
 import checker from 'vite-plugin-checker';
 import dts from 'vite-plugin-dts';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  define: { __STATE_REF_DEVTOOLS__: mode === 'test' || mode === 'development' },
   plugins: [
     checker({
       typescript: true,
@@ -48,4 +49,4 @@ export default defineConfig({
   server: {
     open: './html/core/proxy.html',
   },
-});
+}));

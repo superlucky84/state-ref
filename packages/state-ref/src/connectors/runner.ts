@@ -8,6 +8,14 @@ import type {
 import type { PathNode } from '@/path';
 import { forEachAffected, pathToString } from '@/path';
 import { endRun } from './collector';
+import {
+  diagnosticBegin,
+  diagnosticChanged,
+  diagnosticRun,
+  diagnosticEnd,
+  beginDiagnosticBatch,
+  endDiagnosticBatch,
+} from '@/internal/devtools';
 
 /**
  * Reports the errors user code threw during a single propagation pass.
@@ -49,6 +57,7 @@ export function removeRun(storeRenderList: StoreRenderList<any>, run: Run) {
    * second time (`CI-30`).
    */
   endRun(run);
+  if (__STATE_REF_DEVTOOLS__) diagnosticEnd(storeRenderList, run);
 }
 
 /**
@@ -102,6 +111,9 @@ export function runner(
     );
   }
 
+  const diagnosticPass = __STATE_REF_DEVTOOLS__
+    ? diagnosticBegin(storeRenderList)
+    : undefined;
   const runableRenewList: Set<Run> = new Set();
   const errors: unknown[] = [];
 
@@ -121,6 +133,8 @@ export function runner(
       if (item.value !== nextValue) {
         runableRenewList.add(run);
         item.value = nextValue;
+        if (__STATE_REF_DEVTOOLS__)
+          diagnosticChanged(diagnosticPass, run, item);
       }
     } catch (error) {
       errors.push(error);
@@ -172,6 +186,8 @@ export function runner(
       }
 
       try {
+        if (__STATE_REF_DEVTOOLS__)
+          diagnosticRun(storeRenderList, diagnosticPass, run);
         if (run() === false) {
           removeRun(storeRenderList, run);
         }
@@ -193,6 +209,7 @@ export function runner(
 
 /** Internal hook installed by the optional state-ref/batch entry point. */
 export const runBatch = runner as typeof runner & {
+  diagnostics?: { begin: () => void; end: () => void };
   batch?: {
     write: (
       subscriptions: StoreRenderList<any>,
@@ -203,12 +220,20 @@ export const runBatch = runner as typeof runner & {
   };
 };
 
+if (__STATE_REF_DEVTOOLS__)
+  runBatch.diagnostics = {
+    begin: beginDiagnosticBatch,
+    end: endDiagnosticBatch,
+  };
+
 export function firstRunner<V>(
   run: Run,
   storeRenderList: StoreRenderList<any>,
   cacheMap: WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>,
   renew: Renew<StateRefStore<V>>
 ) {
+  if (__STATE_REF_DEVTOOLS__)
+    diagnosticRun(storeRenderList, undefined, run, true);
   const renewResult = run!(true);
 
   if (renewResult instanceof AbortSignal) {

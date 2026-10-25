@@ -4,6 +4,8 @@
 
 ## 재현
 
+Phase 0 실험은 commit `528b6e998b68104cf5f5722d8ed7eac379838ae2`의 별도 체크아웃에서 재현한다. Phase 1 이후에는 코어의 패치 anchor가 바뀌므로 이 과거 실험을 현재 구현의 테스트로 실행하지 않는다. 현재 구현 검증은 `packages/state-ref/test/devtools-bundle.mjs`와 `packages/state-ref/bench/devtools.mjs`다.
+
 저장소 루트에서 `.nvmrc`의 Node 20.3.0, pnpm 9.12.3을 사용한다. npm 임시 도구를 쓰더라도 lockfile·package.json은 변경하지 않는다.
 
 ```sh

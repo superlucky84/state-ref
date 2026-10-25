@@ -3,6 +3,7 @@ import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
 export default defineConfig({
+  define: { __STATE_REF_DEVTOOLS__: false },
   plugins: [dts({ outputDir: 'dist' })],
   resolve: {
     alias: {
@@ -17,9 +18,7 @@ export default defineConfig({
       formats: ['es', 'umd', 'cjs'],
       fileName: format => {
         if (format === 'umd') return 'state-ref.batch.umd.js';
-        return format === 'cjs'
-          ? 'state-ref.batch.cjs'
-          : 'state-ref.batch.mjs';
+        return format === 'cjs' ? 'state-ref.batch.cjs' : 'state-ref.batch.mjs';
       },
     },
     rollupOptions: {

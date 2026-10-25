@@ -5,6 +5,7 @@
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md).
 - 실제 브라우저의 DOM 단언은 자동 검증 증거로 적을 수 있다. 사람이 확인할 가독성·focus·heap 판단을 대신 완료 표시하지 않는다.
 - Phase 0의 Node 실험은 이 체크리스트의 패널·브라우저·가독성 통과 증거가 아니다. 해당 결과는 IMPLEMENT에 별도 기록한다.
+- Phase 1의 코어 관측 API·Node GC·Vite 번들 검사도 패널 검증을 대체하지 않는다. 이력 recorder/Sync/UI가 아직 없어 M 항목은 계속 미수행이다.
 
 ## 실행 전 기록
 

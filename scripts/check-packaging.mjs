@@ -156,6 +156,7 @@ try {
   const ESM_ONLY = [
     '@stateref/connect-lithent',
     'state-ref/plugin',
+    'state-ref/devtools',
     '@stateref/sync',
     '@stateref/connect-react/sync',
     '@stateref/connect-preact/sync',
@@ -208,6 +209,8 @@ try {
     import { createSyncQuery as createLithentQuery } from '@stateref/connect-lithent/sync';
     import { connectLithent, connectLithentView } from '@stateref/connect-lithent';
     const plugin = await import('state-ref/plugin');
+    const devtools = await import('state-ref/devtools');
+    if (typeof devtools.observeStore !== 'function') throw new Error('state-ref/devtools missing observeStore');
     const { connectSvelteRunes } = await import('@stateref/connect-svelte/runes');
     if (typeof connectSvelteRunes !== 'function')
       throw new Error('@stateref/connect-svelte/runes did not export connectSvelteRunes');

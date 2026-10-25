@@ -1,6 +1,7 @@
 import { makeReference } from '@/core/ref';
 import { runner } from '@/connectors/runner';
 import { createPathRoot } from '@/path';
+import { installDiagnostics } from '@/internal/devtools';
 
 import type {
   CreateStoreOption,
@@ -109,6 +110,9 @@ export function create<V>(
       pathRoot,
     });
   };
+
+  if (__STATE_REF_DEVTOOLS__)
+    installDiagnostics(watch, rootValue, storeRenderList);
 
   return {
     pathRoot,

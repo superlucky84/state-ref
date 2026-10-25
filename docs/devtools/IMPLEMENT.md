@@ -1,7 +1,7 @@
 # IMPLEMENT — state-ref DevTools
 
 - 작성일: 2026-10-24. 브랜치: `feat/state-ref-devtools`.
-- 상태: Phase 0 완료. 문서 기준선은 `34c49e6b19e0aff18662dd222c58a53e411c87d8`. 생산 런타임·패널 구현과 브라우저 검증은 아직 미수행. 기존 Node 20.3 Svelte packaging 실패는 별도 blocker로 남아 있다.
+- 상태: Phase 1 코어 관측 API 구현·검증 완료. 기준선은 `528b6e998b68104cf5f5722d8ed7eac379838ae2`. recorder·Sync 어댑터·패널과 브라우저 검증은 아직 미수행. 기존 Node 20.3 Svelte packaging 실패는 별도 blocker로 남아 있다.
 - 현재 기준 commit: `412db01a63321eef3087f3bc04c46708447a29f8`.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 - 완료 표시가 없는 구현 체크박스와 T-DT 항목은 계획이다. 명령·commit·실행 환경·결과 기록이 없으면 통과로 해석하지 않는다. Phase 0의 부분 시나리오 성공을 T 항목 전체 완료로 읽지 않는다.
@@ -71,11 +71,12 @@ pnpm check:examples
 ### Phase 1 — 코어의 선택적 관측 경계
 
 - 진입: Phase 0 종료, 공개 타입·호환 범위 확정.
-- [ ] 실제 root/batch의 development/default ESM/CJS 산출물과 `state-ref/devtools` ESM 진입점을 만들고 consumer fixture로 해석·타입·production 제외를 검증한다. 기존 CJS API를 제거하지 않는다.
-- [ ] 명시적 attach, 현재 snapshot, commit 진단, detach를 구현한다.
-- [ ] 실험의 raw-table factory를 불변 DTO wire protocol로 교체한다. 연결별 정적 redact, 캡처 실패/gap, 해제 후 조회 거절과 참조 제거를 구현한다.
-- [ ] 기존 onWrite/journal을 보존하고 새 listener를 commit 경로에서 분리한다.
-- [ ] batch/manual-sync ID와 cause 연결, 미연결 경로의 할당 방지를 구현한다.
+- 진행: U-DT-07에 따라 `528b6e998b68104cf5f5722d8ed7eac379838ae2`에서 시작했다. package version은 출시 전까지 3.2.2를 유지하고 신규 API는 아직 미출시로 표시한다. 별도 개발 build와 관측 타입/런타임/배포 fixture를 먼저 만든다.
+- [x] root/batch의 development/default ESM/CJS 산출물과 `state-ref/devtools` ESM 진입점, consumer fixture의 해석·타입·production 제외를 구현·검증했다. 기존 CJS API는 유지했다.
+- [x] 명시적 attach, 현재 snapshot, commit 진단, detach를 구현했다.
+- [x] raw-table factory를 불변 DTO wire protocol로 교체했다. 연결별 정적 redact, 캡처 실패/gap, 해제 후 조회 거절과 참조 제거를 검증했다.
+- [x] 기존 onWrite/journal을 보존하고 새 listener를 microtask 전달로 분리했다.
+- [x] batch/manual-sync ID와 관측 write 그룹, 미연결 경로의 이벤트/queue 할당 방지를 구현했다. attach 경계와 관측하지 않은 쓰기의 원인은 unknown으로 둔다.
 - baseline: `pnpm build:core`, `pnpm test:core`, `pnpm --filter state-ref exec tsc --noEmit`, core bench/bundle 검사. T-DT-01~05/10/12 추가.
 - 종료: DevTools 연결 전후 상태·callback trace가 동일하고 기존 ref를 통한 쓰기도 포착한다. UI와 recorder는 아직 필요하지 않다.
 
@@ -179,11 +180,39 @@ pnpm check:examples
 
 이 수치는 실험 listener의 비용이다. 10,000 writes는 queue 1,000건을 넘겨 drop한다. UI·완성 recorder·heap 안정성·배포 ESM/CJS 조합·HMR·6개 framework는 미검증이다. capture 실패/gap 복구·byte 한도·마스킹·해제 후 참조 제거 등 알려진 미구현을 실험 README와 다음 단계에 추적했다. M-DT-01~08은 모두 미수행이다.
 
-## 6. 인계 — 2026-10-24
+## 6. Phase 1 실행 결과 — 2026-10-24
 
-- **done:** 문서 단계와 Phase 0. 별도 `state-ref/devtools`, 개발 조건부 코어, 공개 타입 초안, 지원 범위·비용 예산을 결정했다. 실험 15개 시나리오와 prototype 예산 8개 통과. 네 문서를 결과에 맞췄다. 테스트 스크립트의 Node 호환 경로 계산만 수정했다.
-- **next:** Phase 1의 실제 선택적 관측 경계·개발 산출물·불변 protocol을 구현한다. 실험 코드를 제품 API로 그대로 내보내지 않는다. Phase 1 검사에 실제 batch/core export 조합과 teardown을 포함한다.
-- **blockers:** 기존 Node 20.3 Svelte CommonJS packaging 실패. 관측 경계 작업은 진행할 수 있으나 전체 gate/출시 준비 완료를 막는다. 별도 호환성 수정 때 재현·해결하고 검사를 약화하지 않는다. DC-DT-11/12는 해결됐으며 사용자 승인 대기 항목은 없다.
-- **commit:** 문서 기준선 `34c49e6b19e0aff18662dd222c58a53e411c87d8`. `git log -1 --format='%H %s' -- docs/devtools`로 이 단계의 실제 최종 commit을 확인한다. 자기 커밋 SHA를 본문에 추정해 적지 않는다.
-- **validation:** 위 실행 결과와 실험 JSON을 따른다. 상대 링크 40개, U/R/C/DC/T/M ID, 8개 단계 계약, 결과에 보관한 실험 코드 해시, credential 패턴 검사 통과. `git diff --check`, 실험 파일/packaging 스크립트 Prettier 검사, 기존 지원표 검사(9행·29파일) 통과. 기존 지원표를 상향하지 않았다. 브라우저·수동 검사 미수행.
+기준 `528b6e998b68104cf5f5722d8ed7eac379838ae2` 위의 dirty tree, Node 20.3.0/pnpm 9.12.3/Linux x86_64에서 실행했다. 코드·타입의 원본은 [공개 entry](../../packages/state-ref/src/devtools/index.ts), [공개 타입](../../packages/state-ref/src/devtools/types.ts), [producer](../../packages/state-ref/src/internal/devtools.ts), [Preview](../../packages/state-ref/src/internal/devtools-preview.ts)다. 패키지 버전은 3.2.2 그대로이며 미출시 기능이다.
+
+| 명령 | 결과 / 종료 코드 | 범위 |
+|---|---|---|
+| `pnpm build:core` | pass / 0 | 기본/개발 ESM·CJS, 기존 UMD, 새 adapter·선언 생성 |
+| `pnpm gate` | fail / 1 | 첫 20단계 pass(새 devtools types/bundle 포함). 기존 Svelte CJS→ESM packaging에서 중단 |
+| `pnpm test:core` (마지막 수정 후) | pass / 0, **415/415** | 새 관측 시나리오 13개 + 기존 402개, gap 재조회·Preview bounds 수정 포함 |
+| `pnpm --filter state-ref exec tsc --noEmit` | pass / 0 | 최종 source와 테스트 타입 |
+| `pnpm --filter state-ref exec tsc --noEmit --strict --target es2020 --module esnext --moduleResolution bundler test/devtools-types.ts` | pass / 0 | 실제 공개 타입의 positive/negative consumer, union store 포함 |
+| 위 consumer 명령에서 `--module node16 --moduleResolution node16` | pass / 0 | 수정한 배포 선언의 Node16 ESM 해석 |
+| `pnpm exec eslint packages/state-ref/src --ext .ts,.tsx` | pass / 0 | 마지막 core 변경 후 검사 |
+| `node packages/state-ref/test/devtools-bundle.mjs` | pass / 0 | 기본 core의 미포함/거절, Vite 개발·production, 개발 ESM/CJS+batch, 실제 두 사본, 동일 조작 trace, detached-handle GC |
+| `node scripts/check-packaging.mjs` (Node 24.19.0) | pass / 0 | 새 ESM-only entry 포함. Node 20.3 실패를 대체하지 않음 |
+| `pnpm check:examples` | pass / 0 | 기존 앱 type/build/operation/bundle/SSR. 새 패널 검증 아님 |
+| `node --expose-gc packages/state-ref/bench/devtools.mjs` | pass / 0, **6/6** | 최종 개발 코어·adapter의 비용. [측정값·코드 해시](./PHASE1_RESULTS.json) |
+| `node packages/state-ref/bench/read-write.mjs` | pass / 0, **6/6** | 최종 기본 코어의 기존 읽기/쓰기/경로 보관량 기준 |
+| `node packages/state-ref/bench/bundle-size.mjs` | pass / 0 | 기존 측정법 core gzip **3,785 B ≤ 3,800 B** |
+
+전체 gate 뒤 추가로 고친 부분은 새 관측 계층의 scalar 캡처 경로·노드 한도·gap 재조회·미상 원인과 consumer 타입이다. 관련 core 전체 테스트·타입·lint·실제 산출물·packaging·비용 검사를 다시 수행했다. 이를 전체 gate가 green이라고 표현하지 않는다.
+
+연결 시 500 writes/idle 1,600개의 median/p95는 **2.986/6.875 ms**, 10,000 primitive writes는 **42.274/61.577 ms**다. 첫 구현은 각각 median 5.731/66.826 ms로 목표를 넘었다. primitive 캡처에서 불필요한 tree/JSON 처리를 없애 같은 목표를 통과했다. 10,000 writes는 queue overflow를 포함하므로 10,000건을 모두 전달한 수치가 아니다. 21회·5 warmups·fixture 순환·명시적 GC/설정 비용 제외·microtask 전달 포함이다.
+
+개발 core는 shared chunk를 포함해 gzip **6,176 B**, 별도 adapter는 **308 B**다. 개발 전용 cap을 6,500 B로 개정한 이유는 DESIGN에 기록했고 실제 fixture에서 검사한다. 기본 core cap은 변경하지 않았다. 번들 전체를 다시 묶는 consumer fixture의 기본 core 값(3,769 B)과 기존 bench의 값(3,785 B)을 섞어 비교하지 않는다.
+
+기존 기준선에서도 발생한 Svelte packaging 문제는 여전히 blocker다. 이력 recorder/자동 gap 복구·subscription-changed 스트림·Sync·패널·6종 실제 UI/HMR·브라우저 접근성은 Phase 2 이후이며 M-DT-01~08은 전부 미수행이다.
+
+## 7. 인계 — 2026-10-24
+
+- **done:** 문서/Phase 0에 이어 Phase 1 코어 관측 API·불변 protocol·마스킹·한도·해제·개발 산출물 구현. 최종 core 415개, 실제 consumer/GC/타입/비용 검사 통과. 전체 gate의 기존 packaging 실패를 보존했다.
+- **next:** Phase 2의 별도 recorder/session, bounded history, pause/resume/clear, gap 재조회와 구독 변경 스트림을 구현한다. 현재 API는 UI나 이력 보관 패키지가 아니다.
+- **blockers:** 기존 Node 20.3 Svelte CommonJS packaging 실패. 기능 작업은 진행할 수 있으나 전체 gate/출시 준비 완료를 막는다. 별도 호환성 수정 때 재현·해결하고 검사를 약화하지 않는다. 사용자 승인 대기 항목은 없다.
+- **commit:** Phase 1 기준선 `528b6e998b68104cf5f5722d8ed7eac379838ae2`. `git log -1 --format='%H %s' -- docs/devtools packages/state-ref`로 실제 최종 commit을 확인한다. 자기 커밋 SHA를 본문에 추정해 적지 않는다.
+- **validation:** 위 실행 결과 및 Phase 0/1 결과 JSON을 따른다. 상대 링크 46개, 요구/결정/검증 ID, 결과 코드 해시, credential 패턴, 공백·파일 형식 검사 통과. 기존 지원표를 상향하지 않았다. 브라우저·수동 검사 미수행.
 - **context:** ctxbin 연결 정보는 작업 명령의 환경변수로만 사용한다. 이 문서·코드·커밋·인계에 credential을 보관하지 않는다.

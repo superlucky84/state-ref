@@ -120,6 +120,25 @@ const steps = [
     args: ['--filter', '@stateref/sync', 'exec', 'tsc', '--noEmit'],
   },
   {
+    name: 'devtools-types',
+    cmd: 'pnpm',
+    args: [
+      '--filter',
+      'state-ref',
+      'exec',
+      'tsc',
+      '--noEmit',
+      '--strict',
+      '--target',
+      'es2020',
+      '--module',
+      'esnext',
+      '--moduleResolution',
+      'bundler',
+      'test/devtools-types.ts',
+    ],
+  },
+  {
     name: 'sync-consumer-types',
     cmd: 'pnpm',
     args: [
@@ -223,6 +242,11 @@ const steps = [
     name: 'sync-bundle',
     cmd: 'node',
     args: ['packages/sync/test/sync-bundle.mjs'],
+  },
+  {
+    name: 'devtools-bundle',
+    cmd: 'node',
+    args: ['packages/state-ref/test/devtools-bundle.mjs'],
   },
   {
     name: 'packaging',
