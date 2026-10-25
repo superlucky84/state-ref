@@ -1,8 +1,8 @@
 # IMPLEMENT — state-ref DevTools
 
 - 작성일: 2026-10-24. 브랜치: `feat/state-ref-devtools`.
-- 상태: Phase 2~7의 recorder·Sync·패널 및 자동 hardening/integration 검증 완료. 사람의 수동 검사는 미수행으로 추적한다. 현재 단계 기준선은 `ee6af0c6472ddff3fe8dfb05d670a255e0586520`. 미출시 브랜치 기능이며 npm 발행/main 병합은 수행하지 않았다. 기존 Node 20.3 Svelte packaging 실패는 별도 blocker로 남아 있다.
-- 현재 기준 commit: `412db01a63321eef3087f3bc04c46708447a29f8`.
+- 상태: Phase 2~7의 recorder·Sync·패널 및 자동 hardening/integration 검증 완료. Node 24.19.0 전환 뒤 전체 gate와 문서 build도 통과했다. 사람의 수동 검사는 미수행으로 추적한다. 미출시 브랜치 기능이며 npm 발행/main 병합은 수행하지 않았다. 기존 Node 20.3 Svelte packaging 실패는 과거 기록이며 현재 개발 기준의 blocker가 아니다.
+- 최초 조사 기준 commit: `412db01a63321eef3087f3bc04c46708447a29f8`. Node24 전환 기준은 `a788d958fed3796041a60853d48db798cd61b45a`.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 - 완료 표시가 없는 구현 체크박스와 T-DT 항목은 계획이다. 명령·commit·실행 환경·결과 기록이 없으면 통과로 해석하지 않는다. Phase 0의 부분 시나리오 성공을 T 항목 전체 완료로 읽지 않는다.
 
@@ -30,7 +30,7 @@
 
 ## 2. 공통 baseline 명령
 
-저장소 기준은 `.nvmrc`의 Node `20.3.0`, 루트 `packageManager`의 pnpm `9.12.3`이다. 다른 버전 결과는 별도 환경 결과로 적고 특히 gzip 수치를 직접 비교하지 않는다. 기존 lockfile을 그대로 사용한다.
+현재 저장소 기준은 `.nvmrc`의 Node `24.19.0`(U-DT-09), 루트 `packageManager`의 pnpm `9.12.3`이다. 다른 버전 결과는 별도 환경 결과로 적고 특히 gzip 수치를 직접 비교하지 않는다. 기존 lockfile을 그대로 사용한다. 아래 Phase 0~7 기록의 Node20은 당시의 역사적 기준이다.
 
 ```sh
 node --version
@@ -235,11 +235,20 @@ Node24 packaging을 반복하다 기존 `fix-declarations.mjs`의 비멱등 문�
 
 자동화는 사람의 사용성/heap 판단을 대신하지 않는다. M-DT-01~08의 사람 검사는 계속 미수행이다. 특히 공개 core `subscriptions()`의 임시 목록 생성 비용은 앱의 구독 수에 비례하며 recorder가 보관/반환하는 목록에 한도를 적용한다. Preview byte 수를 전체 JS heap 상한으로 주장하지 않는다. 알려진 전체 gate blocker와 수동 검토 항목을 숨기지 않는다.
 
-## 8. 인계 — 2026-10-25
+## 8. Node 24 전환 — 완료, 2026-10-25
 
-- **done:** 요구/설계→코어→recorder→Sync→앱 내 패널→자동 hardening/6종 integration→가이드·브랜치 버전 메타데이터. 문서 예제를 실제 선언에 컴파일하고 production 제외·SSR·선택적 peer·GC·성능/용량을 검증했다.
-- **next:** 브랜치 리뷰 및 MANUAL_TEST_CHECKLIST의 사람 검사. 기존 Svelte CJS/Node20 호환성은 별도 수정 후 pinned 전체 gate를 다시 실행한다. npm 발행·main 병합은 수행하지 않는다.
-- **blockers:** 기존 pinned Node 20.3 Svelte CommonJS packaging 실패. 현재 DevTools 자동 검증은 통과했으나 전체 저장소 gate/출시 준비 완료로 표시할 수 없다. 사용자 승인 대기 항목은 없다.
-- **commit:** 기준 `ee6af0c6472ddff3fe8dfb05d670a255e0586520`. `git log -1 --format='%H %s' -- docs/devtools packages/devtools`로 최종 변경 commit을 확인한다. 자기 commit SHA는 추정하지 않는다.
-- **evidence:** VALIDATION_RESULTS.json, 재현 가능한 test/bench/browser scripts, 사용 가이드. `?devtools=1`을 붙인 각 개발 예제에서 직접 확인할 수 있다.
+- 기준: `a788d958fed3796041a60853d48db798cd61b45a`. 사용자 U-DT-09.
+- 변경: `.nvmrc`/기존 Volta pin 통일, private root engine과 gate 안내, 개발/사용자 runtime 문서 분리. 공개 runtime source/API와 기존 byte cap은 유지한다.
+- 검증: Node24.19.0/pnpm9.12.3에서 frozen install, 전체 `pnpm gate`, `pnpm build:docs` 모두 종료 코드 0. packaging에 Svelte 공개 CommonJS 진입점의 실제 SSR 값·반복 렌더 뒤 구독 해제·이후 쓰기의 callback 0회 검사를 추가해 통과했다. Node20 gate는 build 전에 버전 안내와 예상 종료 코드 2로 중단한다.
+- 결과: gate **27/27 단계 pass**, 일반 테스트 **1,091 pass / 2 skip**, 별도 SSR **15 pass**, core 성능 **6/6 pass**. 기존 방법의 core gzip은 **3,757/3,800 B**. 개발 core **6,403/6,500 B**, core+recorder **9,293 B/10 KiB**, panel까지 **13,147 B/30 KiB**다. Node20 결과와 직접 비교해 코드가 개선됐다고 주장하지 않는다.
+- 한계: DevTools 활성화 timing과 브라우저 검사는 이번 환경 변경에서 재측정하지 않았다. 기존 Node20/Chromium 결과는 7절과 VALIDATION_RESULTS.json에 보존한다. 사람의 M-DT 검사는 미수행이다.
+- 종료: 현재 개발 기준에서 Svelte CJS packaging blocker 해소. [실행 결과·코드 해시](./NODE24_VALIDATION.json), [개발/소비자 runtime 안내](../DEVELOPMENT.md)를 기록했다. 공개 패키지 전체의 Node24 최소 지원 선언은 추가하지 않았다.
+
+## 9. 인계 — 2026-10-25
+
+- **done:** 요구/설계→코어→recorder→Sync→앱 내 패널→자동 hardening/6종 integration→가이드·브랜치 버전 메타데이터. Node24 개발 pin 통일 후 전체 gate와 문서 build 통과. 공개 CJS 진입점과 Svelte SSR 수명도 실제 산출물에서 검증했다.
+- **next:** 브랜치 리뷰 및 MANUAL_TEST_CHECKLIST의 사람 검사. 더 오래된 소비자 Node의 Svelte CJS 지원을 선언하려면 해당 버전에서 별도 검증한다. npm 발행·main 병합은 수행하지 않는다.
+- **blockers:** 현재 Node24 전체 gate의 알려진 blocker 없음. M-DT-01~08 사람 검사는 미수행이므로 사람의 출시 검토 완료라고 표시하지 않는다. 사용자 승인 대기 항목은 없다.
+- **commit:** Node24 변경의 부모는 `a788d958fed3796041a60853d48db798cd61b45a`. `git log -1 --format='%H %s' -- docs/devtools packages/devtools`로 최종 변경 commit을 확인한다. 자기 commit SHA는 추정하지 않는다.
+- **evidence:** NODE24_VALIDATION.json(현재 개발 기준), VALIDATION_RESULTS.json(이전 환경), 재현 가능한 test/bench/browser scripts, 사용 가이드. `?devtools=1`을 붙인 각 개발 예제에서 직접 확인할 수 있다.
 - **context:** ctxbin credential은 명령 환경에서만 사용했다. 코드·문서·커밋에 보관하지 않았다.

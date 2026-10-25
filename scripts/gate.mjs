@@ -27,12 +27,22 @@
  *         pnpm gate --quick    skip the build (only when dist/ is current)
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const quick = process.argv.includes('--quick');
+const pinnedNode = readFileSync(join(root, '.nvmrc'), 'utf8').trim();
+if (
+  process.versions.node.split('.')[0] !==
+  pinnedNode.replace(/^v/, '').split('.')[0]
+) {
+  console.error(
+    `GATE: Node ${pinnedNode} is the development baseline; running ${process.version}. Run nvm use (or use the repository's Volta pin) and retry.`
+  );
+  process.exit(2);
+}
 
 // The child process runs without a shell, so a glob over the source
 // directories would reach eslint unexpanded. Expand it here instead.

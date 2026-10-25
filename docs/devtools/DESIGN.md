@@ -171,6 +171,12 @@ tools.dispose();
 
 ## 6. 남은 검증과 진행 조건
 
+### Node 24 개발 기준 — U-DT-09
+
+개발·검증용 Node는 24.19.0, pnpm은 기존 9.12.3으로 고정한다. `.nvmrc`, root/private package의 engine 및 모든 기존 Volta pin을 맞춘다. docs CI는 이미 `.nvmrc`를 읽으므로 같은 버전을 사용한다. gate는 다른 Node major에서 build 전에 안내하고 중단한다. 공개 패키지 전체에 Node 24 runtime engine을 추가하지 않는다. Svelte 5의 CommonJS 경로는 `require(ESM)`을 지원하는 사용자 Node도 필요하며, 이 저장소의 검증 버전은 24.19.0이다. ESM SSR에는 CommonJS가 필요하지 않다.
+
+기존 Node20 결과는 과거 증거이며 삭제하지 않는다. Node24에서 frozen install, 전체 gate와 문서 사이트 build를 실행하고 현재 기준의 결과를 별도 기록한다. packaging에는 Svelte 5 공개 CommonJS connector를 ESM 서버 컴포넌트에서 불러오는 fixture를 추가한다. 실제 값 렌더링, 반복 SSR 뒤 구독 해제, 이후 쓰기의 callback 0회를 확인해 단순 import 성공과 구분한다. 기존 gzip cap과 성능 목표는 그대로 둔다.
+
 ### Phase 2 session 계약 — 2026-10-25
 
 신규 `@stateref/devtools`는 ESM headless 패키지다. `createDevtools({ maxEvents, maxHistoryBytes, maxSources })`가 `attachStore`, `getSnapshot`, `inspectStore`, `subscribe`, `pause`, `resume`, `clear`, `dispose`를 제공한다. UI/Sync는 아직 추가하지 않는다. core peer는 계획대로 `^3.3.0`, 작업 중 개발 의존은 `workspace:*`이며 아직 발행하지 않는다.
@@ -202,6 +208,6 @@ Phase 0의 두 결정은 [실험과 측정](./experiments/README.md)으로 닫�
 
 Phase 1은 실제 개발/기본 export, 불변 wire protocol, 타입·consumer packaging, capture 실패/gap, 해제 후 참조 제거를 구현했다. core와 `state-ref/batch`가 동일한 개발 런타임을 쓰는지 ESM/CJS 산출물로 확인했고, Vite 개발 해석·production 조건부 import 제외도 통과했다. 실제 6종 앱의 패널/HMR 검증은 이 결과로 대체하지 않는다.
 
-기존 Node 20.3 Svelte CommonJS packaging 실패는 IMPLEMENT에서 별도 추적한다. 관측 경계 구현을 막지는 않지만 전체 gate·출시 준비 완료라고 표시할 수 없다. 별도 사용자 승인 대기 없이 단계별 검증을 진행한다.
+기존 Node 20.3 Svelte CommonJS packaging 실패는 IMPLEMENT의 당시 실행 기록에 보존한다. 이후 U-DT-09에 따라 개발 기준을 Node24.19.0으로 옮겨 전체 gate와 CJS/SSR 렌더·해제를 통과했다. 현재 개발 기준의 결과는 NODE24_VALIDATION.json에 보관한다. 구버전 소비자 런타임의 호환성까지 해결됐다는 의미는 아니다.
 
-현재 검증: 기본 core 3,785 B/3,800 B, 개발 core 6,428 B/6,500 B, 개발 core+recorder 9,302 B/10 KiB, panel까지 13,119 B/30 KiB. Node 20.3의 recorder 500 writes median 3.917 ms/p95 8.049 ms, 10,000 writes median 42.516 ms/p95 61.386 ms로 기존 목표를 유지했다. 예산을 올리지 않고 metadata byte 계산과 대기 queue를 개선했다. 정확한 결과/코드 해시는 VALIDATION_RESULTS.json에 보관한다.
+Phase 2~7의 Node20 검증: 기본 core 3,785 B/3,800 B, 개발 core 6,428 B/6,500 B, 개발 core+recorder 9,302 B/10 KiB, panel까지 13,119 B/30 KiB. Node 20.3의 recorder 500 writes median 3.917 ms/p95 8.049 ms, 10,000 writes median 42.516 ms/p95 61.386 ms로 기존 목표를 유지했다. 예산을 올리지 않고 metadata byte 계산과 대기 queue를 개선했다. 정확한 결과/코드 해시는 VALIDATION_RESULTS.json에 보관한다. Node24 수치는 IMPLEMENT 8절과 NODE24_VALIDATION.json을 따른다.

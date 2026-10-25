@@ -1,4 +1,4 @@
-// Built-artifact diagnostics benchmark. Run alone with Node 20.3 --expose-gc.
+// Built-artifact diagnostics benchmark. Run alone with the Node version pinned in .nvmrc and --expose-gc.
 import assert from 'node:assert/strict';
 import { createStore as production } from '../dist/state-ref.mjs';
 import { createStore as development } from '../dist/state-ref.development.mjs';

@@ -127,12 +127,16 @@ try {
         name.replace(/^connect-/, 'connect-')
       )
     );
-  for (const peer of ['react', 'preact', 'vue', 'svelte', 'solid-js', 'jsdom'])
+  for (const peer of ['react', 'preact', 'vue', 'solid-js', 'jsdom'])
     if (existsSync(join(root, 'node_modules', peer)))
       symlinkSync(
         join(root, 'node_modules', peer),
         join(sandbox, 'node_modules', peer)
       );
+  symlinkSync(
+    join(root, 'packages/connect-svelte/node_modules/svelte'),
+    join(sandbox, 'node_modules/svelte')
+  );
   symlinkSync(
     join(root, 'packages/connect-lithent/node_modules/lithent'),
     join(sandbox, 'node_modules/lithent')
@@ -447,6 +451,14 @@ try {
     await readFile(join(root, 'scripts/lithent-doc-smoke.mjs'), 'utf8')
   );
   execFileSync(process.execPath, [join(sandbox, 'lithent-doc-smoke.mjs')], {
+    stdio: 'inherit',
+    cwd: sandbox,
+  });
+  writeFileSync(
+    join(sandbox, 'svelte-cjs-ssr-smoke.mjs'),
+    await readFile(join(root, 'scripts/svelte-cjs-ssr-smoke.mjs'), 'utf8')
+  );
+  execFileSync(process.execPath, [join(sandbox, 'svelte-cjs-ssr-smoke.mjs')], {
     stdio: 'inherit',
     cwd: sandbox,
   });

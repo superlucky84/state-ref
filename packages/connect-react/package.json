@@ -62,7 +62,7 @@
     "state-ref": "workspace:*"
   },
   "volta": {
-    "node": "20.3.0"
+    "node": "24.19.0"
   },
   "peerDependenciesMeta": {
     "@stateref/sync": {

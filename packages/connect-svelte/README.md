@@ -1,5 +1,7 @@
 # state-ref Svelte Connector (connectSvelte)
 
+For Svelte 5, the CommonJS entry (`require('@stateref/connect-svelte')`) needs a Node runtime that supports `require(ESM)`. This repository validates it on Node **24.19.0**. An older consumer runtime does not gain that capability from our development environment upgrade. ESM imports and ESM-based SSR do not require CommonJS. See the [development and runtime compatibility guide](../../docs/DEVELOPMENT.md).
+
 ## Usage with Svelte
 
 While React and Preact's `useProfile` function directly returns `stateRef`, SvelteConnect returns Svelte's built-in reactive [Writable](https://svelte.dev/docs/svelte-store#writable) synchronized with the `stateRef` state value.
