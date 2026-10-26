@@ -171,6 +171,33 @@ tools.dispose();
 
 ## 6. 남은 검증과 진행 조건
 
+### 공통 편의 API와 Sync — U-DT-13/14, 설계안
+
+**현재 구현되지 않은 후속 API 제안이다.** 기존 SDK와 0.1.0 배포 준비 결과가 이 기능을 포함한다고 해석하지 않는다. 아래 이름/경로는 설계 예시이며 구현·문서·타입 검증 후 확정한다.
+
+```ts
+import { devtools } from '@stateref/devtools/auto';
+
+const cartWatch = devtools(createStore({ count: 0 }), {
+  name: 'cart', enabled: import.meta.env.DEV,
+});
+const client = devtools(createSyncClient(), {
+  name: 'API', enabled: import.meta.env.DEV,
+});
+// 기존 connector 코드 유지: useSyncQuery(client, options) 등.
+```
+
+- [x] **등록 단위:** 일반 root watch와 Sync client를 같은 사용자 동작으로 등록한다. Sync는 query/handle/display ref/각 hook을 다시 감싸지 않고 client를 한 번 등록한다. 공개 메타데이터 범위의 query·infinite cache·mutation 사건을 기존 어댑터로 모은다.
+- [x] **동일 참조/타입:** 입력한 watch/client 자체를 반환한다. 새로운 proxy나 client를 만들지 않고 제네릭·overload·메서드/선택 타입을 유지한다. 실제 React connector는 client 참조 동일성을 검사하므로 이것이 호환성 조건이다.
+- [x] **기존 connector 사용법:** React/Preact의 `useSyncQuery`, Vue의 getter options, Solid/Lithent의 `createSyncQuery`, Svelte의 고정/Readable options를 유지한다. connector마다 DevTools 전용 설정·Provider·별도 entry를 요구하지 않는다. 각 화면의 구독과 해제는 기존 connector가 소유한다.
+- [x] **관측의 의미:** 같은 client를 두 화면에서 써도 도구 등록은 하나다. 패널은 일반 store와 여러 client를 구분해 한 곳에 모은다. 관측이 query를 만들거나 owners·READ/WRITE 호출·retry/캐시 수명을 바꾸지 않는다. query data·mutation input/response·오류 원문을 새로 수집한다고 약속하지 않는다.
+- [x] **선택 의존:** 공통 편의 계층은 DevTools 패키지에 둔다. core·Sync·connector의 필수 runtime dependency로 DevTools를 추가하지 않는다. core만 쓰는 앱에는 Sync 설치를 요구하지 않는다. 현재 구조적 `InspectableSyncClient` 계약을 활용한다.
+- [x] **비활성/서버:** disabled 및 production 기본 경로는 입력 참조를 그대로 반환하며 관측 메서드·DOM·listener를 호출하지 않는다. production 번들에서 recorder/panel 제외를 실제 산출물로 검증한다. SSR의 request별 client를 전역 session에 등록하지 않는다.
+- [ ] **IC-AUTO-01 수명:** 중복 등록, HMR 교체, module import 도중 종료, 동적으로 만든 store/client의 해제 및 마지막 대상 제거 후 panel/session 종료 정책을 구현 전에 확정한다. 정적 앱의 사용법을 짧게 하되 동적 대상에는 명시적 해제 수단을 제공한다. 이름만 같은 서로 다른 client를 합치지 않는다.
+- [ ] **IC-AUTO-02 환경/부트스트랩:** 개발 조건부 export와 기본 no-op 진입점, `enabled` 우선순위, panel의 지연 로딩/DOM 준비, 지원 bundler별 조건 선택을 실제 소비자 fixture로 확정한다. 단순히 `enabled: false`만으로 tree-shaking을 보장한다고 주장하지 않는다.
+
+검증 계획: 원본/반환 객체의 `===`와 정확한 공개 타입, 같은 client/서로 다른 client/동일 이름 분리, 동일 query 두 화면의 owners·요청 수 불변, mutation 종료/실패 이력, 선택적 Sync 미설치, server import/request 격리, production 미포함, 여섯 connector의 key 전환·unmount·StrictMode 및 Svelte Readable options. 기존 off/on trace·byte 한도·수명 기준을 유지한다.
+
 ### 배포 준비 — U-DT-12
 
 - [x] 2026-10-26 npm registry 조회: core latest 3.2.2, DevTools 미등록(404). 브랜치의 core 3.3.0/DevTools 0.1.0은 미발행이며 이번 출시 대상이다. 이미 준비한 버전을 다시 올리지 않는다. source/API가 그대로인 Sync 0.3.1과 여섯 connector는 이번 발행에서 제외한다.

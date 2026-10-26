@@ -275,11 +275,21 @@ Node24 packaging을 반복하다 기존 `fix-declarations.mjs`의 비멱등 문�
 - 두 대상의 `publish --dry-run` pass. 이 준비 검사에서는 dirty tree의 package 내용만 확인하기 위해 git 검사만 제외했고 registry에는 쓰지 않았다. 사용자에게 제공한 실제 발행 명령은 git 검사와 명시적인 feature publish branch를 유지한다. dry-run은 실제 계정의 npm 발행 권한까지 확인한 결과가 아니다.
 - 종료: [registry 조회·tarball 해시·검증 결과](./RELEASE_PREPARATION.json)를 보존했다. 실제 npm 발행·태그 push·main 병합·Pages 배포는 실행하지 않았으며 사용자가 실행할 명령을 제공한다.
 
-## 12. 인계 — 2026-10-26
+## 12. 공통 편의 API와 Sync — 설계 단계, 2026-10-26
+
+- 기준: `050aacd03193ecc9f7a45098137474ede0b2d940`. 사용자 U-DT-13/14. 런타임과 package 버전은 이 단계에서 변경하지 않는다.
+- 조사: 여섯 connector의 `./sync`는 `client.observe()`를 사용하며 기존 DevTools는 client의 공개 메타데이터 네 메서드로 관측한다. React는 처음 받은 client의 참조 동일성을 검사한다. 공통 client 등록을 유지하면 hook별 DevTools 설정을 추가할 필요가 없다.
+- 문서 단계: root watch/client의 같은 편의 동작, 동일 참조·타입 반환, 한 client 한 등록, 선택적 의존, production/SSR 요구를 DESIGN에 기록했다. 이름/경로/예제는 제안이다. IC-AUTO-01(수명)과 IC-AUTO-02(환경/부트스트랩)는 미결이다.
+- 구현 계획 A: 미결 결정을 소비자 fixture로 닫고 같은 타입을 돌려주는 공통 진입점/기본 no-op 계약부터 만든다. baseline은 기존 SDK 타입·optional-peer·bundle 검사다.
+- Test Hardening 계획 B: 중복/서로 다른 client·이름 충돌·늦은 import·HMR/동적 해제·SSR 요청 격리·비활성 메서드 호출 0·production 실제 제외를 검증한다. 기존 이력/한도/오류 격리 검사를 유지한다.
+- Integration Test 계획 C: 여섯 실제 앱에서 기존 sync connector 호출을 그대로 사용해 key 전환·query/mutation·owners·요청/재시도·unmount·Svelte options store를 검증한다. core-only 소비자는 Sync 없이 동작해야 한다.
+- 현재 완료 범위: 사용 요구와 설계/후속 검증 계획 기록만 완료. `devtools()` 편의 함수는 아직 구현하지 않았고 기존 배포 준비의 완료 판정을 이 후속 기능에 재사용하지 않는다. 구현 시 실제 npm 발행 상태와 추가한 기능에 맞는 버전을 다시 판단한다.
+
+## 13. 인계 — 2026-10-26
 
 - **done:** DevTools·데모·문서와 Node24 전환 완료. npm 현재 상태를 확인해 core 3.3.0/DevTools 0.1.0만 발행 대상으로 확정하고 publishConfig·LICENSE·changelog·배포 명령을 정리했다. 전체 gate와 실제 tarball 소비자 및 dry-run을 검증했다.
-- **next:** 사용자는 docs/RELEASING.md에 따라 npm 권한이 있는 계정으로 core→DevTools를 발행하고 확인한 뒤 태그/main/Pages 절차를 수행한다. M-DT 사람 검사는 별도 기록한다. 더 오래된 소비자 Node의 Svelte CJS 지원을 선언하려면 해당 버전에서 별도 검증한다.
+- **next:** 편의 API의 watch/Sync 공통 사용안을 사용자와 검토하고 IC-AUTO-01/02를 해결한 뒤 12절 구현/검증 계획을 진행한다. 현재 0.1.0 SDK와 배포 가이드는 이 미구현 wrapper를 포함하지 않는다. 실제 발행 상태는 registry로 재확인한다. M-DT 사람 검사는 별도 기록한다.
 - **blockers:** 현재 Node24 전체 gate의 알려진 blocker 없음. M-DT-01~08 사람 검사는 미수행이므로 사람의 출시 검토 완료라고 표시하지 않는다. 사용자 승인 대기 항목은 없다.
-- **commit:** 배포 준비의 부모는 `8da30ed1bfc4553096447e93d1a8fac3d739acf0`. `git log -1 --format='%H %s' -- docs/devtools docs/RELEASING.md`로 최종 변경 commit을 확인한다. 자기 commit SHA는 추정하지 않는다.
+- **commit:** 편의 API 요구/설계 기록의 부모는 `050aacd03193ecc9f7a45098137474ede0b2d940`. `git log -1 --format='%H %s' -- docs/devtools`로 최종 변경 commit을 확인한다. 자기 commit SHA는 추정하지 않는다.
 - **evidence:** RELEASE_PREPARATION.json(배포 준비), WALKTHROUGH_VALIDATION.json(첫 체험), NODE24_VALIDATION.json(Node24 전환), VALIDATION_RESULTS.json(이전 환경), 재현 가능한 test/bench/browser scripts, 배포 가이드.
 - **context:** ctxbin credential은 명령 환경에서만 사용했다. 코드·문서·커밋에 보관하지 않았다.
