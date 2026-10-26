@@ -2,6 +2,8 @@
 
 이 문서는 배포 준비와 실행 방법을 정리한다. **아직 npm 발행·main 병합·사이트 배포를 실행하지 않았다.** 2026-10-26 조회한 registry 상태를 기준으로 하며, 실제 실행 직전에 다시 확인한다.
 
+검토와 병합은 [PR #20](https://github.com/superlucky84/state-ref/pull/20)에서 진행한다. 작업 환경의 npm 인증과 GitHub 연결은 별개다. 현재 npm 로그인·실제 발행은 사용자 PC에서 진행하며, 아래 feature 브랜치 명령을 그대로 사용한다.
+
 ## 1. 이번에 발행할 패키지
 
 | 순서 | 패키지               | npm 현재 버전 | 이번 버전   | 이유                                            |
@@ -128,7 +130,7 @@ git push origin state-ref@3.3.0 @stateref/devtools@0.1.0
 
 그다음 GitHub에서 `feat/state-ref-devtools`를 main으로 병합한다. main의 `stateRefDocs/**` 변경은 기존 **Deploy docs site** workflow를 실행해 `gh-pages`를 갱신한다. npm 발행만으로 사이트가 갱신되지는 않는다. npm 패키지 2개가 준비된 뒤 병합하면 가이드에서 안내한 버전을 바로 설치할 수 있다.
 
-자동 배포가 정상 완료되면 수동 명령을 추가 실행할 필요가 없다. 수동으로 다시 배포할 때만 main의 최신 커밋에서 다음을 사용한다.
+자동 배포가 정상 완료되면 수동 명령을 추가 실행할 필요가 없다. 수동으로 다시 배포할 때만 main의 최신 커밋에서 다음을 사용한다. 배포 스크립트는 gh-pages의 fetch refspec을 명시하므로 main만 추적하는 checkout에서도 배포용 worktree를 만들 수 있다.
 
 ```sh
 git switch main

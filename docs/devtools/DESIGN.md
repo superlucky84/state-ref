@@ -210,6 +210,12 @@ const client = devtools(createSyncClient(), {
 - [x] 공개 가이드는 특정 버전의 사용법으로 정리해 출시 뒤 남을 미출시 표기를 제거한다. 실제 발행 완료 여부는 IMPLEMENT와 registry로 구분한다. 데모 명령은 현재 checkout을 사용해 브랜치 삭제에 의존하지 않는다.
 - 검증: Node24 전체 gate, 실제 pack 두 개의 export/declaration/LICENSE/peer/workspace 치환 확인과 tarball 소비자 smoke, publish dry-run, docs build 및 변경 문서 예제. 실제 registry mutation은 하지 않는다.
 
+### 배포 인계 검증 — U-DT-16
+
+- [x] **IC-REL-01:** Git의 remote fetch 설정이 main/feature만 포함해도 문서 배포 스크립트가 동작해야 한다. `gh-pages`를 명시적인 원격 branch→local remote-tracking refspec으로 fetch한 뒤 기존 detached worktree 흐름을 유지한다. 앱 runtime과 발행 버전은 바꾸지 않는다.
+- 검증: 기존 제한된 checkout에서 `deploy:docs --dry-run`의 `origin/gh-pages` 실패를 baseline으로 기록한다. 수정 뒤 실제 사이트 build→임시 worktree→배포 commit→정리까지 완료하고, 실행 전후 원격 `gh-pages` SHA가 같음을 확인한다. npm dry-run은 깨끗한 source에서 git 검사를 켜서 실행한다.
+- 운영 상태: npm `whoami`의 ENEEDAUTH는 실제 발행의 인증 blocker다. 로컬 코드 검사나 GitHub 연결을 npm 발행 권한으로 해석하지 않는다. PR을 draft로 준비하고, core/SDK 발행 확인 뒤 main·Pages 순서를 유지한다.
+
 ### 사이트 문서 보완 — U-DT-11
 
 - [x] 기존 사이트의 한·영 페이지 구조와 hash routing을 따른다. `/guide/devtools`, `/ko/guide/devtools`를 시작하기 메뉴에 연결하고 Sync 관측 문서에서도 찾을 수 있게 한다.

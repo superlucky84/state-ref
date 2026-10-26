@@ -130,6 +130,8 @@
 
 이 목록은 사람이 확인할 항목이므로 자동 검사 통과만으로 체크하지 않는다. 현재 구현은 DESIGN의 공통 편의 API 계약을 따르며 자동 검증 결과는 IMPLEMENT 12절과 [AUTO_VALIDATION.json](./AUTO_VALIDATION.json)에 있다.
 
+배포 인계 시에는 PR #20의 변경과 RELEASING의 순서를 확인한다. npm 로그인 성공·두 버전 발행 확인·main 병합·Pages 성공은 각각 실제 실행 후 기록하며 dry-run과 구분한다. 제한된 checkout에서 문서 배포 dry-run이 완료되고 원격 gh-pages SHA가 유지되는지 IMPLEMENT 13절과 대조한다.
+
 | ID | 상태 | commit·환경·명령 또는 수행자 | 증거·미검증 부분 |
 |---|---|---|---|
 | M-DT-01 | 미수행 | 사람 검사 미수행 | 기본 연결 |

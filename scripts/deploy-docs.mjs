@@ -47,7 +47,13 @@ const source = git(root, 'rev-parse', '--short', 'HEAD');
 const dirty = git(root, 'status', '--porcelain', '--', 'stateRefDocs') !== '';
 
 step(`check out ${BRANCH}`);
-git(root, 'fetch', 'origin', BRANCH);
+// A single-branch checkout may not track gh-pages in remote.origin.fetch.
+git(
+  root,
+  'fetch',
+  'origin',
+  `refs/heads/${BRANCH}:refs/remotes/origin/${BRANCH}`
+);
 const worktree = mkdtempSync(join(tmpdir(), 'state-ref-gh-pages-'));
 // Detached, so a local `gh-pages` branch checked out elsewhere is no obstacle.
 git(root, 'worktree', 'add', '--detach', worktree, `origin/${BRANCH}`);

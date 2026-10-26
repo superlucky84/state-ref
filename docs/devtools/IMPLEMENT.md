@@ -289,11 +289,21 @@ Node24 packaging을 반복하다 기존 `fix-declarations.mjs`의 비멱등 문�
 - 배포 준비 갱신: 실제 tarball은 core **117 files**, DevTools **14 files**이며 새 auto 기본/개발 ESM과 선언을 포함한다. 두 tarball만 새 npm 소비자에 설치해 Sync 미설치, 공개 export/LICENSE/metadata, workspace 치환, production identity·core 쓰기, development SSR identity·headless 기록/해제, strict Node16 타입을 확인했다. 두 대상 `publish --dry-run` pass; dirty tree의 내용 검사에 한해 `--no-git-checks`를 사용했고 실제 발행 가이드의 git 검사는 유지한다. npm 로그인 경고가 있어 실제 발행 권한을 검증한 결과는 아니다.
 - 종료: [새 실행 결과·코드/타르볼 해시](./AUTO_VALIDATION.json)를 추가하고 이전 JSON 증거는 보존했다. core·Sync·connector runtime dependency/API는 바꾸지 않았다. 사람의 M-DT 검사, Vite/Node 외 bundler 검증, 실제 npm 발행·태그·main 병합·Pages 배포는 수행하지 않았다.
 
-## 13. 인계 — 2026-10-26
+## 13. 배포 인계 검증 — 완료, 2026-10-26
 
-- **done:** 설계 문서를 커밋·푸시한 뒤 공통 watch/Sync wrapper와 HMR/종료/production/SSR 계약을 구현했다. 여섯 데모·공개 문서·배포 가이드를 맞추고 전체 gate, 실제 브라우저, tarball 소비자와 dry-run 검증을 완료했다. core3.3.0/SDK0.1.0의 미발행 버전은 유지한다.
-- **next:** 사용자는 `pnpm dev:devtools`로 첫 체험과 M-DT 사람 검사를 진행할 수 있다. 실제 발행 시 registry를 다시 확인하고 RELEASING의 core→DevTools→main/Pages 순서를 따른다. 현재 SDK 산출물에는 auto API가 포함된다.
-- **blockers:** 자동 검증의 알려진 blocker 없음. 사람의 M-DT-01~08/장시간 heap 검사는 미수행이다. 사용자 승인 대기 항목은 없다.
-- **commit:** 이번 구현의 부모는 `7b7b32c0e662c06c064916880594f98448fd2fb7`. `git log -1 --format='%H %s' -- packages/devtools/src/auto.development.ts docs/devtools/AUTO_VALIDATION.json`로 실제 구현 commit을 확인한다. 자기 commit SHA를 추정하지 않는다.
-- **evidence:** AUTO_VALIDATION.json(현재 편의 API), RELEASE_PREPARATION.json(이전 배포 준비), WALKTHROUGH_VALIDATION.json(첫 체험), NODE24_VALIDATION.json(Node24 전환), VALIDATION_RESULTS.json(이전 환경), 재현 가능한 test/bench/browser scripts, 배포 가이드.
-- **context:** ctxbin credential은 명령 환경에서만 사용했다. 코드·문서·커밋에 보관하지 않았다.
+- 기준: `6335567b363c14e5d43d94d3186bada6790b179c`, U-DT-16. AUTO_VALIDATION의 source hash가 현재 파일과 일치한다. 앱 runtime과 발행 버전은 변경하지 않았다.
+- PR: [Draft PR #20](https://github.com/superlucky84/state-ref/pull/20)을 만들고 main과 충돌 없음을 확인했다. commit CI status/workflow run은 없으므로 로컬 gate의 증거와 구분한다. registry 재조회는 core latest3.2.2/3.3.0 404/SDK404다.
+- 발행 인계: 깨끗한 checkout에서 git 검사를 켠 core/SDK publish dry-run이 모두 통과했다. npm whoami는 ENEEDAUTH이며, 사용자는 실제 npm 로그인과 발행을 자신의 PC에서 수행하기로 선택했다. GitHub 연결을 npm 권한으로 사용하지 않으며 배포 가이드의 core→SDK→main/Pages 순서를 유지한다.
+- 구현 A 완료: remote.origin.fetch가 main/feature만 포함한 실제 checkout에서 `deploy:docs --dry-run`이 `origin/gh-pages` 참조 부재로 실패했다. `scripts/deploy-docs.mjs`가 원격 gh-pages→로컬 remote-tracking ref를 명시적으로 fetch하도록 수정했다. detached worktree·기존 build/copy/commit/push 동작은 유지한다.
+- Test Hardening B 완료: script 문법과 Prettier 검사 pass. 같은 checkout의 실제 `pnpm deploy:docs --dry-run` 종료 코드 0. 원격 gh-pages SHA는 실행 전후 모두 `f628aaa5ec43bccb0245841edb4e00f9669fd610`이고, 임시 worktree 정리도 확인했다. 앱 source가 그대로여서 전체 gate를 반복하지 않았다.
+- Integration Test C 완료: 실제 사이트 build→배포용 임시 worktree→변경 파일 복사→로컬 배포 commit 생성→정리를 통과했다. 원격 push는 하지 않았다. 실제 npm 발행·tag·main merge·공개 Pages 배포는 실행하지 않았다.
+- 종료: [배포 인계 증거](./RELEASE_HANDOFF.json)를 추가했다. 기존 AUTO/이전 JSON은 과거 검증 증거로 보존한다. RELEASING에 PR과 사용자 PC 발행 위치를 연결했다.
+
+## 14. 인계 — 2026-10-26
+
+- **done:** 공통 watch/Sync wrapper·문서·데모와 전체 자동 검증을 `6335567`로 push하고 Draft PR #20을 만들었다. 후속 배포 script의 제한된 fetch 설정 문제를 수정해 실제 dry-run과 원격 무변경을 검증했다. git 검사를 유지한 npm dry-run과 PC 발행 절차도 준비했다.
+- **next:** 사용자가 자신의 PC에서 RELEASING의 npm 로그인→core3.3.0→DevTools0.1.0→설치 확인을 수행한다. 두 버전 확인 후 PR #20을 main으로 병합하면 문서 workflow가 실행된다. 사람의 M-DT 검사는 별도로 기록한다.
+- **blockers:** 코드/배포 준비의 알려진 blocker 없음. 실제 npm 발행은 사용자 PC의 계정 인증/권한이 필요하며 아직 미수행이다. 사람 M-DT-01~08/장시간 heap 검사는 미수행이다.
+- **commit:** 후속 변경의 부모는 `6335567b363c14e5d43d94d3186bada6790b179c`. 실제 후속 commit은 `git log -1 --format='%H %s' -- scripts/deploy-docs.mjs docs/devtools/RELEASE_HANDOFF.json`로 확인한다.
+- **evidence:** RELEASE_HANDOFF.json(현재 배포 인계), AUTO_VALIDATION.json(공통 API), 그 외 이전 JSON(당시 코드 검증). PR #20과 dry-run은 실제 발행/merge 완료를 뜻하지 않는다.
+- **context:** credential을 코드·문서·commit에 보관하지 않는다. npm 발행은 사용자가 선택한 PC에서 진행한다.
