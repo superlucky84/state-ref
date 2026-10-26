@@ -544,6 +544,14 @@ function UserComponent() {
 }
 ```
 
+## DevTools
+
+Wrap a root watch or your existing Sync client with `devtools(target, { enabled: import.meta.env.DEV, hot: import.meta.hot })` from **`@stateref/devtools/auto`**. It preserves the original reference and connector API, opens one shared panel in development, and defaults to an import-free identity function in production. `stopDevtools(target?)` handles explicit cleanup. See the SDK guide below for masking and lifecycle details.
+
+State-ref 3.3.0 supports optional, read-only debugging through `@stateref/devtools` 0.1.0. It provides current state previews, before/after history, subscription paths and runs, Sync metadata and a floating or inline browser panel. State-ref 3.2.2 does not contain the observation API. See the [release guide](../../docs/RELEASING.md) for publication status and commands.
+
+See the [setup and cleanup guide](../devtools/README.md) and the documentation site's **Getting Started → DevTools** pages ([English source](../../stateRefDocs/src/pages/DevTools.tsx), [한국어 원문](../../stateRefDocs/src/pages/DevTools_ko.tsx)). After building the workspace, `pnpm dev:devtools` opens a six-step local walkthrough. The tools support masking and bounded recording, and do not provide state editing, time travel or a Redux DevTools adapter.
+
 ## Acknowledgements
 
 I would like to extend my gratitude to the following people and projects:

@@ -23,5 +23,8 @@
   "dependencies": {
     "@stateref/sync": "workspace:*",
     "state-ref": "workspace:*"
+  },
+  "devDependencies": {
+    "@stateref/devtools": "workspace:*"
   }
 }

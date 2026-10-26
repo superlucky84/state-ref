@@ -6,6 +6,7 @@ import type { PathNode } from '@/path';
 import { collector } from '@/connectors/collector';
 import { runBatch } from '@/connectors/runner';
 import { REF_CONNECTION, REF_IDENTITY } from '@/internal/ref-connection-key';
+import { diagnosticWrite } from '@/internal/devtools';
 import type { Run, WithRoot, StoreRenderList, RefWrite } from '@/types';
 
 /**
@@ -281,6 +282,14 @@ export function makeProxy<S extends WithRoot, T extends object>(
           onWrite?.({ parent: parentNode, segment, before, after: value });
 
           rootValue.root = newTree.root;
+          if (__STATE_REF_DEVTOOLS__)
+            diagnosticWrite(
+              storeRenderList,
+              parentNode,
+              segment,
+              before,
+              value
+            );
 
           /**
            * Run dependency subscription callbacks, limited to the subscriptions

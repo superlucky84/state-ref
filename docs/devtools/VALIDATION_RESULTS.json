@@ -1,0 +1,137 @@
+{
+  "node": "v20.3.0",
+  "baseCommit": "ee6af0c6472ddff3fe8dfb05d670a255e0586520",
+  "samples": 21,
+  "warmups": 5,
+  "timing": {
+    "writes500": {
+      "production": {
+        "medianMs": 0.45133399963378906,
+        "p95Ms": 1.0209029987454414
+      },
+      "unattached": {
+        "medianMs": 0.5848110001534224,
+        "p95Ms": 0.915548000484705
+      },
+      "attached": {
+        "medianMs": 3.916517000645399,
+        "p95Ms": 8.048630999401212
+      }
+    },
+    "writes10000": {
+      "production": {
+        "medianMs": 4.163219999521971,
+        "p95Ms": 6.530096000060439
+      },
+      "unattached": {
+        "medianMs": 5.05888899974525,
+        "p95Ms": 9.52479499951005
+      },
+      "attached": {
+        "medianMs": 42.51555600017309,
+        "p95Ms": 61.38580899871886
+      }
+    },
+    "readsDepth8": {
+      "production": {
+        "medianMs": 26.935173001140356,
+        "p95Ms": 30.647539999336004
+      },
+      "unattached": {
+        "medianMs": 26.761146999895573,
+        "p95Ms": 27.972862001508474
+      },
+      "attached": {
+        "medianMs": 26.48186600022018,
+        "p95Ms": 29.494371999055147
+      }
+    },
+    "readsDepth32": {
+      "production": {
+        "medianMs": 90.23510999977589,
+        "p95Ms": 98.42315799929202
+      },
+      "unattached": {
+        "medianMs": 89.8276749998331,
+        "p95Ms": 93.45524800010026
+      },
+      "attached": {
+        "medianMs": 90.136554999277,
+        "p95Ms": 95.78765000030398
+      }
+    }
+  },
+  "budgetChecks": {
+    "unattachedWrites": true,
+    "unattachedBurst": true,
+    "attachedWrites": true,
+    "attachedBurst": true,
+    "readDepth8": true,
+    "readDepth32": true
+  },
+  "scope": "Published core and bounded recorder; delivery/recording included, setup/GC excluded. Burst overflows the 1000-event queue. No UI.",
+  "recordedAt": "2026-10-25",
+  "pnpm": "9.12.3",
+  "platform": {
+    "os": "Linux",
+    "architecture": "x86_64"
+  },
+  "command": "node --expose-gc packages/devtools/bench/recorder.mjs",
+  "sizeBytesGzip": {
+    "coreExistingBenchmark": 3785,
+    "developmentCoreWithDependencies": 6428,
+    "recorderAdapter": 3373,
+    "developmentCoreRecorder": 9302,
+    "developmentCoreRecorderPanel": 13119
+  },
+  "browser": {
+    "browser": "154.0.8037.57",
+    "results": [
+      {
+        "panelLatency": {
+          "samples": 21,
+          "medianMs": 16.699999999254942,
+          "p95Ms": 17
+        }
+      },
+      "panel: state/timeline/subscriptions/Sync, redaction/XSS, pause/clear, focus/keyboard, CSS isolation, 20 mount cycles/dispose",
+      "react: real connector application + writes + subscriptions + Sync + HMR/reload",
+      "preact: real connector application + writes + subscriptions + Sync + HMR/reload",
+      "vue: real connector application + writes + subscriptions + Sync + HMR/reload",
+      "svelte: real connector application + writes + subscriptions + Sync + HMR/reload",
+      "solid: real connector application + writes + subscriptions + Sync + HMR/reload",
+      "lithent: real connector application + writes + subscriptions + Sync + HMR/reload"
+    ],
+    "hmrReloadFrameworks": [
+      "react",
+      "preact",
+      "vue",
+      "svelte",
+      "solid",
+      "lithent"
+    ]
+  },
+  "sourceHashes": {
+    "packages/devtools/src/index.ts": "799236e5fcf9bfdcbcd4a6142f5e9922ac89143b1e481dec3c0b89df48d8c915",
+    "packages/devtools/src/sync.ts": "03990df2e2d6c666c13dded35b16e4d0b679aa01fce242d20c68ebbed9d4393a",
+    "packages/devtools/src/panel.ts": "01e424472222f1799c408408d682b2b70d962733ffd0c478e4a1f9747b55a684",
+    "packages/devtools/bench/recorder.mjs": "edaa165d556271578d46a44ab4e75e8cd4ed4c0dac0ffdbec3d2b70b855c5a81",
+    "packages/state-ref/src/internal/devtools.ts": "c716c9083565d68bf2e91b25804845d1853b9ca1dbc5e4f4a0102ca450afb651",
+    "packages/state-ref/src/internal/devtools-preview.ts": "c7bf1895475fd2c3b4868ae678de9d1f4891666230ce4bb8ea625aed03a43a57",
+    "packages/devtools/test/browser.mjs": "bb484e404eaf49b127be6093ae5671495b431c7db772654b6aecd3b78343f145",
+    "packages/devtools/test/bundle.mjs": "89c4ddb0964f4b0cd1453d7269db314be7c1852b0675a8d4604c16061df101c9",
+    "packages/devtools/test/optional-peer.mjs": "5c22fff1f8fe6a7f0a8d9fd974fefbea634f995135c1bbe87966636883c4dbda",
+    "scripts/fix-declarations.mjs": "aff34ab56c13f055306a02b9ae5bf3f187588658f69b84981229275de0b9ea15"
+  },
+  "versions": {
+    "state-ref": "3.3.0",
+    "@stateref/devtools": "0.1.0"
+  },
+  "testResults": {
+    "core": 418,
+    "devtools": 19,
+    "frameworkBrowsers": 6,
+    "pinnedGate": "failed: existing Svelte CJS ERR_REQUIRE_ESM",
+    "node24Packaging": "passed after repeated declaration generation"
+  }
+}

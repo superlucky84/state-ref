@@ -1,0 +1,104 @@
+{
+  "node": "v20.3.0",
+  "baseCommit": "528b6e998b68104cf5f5722d8ed7eac379838ae2",
+  "samples": 21,
+  "warmups": 5,
+  "timing": {
+    "writes500": {
+      "production": {
+        "medianMs": 0.7087340019643307,
+        "p95Ms": 1.0327720008790493
+      },
+      "unattached": {
+        "medianMs": 0.7231950014829636,
+        "p95Ms": 1.1748610027134418
+      },
+      "attached": {
+        "medianMs": 2.985538002103567,
+        "p95Ms": 6.874980002641678
+      }
+    },
+    "writes10000": {
+      "production": {
+        "medianMs": 4.543955001980066,
+        "p95Ms": 6.22512099891901
+      },
+      "unattached": {
+        "medianMs": 4.998975001275539,
+        "p95Ms": 13.579768002033234
+      },
+      "attached": {
+        "medianMs": 42.27351399883628,
+        "p95Ms": 61.57652400061488
+      }
+    },
+    "readsDepth8": {
+      "production": {
+        "medianMs": 26.54507900029421,
+        "p95Ms": 32.39980499818921
+      },
+      "unattached": {
+        "medianMs": 26.34443399682641,
+        "p95Ms": 28.542481999844313
+      },
+      "attached": {
+        "medianMs": 25.979396000504494,
+        "p95Ms": 28.746711999177933
+      }
+    },
+    "readsDepth32": {
+      "production": {
+        "medianMs": 91.12717599794269,
+        "p95Ms": 101.06438499689102
+      },
+      "unattached": {
+        "medianMs": 91.23163999989629,
+        "p95Ms": 102.38370299711823
+      },
+      "attached": {
+        "medianMs": 90.99601300060749,
+        "p95Ms": 99.17992899939418
+      }
+    }
+  },
+  "budgetChecks": {
+    "unattachedWrites": true,
+    "unattachedBurst": true,
+    "attachedWrites": true,
+    "attachedBurst": true,
+    "readDepth8": true,
+    "readDepth32": true
+  },
+  "scope": "Published core/adapter, no-op listener; delivery included, setup/GC excluded. Burst overflows the 1000-event queue. No recorder/UI.",
+  "recordedAt": "2026-10-24",
+  "pnpm": "9.12.3",
+  "command": "node --expose-gc packages/state-ref/bench/devtools.mjs",
+  "platform": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "cpu": "AMD EPYC 9V74 80-Core Processor"
+  },
+  "sizeBytesGzip": {
+    "coreExistingBenchmark": 3785,
+    "coreBundledConsumer": 3769,
+    "developmentWithDependencies": 6176,
+    "adapter": 308
+  },
+  "sourceHashes": {
+    "packages/state-ref/bench/devtools.mjs": "7592b4a1006747f7005280ebfeb329b893c35f8fd7ccdfc51415de6faf43f26b",
+    "packages/state-ref/src/internal/devtools.ts": "72175da85448be69eb79cfcd102c2f7fee3879d4616afaf9f2cc06c2dfcffe9b",
+    "packages/state-ref/src/internal/devtools-preview.ts": "c7bf1895475fd2c3b4868ae678de9d1f4891666230ce4bb8ea625aed03a43a57",
+    "packages/state-ref/src/devtools/index.ts": "45aadccffbb8e7502c69fd221c1510bb217dd67ad9d5af39144b11e29e3201db",
+    "packages/state-ref/src/devtools/types.ts": "854bcded91717c3844265ffc9714d6df90f3dccab53eced794a3511765a18fc1"
+  },
+  "beforeOptimization": {
+    "writes500": {
+      "medianMs": 5.731050003319979,
+      "p95Ms": 7.808395002037287
+    },
+    "writes10000": {
+      "medianMs": 66.82584999874234,
+      "p95Ms": 73.79343799874187
+    }
+  }
+}

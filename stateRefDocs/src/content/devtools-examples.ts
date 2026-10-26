@@ -1,0 +1,62 @@
+export const devtoolsDemoCommand = `git pull --ff-only
+nvm install
+nvm use
+corepack enable
+corepack prepare pnpm@9.12.3 --activate
+pnpm install --frozen-lockfile
+pnpm build
+pnpm dev:devtools`;
+
+export const devtoolsBootstrapExample = `import { createStore } from 'state-ref';
+import { devtools, stopDevtools } from '@stateref/devtools/auto';
+
+export const watch = devtools(
+  createStore({ count: 0, token: 'fixture' }),
+  {
+    name: 'Counter',
+    enabled: import.meta.env.DEV,
+    hot: import.meta.hot,
+    redact: [['token']],
+    // Optional initial position; saved UI choices take precedence.
+    panel: { buttonPosition: 'bottom-left' },
+  }
+);
+
+// Use watch with your existing framework connector.
+// Call when the application root is disposed:
+export const stopDebugging = () => stopDevtools(watch);`;
+
+export const devtoolsHeadlessExample = `import { createStore } from 'state-ref';
+import { createDevtools } from '@stateref/devtools';
+
+const watch = createStore({ count: 0 });
+const tools = createDevtools({
+  maxEvents: 200,
+  maxHistoryBytes: 1_048_576,
+});
+const detach = tools.attachStore(watch, { name: 'Counter' });
+const stopView = tools.subscribe(() => {
+  console.log(tools.getSnapshot().history);
+});
+
+watch().count.value += 1;
+const sourceId = tools.getSnapshot().sources[0].id;
+console.log(tools.inspectStore(sourceId).value);
+
+await new Promise<void>(resolve => queueMicrotask(resolve));
+
+stopView();
+detach();
+tools.dispose();`;
+
+export const devtoolsSyncExample = `import { createSyncClient } from '@stateref/sync';
+import { devtools } from '@stateref/devtools/auto';
+
+export const client = devtools(createSyncClient(), {
+  name: 'API',
+  enabled: import.meta.env.DEV,
+  hot: import.meta.hot,
+});
+
+// Pass this same client to your existing @stateref/connect-*/sync APIs.
+// No per-query, mutation or connector DevTools options are needed.`;

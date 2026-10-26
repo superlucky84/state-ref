@@ -1,5 +1,5 @@
 /**
- * Compile the README examples against the built public declaration types
+ * Compile README and shared site examples against built public declaration types
  * (step 7 of docs/server-sync/PHASE8_5.md, DC8-5-05).
  *
  * WHY EXTRACT RATHER THAN KEEP A FIXTURE. A hand-written fixture that mirrors
@@ -56,6 +56,7 @@ import {
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
+import ts from 'typescript';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -63,6 +64,8 @@ const DOCUMENTS = [
   'README.md',
   'packages/state-ref/README.md',
   'packages/sync/README.md',
+  'packages/devtools/README.md',
+  'stateRefDocs/src/content/devtools-examples.ts',
 ];
 
 /** Module specifiers a README example may use, and what they resolve to. */
@@ -72,6 +75,10 @@ const MODULES = {
   'state-ref/batch': 'packages/state-ref/dist/batch/index.d.ts',
   'state-ref/shared': 'packages/state-ref/dist/shared/index.d.ts',
   'state-ref/plugin': 'packages/state-ref/dist/plugin/index.d.ts',
+  'state-ref/devtools': 'packages/state-ref/dist/devtools/index.d.ts',
+  '@stateref/devtools': 'packages/devtools/dist/index.d.ts',
+  '@stateref/devtools/panel': 'packages/devtools/dist/panel.d.ts',
+  '@stateref/devtools/auto': 'packages/devtools/dist/auto.d.ts',
   '@stateref/sync': 'packages/sync/dist/index.d.ts',
   '@stateref/connect-react': 'packages/connect-react/dist/index.d.ts',
   '@stateref/connect-react/sync': 'packages/connect-react/dist/sync.d.ts',
@@ -112,8 +119,43 @@ const fail = message => {
   failed = true;
 };
 
-/** Every fenced block in one document, with the markers that precede it. */
+/** Markdown fences or shared literal site examples, with their source lines. */
 function parseBlocks(file) {
+  if (file.endsWith('.ts')) {
+    const source = ts.createSourceFile(
+      file,
+      readFileSync(join(root, file), 'utf8'),
+      ts.ScriptTarget.Latest,
+      true
+    );
+    const blocks = [];
+    for (const statement of source.statements) {
+      if (!ts.isVariableStatement(statement)) continue;
+      for (const declaration of statement.declarationList.declarations) {
+        if (
+          !declaration.initializer ||
+          !ts.isNoSubstitutionTemplateLiteral(declaration.initializer)
+        )
+          throw new Error(`${file}: shared examples must be literal templates`);
+        const code = declaration.initializer;
+        blocks.push({
+          file,
+          language: declaration.name.getText(source).endsWith('Example')
+            ? 'typescript'
+            : 'bash',
+          line:
+            source.getLineAndCharacterOfPosition(code.getStart() + 1).line + 1,
+          body: code.text.split('\n'),
+          markers: [],
+        });
+      }
+    }
+    if (blocks.filter(block => block.language === 'typescript').length !== 3)
+      throw new Error(
+        `${file}: expected all three DevTools TypeScript examples`
+      );
+    return blocks;
+  }
   const lines = readFileSync(join(root, file), 'utf8').split('\n');
   const blocks = [];
   let pending = [];
@@ -273,6 +315,21 @@ try {
       const directory = join(workspace, `${slug}-${epochIndex}`);
       mkdirSync(directory, { recursive: true });
       writeFileSync(join(directory, 'reader-context.d.ts'), `${context}\n`);
+      if (
+        document.file.endsWith('.ts') ||
+        epoch.units.some(unit =>
+          unit.blocks.some(block =>
+            block.body.some(line => /import\.meta\.(?:env|hot)/.test(line))
+          )
+        )
+      )
+        writeFileSync(
+          join(directory, 'vite-client.d.ts'),
+          `/// <reference path="${join(
+            root,
+            'node_modules/vite/client.d.ts'
+          ).replaceAll('\\', '/')}" />\n`
+        );
 
       const paths = { ...basePaths };
       const sources = [];
@@ -409,7 +466,7 @@ for (const document of documents) {
 
   console.log(
     `  ${document.file}\n` +
-      `    ${document.blocks.length} fenced blocks: ${compiled} compiled ` +
+      `    ${document.blocks.length} code blocks: ${compiled} compiled ` +
       `in ${units} unit(s) over ${document.epochs.length} epoch(s), ` +
       `${document.skipped.length} skipped, ` +
       `${document.untagged.length} not a ts/tsx/typescript fence`
@@ -423,18 +480,18 @@ for (const document of documents) {
 }
 
 console.log(
-  `\n  total: ${totalFences} fenced blocks — ${totalCompiled} compiled in ` +
+  `\n  total: ${totalFences} code blocks — ${totalCompiled} compiled in ` +
     `${totalUnits} unit(s), ${totalSkipped} skipped, ${totalUntagged} untagged.` +
     `\n  reader-context stand-ins (typed \`any\`): ${READER_CONTEXT.join(', ')}`
 );
 
 if (failed) {
   console.error(
-    '\nDOC: the README examples do not compile against the built types.'
+    '\nDOC: the documentation examples do not compile against the built types.'
   );
   process.exit(1);
 }
 console.log(
-  'DOC: the README examples compile against the built declaration types.\n' +
+  'DOC: the documentation examples compile against the built declaration types.\n' +
     '(Types only. Whether an example does what its prose says is not checked here.)'
 );

@@ -1,0 +1,62 @@
+{
+  "name": "@stateref/devtools",
+  "version": "0.1.0",
+  "private": false,
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "type": "module",
+  "description": "Optional read-only debugging sessions for state-ref",
+  "license": "MIT",
+  "author": "superlucky84",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/superlucky84/state-ref.git",
+    "directory": "packages/devtools"
+  },
+  "homepage": "https://superlucky84.github.io/state-ref/#/guide/devtools",
+  "main": "./dist/stateref-devtools.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/stateref-devtools.mjs"
+      }
+    },
+    "./auto": {
+      "import": {
+        "types": "./dist/auto.d.ts",
+        "development": "./dist/auto.development.mjs",
+        "default": "./dist/auto.mjs"
+      }
+    },
+    "./panel": {
+      "import": {
+        "types": "./dist/panel.d.ts",
+        "default": "./dist/panel.mjs"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run --reporter verbose"
+  },
+  "peerDependencies": {
+    "state-ref": "^3.3.0",
+    "@stateref/sync": "^0.3.1"
+  },
+  "devDependencies": {
+    "state-ref": "workspace:*",
+    "@stateref/sync": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@stateref/sync": {
+      "optional": true
+    }
+  }
+}

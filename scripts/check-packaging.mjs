@@ -13,10 +13,10 @@ import {
 } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const root = resolve(import.meta.dirname, '..');
+const root = fileURLToPath(new URL('..', import.meta.url));
 const PACKAGES = [
   'state-ref',
   'connect-react',
@@ -26,6 +26,7 @@ const PACKAGES = [
   'connect-solid',
   'connect-lithent',
   'sync',
+  'devtools',
 ];
 
 // Every path a package advertises must exist in the built output.
@@ -126,12 +127,16 @@ try {
         name.replace(/^connect-/, 'connect-')
       )
     );
-  for (const peer of ['react', 'preact', 'vue', 'svelte', 'solid-js', 'jsdom'])
+  for (const peer of ['react', 'preact', 'vue', 'solid-js', 'jsdom'])
     if (existsSync(join(root, 'node_modules', peer)))
       symlinkSync(
         join(root, 'node_modules', peer),
         join(sandbox, 'node_modules', peer)
       );
+  symlinkSync(
+    join(root, 'packages/connect-svelte/node_modules/svelte'),
+    join(sandbox, 'node_modules/svelte')
+  );
   symlinkSync(
     join(root, 'packages/connect-lithent/node_modules/lithent'),
     join(sandbox, 'node_modules/lithent')
@@ -156,7 +161,11 @@ try {
   const ESM_ONLY = [
     '@stateref/connect-lithent',
     'state-ref/plugin',
+    'state-ref/devtools',
     '@stateref/sync',
+    '@stateref/devtools',
+    '@stateref/devtools/panel',
+    '@stateref/devtools/auto',
     '@stateref/connect-react/sync',
     '@stateref/connect-preact/sync',
     '@stateref/connect-vue/sync',
@@ -208,6 +217,12 @@ try {
     import { createSyncQuery as createLithentQuery } from '@stateref/connect-lithent/sync';
     import { connectLithent, connectLithentView } from '@stateref/connect-lithent';
     const plugin = await import('state-ref/plugin');
+    const devtools = await import('state-ref/devtools');
+    const recorder = await import('@stateref/devtools');
+    const panel = await import('@stateref/devtools/panel');
+    if (typeof panel.mountPanel !== 'function') throw new Error('panel missing mountPanel');
+    if (typeof recorder.createDevtools !== 'function') throw new Error('@stateref/devtools missing createDevtools');
+    if (typeof devtools.observeStore !== 'function') throw new Error('state-ref/devtools missing observeStore');
     const { connectSvelteRunes } = await import('@stateref/connect-svelte/runes');
     if (typeof connectSvelteRunes !== 'function')
       throw new Error('@stateref/connect-svelte/runes did not export connectSvelteRunes');
@@ -437,6 +452,14 @@ try {
     await readFile(join(root, 'scripts/lithent-doc-smoke.mjs'), 'utf8')
   );
   execFileSync(process.execPath, [join(sandbox, 'lithent-doc-smoke.mjs')], {
+    stdio: 'inherit',
+    cwd: sandbox,
+  });
+  writeFileSync(
+    join(sandbox, 'svelte-cjs-ssr-smoke.mjs'),
+    await readFile(join(root, 'scripts/svelte-cjs-ssr-smoke.mjs'), 'utf8')
+  );
+  execFileSync(process.execPath, [join(sandbox, 'svelte-cjs-ssr-smoke.mjs')], {
     stdio: 'inherit',
     cwd: sandbox,
   });

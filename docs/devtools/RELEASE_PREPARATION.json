@@ -1,0 +1,345 @@
+{
+  "recordedAt": "2026-10-26T14:35:06.278213+09:00",
+  "baseCommit": "8da30ed1bfc4553096447e93d1a8fac3d739acf0",
+  "environment": {
+    "node": "v24.19.0",
+    "pnpm": "9.12.3",
+    "browser": "154.0.8037.57"
+  },
+  "releaseTargets": [
+    {
+      "name": "state-ref",
+      "fromRegistry": "3.2.2",
+      "to": "3.3.0",
+      "targetAlreadyInBranch": true
+    },
+    {
+      "name": "@stateref/devtools",
+      "fromRegistry": null,
+      "to": "0.1.0",
+      "targetAlreadyInBranch": true
+    }
+  ],
+  "registryBeforePublication": [
+    {
+      "name": "@stateref/connect-lithent",
+      "local": "0.2.0",
+      "latest": "0.2.0",
+      "targetAlreadyPublished": true,
+      "latestPeers": {
+        "lithent": "^1.24.0",
+        "state-ref": "^3.1.0",
+        "@stateref/sync": "^0.3.0"
+      }
+    },
+    {
+      "name": "@stateref/connect-preact",
+      "local": "10.5.0",
+      "latest": "10.5.0",
+      "targetAlreadyPublished": true,
+      "latestPeers": {
+        "preact": "^10.0.0",
+        "state-ref": "^3.1.0",
+        "@stateref/sync": "^0.3.0"
+      }
+    },
+    {
+      "name": "@stateref/connect-react",
+      "local": "19.1.0",
+      "latest": "19.1.0",
+      "targetAlreadyPublished": true,
+      "latestPeers": {
+        "react": "^18.0.0 || ^19.0.0",
+        "state-ref": "^3.1.0",
+        "@stateref/sync": "^0.3.0"
+      }
+    },
+    {
+      "name": "@stateref/connect-solid",
+      "local": "1.5.0",
+      "latest": "1.5.0",
+      "targetAlreadyPublished": true,
+      "latestPeers": {
+        "solid-js": "^1.9.1",
+        "state-ref": "^3.1.0",
+        "@stateref/sync": "^0.3.0"
+      }
+    },
+    {
+      "name": "@stateref/connect-svelte",
+      "local": "5.1.0",
+      "latest": "5.1.0",
+      "targetAlreadyPublished": true,
+      "latestPeers": {
+        "svelte": "^4.0.0 || ^5.0.0",
+        "state-ref": "^3.1.0",
+        "@stateref/sync": "^0.3.0"
+      }
+    },
+    {
+      "name": "@stateref/connect-vue",
+      "local": "3.5.0",
+      "latest": "3.5.0",
+      "targetAlreadyPublished": true,
+      "latestPeers": {
+        "vue": "^3.2.0",
+        "state-ref": "^3.1.0",
+        "@stateref/sync": "^0.3.0"
+      }
+    },
+    {
+      "name": "@stateref/devtools",
+      "local": "0.1.0",
+      "latest": null,
+      "targetAlreadyPublished": false,
+      "status": 404
+    },
+    {
+      "name": "state-ref",
+      "local": "3.3.0",
+      "latest": "3.2.2",
+      "targetAlreadyPublished": false,
+      "latestPeers": {}
+    },
+    {
+      "name": "@stateref/sync",
+      "local": "0.3.1",
+      "latest": "0.3.1",
+      "targetAlreadyPublished": true,
+      "latestPeers": {
+        "state-ref": "^3.1.0"
+      }
+    }
+  ],
+  "checks": [
+    {
+      "command": "pnpm install --frozen-lockfile --offline",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm gate",
+      "exitCode": 0,
+      "stages": [
+        {
+          "name": "build",
+          "status": "pass",
+          "seconds": 74.5
+        },
+        {
+          "name": "types",
+          "status": "pass",
+          "seconds": 2.5
+        },
+        {
+          "name": "draft-types",
+          "status": "pass",
+          "seconds": 1.4
+        },
+        {
+          "name": "batch-types",
+          "status": "pass",
+          "seconds": 1.3
+        },
+        {
+          "name": "shared-types",
+          "status": "pass",
+          "seconds": 1.4
+        },
+        {
+          "name": "sync-types",
+          "status": "pass",
+          "seconds": 3.1
+        },
+        {
+          "name": "devtools-types",
+          "status": "pass",
+          "seconds": 1.3
+        },
+        {
+          "name": "recorder-types",
+          "status": "pass",
+          "seconds": 1.6
+        },
+        {
+          "name": "recorder-consumer-types",
+          "status": "pass",
+          "seconds": 1.3
+        },
+        {
+          "name": "sync-consumer-types",
+          "status": "pass",
+          "seconds": 1.6
+        },
+        {
+          "name": "negative-types",
+          "status": "pass",
+          "seconds": 1.8
+        },
+        {
+          "name": "examples-types",
+          "status": "pass",
+          "seconds": 18.8
+        },
+        {
+          "name": "doc-examples",
+          "status": "pass",
+          "seconds": 5.6
+        },
+        {
+          "name": "support-table",
+          "status": "pass",
+          "seconds": 0.0
+        },
+        {
+          "name": "lint",
+          "status": "pass",
+          "seconds": 8.8
+        },
+        {
+          "name": "test",
+          "status": "pass",
+          "seconds": 85.3
+        },
+        {
+          "name": "ssr",
+          "status": "pass",
+          "seconds": 4.4
+        },
+        {
+          "name": "draft-bundle",
+          "status": "pass",
+          "seconds": 0.3
+        },
+        {
+          "name": "batch-bundle",
+          "status": "pass",
+          "seconds": 0.3
+        },
+        {
+          "name": "shared-bundle",
+          "status": "pass",
+          "seconds": 0.4
+        },
+        {
+          "name": "sync-bundle",
+          "status": "pass",
+          "seconds": 0.1
+        },
+        {
+          "name": "devtools-bundle",
+          "status": "pass",
+          "seconds": 0.5
+        },
+        {
+          "name": "recorder-bundle",
+          "status": "pass",
+          "seconds": 0.6
+        },
+        {
+          "name": "recorder-optional-peer",
+          "status": "pass",
+          "seconds": 1.1
+        },
+        {
+          "name": "packaging",
+          "status": "pass",
+          "seconds": 5.5
+        },
+        {
+          "name": "bench",
+          "status": "pass",
+          "seconds": 46.9
+        },
+        {
+          "name": "bundle",
+          "status": "pass",
+          "seconds": 0.1
+        }
+      ]
+    },
+    {
+      "command": "pnpm build:docs",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm --dir packages/state-ref pack --pack-destination <temporary directory>",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm --dir packages/devtools pack --pack-destination <temporary directory>",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm --filter <target> publish --dry-run --access public --tag latest --publish-branch feat/state-ref-devtools --no-git-checks",
+      "targets": ["state-ref", "@stateref/devtools"],
+      "exitCode": 0,
+      "scope": "Local dirty-tree packaging validation only; no registry mutation; user publication commands retain git checks."
+    }
+  ],
+  "packedArtifacts": [
+    {
+      "name": "state-ref",
+      "version": "3.3.0",
+      "filename": "state-ref-3.3.0.tgz",
+      "sha512": "d0bdd48841b517c83a8b7b2cfe862ca6f0ab2204d4f004361219745fc66aa17ade5e94c78ab3e7a965c649d12395c712920f7a2141fcf29fd81da418e93b83d5",
+      "files": 117,
+      "licenseIncluded": true,
+      "allExportFilesPresent": true,
+      "noWorkspaceRanges": true,
+      "packedDevDependencies": {}
+    },
+    {
+      "name": "@stateref/devtools",
+      "version": "0.1.0",
+      "filename": "stateref-devtools-0.1.0.tgz",
+      "sha512": "b4feb7c733b99e22e76ad72ade3581f0c06a99737a7a3ff83cbfe87b966aebeee2ef1ce1de509bd3657f464221ab95fda90a54d0b7dcb71de5a9bee02a891649",
+      "files": 9,
+      "licenseIncluded": true,
+      "allExportFilesPresent": true,
+      "noWorkspaceRanges": true,
+      "packedDevDependencies": {
+        "state-ref": "3.3.0",
+        "@stateref/sync": "0.3.1"
+      }
+    }
+  ],
+  "isolatedTarballConsumer": {
+    "productionImports": "pass",
+    "productionAttachRefused": "pass",
+    "developmentEsmRecorder": "pass",
+    "developmentCjsRecorder": "pass",
+    "syncNotInstalled": true,
+    "strictEsmCjsTypes": "pass"
+  },
+  "site": {
+    "browser": "154.0.8037.57",
+    "results": [
+      "built-site English/Korean direct routes",
+      "Getting Started sidebar entry in both languages",
+      "language switch preserves DevTools route",
+      "both pages render the same three checked code examples",
+      "Sync observation and related links",
+      "375px viewport without horizontal page overflow",
+      "no browser runtime errors"
+    ],
+    "status": "PASS"
+  },
+  "validationNotes": [
+    "Dry-run does not establish real npm account publication permissions.",
+    "No npm versions were published, Git tags pushed, main merged or Pages deployed.",
+    "Unchanged Sync and connectors are excluded from this release.",
+    "Private root/docs/examples are not versioned for npm.",
+    "Human manual checklist remains separate and unperformed."
+  ],
+  "sourceHashes": {
+    "packages/state-ref/package.json": "cdb2933fde5e017dbdfb560559c1b1e57f07050abb344eaa04c75bd6cb5b873b",
+    "packages/devtools/package.json": "9aaf9fc5de68bac7959522cb1e854198c1798e56bf3e0f518d73b692c16109ac",
+    "packages/devtools/LICENSE": "46c6ee3e25db9d72f475a9431748f7c199ad35f3828c0f5f9d9ed586099a72fb",
+    "README.md": "b1f2a3b6b1d7e73e2935e2144d34b738039bf4dea3656f177f1f44c3fa9c3581",
+    "packages/state-ref/README.md": "174df56523708fea9d40f05faa3a25395074bd132795a590f917f19be24d84b0",
+    "packages/devtools/README.md": "48f2adbcc01d57b35c347587d1aed03166afbd069ea772ab66ff9495dbf9af11",
+    "CHANGELOG.md": "20b3159d566e640886c6225bbdb3b167b4533a06686cf2a18cc01a70985288b6",
+    "docs/RELEASING.md": "ecef420dd22fec1c5a228f352daae0e9f4607f150b21d38471f1c5f8da37b604",
+    "stateRefDocs/src/content/devtools-examples.ts": "d7c4de8f36a299bc1a56ddb6cef22619cb0e2fdff957f86e29622b73e20c34ff"
+  }
+}

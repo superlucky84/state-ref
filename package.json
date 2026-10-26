@@ -14,6 +14,7 @@
     "dev:svelte": "pnpm watch:core & pnpm --filter @stateref/connect-svelte dev",
     "dev:solid": "pnpm watch:core & pnpm --filter @stateref/connect-solid dev",
     "dev:docs": "pnpm --filter state-ref-docs dev",
+    "dev:devtools": "pnpm --filter stateref-example-react dev --strictPort --open \"/mission.html?devtools=1\"",
     "build:core": "pnpm --filter state-ref build",
     "build:docs": "pnpm --filter state-ref-docs build",
     "deploy:docs": "node scripts/deploy-docs.mjs",
@@ -25,7 +26,7 @@
     "build:solid": "pnpm --filter @stateref/connect-solid build",
     "build:lithent": "pnpm --filter @stateref/connect-lithent build",
     "build:sync": "pnpm --filter @stateref/sync build",
-    "build": "pnpm build:core && pnpm build:!core && node scripts/fix-declarations.mjs packages/state-ref packages/connect-react packages/connect-preact packages/connect-vue packages/connect-svelte packages/connect-solid packages/connect-lithent packages/sync && node scripts/copy-skills.mjs",
+    "build": "pnpm build:core && pnpm build:!core && node scripts/fix-declarations.mjs packages/state-ref packages/connect-react packages/connect-preact packages/connect-vue packages/connect-svelte packages/connect-solid packages/connect-lithent packages/sync packages/devtools && node scripts/copy-skills.mjs",
     "gate": "node scripts/gate.mjs",
     "test": "pnpm -r test",
     "test:core": "pnpm --filter state-ref test",
@@ -50,7 +51,13 @@
     "build:examples": "pnpm -r --filter './examples/*' run --if-present build",
     "check:examples": "pnpm types:examples && pnpm build:examples && node scripts/check-example-operations.mjs && node scripts/check-example-bundles.mjs && node scripts/check-example-ssr.mjs",
     "test:e2e": "pnpm build:examples && pnpm --filter stateref-example-e2e e2e",
-    "test:mission": "pnpm build:examples && pnpm --filter stateref-example-e2e e2e:mission"
+    "test:mission": "pnpm build:examples && pnpm --filter stateref-example-e2e e2e:mission",
+    "build:devtools": "pnpm --filter @stateref/devtools build",
+    "test:devtools": "pnpm --filter @stateref/devtools test",
+    "test:devtools:browser": "node packages/devtools/test/browser.mjs",
+    "test:devtools:walkthrough": "node packages/devtools/test/walkthrough.mjs",
+    "test:devtools:auto:browser": "node packages/devtools/test/auto-browser.mjs",
+    "test:devtools:position:browser": "node packages/devtools/test/position-browser.mjs"
   },
   "author": "superlucky84",
   "repository": {
@@ -81,6 +88,9 @@
     "vitest": "^2.1.2"
   },
   "volta": {
-    "node": "20.3.0"
+    "node": "24.19.0"
+  },
+  "engines": {
+    "node": "24.x"
   }
 }

@@ -1,0 +1,184 @@
+{
+  "node": "v20.3.0",
+  "baseCommit": "34c49e6b19e0aff18662dd222c58a53e411c87d8",
+  "cases": {
+    "passed": 15,
+    "names": [
+      "late attach observes existing references without subscribing",
+      "both candidate entry points observe a foreign core copy",
+      "production, computed, combined, pending shared and wrong protocol reject",
+      "same value, readonly, invalid path and rejected onWrite do not commit",
+      "commit precedes nested subscriber writes and listeners run later",
+      "capture failure and subscriber errors preserve committed state",
+      "nested batch groups individual writes and emits one update run",
+      "manual sync separates commits from callback execution",
+      "dependencies follow trackDeps and abort cannot resurrect them",
+      "snapshots detach, preserve symbol paths and do not execute accessors",
+      "bounded pending delivery and queued teardown",
+      "same operation sequence has identical state and callback trace",
+      "Node development export enables the bridge; default stays lean",
+      "Vite dev resolves diagnostics and default build excludes them",
+      "public API draft accepts stores and rejects mutable view access"
+    ]
+  },
+  "sizes": {
+    "baseline": {
+      "raw": 9018,
+      "gzip": 3783
+    },
+    "disabled": {
+      "raw": 8893,
+      "gzip": 3740
+    },
+    "instrumented": {
+      "raw": 9275,
+      "gzip": 3903
+    },
+    "adapter-a": {
+      "raw": 2213,
+      "gzip": 1159
+    },
+    "adapter-a-consumer": {
+      "raw": 2213,
+      "gzip": 1159
+    },
+    "adapter-b": {
+      "raw": 3525,
+      "gzip": 1717
+    },
+    "adapter-b-consumer": {
+      "raw": 2315,
+      "gzip": 1193
+    }
+  },
+  "timing": {
+    "write-500-idle-1600": {
+      "original": {
+        "medianMs": 0.8461370002478361,
+        "p95Ms": 1.0415749996900558,
+        "samples": 21
+      },
+      "production": {
+        "medianMs": 0.8755899984389544,
+        "p95Ms": 1.6046640016138554,
+        "samples": 21
+      },
+      "development-unattached": {
+        "medianMs": 0.8208489995449781,
+        "p95Ms": 1.6156100016087294,
+        "samples": 21
+      },
+      "development-attached": {
+        "medianMs": 1.6665049996227026,
+        "p95Ms": 2.1561160013079643,
+        "samples": 21
+      }
+    },
+    "write-10000": {
+      "original": {
+        "medianMs": 5.622553000226617,
+        "p95Ms": 26.867548000067472,
+        "samples": 21
+      },
+      "production": {
+        "medianMs": 6.542596999555826,
+        "p95Ms": 13.120818000286818,
+        "samples": 21
+      },
+      "development-unattached": {
+        "medianMs": 8.38052500039339,
+        "p95Ms": 10.920587001368403,
+        "samples": 21
+      },
+      "development-attached": {
+        "medianMs": 21.08278699964285,
+        "p95Ms": 39.39340000040829,
+        "samples": 21
+      }
+    },
+    "read-50000-depth-8": {
+      "original": {
+        "medianMs": 30.287387000396848,
+        "p95Ms": 37.27992600016296,
+        "samples": 21
+      },
+      "production": {
+        "medianMs": 29.38312399946153,
+        "p95Ms": 33.00557000003755,
+        "samples": 21
+      },
+      "development-unattached": {
+        "medianMs": 29.418284999206662,
+        "p95Ms": 36.36730100028217,
+        "samples": 21
+      },
+      "development-attached": {
+        "medianMs": 29.219582999125123,
+        "p95Ms": 34.36074700020254,
+        "samples": 21
+      }
+    },
+    "read-50000-depth-32": {
+      "original": {
+        "medianMs": 89.97435800172389,
+        "p95Ms": 96.47679199837148,
+        "samples": 21
+      },
+      "production": {
+        "medianMs": 89.34955299831927,
+        "p95Ms": 94.97039199993014,
+        "samples": 21
+      },
+      "development-unattached": {
+        "medianMs": 92.39929100126028,
+        "p95Ms": 109.25107800029218,
+        "samples": 21
+      },
+      "development-attached": {
+        "medianMs": 92.36666700057685,
+        "p95Ms": 103.69156700000167,
+        "samples": 21
+      }
+    }
+  },
+  "budgetChecks": {
+    "defaultCoreGzip": true,
+    "developmentCoreGzip": true,
+    "unattachedWrites": true,
+    "unattachedBurst": true,
+    "attachedWrites": true,
+    "attachedBurst": true,
+    "readDepth8": true,
+    "readDepth32": true
+  },
+  "limitations": [
+    "prototype only; no UI, byte limit, redaction or production type surface",
+    "capture failure currently loses an event; production must emit diagnostic/gap",
+    "queue overflow counts drops but production gap/resnapshot remains unimplemented",
+    "snapshot depth and per-object key bound only; not full Preview budget",
+    "dependency snapshots tested; live dependency events and run counts remain unimplemented",
+    "runner-wide cause groups are not exact per-subscription write provenance",
+    "retained disconnected handles still retain source closures; production must revoke views and clear references",
+    "same-format fixtures and Node/Vite conditional resolution do not validate published ESM/CJS interoperability"
+  ],
+  "recordedAt": "2026-10-24",
+  "command": "node --expose-gc docs/devtools/experiments/run.mjs",
+  "pnpm": "9.12.3",
+  "platform": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "cpu": "AMD EPYC 9V74 80-Core Processor"
+  },
+  "toolVersions": {
+    "vite": "5.4.8",
+    "typescript": "5.6.3"
+  },
+  "sourceHashes": {
+    "api-draft.ts": "ccfbfda525724d83a774e3e556151b41e38d333f92c5955f1e68ca688fa97e91",
+    "api-types.ts": "72e16df18ffa00823ca51777c924d5ccbc3ccd7ba22556bec505a0d9082f7ec2",
+    "bridge.mjs": "c1e5b91bb6d7a084860cbb3ad423835417ac9da119c314d4ff7b2be1e3559b27",
+    "prepare.mjs": "1319221ee0c6407ef0c37df22d0fdf4aa8a57ce2fdb861732d0ac967802670fe",
+    "producer.ts": "e89a1fdbc287e3ad40300bae1aa9f5f06fa3481ce2312943090f5424d5e5f55b",
+    "run.mjs": "86802613bc17dd08f38e79363a4255b9296b185ef47060efb751ac3e3a6a52d1"
+  }
+}

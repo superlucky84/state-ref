@@ -12,6 +12,15 @@ let finalizers = new Set<() => void>();
  * observers still update at each setter; the outer scope flushes on return.
  */
 export function batch<T>(callback: () => T): T {
+  if (__STATE_REF_DEVTOOLS__) runBatch.diagnostics?.begin();
+  try {
+    return runScope(callback);
+  } finally {
+    if (__STATE_REF_DEVTOOLS__) runBatch.diagnostics?.end();
+  }
+}
+
+function runScope<T>(callback: () => T): T {
   depth += 1;
   try {
     const result = callback();

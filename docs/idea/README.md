@@ -33,4 +33,6 @@ resource는 마지막 수용 서버 값을, draft는 원본에서 받아들인 �
 
 [번들 간 이름 기반 공유 스토어와 준비 게이트](../shared-store/REQUIREMENTS.md)는 [joongangscripts 특화 기능 후보](./joongang-integration.md)의 JA-01을 구체화한 문서 세트다. 2026-10-08 기준 설계 초안이며 구현 전이다.
 
+[state-ref DevTools](../devtools/REQUIREMENTS.md)는 2026-10-24 시작한 상태 디버깅 도구 설계다. 공통 관측 API와 앱 내 패널을 우선 제공하는 방향을 사용자가 선택했다. 요구사항·설계·단계별 검증·수동 체크리스트를 `docs/devtools/`에서 관리하며 현재는 구현 전 문서 초안이다.
+
 공통 입력 컴포넌트/필드 어댑터와 다중 선택 일괄 편집은 이번 구현 범위에서 제외한다. 위 초기 추천 조합은 아이디어 기록이며, 현재 구현 범위와 순서는 server-sync 문서를 따른다.

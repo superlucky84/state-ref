@@ -143,3 +143,21 @@ For a small app to try locally, see the [Preact and Vue shop examples](./example
 I would like to extend my gratitude to the following people and projects:
 
 - **[Juho Vepsäläinen](https://survivejs.com)**: Thank you for the [insightful interview](https://survivejs.com/blog/state-ref-interview/) and featuring me on your blog. Your work and contributions to the JavaScript community have been a great source of inspiration.
+
+## DevTools
+
+Wrap a root watch or your existing Sync client with `devtools(target, { enabled: import.meta.env.DEV, hot: import.meta.hot })` from **`@stateref/devtools/auto`**. It preserves the original reference and connector API, opens one shared panel in development, and defaults to an import-free identity function in production. `stopDevtools(target?)` handles explicit cleanup. See the SDK guide below for masking and lifecycle details.
+
+`@stateref/devtools` adds read-only state/history/subscription inspection, Sync metadata, and an optional framework-independent browser panel. This guide targets state-ref **3.3.0+** and DevTools **0.1.0**. See the [setup and cleanup guide](packages/devtools/README.md). The six framework demos enable the panel with `?devtools=1` on their development server.
+
+- **State / Timeline:** current bounded previews, before/after values, batch groups and recording gaps.
+- **Subscriptions / Sync:** read paths and observed runs, plus cache/owners/mutation metadata. Run counts are not component render counts; Sync payloads are omitted.
+- **Development only:** optional recorder/panel imports, floating or inline layout, movable toggle with a remembered corner, per-store redaction, bounded history and explicit cleanup. No state editing, time travel or Redux DevTools adapter.
+
+After `pnpm build`, run **`pnpm dev:devtools`** for the six-step Starlight Garage walkthrough. The documentation site includes English and Korean pages under **Getting Started → DevTools** ([English source](stateRefDocs/src/pages/DevTools.tsx), [한국어 원문](stateRefDocs/src/pages/DevTools_ko.tsx)). Maintainers can find the target versions, publication order and commands in the [release guide](docs/RELEASING.md).
+
+## Contributing
+
+Development and verification use Node **24.19.0 LTS** and pnpm **9.12.3**. Run `nvm use` before `pnpm install --frozen-lockfile` and `pnpm gate`. See [development setup and consumer compatibility](docs/DEVELOPMENT.md).
+
+To try DevTools after `pnpm build`, run **`pnpm dev:devtools`**. It opens the Starlight Garage demo with a six-step walkthrough at `http://localhost:5181/mission.html?devtools=1`.

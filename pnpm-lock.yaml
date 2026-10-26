@@ -161,6 +161,10 @@ importers:
       state-ref:
         specifier: workspace:*
         version: link:../../packages/state-ref
+    devDependencies:
+      '@stateref/devtools':
+        specifier: workspace:*
+        version: link:../../packages/devtools
 
   examples/solid:
     dependencies:
@@ -353,6 +357,15 @@ importers:
       vue:
         specifier: ^3.5.10
         version: 3.5.10(typescript@5.6.3)
+
+  packages/devtools:
+    devDependencies:
+      '@stateref/sync':
+        specifier: workspace:*
+        version: link:../sync
+      state-ref:
+        specifier: workspace:*
+        version: link:../state-ref
 
   packages/state-ref: {}
 

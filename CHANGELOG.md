@@ -1,5 +1,52 @@
 # Changelog
 
+## state-ref 3.3.0
+
+### Added
+
+- Optional read-only observation through `state-ref/devtools`, using a
+  development-only core build and diagnostics protocol 1. Existing root and
+  batch ESM/CommonJS entries retain their production defaults; the
+  `development` condition enables bounded previews, successful write events,
+  batch/notification causes and subscription diagnostics.
+- Immutable preview records, per-connection redaction, bounded queues with
+  explicit gaps, and teardown that releases observed sources. Tool listener
+  errors do not change application writes or subscription outcomes.
+
+### Development and packaging
+
+- Contributor builds and verification now use Node 24.19.0 LTS and pnpm
+  9.12.3. Public packages do not gain a blanket Node 24 engine requirement.
+- Declaration generation remains correct across repeated builds for ESM and
+  CommonJS consumers. Svelte 5's CommonJS path needs a consumer runtime with
+  `require(ESM)` support; Node 24.19.0 is the validated version.
+
+## @stateref/devtools 0.1.0
+
+### Added
+
+- Framework-independent `@stateref/devtools/auto`: `devtools(watch | client)`
+  preserves the original reference and type, deduplicates registrations and
+  lazily opens one shared panel. Optional HMR leases, explicit
+  `stopDevtools(target?)`, SSR/disabled no-ops and an import-free production
+  default cover cleanup and deployment. Sync connector calls remain unchanged.
+- Floating toggle placement in four corners through panel Settings, with a
+  remembered browser preference and optional initial `buttonPosition`.
+  Toggle placement is independent of the open panel; inline panels stay in
+  their container. Storage failures leave inspection usable.
+- First release of the optional ESM recorder, requiring state-ref `^3.3.0`.
+  State, Timeline, Subscriptions and Sync views are available through the
+  separate `@stateref/devtools/panel` entry, with floating and inline layouts.
+- Bounded in-memory history, source generations, pause/resume/clear,
+  redaction, explicit recording gaps and disposal. Sync `^0.3.1` is an
+  optional peer; only public cache/mutation metadata is collected.
+- A six-step Starlight Garage walkthrough shared by six framework demos,
+  plus English/Korean documentation and development-only integration.
+- No state editing, time travel, persistent history, automatic remote
+  transport or Redux DevTools adapter is included.
+
+Release status and publication commands: [RELEASING](docs/RELEASING.md).
+
 ## state-ref 3.2.2
 
 ### Fixed

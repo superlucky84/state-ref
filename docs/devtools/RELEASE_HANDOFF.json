@@ -1,0 +1,35 @@
+{
+  "recordedOn": "2026-10-26",
+  "baseCommit": "6335567b363c14e5d43d94d3186bada6790b179c",
+  "pullRequest": "https://github.com/superlucky84/state-ref/pull/20",
+  "npmAuthentication": "ENEEDAUTH",
+  "publicationOwner": "user PC, selected by user",
+  "registryBeforePublication": {
+    "state-ref/latest": "3.2.2",
+    "state-ref/3.3.0": 404,
+    "@stateref/devtools/latest": 404
+  },
+  "cleanPublishDryRuns": {
+    "gitChecksEnabled": true,
+    "state-ref@3.3.0": 0,
+    "@stateref/devtools@0.1.0": 0
+  },
+  "deployScriptSha256": "7707770d3daeb29b0abdee5fc096c141384b199dd9b641531625a3b0a657f6cc",
+  "docsDeployDryRun": {
+    "baselineExitCode": 1,
+    "baselineFailure": "origin/gh-pages missing with restricted remote.origin.fetch",
+    "fixedExitCode": 0,
+    "siteBuildPassed": true,
+    "localDeploymentCommitCreated": true,
+    "remotePushed": false,
+    "ghPagesBefore": "f628aaa5ec43bccb0245841edb4e00f9669fd610",
+    "ghPagesAfter": "f628aaa5ec43bccb0245841edb4e00f9669fd610",
+    "temporaryWorktreesCleaned": true
+  },
+  "scriptSyntaxAndFormat": "PASS",
+  "codeValidation": "AUTO_VALIDATION.json source hashes match; runtime unchanged, full gate not repeated",
+  "actualPublication": false,
+  "mainMerged": false,
+  "pagesDeployed": false,
+  "status": "PASS for handoff; npm publication remains on user PC"
+}

@@ -1,0 +1,345 @@
+{
+  "recordedOn": "2026-10-26",
+  "dateSource": "user environment date",
+  "baseCommit": "7b7b32c0e662c06c064916880594f98448fd2fb7",
+  "branch": "feat/state-ref-devtools",
+  "environment": {
+    "node": "v24.19.0",
+    "pnpm": "9.12.3",
+    "browser": "154.0.8037.57"
+  },
+  "sourceSha256": {
+    "packages/devtools/src/auto-types.ts": "1b389459a81b6813d464c33dcb9b2b8085a1207562039d99d4dc6a7d6e5eeeef",
+    "packages/devtools/src/auto.ts": "120fd11f0be456f29eb149e5865b2c1a9347cdcea6d0a35517bbcbc4dd675b99",
+    "packages/devtools/src/auto.development.ts": "60264cd18067943dcd83e3f312611cbd87b711e4c1fc71b3c72c1c517f76c002",
+    "packages/devtools/src/tests/auto.test.ts": "2558b8ca8c52096e149d8b2cdd3daa0ba6137f289664bdfd54db807e2466a57c",
+    "packages/devtools/src/tests/auto.ssr.test.ts": "5d65bb22f6b6c85e951111ea7b085c125d15d5b67481f4d341f30698db5eddbd",
+    "packages/devtools/test/auto-browser.mjs": "d3e485029e6ba3667dc7fe8c529d8940c23269b79ee16ed9a5e8b132c8ff77e4",
+    "packages/devtools/test/auto-bundle.mjs": "415af15acbcb00d6240de96538261b1b5a670d272d8eaf8e631bcd3117b66565",
+    "packages/devtools/test/browser.mjs": "67355aa59dbbdcf8f7c6044820c492d68a3a898426ab2e6eb36f10345f488ea0",
+    "packages/devtools/test/walkthrough.mjs": "45c0ff618c28d229c2453c035fd268844b51ed5acc9d1e0f2cbc35166a86b9e5",
+    "packages/devtools/test/types.ts": "06b4b9525b2a3fb2fefc466d38b17ee4dd057448cfa19e84a574e8a4b7f79843",
+    "packages/devtools/test/optional-peer.mjs": "b4c66dabc5d0181a2aa07a174b5faf81f54686b7861b176fcdb4a69a2e89180a",
+    "packages/devtools/package.json": "58b694fb6d49526fe0a13e27881751703ad0b259ec22f7e7e0d39217977b72f3",
+    "packages/devtools/vite.config.js": "a6c779296a288962c8b01230c29dc2947f8a95be3f27da7c186a78263708b9c0",
+    "examples/shared/src/devtools.ts": "07fd4e7d68d46b00405949741ea5d94308c2ec7d87291f60940c3c97afc29c5e",
+    "stateRefDocs/src/content/devtools-examples.ts": "1f08bfd92a58e9ecded2d39d6bc19a7c7109634131d5dc4441b6b02ef05cf156",
+    "stateRefDocs/src/pages/DevTools.tsx": "95a96a403e34d254ecf437e069384322fa18a5e004bdf8e9ab1bbfb120819f6f",
+    "stateRefDocs/src/pages/DevTools_ko.tsx": "1449beb249f9247750e916bfa900af1c75022e88b183372aa12b66128df0ef10",
+    "scripts/gate.mjs": "29809c1c1e145e30cb282b368799006a88d6adad249be2e845fe50e1d4d9ff84",
+    "scripts/check-doc-examples.mjs": "f7bbe1cf6f000a0edcd6630fb9bb500ea97ba54420eca8d357682d043b686f8d",
+    "scripts/check-packaging.mjs": "1538fa2f9755c31c58aa38893e6b4211098a5baa868217caf5233330b00db438"
+  },
+  "registryBeforePublication": [
+    {
+      "name": "state-ref",
+      "status": 200,
+      "version": "3.2.2"
+    },
+    {
+      "name": "@stateref/devtools",
+      "status": 404
+    }
+  ],
+  "versionsKept": {
+    "state-ref": "3.3.0",
+    "@stateref/devtools": "0.1.0"
+  },
+  "gate": {
+    "command": "pnpm gate",
+    "exitCode": 0,
+    "stages": [
+      {
+        "name": "build",
+        "status": "pass",
+        "seconds": 89.3
+      },
+      {
+        "name": "types",
+        "status": "pass",
+        "seconds": 2.4
+      },
+      {
+        "name": "draft-types",
+        "status": "pass",
+        "seconds": 1.4
+      },
+      {
+        "name": "batch-types",
+        "status": "pass",
+        "seconds": 1.3
+      },
+      {
+        "name": "shared-types",
+        "status": "pass",
+        "seconds": 1.4
+      },
+      {
+        "name": "sync-types",
+        "status": "pass",
+        "seconds": 3.4
+      },
+      {
+        "name": "devtools-types",
+        "status": "pass",
+        "seconds": 1.4
+      },
+      {
+        "name": "recorder-types",
+        "status": "pass",
+        "seconds": 1.9
+      },
+      {
+        "name": "recorder-consumer-types",
+        "status": "pass",
+        "seconds": 1.6
+      },
+      {
+        "name": "sync-consumer-types",
+        "status": "pass",
+        "seconds": 1.8
+      },
+      {
+        "name": "negative-types",
+        "status": "pass",
+        "seconds": 1.5
+      },
+      {
+        "name": "examples-types",
+        "status": "pass",
+        "seconds": 16.7
+      },
+      {
+        "name": "doc-examples",
+        "status": "pass",
+        "seconds": 9.8
+      },
+      {
+        "name": "support-table",
+        "status": "pass",
+        "seconds": 0.0
+      },
+      {
+        "name": "lint",
+        "status": "pass",
+        "seconds": 9.0
+      },
+      {
+        "name": "test",
+        "status": "pass",
+        "seconds": 89.5
+      },
+      {
+        "name": "ssr",
+        "status": "pass",
+        "seconds": 3.9
+      },
+      {
+        "name": "draft-bundle",
+        "status": "pass",
+        "seconds": 0.3
+      },
+      {
+        "name": "batch-bundle",
+        "status": "pass",
+        "seconds": 0.3
+      },
+      {
+        "name": "shared-bundle",
+        "status": "pass",
+        "seconds": 0.3
+      },
+      {
+        "name": "sync-bundle",
+        "status": "pass",
+        "seconds": 0.1
+      },
+      {
+        "name": "devtools-bundle",
+        "status": "pass",
+        "seconds": 0.5
+      },
+      {
+        "name": "recorder-bundle",
+        "status": "pass",
+        "seconds": 0.5
+      },
+      {
+        "name": "recorder-optional-peer",
+        "status": "pass",
+        "seconds": 1.0
+      },
+      {
+        "name": "auto-bundle",
+        "status": "pass",
+        "seconds": 0.4
+      },
+      {
+        "name": "packaging",
+        "status": "pass",
+        "seconds": 5.5
+      },
+      {
+        "name": "bench",
+        "status": "pass",
+        "seconds": 47.8
+      },
+      {
+        "name": "bundle",
+        "status": "pass",
+        "seconds": 0.1
+      }
+    ],
+    "packageTestsPassed": 1105,
+    "packageTestsSkipped": 2,
+    "sharedExampleTestsPassed": 122,
+    "separateSsrTestsPassed": 15,
+    "sdkTestsPassed": 33,
+    "corePerformanceGatesPassed": 6
+  },
+  "bundles": {
+    "coreMinifiedGzipBytes": 3757,
+    "coreCap": 3800,
+    "developmentCoreGzipBytes": 6403,
+    "developmentCoreCap": 6500,
+    "coreRecorderGzipBytes": 9293,
+    "coreRecorderCap": 10240,
+    "coreRecorderPanelGzipBytes": 13223,
+    "autoDefaultIncrementalGzipBytes": 30,
+    "autoDefaultIncrementalCap": 128,
+    "developmentCoreAutoPanelGzipBytes": 13562,
+    "panelCap": 30720
+  },
+  "autoBrowser": {
+    "command": "pnpm test:devtools:auto:browser",
+    "exitCode": 0,
+    "checks": [
+      "exact original watch/client references",
+      "one shared recorder/panel across physically copied SDK packages",
+      "same-target deduplication and source kinds",
+      "redacted value and real timeline update",
+      "Sync owners and reads unchanged",
+      "late lazy-panel import does not remount after stop",
+      "retained HMR callbacks do not retain stopped payload (WeakRef + browser GC)",
+      "old HMR callback cannot stop replacement registration"
+    ]
+  },
+  "existingBrowser": {
+    "command": "pnpm test:devtools:browser",
+    "exitCode": 0,
+    "browser": "154.0.8037.57",
+    "results": [
+      {
+        "panelLatency": {
+          "samples": 21,
+          "medianMs": 16.599999997764826,
+          "p95Ms": 18.600000001490116
+        }
+      },
+      "panel: state/timeline/subscriptions/Sync, redaction/XSS, pause/clear, focus/keyboard, CSS isolation, 20 mount cycles/dispose",
+      "react: real connector application + writes + subscriptions + Sync + HMR/reload",
+      "preact: real connector application + writes + subscriptions + Sync + HMR/reload",
+      "vue: real connector application + writes + subscriptions + Sync + HMR/reload",
+      "svelte: real connector application + writes + subscriptions + Sync + HMR/reload",
+      "solid: real connector application + writes + subscriptions + Sync + HMR/reload",
+      "lithent: real connector application + writes + subscriptions + Sync + HMR/reload"
+    ],
+    "expandedCssIsolation": "global button !important changes application styles while panel background/font/radius stay isolated"
+  },
+  "walkthrough": {
+    "command": "pnpm test:devtools:walkthrough",
+    "exitCode": 0,
+    "browser": "154.0.8037.57",
+    "results": [
+      "react: all six stories, real writes/save/subscriptions/batch, navigation, inline/mobile, Vite reload and opt-out PASS",
+      "preact: all six stories, real writes/save/subscriptions/batch, navigation, inline/mobile, Vite reload and opt-out PASS",
+      "vue: all six stories, real writes/save/subscriptions/batch, navigation, inline/mobile, Vite reload and opt-out PASS",
+      "svelte: all six stories, real writes/save/subscriptions/batch, navigation, inline/mobile, Vite reload and opt-out PASS",
+      "solid: all six stories, real writes/save/subscriptions/batch, navigation, inline/mobile, Vite reload and opt-out PASS",
+      "lithent: all six stories, real writes/save/subscriptions/batch, navigation, inline/mobile, Vite reload and opt-out PASS"
+    ]
+  },
+  "examples": {
+    "command": "pnpm check:examples",
+    "exitCode": 0,
+    "productionMarkerScan": {
+      "frameworkCount": 6,
+      "jsCssFiles": 35,
+      "absent": [
+        "@stateref/devtools/auto/v1",
+        "data-stateref-devtools",
+        "data-devtools-walkthrough"
+      ]
+    }
+  },
+  "docs": {
+    "build": "pnpm gate build includes docs build and typecheck",
+    "exitCode": 0,
+    "checkedBlocks": 29,
+    "compiledUnits": 20,
+    "existingSkips": 15,
+    "browser": {
+      "browser": "154.0.8037.57",
+      "results": [
+        "built-site English/Korean direct routes",
+        "Getting Started sidebar entry in both languages",
+        "language switch preserves DevTools route",
+        "both pages render the same three checked code examples",
+        "Sync observation and related links",
+        "375px viewport without horizontal page overflow",
+        "no browser runtime errors"
+      ],
+      "status": "PASS"
+    }
+  },
+  "packedConsumer": {
+    "archives": [
+      {
+        "file": "state-ref-3.3.0.tgz",
+        "sha256": "bdd9345f352f61ba18fde9ffb54fd57608caff6f33f28aeb487343bcea93d378",
+        "files": 117
+      },
+      {
+        "file": "stateref-devtools-0.1.0.tgz",
+        "sha256": "ec76b1312bb71da4391e688957f7a7af6d7903a0ce344b5afa41a7473d443ffb",
+        "files": 14
+      }
+    ],
+    "installedPackages": [
+      "node_modules/@stateref/devtools",
+      "node_modules/state-ref"
+    ],
+    "checks": [
+      "all exported dist/declaration targets present",
+      "MIT licenses and public metadata",
+      "no workspace references",
+      "Sync absent",
+      "production auto identity and core writes",
+      "development SSR auto identity without inspecting targets",
+      "development headless record and detach",
+      "strict Node16 consumer types"
+    ],
+    "status": "PASS"
+  },
+  "dryRuns": {
+    "state-ref": {
+      "exitCode": 0,
+      "version": "3.3.0"
+    },
+    "@stateref/devtools": {
+      "exitCode": 0,
+      "version": "0.1.0"
+    },
+    "gitCheckBypassedOnlyForDirtyTreeDryRun": true,
+    "registryWritten": false,
+    "publishPermissionsVerified": false
+  },
+  "limitations": [
+    "Human M-DT-01 through M-DT-08 and long-running heap checks remain unperformed.",
+    "Vite and Node conditions verified; other bundlers not verified.",
+    "Connector key/retry/Svelte options regression evidence comes from existing suites; not every scenario has a new browser off/on trace comparison.",
+    "Prior validation JSON files are historical evidence, not overwritten by this run.",
+    "No npm publication, tag push, main merge or Pages deployment performed."
+  ],
+  "status": "PASS"
+}

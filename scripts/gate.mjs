@@ -27,12 +27,22 @@
  *         pnpm gate --quick    skip the build (only when dist/ is current)
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const quick = process.argv.includes('--quick');
+const pinnedNode = readFileSync(join(root, '.nvmrc'), 'utf8').trim();
+if (
+  process.versions.node.split('.')[0] !==
+  pinnedNode.replace(/^v/, '').split('.')[0]
+) {
+  console.error(
+    `GATE: Node ${pinnedNode} is the development baseline; running ${process.version}. Run nvm use (or use the repository's Volta pin) and retry.`
+  );
+  process.exit(2);
+}
 
 // The child process runs without a shell, so a glob over the source
 // directories would reach eslint unexpanded. Expand it here instead.
@@ -118,6 +128,49 @@ const steps = [
     name: 'sync-types',
     cmd: 'pnpm',
     args: ['--filter', '@stateref/sync', 'exec', 'tsc', '--noEmit'],
+  },
+  {
+    name: 'devtools-types',
+    cmd: 'pnpm',
+    args: [
+      '--filter',
+      'state-ref',
+      'exec',
+      'tsc',
+      '--noEmit',
+      '--strict',
+      '--target',
+      'es2020',
+      '--module',
+      'esnext',
+      '--moduleResolution',
+      'bundler',
+      'test/devtools-types.ts',
+    ],
+  },
+  {
+    name: 'recorder-types',
+    cmd: 'pnpm',
+    args: ['--filter', '@stateref/devtools', 'exec', 'tsc', '--noEmit'],
+  },
+  {
+    name: 'recorder-consumer-types',
+    cmd: 'pnpm',
+    args: [
+      '--filter',
+      '@stateref/devtools',
+      'exec',
+      'tsc',
+      '--noEmit',
+      '--strict',
+      '--target',
+      'es2020',
+      '--module',
+      'node16',
+      '--moduleResolution',
+      'node16',
+      'test/types.ts',
+    ],
   },
   {
     name: 'sync-consumer-types',
@@ -223,6 +276,26 @@ const steps = [
     name: 'sync-bundle',
     cmd: 'node',
     args: ['packages/sync/test/sync-bundle.mjs'],
+  },
+  {
+    name: 'devtools-bundle',
+    cmd: 'node',
+    args: ['packages/state-ref/test/devtools-bundle.mjs'],
+  },
+  {
+    name: 'recorder-bundle',
+    cmd: 'node',
+    args: ['packages/devtools/test/bundle.mjs'],
+  },
+  {
+    name: 'recorder-optional-peer',
+    cmd: 'node',
+    args: ['packages/devtools/test/optional-peer.mjs'],
+  },
+  {
+    name: 'auto-bundle',
+    cmd: 'node',
+    args: ['packages/devtools/test/auto-bundle.mjs'],
   },
   {
     name: 'packaging',
