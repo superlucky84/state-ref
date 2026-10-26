@@ -120,14 +120,15 @@
 
 ## 결과 기록
 
-### 후속 편의 API 검증 계획 — 아직 구현/수행 전
+### 편의 API 확인 — 구현·자동 검증 완료, 사람 검사 미수행
 
 - [ ] 일반 watch와 Sync client를 같은 편의 동작으로 한 번 등록한 뒤 기존 connector 코드를 그대로 사용할 수 있는지 확인한다.
 - [ ] 동일 client를 쓰는 두 query 화면, 이름이 같은 서로 다른 client, mutation 저장을 구분한다. 패널/등록이 중복되거나 query 요청·owners가 늘지 않아야 한다.
 - [ ] 여섯 connector의 기존 key 변경·해제·SSR·Svelte options store 사용법을 바꾸지 않고 같은 결과를 얻는지 확인한다.
 - [ ] 비활성/production/SSR에서 등록·기록·패널이 생기지 않고 입력 watch/client의 참조와 타입이 유지되는지 확인한다. HMR과 동적 대상 해제는 확정한 수명 정책과 대조한다.
+- [ ] `hot: import.meta.hot`의 모듈별 종료와 `stopDevtools(target)`/전체 종료를 구분한다. 같은 이름의 다른 대상이 합쳐지지 않고, 늦은 panel import나 이전 hot callback이 새 session을 다시 열거나 종료하지 않는지 확인한다.
 
-이 목록은 12절의 후속 구현 계획이며 기존 SDK/배포 검증의 완료 항목이 아니다. 편의 함수 이름/진입점은 DESIGN의 제안을 따른다.
+이 목록은 사람이 확인할 항목이므로 자동 검사 통과만으로 체크하지 않는다. 현재 구현은 DESIGN의 공통 편의 API 계약을 따르며 자동 검증 결과는 IMPLEMENT 12절과 [AUTO_VALIDATION.json](./AUTO_VALIDATION.json)에 있다.
 
 | ID | 상태 | commit·환경·명령 또는 수행자 | 증거·미검증 부분 |
 |---|---|---|---|

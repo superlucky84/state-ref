@@ -7,7 +7,7 @@
 | 순서 | 패키지               | npm 현재 버전 | 이번 버전   | 이유                                            |
 | ---- | -------------------- | ------------- | ----------- | ----------------------------------------------- |
 | 1    | `state-ref`          | `3.2.2`       | **`3.3.0`** | 개발용 관측 API와 조건부 core/batch 산출물 추가 |
-| 2    | `@stateref/devtools` | 없음          | **`0.1.0`** | recorder·Sync 관측·브라우저 패널의 첫 발행      |
+| 2    | `@stateref/devtools` | 없음          | **`0.1.0`** | recorder·Sync 관측·패널·공통 auto API의 첫 발행      |
 
 두 목표 버전은 이미 package.json에 준비되어 있으므로 다시 증가시키지 않는다. DevTools의 core peer는 `^3.3.0`이고 선택적 Sync peer는 `^0.3.1`이다. **core를 먼저 발행하고 조회되는 것을 확인한 뒤 DevTools를 발행한다.**
 
@@ -39,7 +39,7 @@ pnpm check:examples
 pnpm build:docs
 ```
 
-`pnpm gate`에는 전체 build·타입·lint·runtime·SSR·패키징·성능/번들 한도 검사가 포함된다. build 후 declaration 경로와 bundled skills도 정리되므로 부분 build만으로 발행하지 않는다. 브라우저 검증은 `pnpm test:devtools:browser`, `pnpm test:devtools:walkthrough`이며 Chromium 경로가 다르면 `CHROMIUM_PATH`를 지정한다. 사람의 사용성/heap 검사는 [체크리스트](./devtools/MANUAL_TEST_CHECKLIST.md)에서 별도로 확인한다.
+`pnpm gate`에는 전체 build·타입·lint·runtime·SSR·패키징·성능/번들 한도 검사가 포함된다. build 후 declaration 경로와 bundled skills도 정리되므로 부분 build만으로 발행하지 않는다. 브라우저 검증은 `pnpm test:devtools:browser`, `pnpm test:devtools:walkthrough`, `pnpm test:devtools:auto:browser`이며 Chromium 경로가 다르면 `CHROMIUM_PATH`를 지정한다. 사람의 사용성/heap 검사는 [체크리스트](./devtools/MANUAL_TEST_CHECKLIST.md)에서 별도로 확인한다.
 
 ## 3. npm 계정과 배포 내용 확인
 
@@ -74,7 +74,7 @@ tar -tzf "$release_pack_dir/state-ref-3.3.0.tgz"
 tar -tzf "$release_pack_dir/stateref-devtools-0.1.0.tgz"
 ```
 
-core에는 기본/개발 ESM·CJS, 공개 export의 선언 파일과 LICENSE가 있어야 한다. DevTools에는 recorder/panel ESM·선언·README·LICENSE가 있어야 한다. packed manifest의 `workspace:` 참조는 실제 버전으로 치환된다. 검증 결과는 IMPLEMENT의 배포 준비 절에 기록한다.
+core에는 기본/개발 ESM·CJS, 공개 export의 선언 파일과 LICENSE가 있어야 한다. DevTools에는 recorder/panel/auto 기본·개발 ESM·선언·README·LICENSE가 있어야 한다. packed manifest의 `workspace:` 참조는 실제 버전으로 치환된다. 검증 결과는 IMPLEMENT의 배포 준비 절에 기록한다.
 
 ## 4. npm에 순서대로 발행
 

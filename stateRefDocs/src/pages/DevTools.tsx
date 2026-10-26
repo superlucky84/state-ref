@@ -77,18 +77,33 @@ export const DevTools = mount(() => {
 
       <h2>Connect your own application</h2>
       <p>
-        Keep the recorder and panel behind your development build condition.
-        This Vite example leaves the application store in place and imports the
-        tools only in the browser's development build. Redaction happens before
-        values enter history. Register each original core watch by name.
+        Wrap a root watch with <code>devtools()</code> from{' '}
+        <code>@stateref/devtools/auto</code>. It returns the exact original
+        watch, preserving its type and your framework connector calls. In Vite
+        development, the first enabled registration starts one shared recorder
+        and lazily opens one panel. Mask sensitive paths before recording.
       </p>
       <CodeBlock language="typescript" code={devtoolsBootstrapExample} />
       <p>
-        The default panel floats over the page. For a dedicated container, use{' '}
-        <code>layout: 'inline'</code> with that element as <code>target</code>.
-        Call <code>stopDebugging()</code> when the application root is disposed;
-        the HMR hook handles development replacement. Imports are SSR-safe, but
-        mount the panel only after a browser target exists.
+        The default panel floats over the page. Optional{' '}
+        <code>{"panel: { target: element, layout: 'inline' }"}</code> on the
+        first registration places it in your container. Passing{' '}
+        <code>hot: import.meta.hot</code> releases that module's registration on
+        HMR. Without it, registration lasts until explicit cleanup or page
+        reload. <code>stopDevtools(watch)</code> stops that target;
+        <code>stopDevtools()</code> stops all automatic registrations and
+        removes the panel. Separate headless sessions are independent.
+      </p>
+
+      <p>
+        The default production export is an identity function even with{' '}
+        <code>enabled: true</code>; it imports no recorder or panel. SSR and{' '}
+        <code>enabled: false</code> also leave the target untouched. Vite's
+        development/production resolution and Node's development condition are
+        verified; other bundlers must select the appropriate export condition.
+        Repeating the same target does not duplicate it. Different targets can
+        share a name; conflicting explicit names or masks for one target are
+        rejected. Keep the same settings when registering it again.
       </p>
 
       <h2>Use the recorder without a panel</h2>
@@ -109,10 +124,13 @@ export const DevTools = mount(() => {
 
       <h2>Observe an existing Sync client</h2>
       <p>
-        Sync is optional. Attaching observes the four public metadata methods;
-        it does not start a query, acquire owners or retry a mutation. Settled
-        mutation events can remain in bounded recorder history after leaving the
-        client's active-operation list.
+        The same wrapper accepts a Sync client and returns the exact original
+        client. Register the existing application client once; all six framework
+        sync connectors keep their existing calls. Sync remains an optional
+        dependency. Observation uses only public metadata: it starts no query,
+        acquires no owners and retries no mutation. Settled mutation events may
+        remain in bounded history after leaving the active-operation list.
+        Continue creating a separate client per SSR request.
       </p>
       <CodeBlock language="typescript" code={devtoolsSyncExample} />
 

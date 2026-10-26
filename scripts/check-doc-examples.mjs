@@ -78,6 +78,7 @@ const MODULES = {
   'state-ref/devtools': 'packages/state-ref/dist/devtools/index.d.ts',
   '@stateref/devtools': 'packages/devtools/dist/index.d.ts',
   '@stateref/devtools/panel': 'packages/devtools/dist/panel.d.ts',
+  '@stateref/devtools/auto': 'packages/devtools/dist/auto.d.ts',
   '@stateref/sync': 'packages/sync/dist/index.d.ts',
   '@stateref/connect-react': 'packages/connect-react/dist/index.d.ts',
   '@stateref/connect-react/sync': 'packages/connect-react/dist/sync.d.ts',
@@ -314,7 +315,14 @@ try {
       const directory = join(workspace, `${slug}-${epochIndex}`);
       mkdirSync(directory, { recursive: true });
       writeFileSync(join(directory, 'reader-context.d.ts'), `${context}\n`);
-      if (document.file.endsWith('.ts'))
+      if (
+        document.file.endsWith('.ts') ||
+        epoch.units.some(unit =>
+          unit.blocks.some(block =>
+            block.body.some(line => /import\.meta\.(?:env|hot)/.test(line))
+          )
+        )
+      )
         writeFileSync(
           join(directory, 'vite-client.d.ts'),
           `/// <reference path="${join(

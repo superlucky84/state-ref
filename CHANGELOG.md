@@ -25,6 +25,11 @@
 
 ### Added
 
+- Framework-independent `@stateref/devtools/auto`: `devtools(watch | client)`
+  preserves the original reference and type, deduplicates registrations and
+  lazily opens one shared panel. Optional HMR leases, explicit
+  `stopDevtools(target?)`, SSR/disabled no-ops and an import-free production
+  default cover cleanup and deployment. Sync connector calls remain unchanged.
 - First release of the optional ESM recorder, requiring state-ref `^3.3.0`.
   State, Timeline, Subscriptions and Sync views are available through the
   separate `@stateref/devtools/panel` entry, with floating and inline layouts.

@@ -27,6 +27,8 @@ export default defineConfig(({ mode }) => ({
       entry: {
         'stateref-devtools': resolve(__dirname, 'src/index.ts'),
         panel: resolve(__dirname, 'src/panel.ts'),
+        auto: resolve(__dirname, 'src/auto.ts'),
+        'auto.development': resolve(__dirname, 'src/auto.development.ts'),
       },
       formats: ['es'],
       fileName: (_, name) => `${name}.mjs`,

@@ -114,15 +114,24 @@ try {
   assert.equal(after.owners, baseline.owners);
   assert.equal(after.calls, baseline.calls + 4);
   const hostileStyle = await page.addStyleTag({
-    content: 'button{font-size:60px!important;background:red!important}',
+    content:
+      'button{background:rgb(255,0,0)!important;font-size:51px!important;border-radius:0!important}',
   });
-  assert.equal(
-    await panel
-      .getByRole('button', { name: 'Hide', exact: true })
-      .evaluate(node => getComputedStyle(node).fontSize),
-    '12px'
-  );
-  await hostileStyle.evaluate(node => node.remove());
+  const styles = await page.evaluate(() => {
+    const app = getComputedStyle(document.querySelector('#increment'));
+    const panel = getComputedStyle(
+      document
+        .querySelector('[data-stateref-devtools]')
+        .shadowRoot.querySelector('header button')
+    );
+    return {
+      app: [app.backgroundColor, app.fontSize, app.borderRadius],
+      panel: [panel.backgroundColor, panel.fontSize, panel.borderRadius],
+    };
+  });
+  assert.deepEqual(styles.app, ['rgb(255, 0, 0)', '51px', '0px']);
+  assert.deepEqual(styles.panel, ['rgb(30, 41, 59)', '12px', '6px']);
+  await hostileStyle.evaluate(style => style.remove());
   await hostileStyle.dispose();
   await panel.getByRole('combobox').selectOption('1');
   await panel.getByRole('tab', { name: 'State', exact: true }).click();

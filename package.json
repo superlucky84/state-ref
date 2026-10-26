@@ -55,7 +55,8 @@
     "build:devtools": "pnpm --filter @stateref/devtools build",
     "test:devtools": "pnpm --filter @stateref/devtools test",
     "test:devtools:browser": "node packages/devtools/test/browser.mjs",
-    "test:devtools:walkthrough": "node packages/devtools/test/walkthrough.mjs"
+    "test:devtools:walkthrough": "node packages/devtools/test/walkthrough.mjs",
+    "test:devtools:auto:browser": "node packages/devtools/test/auto-browser.mjs"
   },
   "author": "superlucky84",
   "repository": {

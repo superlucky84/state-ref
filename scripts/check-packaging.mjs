@@ -165,6 +165,7 @@ try {
     '@stateref/sync',
     '@stateref/devtools',
     '@stateref/devtools/panel',
+    '@stateref/devtools/auto',
     '@stateref/connect-react/sync',
     '@stateref/connect-preact/sync',
     '@stateref/connect-vue/sync',

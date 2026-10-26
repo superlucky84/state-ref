@@ -25,6 +25,13 @@
         "default": "./dist/stateref-devtools.mjs"
       }
     },
+    "./auto": {
+      "import": {
+        "types": "./dist/auto.d.ts",
+        "development": "./dist/auto.development.mjs",
+        "default": "./dist/auto.mjs"
+      }
+    },
     "./panel": {
       "import": {
         "types": "./dist/panel.d.ts",

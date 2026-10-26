@@ -171,9 +171,9 @@ tools.dispose();
 
 ## 6. 남은 검증과 진행 조건
 
-### 공통 편의 API와 Sync — U-DT-13/14, 설계안
+### 공통 편의 API와 Sync — U-DT-13~15, 구현 계약
 
-**현재 구현되지 않은 후속 API 제안이다.** 기존 SDK와 0.1.0 배포 준비 결과가 이 기능을 포함한다고 해석하지 않는다. 아래 이름/경로는 설계 예시이며 구현·문서·타입 검증 후 확정한다.
+**U-DT-15의 구현 계약이다.** 과거 배포 준비 결과는 이 기능 이전의 증거이며, 새 실행 결과는 IMPLEMENT 12절과 AUTO_VALIDATION.json에 기록한다. `@stateref/devtools/auto`의 `devtools(target, options?)`와 `stopDevtools(target?)`를 추가한다. `devtools`는 입력의 정확한 타입과 참조를 반환한다.
 
 ```ts
 import { devtools } from '@stateref/devtools/auto';
@@ -193,8 +193,12 @@ const client = devtools(createSyncClient(), {
 - [x] **관측의 의미:** 같은 client를 두 화면에서 써도 도구 등록은 하나다. 패널은 일반 store와 여러 client를 구분해 한 곳에 모은다. 관측이 query를 만들거나 owners·READ/WRITE 호출·retry/캐시 수명을 바꾸지 않는다. query data·mutation input/response·오류 원문을 새로 수집한다고 약속하지 않는다.
 - [x] **선택 의존:** 공통 편의 계층은 DevTools 패키지에 둔다. core·Sync·connector의 필수 runtime dependency로 DevTools를 추가하지 않는다. core만 쓰는 앱에는 Sync 설치를 요구하지 않는다. 현재 구조적 `InspectableSyncClient` 계약을 활용한다.
 - [x] **비활성/서버:** disabled 및 production 기본 경로는 입력 참조를 그대로 반환하며 관측 메서드·DOM·listener를 호출하지 않는다. production 번들에서 recorder/panel 제외를 실제 산출물로 검증한다. SSR의 request별 client를 전역 session에 등록하지 않는다.
-- [ ] **IC-AUTO-01 수명:** 중복 등록, HMR 교체, module import 도중 종료, 동적으로 만든 store/client의 해제 및 마지막 대상 제거 후 panel/session 종료 정책을 구현 전에 확정한다. 정적 앱의 사용법을 짧게 하되 동적 대상에는 명시적 해제 수단을 제공한다. 이름만 같은 서로 다른 client를 합치지 않는다.
-- [ ] **IC-AUTO-02 환경/부트스트랩:** 개발 조건부 export와 기본 no-op 진입점, `enabled` 우선순위, panel의 지연 로딩/DOM 준비, 지원 bundler별 조건 선택을 실제 소비자 fixture로 확정한다. 단순히 `enabled: false`만으로 tree-shaking을 보장한다고 주장하지 않는다.
+- [x] **IC-AUTO-01 수명:** 브라우저 document별 protocol 1의 공유 manager를 개발 전용 symbol slot으로 관리한다. 동일 realm의 SDK 사본도 등록/패널 하나를 공유한다. 실제 객체 참조로 중복을 구분하며 이름만 같은 대상은 별개다. 동일 target/같은 설정은 idempotent하며, 충돌하는 명시적 name/redact 설정은 거절해 마스킹 설정을 조용히 무시하지 않는다. 첫 설정은 복사해 고정한다. 한도는 기본 recorder의 100 sources다.
+  - 선택적 `hot: import.meta.hot`은 해당 모듈의 자동 해제 lease를 등록한다. 같은 hot context의 중복 호출은 lease 하나다. 여러 모듈의 lease는 각각 종료하며, 마지막 lease가 끝나면 해당 source를 해제한다. hot 없는 등록은 명시적 `stopDevtools(target)` 또는 페이지 종료까지 유지한다. 일반 full reload는 새 document에서 시작한다. 서로 다른 hot context의 callback이 이미 종료된 새 등록을 제거하지 않게 한다.
+  - `stopDevtools(target)`은 해당 대상의 모든 lease를 해제하고, 인자 없는 호출은 모든 auto 등록을 종료한다. 마지막 source 종료 시 recorder/history/panel·DOM 대기 listener를 모두 해제한다. 보관한 hot callback도 종료된 target을 붙들지 않는다. 고급 headless SDK의 독립 session은 건드리지 않는다.
+- [x] **IC-AUTO-02 환경/부트스트랩:** `./auto`는 development 조건에서만 활성 entry를 선택하고 기본 export는 runtime import가 없는 no-op이다. 기본 entry는 `enabled: true`로도 활성화되지 않는다. 개발 entry의 enabled 기본값은 true이며 false/SSR에서는 대상/관측 메서드를 읽지 않고 원본을 반환한다. 처음 성공한 등록의 `panel` 옵션으로 target/layout을 정하고, 나중에 명시한 충돌 옵션은 거절한다. panel은 동적으로 import하며 DOM 준비 후 mount한다. 종료/교체 후 늦게 완료한 import는 mount하지 않는다. UI import/mount 오류는 고정된 진단만 남기고 앱에 전파하지 않는다.
+  - 기본 helper의 gzip 증분 cap은 같은 core 소비자 대비 **128 B**다. 개발 core+auto+panel 전체는 기존 **30 KiB** cap을 적용하며 기존 core/recorder 한도를 완화하지 않는다. `auto-bundle.mjs`가 실제 패키지 export로 빌드하고 production 코드의 recorder·DOM 의존 제외와 원본 쓰기 동작까지 확인한다.
+  - Vite와 Node 조건 해석을 실제 fixture로 검증한다. Node/SSR의 auto entry는 비활성이며 headless 기록은 기존 SDK를 사용한다. Vite 외 bundler의 자동 조건 선택을 검증 없이 지원한다고 주장하지 않는다. `enabled: false`만으로 임의의 bundler에서 tree-shaking을 보장하지 않는다.
 
 검증 계획: 원본/반환 객체의 `===`와 정확한 공개 타입, 같은 client/서로 다른 client/동일 이름 분리, 동일 query 두 화면의 owners·요청 수 불변, mutation 종료/실패 이력, 선택적 Sync 미설치, server import/request 격리, production 미포함, 여섯 connector의 key 전환·unmount·StrictMode 및 Svelte Readable options. 기존 off/on trace·byte 한도·수명 기준을 유지한다.
 

@@ -10,6 +10,21 @@ interface DemoDevtoolsOptions {
   readonly walkthrough?: boolean;
 }
 
+function releaseRegistrations(
+  targets: readonly (Watch<any> | SyncClient)[],
+  stop: (target: Watch<any> | SyncClient) => void,
+  disposeGuide?: () => void
+) {
+  let remaining = targets;
+  return () => {
+    const current = remaining;
+    remaining = [];
+    for (const target of current) stop(target);
+    disposeGuide?.();
+    disposeGuide = undefined;
+  };
+}
+
 /** Opt in with ?devtools on a development demo; production drops both imports. */
 export async function mountDemoDevtools(
   watch: Watch<any>,
@@ -29,33 +44,37 @@ export async function mountDemoDevtools(
     cleanup?.();
     cleanup = undefined;
   });
-  const [{ createDevtools }, { mountPanel }] = await Promise.all([
-    import('@stateref/devtools'),
-    import('@stateref/devtools/panel'),
-  ]);
+  const { devtools, stopDevtools } = await import('@stateref/devtools/auto');
   if (current !== generation) return;
-  const tools = createDevtools();
-  tools.attachStore(watch, { name: 'Application UI' });
-  tools.attachSync(client, { name: 'Application cache' });
-  for (const store of options.stores ?? [])
-    tools.attachStore(store.watch, store);
   const guide = options.walkthrough
     ? await import('./devtools-walkthrough').then(module =>
         current === generation ? module.mountWalkthrough() : undefined
       )
     : undefined;
   if (current !== generation) {
-    tools.dispose();
     guide?.dispose();
     return;
   }
-  const unmount = mountPanel(tools, {
-    target: guide?.inspector ?? document.body,
-    layout: guide ? 'inline' : 'floating',
-  });
-  cleanup = () => {
-    unmount();
-    tools.dispose();
-    guide?.dispose();
-  };
+  const targets = [
+    watch,
+    client,
+    ...(options.stores ?? []).map(store => store.watch),
+  ];
+  const release = releaseRegistrations(targets, stopDevtools, guide?.dispose);
+  try {
+    devtools(watch, {
+      name: 'Application UI',
+      panel: {
+        target: guide?.inspector ?? document.body,
+        layout: guide ? 'inline' : 'floating',
+      },
+    });
+    devtools(client, { name: 'Application cache' });
+    for (const store of options.stores ?? [])
+      devtools(store.watch, { name: store.name });
+    cleanup = release;
+  } catch (error) {
+    release();
+    throw error;
+  }
 }

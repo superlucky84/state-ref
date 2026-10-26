@@ -275,21 +275,25 @@ Node24 packaging을 반복하다 기존 `fix-declarations.mjs`의 비멱등 문�
 - 두 대상의 `publish --dry-run` pass. 이 준비 검사에서는 dirty tree의 package 내용만 확인하기 위해 git 검사만 제외했고 registry에는 쓰지 않았다. 사용자에게 제공한 실제 발행 명령은 git 검사와 명시적인 feature publish branch를 유지한다. dry-run은 실제 계정의 npm 발행 권한까지 확인한 결과가 아니다.
 - 종료: [registry 조회·tarball 해시·검증 결과](./RELEASE_PREPARATION.json)를 보존했다. 실제 npm 발행·태그 push·main 병합·Pages 배포는 실행하지 않았으며 사용자가 실행할 명령을 제공한다.
 
-## 12. 공통 편의 API와 Sync — 설계 단계, 2026-10-26
+## 12. 공통 편의 API와 Sync — 완료, 2026-10-26
 
-- 기준: `050aacd03193ecc9f7a45098137474ede0b2d940`. 사용자 U-DT-13/14. 런타임과 package 버전은 이 단계에서 변경하지 않는다.
-- 조사: 여섯 connector의 `./sync`는 `client.observe()`를 사용하며 기존 DevTools는 client의 공개 메타데이터 네 메서드로 관측한다. React는 처음 받은 client의 참조 동일성을 검사한다. 공통 client 등록을 유지하면 hook별 DevTools 설정을 추가할 필요가 없다.
-- 문서 단계: root watch/client의 같은 편의 동작, 동일 참조·타입 반환, 한 client 한 등록, 선택적 의존, production/SSR 요구를 DESIGN에 기록했다. 이름/경로/예제는 제안이다. IC-AUTO-01(수명)과 IC-AUTO-02(환경/부트스트랩)는 미결이다.
-- 구현 계획 A: 미결 결정을 소비자 fixture로 닫고 같은 타입을 돌려주는 공통 진입점/기본 no-op 계약부터 만든다. baseline은 기존 SDK 타입·optional-peer·bundle 검사다.
-- Test Hardening 계획 B: 중복/서로 다른 client·이름 충돌·늦은 import·HMR/동적 해제·SSR 요청 격리·비활성 메서드 호출 0·production 실제 제외를 검증한다. 기존 이력/한도/오류 격리 검사를 유지한다.
-- Integration Test 계획 C: 여섯 실제 앱에서 기존 sync connector 호출을 그대로 사용해 key 전환·query/mutation·owners·요청/재시도·unmount·Svelte options store를 검증한다. core-only 소비자는 Sync 없이 동작해야 한다.
-- 현재 완료 범위: 사용 요구와 설계/후속 검증 계획 기록만 완료. `devtools()` 편의 함수는 아직 구현하지 않았고 기존 배포 준비의 완료 판정을 이 후속 기능에 재사용하지 않는다. 구현 시 실제 npm 발행 상태와 추가한 기능에 맞는 버전을 다시 판단한다.
+- 기준: 원격과 일치한 설계 commit `7b7b32c0e662c06c064916880594f98448fd2fb7`, 사용자 U-DT-13~15. 문서 계약을 확정한 뒤 구현했다. npm 재조회 결과는 core latest 3.2.2, DevTools 404이며 미발행 core3.3.0/SDK0.1.0을 유지한다.
+- 문서 단계: IC-AUTO-01/02를 document별 공유 manager·target 참조/모듈별 lease·명시적 stop·충돌 설정 거절·지연 panel·조건부 no-op으로 해결했다. 수명과 환경 계약은 DESIGN이 기준이다.
+- 구현 A 완료: `@stateref/devtools/auto`의 `devtools(watch | client, options?)`는 정확히 같은 참조와 타입을 반환한다. 한 document에서 SDK 사본들도 recorder/panel 하나를 공유하며 객체 참조로 중복을 구분한다. 첫 등록의 설정을 복사하고 충돌하는 이름·마스킹·패널 설정은 거절한다. `hot: import.meta.hot`의 모듈별 lease와 `stopDevtools(target?)`를 제공한다. 마지막 대상 해제는 이력·패널·DOM 대기 listener를 정리하고 보관된 이전 callback도 대상을 붙들지 않는다.
+- 환경 경계: 기본 auto ESM은 runtime import가 없는 identity/empty-stop이다. `enabled: true`로도 production 기본 entry를 활성화하지 않는다. 개발 entry도 disabled/SSR에서는 대상 메서드를 읽지 않는다. panel은 DOM 준비 뒤 지연 import하며 종료 뒤 늦은 import는 mount하지 않는다. 개발 중 잘못된 설정/대상은 진단 오류를 내고 UI mount 실패는 기록과 앱 동작을 중단하지 않는다.
+- Test Hardening B 완료: SDK **33/33 pass**. 정확한 공개 타입/오버로드와 부정 타입, 중복/동일 이름의 별개 대상·mask 복사/충돌·100 sources 한도·여러 HMR lease·해제/재등록·DOM 준비/늦은 import·오류 정리·SSR 요청 격리·비활성 대상 접근 0회를 검사했다. 실제 Vite static import에 `enabled:true`를 준 production 산출물에서 recorder/panel을 제외하고 원래 store 쓰기가 동작함을 확인했다. 기본 helper gzip 증분 **30/128 B**, 개발 core+auto+panel **13,562 B/30 KiB**다.
+- 전체 gate: Node24.19.0/pnpm9.12.3에서 **28/28 단계 pass**. 패키지 일반 테스트 **1,105 pass / 2 skip**, shared 예제 **122 pass**, 별도 SSR **15 pass**다. 과거 기록의 패키지 합계와 shared 예제 합계를 구분한다. 기존 core 성능 **6/6 pass**, core gzip **3,757/3,800 B**, 개발 core **6,403/6,500 B**, core+recorder **9,293 B/10 KiB**를 유지했다.
+- Integration Test C 완료: 여섯 실제 데모를 새 공통 API로 연결하고 기존 connector 호출을 유지했다. `test:devtools:browser`와 `test:devtools:walkthrough`에서 여섯 앱의 실제 쓰기·구독·Sync 표시·HMR/reload, mission 저장·공유 owners·화면 종료·batch·기록 제어·inline/mobile·opt-out을 통과했다. connector의 key 변경·retry·Svelte options store·SSR 회귀는 기존 테스트를 전체 gate에서 재실행한 증거이며, 모든 시나리오의 DevTools off/on trace를 새 브라우저 검사로 다시 비교했다고 주장하지 않는다.
+- 실제 auto 브라우저: 별도로 복사한 SDK 두 개로 패널/등록 1개, watch/client 참조 동일성, 요청/owners 불변, 마스킹과 이력, 늦은 import 취소, 이전 HMR callback 격리 및 callback이 남은 상태에서 종료 store payload의 GC를 확인했다. 전역 `button !important` 주입 뒤 앱에는 앱 스타일이, 패널에는 ShadowRoot 내부 스타일이 적용되는 검사를 확장했다. 패널 갱신 p95 **18.6/100 ms**. 이 검사는 장시간 사용의 heap 검사를 대신하지 않는다.
+- 예제/공개 문서: `pnpm check:examples`의 타입·production build·operation·bundle·SSR pass. 여섯 dist의 JS/CSS **35 files**에 auto manager/panel/walkthrough marker가 없음을 확인했다. README·SDK 가이드·한영 사이트는 wrapper를 기본 사용법으로 설명하고 headless API를 고급 경로로 유지한다. 문서 예제 **29 blocks/20 units**(기존 15 skip 유지), build의 사이트 타입 검사와 한영 사이트 브라우저 검사·모바일·lint/형식·링크 확인 pass.
+- 배포 준비 갱신: 실제 tarball은 core **117 files**, DevTools **14 files**이며 새 auto 기본/개발 ESM과 선언을 포함한다. 두 tarball만 새 npm 소비자에 설치해 Sync 미설치, 공개 export/LICENSE/metadata, workspace 치환, production identity·core 쓰기, development SSR identity·headless 기록/해제, strict Node16 타입을 확인했다. 두 대상 `publish --dry-run` pass; dirty tree의 내용 검사에 한해 `--no-git-checks`를 사용했고 실제 발행 가이드의 git 검사는 유지한다. npm 로그인 경고가 있어 실제 발행 권한을 검증한 결과는 아니다.
+- 종료: [새 실행 결과·코드/타르볼 해시](./AUTO_VALIDATION.json)를 추가하고 이전 JSON 증거는 보존했다. core·Sync·connector runtime dependency/API는 바꾸지 않았다. 사람의 M-DT 검사, Vite/Node 외 bundler 검증, 실제 npm 발행·태그·main 병합·Pages 배포는 수행하지 않았다.
 
 ## 13. 인계 — 2026-10-26
 
-- **done:** DevTools·데모·문서와 Node24 전환 완료. npm 현재 상태를 확인해 core 3.3.0/DevTools 0.1.0만 발행 대상으로 확정하고 publishConfig·LICENSE·changelog·배포 명령을 정리했다. 전체 gate와 실제 tarball 소비자 및 dry-run을 검증했다.
-- **next:** 편의 API의 watch/Sync 공통 사용안을 사용자와 검토하고 IC-AUTO-01/02를 해결한 뒤 12절 구현/검증 계획을 진행한다. 현재 0.1.0 SDK와 배포 가이드는 이 미구현 wrapper를 포함하지 않는다. 실제 발행 상태는 registry로 재확인한다. M-DT 사람 검사는 별도 기록한다.
-- **blockers:** 현재 Node24 전체 gate의 알려진 blocker 없음. M-DT-01~08 사람 검사는 미수행이므로 사람의 출시 검토 완료라고 표시하지 않는다. 사용자 승인 대기 항목은 없다.
-- **commit:** 편의 API 요구/설계 기록의 부모는 `050aacd03193ecc9f7a45098137474ede0b2d940`. `git log -1 --format='%H %s' -- docs/devtools`로 최종 변경 commit을 확인한다. 자기 commit SHA는 추정하지 않는다.
-- **evidence:** RELEASE_PREPARATION.json(배포 준비), WALKTHROUGH_VALIDATION.json(첫 체험), NODE24_VALIDATION.json(Node24 전환), VALIDATION_RESULTS.json(이전 환경), 재현 가능한 test/bench/browser scripts, 배포 가이드.
+- **done:** 설계 문서를 커밋·푸시한 뒤 공통 watch/Sync wrapper와 HMR/종료/production/SSR 계약을 구현했다. 여섯 데모·공개 문서·배포 가이드를 맞추고 전체 gate, 실제 브라우저, tarball 소비자와 dry-run 검증을 완료했다. core3.3.0/SDK0.1.0의 미발행 버전은 유지한다.
+- **next:** 사용자는 `pnpm dev:devtools`로 첫 체험과 M-DT 사람 검사를 진행할 수 있다. 실제 발행 시 registry를 다시 확인하고 RELEASING의 core→DevTools→main/Pages 순서를 따른다. 현재 SDK 산출물에는 auto API가 포함된다.
+- **blockers:** 자동 검증의 알려진 blocker 없음. 사람의 M-DT-01~08/장시간 heap 검사는 미수행이다. 사용자 승인 대기 항목은 없다.
+- **commit:** 이번 구현의 부모는 `7b7b32c0e662c06c064916880594f98448fd2fb7`. `git log -1 --format='%H %s' -- packages/devtools/src/auto.development.ts docs/devtools/AUTO_VALIDATION.json`로 실제 구현 commit을 확인한다. 자기 commit SHA를 추정하지 않는다.
+- **evidence:** AUTO_VALIDATION.json(현재 편의 API), RELEASE_PREPARATION.json(이전 배포 준비), WALKTHROUGH_VALIDATION.json(첫 체험), NODE24_VALIDATION.json(Node24 전환), VALIDATION_RESULTS.json(이전 환경), 재현 가능한 test/bench/browser scripts, 배포 가이드.
 - **context:** ctxbin credential은 명령 환경에서만 사용했다. 코드·문서·커밋에 보관하지 않았다.

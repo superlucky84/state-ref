@@ -4,7 +4,48 @@ Read-only debugging sessions for state-ref, with bounded history, Sync metadata,
 
 DevTools 0.1.0 requires state-ref **^3.3.0** (diagnostics protocol 1). State-ref 3.2.2 does not contain this API. Build the workspace to try it locally, or use the matching npm versions once available. Publication status and commands are in the [release guide](../../docs/RELEASING.md).
 
-Use a development-only bootstrap. Vite's development server selects the development core automatically; Node needs `--conditions=development`. For production applications, dynamically import this package inside the application's development build condition. Importing the package is SSR-safe and does not create a session or touch the DOM.
+## Start with a store or Sync client
+
+Use the framework-independent `@stateref/devtools/auto` entry. `devtools()` returns the **same reference and type**, so existing store and sync connector calls stay unchanged. In Vite development, it registers the target once and lazily opens one shared panel. No separate recorder, mount call or per-query setup is needed.
+
+```ts
+import { createStore } from 'state-ref';
+import { devtools, stopDevtools } from '@stateref/devtools/auto';
+
+export const watch = devtools(createStore({ count: 0, token: 'fixture' }), {
+  name: 'Counter',
+  enabled: import.meta.env.DEV,
+  hot: import.meta.hot,
+  redact: [['token']],
+});
+
+// Pass watch to your usual framework connector.
+export const stopDebugging = () => stopDevtools(watch);
+```
+
+If you use Sync, wrap the existing application client once:
+
+```ts
+import { createSyncClient } from '@stateref/sync';
+import { devtools } from '@stateref/devtools/auto';
+
+export const client = devtools(createSyncClient(), {
+  name: 'API',
+  enabled: import.meta.env.DEV,
+  hot: import.meta.hot,
+});
+// Pass the same client to @stateref/connect-*/sync as before.
+```
+
+- The default production export is an identity function **even with `enabled: true`**. It imports no recorder or panel. The active development entry also leaves the target untouched during SSR or with `enabled: false`. Vite and Node export conditions are verified; configure other bundlers to select `development` only for development builds.
+- `hot: import.meta.hot` is optional and releases that module's registration on replacement. Separate modules can share a target; the last module release detaches it. Without a hot context, registration lasts until explicit cleanup or page reload. Call `stopDevtools(target)` when its application lifetime ends, or `stopDevtools()` to stop all automatic registrations and remove their panel. Headless sessions are independent.
+- Repeated registration of one object is idempotent. Different objects with the same name stay distinct. The first registration copies its name and masks; omitted settings inherit them, and conflicting explicit settings are rejected. Root stores accept `redact`; Sync only collects metadata.
+- The first registration may set `panel: { target: element, layout: 'inline' }`. Defaults are a floating panel on the document body. Later registrations must omit panel settings or match them. Stop all automatic tools before changing the shared layout.
+- Sync is optional; no Sync runtime is imported by this entry. Existing query/mutation/connector calls and owners are unchanged. Continue using a separate client for each SSR request. For recording on the server, use the headless API below.
+
+## Advanced: recorder without a panel
+
+The recorder and panel entries are ESM and SSR-safe to import. Keep their setup behind your application's development build condition; unlike `auto`, these lower-level entries are not automatic production no-ops. Vite selects the development core automatically; Node scripts need `node --conditions=development script.mjs`.
 
 ```ts
 import { createStore } from 'state-ref';
@@ -47,7 +88,7 @@ Subscription IDs and observed run counts belong to one source generation, not a 
 
 This recorder neither edits application state nor replays history. Redaction rules are copied per connection and applied before state enters history. There is no automatic network transport or persistent storage.
 
-## Browser panel and Sync
+## Advanced: explicit browser panel and Sync
 
 Mount the panel from a development-only bootstrap. It uses a ShadowRoot and has State, Timeline, Subscriptions and Sync tabs. The default `layout: 'floating'` fixes the panel to the viewport; `layout: 'inline'` places it in the supplied target at the container's width. Folding the panel keeps recording; unmounting removes its DOM/listeners while the session continues. Session disposal also removes connected panels.
 

@@ -293,6 +293,11 @@ const steps = [
     args: ['packages/devtools/test/optional-peer.mjs'],
   },
   {
+    name: 'auto-bundle',
+    cmd: 'node',
+    args: ['packages/devtools/test/auto-bundle.mjs'],
+  },
+  {
     name: 'packaging',
     cmd: 'node',
     args: ['scripts/check-packaging.mjs'],

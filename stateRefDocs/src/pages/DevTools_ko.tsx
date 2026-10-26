@@ -73,18 +73,32 @@ export const DevToolsKo = mount(() => {
 
       <h2>내 앱에 연결하기</h2>
       <p>
-        recorder와 패널을 개발용 빌드 조건 안에서 불러오세요. 아래 Vite 예제는
-        기존 앱 스토어를 유지하고 브라우저의 개발 빌드에서만 도구를 동적으로
-        가져옵니다. 이름으로 원본 core watch를 등록하며, 마스킹은 값이 이력에
-        들어가기 전에 적용됩니다.
+        원본 watch를 <code>@stateref/devtools/auto</code>의{' '}
+        <code>devtools()</code>로 감싸세요. 원본 참조와 타입을 그대로 돌려주므로
+        프레임워크 connector 사용법이 유지됩니다. Vite 개발 환경에서 처음
+        활성화된 등록이 공통 recorder 하나를 시작하고 패널 하나를 지연
+        로드합니다. 민감한 경로는 기록 전에 마스킹하세요.
       </p>
       <CodeBlock language="typescript" code={devtoolsBootstrapExample} />
       <p>
-        기본 패널은 화면 위에 떠 있습니다. 별도 영역에 넣으려면 그 요소를{' '}
-        <code>target</code>으로 지정하고 <code>layout: 'inline'</code>을
-        사용하세요. 앱의 루트를 종료할 때 <code>stopDebugging()</code>을
-        호출합니다. HMR 교체는 예제의 해제 함수가 처리합니다. import 자체는
-        SSR에서 안전하지만 패널은 브라우저 요소가 생긴 뒤에 mount하세요.
+        기본 패널은 화면 위에 떠 있습니다. 첫 등록의 선택 사항인{' '}
+        <code>{"panel: { target: element, layout: 'inline' }"}</code>으로 별도
+        영역에 넣을 수 있습니다. <code>hot: import.meta.hot</code>을 넘기면 HMR
+        때 해당 모듈의 등록을 해제합니다. 생략하면 명시적으로 해제하거나
+        페이지를 새로고침할 때까지 유지합니다. <code>stopDevtools(watch)</code>
+        는 해당 대상을, <code>stopDevtools()</code>는 자동 등록 전체를 종료하고
+        패널도 제거합니다. 별도로 만든 headless session에는 영향을 주지
+        않습니다.
+      </p>
+
+      <p>
+        기본 production export는 <code>enabled: true</code>여도 원본만 반환하며
+        recorder·패널을 import하지 않습니다. SSR과 <code>enabled: false</code>도
+        대상을 건드리지 않습니다. Vite의 개발/배포 빌드와 Node의 development
+        조건을 검증했으며, 다른 bundler에서는 export 조건 선택을 확인하세요.
+        같은 대상의 반복 등록은 중복되지 않고 서로 다른 대상은 같은 이름을 쓸 수
+        있습니다. 한 대상에 명시적으로 다른 이름이나 마스킹을 지정하면
+        거절하므로 재등록 시 설정을 일관되게 유지하세요.
       </p>
 
       <h2>패널 없이 기록만 사용하기</h2>
@@ -105,10 +119,13 @@ export const DevToolsKo = mount(() => {
 
       <h2>기존 Sync client 관측하기</h2>
       <p>
-        Sync는 선택 사항입니다. 연결은 공개된 네 메타데이터 메서드만 사용하며
-        query를 실행하거나 owners를 늘리거나 mutation을 재시도하지 않습니다.
-        종료한 mutation이 client의 진행 목록에서 빠져도 recorder의 한도 안에
-        종료 이력이 남을 수 있습니다.
+        같은 함수로 Sync client도 감싸면 원본 client가 그대로 반환됩니다. 앱의
+        기존 client를 한 번 등록하면 여섯 프레임워크의 sync connector는 기존
+        호출을 유지하며, query·mutation마다 설정할 필요가 없습니다. Sync는
+        선택적 의존성입니다. 공개 메타데이터만 관측하므로 query 실행, owners
+        증가, mutation 재시도는 일어나지 않습니다. 종료한 mutation이 진행
+        목록에서 빠져도 한도 안에 이력이 남을 수 있습니다. SSR 요청마다 client를
+        따로 만드는 원칙도 그대로 유지하세요.
       </p>
       <CodeBlock language="typescript" code={devtoolsSyncExample} />
 

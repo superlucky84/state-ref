@@ -8,29 +8,21 @@ pnpm build
 pnpm dev:devtools`;
 
 export const devtoolsBootstrapExample = `import { createStore } from 'state-ref';
+import { devtools, stopDevtools } from '@stateref/devtools/auto';
 
-export const watch = createStore({ count: 0, token: 'fixture' });
-export let stopDebugging = () => {};
-
-if (import.meta.env.DEV && typeof document !== 'undefined') {
-  const [{ createDevtools }, { mountPanel }] = await Promise.all([
-    import('@stateref/devtools'),
-    import('@stateref/devtools/panel'),
-  ]);
-  const tools = createDevtools();
-  tools.attachStore(watch, {
+export const watch = devtools(
+  createStore({ count: 0, token: 'fixture' }),
+  {
     name: 'Counter',
+    enabled: import.meta.env.DEV,
+    hot: import.meta.hot,
     redact: [['token']],
-  });
-  const unmount = mountPanel(tools, { target: document.body });
+  }
+);
 
-  stopDebugging = () => {
-    unmount();
-    tools.dispose();
-  };
-  import.meta.hot?.dispose(stopDebugging);
-}
-// Also call stopDebugging() when the application root is disposed.`;
+// Use watch with your existing framework connector.
+// Call when the application root is disposed:
+export const stopDebugging = () => stopDevtools(watch);`;
 
 export const devtoolsHeadlessExample = `import { createStore } from 'state-ref';
 import { createDevtools } from '@stateref/devtools';
@@ -56,13 +48,13 @@ detach();
 tools.dispose();`;
 
 export const devtoolsSyncExample = `import { createSyncClient } from '@stateref/sync';
-import { createDevtools } from '@stateref/devtools';
+import { devtools } from '@stateref/devtools/auto';
 
-const client = createSyncClient(); // Use your existing app client.
-const tools = createDevtools();
-const detach = tools.attachSync(client, { name: 'API' });
-const sourceId = tools.getSnapshot().sources[0].id;
-console.log(tools.inspectSync(sourceId));
+export const client = devtools(createSyncClient(), {
+  name: 'API',
+  enabled: import.meta.env.DEV,
+  hot: import.meta.hot,
+});
 
-detach();
-tools.dispose();`;
+// Pass this same client to your existing @stateref/connect-*/sync APIs.
+// No per-query, mutation or connector DevTools options are needed.`;

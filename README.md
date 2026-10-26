@@ -146,6 +146,8 @@ I would like to extend my gratitude to the following people and projects:
 
 ## DevTools
 
+Wrap a root watch or your existing Sync client with `devtools(target, { enabled: import.meta.env.DEV, hot: import.meta.hot })` from **`@stateref/devtools/auto`**. It preserves the original reference and connector API, opens one shared panel in development, and defaults to an import-free identity function in production. `stopDevtools(target?)` handles explicit cleanup. See the SDK guide below for masking and lifecycle details.
+
 `@stateref/devtools` adds read-only state/history/subscription inspection, Sync metadata, and an optional framework-independent browser panel. This guide targets state-ref **3.3.0+** and DevTools **0.1.0**. See the [setup and cleanup guide](packages/devtools/README.md). The six framework demos enable the panel with `?devtools=1` on their development server.
 
 - **State / Timeline:** current bounded previews, before/after values, batch groups and recording gaps.

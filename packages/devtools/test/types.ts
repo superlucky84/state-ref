@@ -1,5 +1,42 @@
 import { createStore } from 'state-ref';
 import { createDevtools, type DevtoolsSnapshot } from '@stateref/devtools';
+import { devtools, stopDevtools } from '@stateref/devtools/auto';
+import { createSyncClient } from '@stateref/sync';
+
+type Same<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B
+  ? 1
+  : 2
+  ? true
+  : false;
+const original = Object.assign(createStore({ count: 0 }), {
+  extra: 1 as const,
+});
+const registered = devtools(original, {
+  name: 'typed',
+  redact: [['count']],
+  enabled: true,
+});
+const exactWatch: Same<typeof original, typeof registered> = true;
+const client = Object.assign(createSyncClient(), { extra: 2 as const });
+const observedClient = devtools(client, { name: 'API', enabled: true });
+const exactClient: Same<typeof client, typeof observedClient> = true;
+const query = observedClient.query({
+  queryKey: ['types'],
+  queryFn: () => ({ name: 'Lee' }),
+});
+const name: string = query.ref.name.value;
+// @ts-expect-error A state reference is not a root watch or Sync client.
+devtools(original());
+// @ts-expect-error Sync metadata does not support store value masks.
+devtools(client, { redact: [['secret']] });
+// @ts-expect-error A client is not a boolean enabled flag.
+devtools(client, { enabled: client });
+stopDevtools(registered);
+stopDevtools(observedClient);
+stopDevtools();
+void exactWatch;
+void exactClient;
+void name;
 
 const watch = createStore({ count: 0 });
 const tools = createDevtools({ maxEvents: 10, maxHistoryBytes: 1024 });
