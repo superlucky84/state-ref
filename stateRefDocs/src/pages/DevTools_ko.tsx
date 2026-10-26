@@ -18,12 +18,11 @@ export const DevToolsKo = mount(() => {
         쓰며 브라우저 확장 설치가 필요 없습니다.
       </p>
       <div class="my-6 rounded-lg border border-amber-300 bg-amber-50 p-5 dark:border-amber-700 dark:bg-amber-950/30">
-        <strong>아직 출시하지 않은 브랜치 기능입니다</strong>
+        <strong>버전 안내</strong>
         <p>
-          이 문서는 <code>feat/state-ref-devtools</code> 브랜치에서 준비 중인
-          state-ref 3.3.0과 DevTools 0.1.0을 설명합니다. npm에 발행하지 않았으며
-          기존 state-ref 3.2.2에는 관측 API가 없습니다. 아래 명령으로 저장소를
-          빌드해 체험하세요.
+          이 문서는 state-ref 3.3.0 이상과 DevTools 0.1.0을 설명합니다.
+          state-ref 3.2.2에는 관측 API가 없습니다. 해당 버전이 있는 저장소를
+          빌드해 체험하거나, npm에서 두 버전을 확인한 뒤 설치하세요.
         </p>
       </div>
 
@@ -155,7 +154,7 @@ export const DevToolsKo = mount(() => {
           <a href="#/ko/guide/sync-observation">Sync 메타데이터 관측</a>
         </li>
         <li>
-          <a href="https://github.com/superlucky84/state-ref/blob/feat/state-ref-devtools/packages/devtools/README.md">
+          <a href="https://github.com/superlucky84/state-ref/blob/main/packages/devtools/README.md">
             패키지 설치·연결·API 가이드
           </a>
         </li>

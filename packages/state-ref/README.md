@@ -544,9 +544,9 @@ function UserComponent() {
 }
 ```
 
-## DevTools (unreleased)
+## DevTools
 
-The `feat/state-ref-devtools` branch prepares state-ref 3.3.0 with optional, read-only debugging through `@stateref/devtools` 0.1.0. It provides current state previews, before/after history, subscription paths and runs, Sync metadata and a floating or inline browser panel. Existing state-ref 3.2.2 does not contain the observation API; these versions have not been published.
+State-ref 3.3.0 supports optional, read-only debugging through `@stateref/devtools` 0.1.0. It provides current state previews, before/after history, subscription paths and runs, Sync metadata and a floating or inline browser panel. State-ref 3.2.2 does not contain the observation API. See the [release guide](../../docs/RELEASING.md) for publication status and commands.
 
 See the [setup and cleanup guide](../devtools/README.md) and the documentation site's **Getting Started → DevTools** pages ([English source](../../stateRefDocs/src/pages/DevTools.tsx), [한국어 원문](../../stateRefDocs/src/pages/DevTools_ko.tsx)). After building the workspace, `pnpm dev:devtools` opens a six-step local walkthrough. The tools support masking and bounded recording, and do not provide state editing, time travel or a Redux DevTools adapter.
 

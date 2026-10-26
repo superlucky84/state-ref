@@ -22,7 +22,7 @@ const menuData: MenuSection[] = [
         link: '/guide/quick-start',
       },
       {
-        text: { en: 'DevTools (unreleased)', ko: 'DevTools (미출시)' },
+        text: { en: 'DevTools', ko: 'DevTools' },
         link: '/guide/devtools',
       },
       {

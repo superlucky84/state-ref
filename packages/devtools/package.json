@@ -2,8 +2,20 @@
   "name": "@stateref/devtools",
   "version": "0.1.0",
   "private": false,
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
   "type": "module",
   "description": "Optional read-only debugging sessions for state-ref",
+  "license": "MIT",
+  "author": "superlucky84",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/superlucky84/state-ref.git",
+    "directory": "packages/devtools"
+  },
+  "homepage": "https://superlucky84.github.io/state-ref/#/guide/devtools",
   "main": "./dist/stateref-devtools.mjs",
   "types": "./dist/index.d.ts",
   "exports": {

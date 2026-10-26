@@ -3,6 +3,10 @@
   "name": "state-ref",
   "version": "3.3.0",
   "private": false,
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
   "description": "Universal state management library that can be easily integrated into UI libraries",
   "packageManager": "pnpm@7.6.0",
   "main": "./dist/state-ref.cjs",

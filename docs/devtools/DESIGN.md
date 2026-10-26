@@ -171,6 +171,14 @@ tools.dispose();
 
 ## 6. 남은 검증과 진행 조건
 
+### 배포 준비 — U-DT-12
+
+- [x] 2026-10-26 npm registry 조회: core latest 3.2.2, DevTools 미등록(404). 브랜치의 core 3.3.0/DevTools 0.1.0은 미발행이며 이번 출시 대상이다. 이미 준비한 버전을 다시 올리지 않는다. source/API가 그대로인 Sync 0.3.1과 여섯 connector는 이번 발행에서 제외한다.
+- [x] 두 대상에 public registry/access를 명시하고 신규 DevTools에 MIT license·repository·author 메타데이터와 LICENSE를 포함한다. DevTools core peer `^3.3.0`, 선택적 Sync peer `^0.3.1`을 유지한다. root와 docs/examples는 private다.
+- [x] 사용자가 검증된 feature 브랜치에서 core→DevTools 순서로 npm에 발행한 뒤 main에 병합해 Pages를 갱신하는 절차를 `docs/RELEASING.md`에 둔다. 실제 발행에는 git 검사와 명시적 publish branch를 사용한다. 이미 성공한 버전은 재발행하지 않는다.
+- [x] 공개 가이드는 특정 버전의 사용법으로 정리해 출시 뒤 남을 미출시 표기를 제거한다. 실제 발행 완료 여부는 IMPLEMENT와 registry로 구분한다. 데모 명령은 현재 checkout을 사용해 브랜치 삭제에 의존하지 않는다.
+- 검증: Node24 전체 gate, 실제 pack 두 개의 export/declaration/LICENSE/peer/workspace 치환 확인과 tarball 소비자 smoke, publish dry-run, docs build 및 변경 문서 예제. 실제 registry mutation은 하지 않는다.
+
 ### 사이트 문서 보완 — U-DT-11
 
 - [x] 기존 사이트의 한·영 페이지 구조와 hash routing을 따른다. `/guide/devtools`, `/ko/guide/devtools`를 시작하기 메뉴에 연결하고 Sync 관측 문서에서도 찾을 수 있게 한다.

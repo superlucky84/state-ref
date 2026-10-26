@@ -1,6 +1,4 @@
-export const devtoolsDemoCommand = `git fetch origin
-git switch feat/state-ref-devtools
-git pull --ff-only
+export const devtoolsDemoCommand = `git pull --ff-only
 nvm install
 nvm use
 corepack enable

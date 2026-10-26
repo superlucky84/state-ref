@@ -18,12 +18,12 @@ export const DevTools = mount(() => {
         Svelte, Solid and Lithent. No browser extension is required.
       </p>
       <div class="my-6 rounded-lg border border-amber-300 bg-amber-50 p-5 dark:border-amber-700 dark:bg-amber-950/30">
-        <strong>Unreleased branch feature</strong>
+        <strong>Version requirements</strong>
         <p>
-          This guide describes <code>feat/state-ref-devtools</code>, preparing
-          state-ref 3.3.0 and DevTools 0.1.0. They have not been published.
-          Published state-ref 3.2.2 does not contain the observation API. Build
-          the workspace to try it locally.
+          This guide targets state-ref 3.3.0 or later and DevTools 0.1.0.
+          State-ref 3.2.2 does not contain the observation API. Build a matching
+          workspace to try it locally, or install matching versions once they
+          are available in npm.
         </p>
       </div>
 
@@ -158,7 +158,7 @@ export const DevTools = mount(() => {
           <a href="#/guide/sync-observation">Sync metadata observation</a>
         </li>
         <li>
-          <a href="https://github.com/superlucky84/state-ref/blob/feat/state-ref-devtools/packages/devtools/README.md">
+          <a href="https://github.com/superlucky84/state-ref/blob/main/packages/devtools/README.md">
             Package setup and API guide
           </a>
         </li>

@@ -1,8 +1,8 @@
 # @stateref/devtools
 
-Unreleased, read-only debugging sessions for state-ref, with bounded history, Sync metadata, and an optional browser panel.
+Read-only debugging sessions for state-ref, with bounded history, Sync metadata, and an optional browser panel.
 
-This branch prepares state-ref 3.3.0 (diagnostics protocol 1) and DevTools 0.1.0. Build the workspace to try them; they have not been published. Published state-ref 3.2.2 does not contain this API.
+DevTools 0.1.0 requires state-ref **^3.3.0** (diagnostics protocol 1). State-ref 3.2.2 does not contain this API. Build the workspace to try it locally, or use the matching npm versions once available. Publication status and commands are in the [release guide](../../docs/RELEASING.md).
 
 Use a development-only bootstrap. Vite's development server selects the development core automatically; Node needs `--conditions=development`. For production applications, dynamically import this package inside the application's development build condition. Importing the package is SSR-safe and does not create a session or touch the DOM.
 
@@ -84,4 +84,4 @@ node packages/devtools/test/bundle.mjs
 
 The canonical implementation plan and remaining work are in [docs/devtools](../../docs/devtools/IMPLEMENT.md).
 
-The documentation site includes **Getting Started → DevTools (unreleased)** in English and Korean. The [English page source](../../stateRefDocs/src/pages/DevTools.tsx) and [한국어 페이지 원문](../../stateRefDocs/src/pages/DevTools_ko.tsx) cover the local walkthrough, application setup/cleanup, headless recording, Sync metadata and limits. These site changes are included in this branch and have not been deployed to the public site.
+The documentation site includes **Getting Started → DevTools** in English and Korean. The [English page source](../../stateRefDocs/src/pages/DevTools.tsx) and [한국어 페이지 원문](../../stateRefDocs/src/pages/DevTools_ko.tsx) cover the local walkthrough, application setup/cleanup, headless recording, Sync metadata and limits.

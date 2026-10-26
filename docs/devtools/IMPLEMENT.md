@@ -1,7 +1,7 @@
 # IMPLEMENT — state-ref DevTools
 
 - 작성일: 2026-10-24. 브랜치: `feat/state-ref-devtools`.
-- 상태: Phase 2~7의 recorder·Sync·패널 및 자동 hardening/integration 검증 완료. Node 24.19.0 전환 뒤 전체 gate와 문서 build도 통과했다. 이후 첫 체험 안내와 inline 패널을 추가하고 관련 타입·예제·브라우저·패키징 검사를 통과했다(9절). 사람의 수동 검사는 미수행으로 추적한다. 미출시 브랜치 기능이며 npm 발행/main 병합은 수행하지 않았다. 기존 Node 20.3 Svelte packaging 실패는 과거 기록이며 현재 개발 기준의 blocker가 아니다.
+- 상태: DevTools 구현·첫 체험·한영 사이트 가이드와 배포 준비 완료. 11절에서 Node24 전체 gate·실제 tarball 소비자·publish dry-run을 재검증했다. 사람의 수동 검사는 미수행으로 추적한다. 아직 npm 발행/main 병합/Pages 배포는 실행하지 않았다. 기존 Node 20.3 Svelte packaging 실패는 과거 기록이며 현재 개발 기준의 blocker가 아니다.
 - 최초 조사 기준 commit: `412db01a63321eef3087f3bc04c46708447a29f8`. Node24 전환 기준은 `a788d958fed3796041a60853d48db798cd61b45a`.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
 - 완료 표시가 없는 구현 체크박스와 T-DT 항목은 계획이다. 명령·commit·실행 환경·결과 기록이 없으면 통과로 해석하지 않는다. Phase 0의 부분 시나리오 성공을 T 항목 전체 완료로 읽지 않는다.
@@ -264,11 +264,22 @@ Node24 packaging을 반복하다 기존 `fix-declarations.mjs`의 비멱등 문�
 - 경로: `/state-ref/#/guide/devtools`, `/state-ref/#/ko/guide/devtools`. 로컬 `pnpm dev:docs`의 시작하기 → DevTools에서 찾는다. root/core/SDK README는 사이트 가이드 위치를 연결한다.
 - 종료: 작업 브랜치의 문서 소스/빌드 검증 완료. 공개 사이트 배포/main 병합/npm 발행은 수행하지 않았다. `.github/workflows/deploy-docs.yml`은 main의 사이트 변경을 배포하므로 이 브랜치를 푸시하는 것만으로 공개 Pages가 갱신됐다고 주장하지 않는다.
 
-## 11. 인계 — 2026-10-26
+## 11. 배포 준비 — 완료, 2026-10-26
 
-- **done:** 요구/설계→코어→recorder→Sync→앱 내 패널→자동 hardening/6종 integration→가이드·브랜치 버전 메타데이터. Node24 전환과 첫 체험용 6단계 안내/inline 관측창/실행 명령, README 및 사이트 한·영 DevTools 가이드를 구현·검증했다.
-- **next:** 사용자는 `pnpm dev:devtools`로 별빛 정비소의 안내를 따라 처음 체험한다. 이후 브랜치 리뷰 및 MANUAL_TEST_CHECKLIST의 사람 검사. 더 오래된 소비자 Node의 Svelte CJS 지원을 선언하려면 해당 버전에서 별도 검증한다. npm 발행·main 병합은 수행하지 않는다.
+- 기준: `8da30ed1bfc4553096447e93d1a8fac3d739acf0`. 사용자 U-DT-12.
+- registry 확인: core 3.2.2 → 준비된 3.3.0, 신규 DevTools 0.1.0. 두 목표 버전은 미발행이며 Sync/connector의 현재 버전은 이미 발행됐다. source/API가 바뀌지 않은 패키지를 일괄 bump하지 않는다.
+- 구현: core/DevTools에 public npm registry/access를 명시하고 DevTools metadata/MIT LICENSE를 추가했다. 두 목표 버전은 이미 정확해 유지했다. CHANGELOG와 버전별 공개 가이드를 정리하고, [배포 가이드](../RELEASING.md)에 계정 로그인→검증→core→DevTools→설치 확인→태그→main/Pages 순서와 재개 방법을 기록했다.
+- Test Hardening: Node24.19.0/pnpm9.12.3에서 frozen install, 전체 `pnpm gate` **27/27 단계 pass**, 일반 테스트 **1,091 pass / 2 skip**, 별도 SSR **15 pass**, 기존 core 성능 **6/6 pass**, core gzip **3,757/3,800 B**. docs build·문서 코드 예제·새 버전 안내/메뉴의 한영 브라우저 확인·모바일·lint/형식/링크 검사 pass.
+- 실제 pack: core **117 files**, DevTools **9 files**. 공개 export와 d.ts/d.cts, core skills, README/LICENSE, peer 범위와 optional Sync, publishConfig 및 `workspace:` 치환을 확인했다. pnpm9의 pack은 filter 대신 `--dir`을 사용해야 하므로 가이드를 실제 성공한 명령으로 맞췄다.
+- Integration Test: tarball 두 개만 별도 npm 소비자에 설치(정확히 2 packages). Sync 없이 ESM/CJS production core·SSR-safe SDK/panel import·production attach 거절, ESM 및 CJS 개발 코어의 recorder 전달/해제, strict Node16 ESM/CJS 선언 검사를 통과했다.
+- 두 대상의 `publish --dry-run` pass. 이 준비 검사에서는 dirty tree의 package 내용만 확인하기 위해 git 검사만 제외했고 registry에는 쓰지 않았다. 사용자에게 제공한 실제 발행 명령은 git 검사와 명시적인 feature publish branch를 유지한다. dry-run은 실제 계정의 npm 발행 권한까지 확인한 결과가 아니다.
+- 종료: [registry 조회·tarball 해시·검증 결과](./RELEASE_PREPARATION.json)를 보존했다. 실제 npm 발행·태그 push·main 병합·Pages 배포는 실행하지 않았으며 사용자가 실행할 명령을 제공한다.
+
+## 12. 인계 — 2026-10-26
+
+- **done:** DevTools·데모·문서와 Node24 전환 완료. npm 현재 상태를 확인해 core 3.3.0/DevTools 0.1.0만 발행 대상으로 확정하고 publishConfig·LICENSE·changelog·배포 명령을 정리했다. 전체 gate와 실제 tarball 소비자 및 dry-run을 검증했다.
+- **next:** 사용자는 docs/RELEASING.md에 따라 npm 권한이 있는 계정으로 core→DevTools를 발행하고 확인한 뒤 태그/main/Pages 절차를 수행한다. M-DT 사람 검사는 별도 기록한다. 더 오래된 소비자 Node의 Svelte CJS 지원을 선언하려면 해당 버전에서 별도 검증한다.
 - **blockers:** 현재 Node24 전체 gate의 알려진 blocker 없음. M-DT-01~08 사람 검사는 미수행이므로 사람의 출시 검토 완료라고 표시하지 않는다. 사용자 승인 대기 항목은 없다.
-- **commit:** 사이트 문서 보완의 부모는 `13e620ec78ebc4ef45946be18839e436852d2246`. `git log -1 --format='%H %s' -- docs/devtools stateRefDocs`로 최종 변경 commit을 확인한다. 자기 commit SHA는 추정하지 않는다.
-- **evidence:** WALKTHROUGH_VALIDATION.json(첫 체험), NODE24_VALIDATION.json(Node24 전환), VALIDATION_RESULTS.json(이전 환경), 재현 가능한 test/bench/browser scripts, 사용 가이드.
+- **commit:** 배포 준비의 부모는 `8da30ed1bfc4553096447e93d1a8fac3d739acf0`. `git log -1 --format='%H %s' -- docs/devtools docs/RELEASING.md`로 최종 변경 commit을 확인한다. 자기 commit SHA는 추정하지 않는다.
+- **evidence:** RELEASE_PREPARATION.json(배포 준비), WALKTHROUGH_VALIDATION.json(첫 체험), NODE24_VALIDATION.json(Node24 전환), VALIDATION_RESULTS.json(이전 환경), 재현 가능한 test/bench/browser scripts, 배포 가이드.
 - **context:** ctxbin credential은 명령 환경에서만 사용했다. 코드·문서·커밋에 보관하지 않았다.

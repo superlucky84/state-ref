@@ -16,8 +16,7 @@ export const SyncObservationKo = mount(() => {
 
       <p>
         이 메타데이터를 모아 보는 앱 내 패널과 이력 recorder는{' '}
-        <a href="#/ko/guide/devtools">DevTools 가이드(미출시)</a>에서
-        설명합니다.
+        <a href="#/ko/guide/devtools">DevTools 가이드</a>에서 설명합니다.
       </p>
 
       <CodeBlock

@@ -17,11 +17,9 @@ The documentation deployment workflow already reads `.nvmrc`, so local and CI bu
 
 ## Try DevTools locally
 
-From a local checkout of `feat/state-ref-devtools`:
+From the root of a checkout containing state-ref 3.3.0 and DevTools 0.1.0 (the release branch before merging, or main after merging):
 
 ```sh
-git fetch origin
-git switch feat/state-ref-devtools
 git pull --ff-only
 nvm install
 nvm use
@@ -45,3 +43,7 @@ The development version does not force every consumer of `state-ref` or its conn
 For **Svelte 5 through CommonJS** (`require('@stateref/connect-svelte')`), the consumer's Node must support loading ESM through `require()`. Changing only the contributor's Node version does not add that capability to an older consumer runtime. This repository validates that path on **Node 24.19.0**. Other Node versions with `require(ESM)` support need their own validation before being claimed as supported.
 
 ESM consumers can use `import { connectSvelte } from '@stateref/connect-svelte'`. ESM-based SSR does not require a CommonJS entry point. The Svelte runtime stays external to the connector so component lifecycle state is shared with the application.
+
+## Publishing
+
+See [RELEASING](./RELEASING.md) for the exact target versions, core → DevTools publication order, tarball checks, npm verification and documentation deployment. Contributor setup does not publish packages.

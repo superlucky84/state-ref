@@ -16,7 +16,7 @@ export const SyncObservation = mount(() => {
 
       <p>
         For the in-app panel and bounded history built on this metadata, see the{' '}
-        <a href="#/guide/devtools">DevTools guide (unreleased)</a>.
+        <a href="#/guide/devtools">DevTools guide</a>.
       </p>
 
       <CodeBlock
