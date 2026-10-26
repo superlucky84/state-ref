@@ -83,3 +83,5 @@ node packages/devtools/test/bundle.mjs
 ```
 
 The canonical implementation plan and remaining work are in [docs/devtools](../../docs/devtools/IMPLEMENT.md).
+
+The documentation site includes **Getting Started → DevTools (unreleased)** in English and Korean. The [English page source](../../stateRefDocs/src/pages/DevTools.tsx) and [한국어 페이지 원문](../../stateRefDocs/src/pages/DevTools_ko.tsx) cover the local walkthrough, application setup/cleanup, headless recording, Sync metadata and limits. These site changes are included in this branch and have not been deployed to the public site.

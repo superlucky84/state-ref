@@ -171,6 +171,13 @@ tools.dispose();
 
 ## 6. 남은 검증과 진행 조건
 
+### 사이트 문서 보완 — U-DT-11
+
+- [x] 기존 사이트의 한·영 페이지 구조와 hash routing을 따른다. `/guide/devtools`, `/ko/guide/devtools`를 시작하기 메뉴에 연결하고 Sync 관측 문서에서도 찾을 수 있게 한다.
+- [x] 기능 요약 → 6단계 로컬 체험 → 개발용 연결/해제 → headless/Sync → 한도·미지원 범위 순서다. 미출시 core 3.3.0/DevTools 0.1.0과 npm 3.2.2의 차이, production 제외, Vite/Node 개발 조건, inline/floating, 마스킹과 구독 횟수 의미를 설명한다.
+- [x] 한·영 페이지는 같은 코드 예제를 import한다. 사이트에 보이는 실제 TypeScript 예제를 기존 문서 예제 검사에 포함해 공개 dist 타입과 Vite의 실제 ImportMeta 선언으로 검사한다.
+- 검증: README/사이트/패키지 안내의 일치, 문서 타입/build/lint, 브라우저의 두 언어 직접 주소·메뉴·언어 전환·Sync 관련 링크. 문서 사이트나 npm을 이 작업에서 배포하지 않는다.
+
 ### 첫 체험 안내 — U-DT-10
 
 - [x] 기존 별빛 정비소의 `mission.html?devtools=1`에만 공통 개발용 walkthrough를 붙인다. 여섯 프레임워크의 실제 앱 동작은 유지한다. 기본 검증용 화면은 바꾸지 않는다.

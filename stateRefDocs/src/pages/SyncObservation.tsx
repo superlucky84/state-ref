@@ -14,6 +14,11 @@ export const SyncObservation = mount(() => {
 
       <h2>The Cache</h2>
 
+      <p>
+        For the in-app panel and bounded history built on this metadata, see the{' '}
+        <a href="#/guide/devtools">DevTools guide (unreleased)</a>.
+      </p>
+
       <CodeBlock
         language="typescript"
         code={`const stopObserving = client.subscribeCache(event => {

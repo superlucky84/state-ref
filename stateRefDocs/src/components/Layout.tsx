@@ -8,6 +8,8 @@ import { Introduction } from '@/pages/Introduction';
 import { IntroductionKo } from '@/pages/Introduction_ko';
 import { QuickStart } from '@/pages/QuickStart';
 import { QuickStartKo } from '@/pages/QuickStart_ko';
+import { DevTools } from '@/pages/DevTools';
+import { DevToolsKo } from '@/pages/DevTools_ko';
 import { CreateStore } from '@/pages/CreateStore';
 import { CreateStoreKo } from '@/pages/CreateStore_ko';
 import { Watch } from '@/pages/Watch';
@@ -112,6 +114,8 @@ const routes: Record<string, PageComponent> = {
   '/ko/guide/introduction': IntroductionKo,
   '/guide/quick-start': QuickStart,
   '/ko/guide/quick-start': QuickStartKo,
+  '/guide/devtools': DevTools,
+  '/ko/guide/devtools': DevToolsKo,
   '/guide/create-store': CreateStore,
   '/ko/guide/create-store': CreateStoreKo,
   '/guide/watch': Watch,

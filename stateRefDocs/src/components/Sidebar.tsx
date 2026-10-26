@@ -22,6 +22,10 @@ const menuData: MenuSection[] = [
         link: '/guide/quick-start',
       },
       {
+        text: { en: 'DevTools (unreleased)', ko: 'DevTools (미출시)' },
+        link: '/guide/devtools',
+      },
+      {
         text: { en: 'GitHub', ko: 'GitHub' },
         link: 'https://github.com/superlucky84/state-ref',
         external: true,

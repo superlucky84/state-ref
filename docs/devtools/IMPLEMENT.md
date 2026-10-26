@@ -254,11 +254,21 @@ Node24 packaging을 반복하다 기존 `fix-declarations.mjs`의 비멱등 문�
 - 실행 검증: `pnpm dev:devtools`의 실제 명령으로 5181 서버 시작, mission 화면과 `/mission-api/ships/1` HTTP 200, Ctrl+C 종료를 확인했다. 메모리 API가 Vite에 포함되므로 별도 환경변수·외부 서비스가 필요 없다.
 - 종료: [브라우저 결과·코드 해시](./WALKTHROUGH_VALIDATION.json)를 기록했다. 실제 화면 이미지를 확인했으며 사람의 M-DT 항목 전체를 통과 처리하지 않았다.
 
-## 10. 인계 — 2026-10-25
+## 10. 사이트 문서 보완 — 완료, 2026-10-26
 
-- **done:** 요구/설계→코어→recorder→Sync→앱 내 패널→자동 hardening/6종 integration→가이드·브랜치 버전 메타데이터. Node24 전환과 첫 체험용 6단계 안내/inline 관측창/실행 명령을 구현·검증했다.
+- 기준: `13e620ec78ebc4ef45946be18839e436852d2246`. 사용자 U-DT-11.
+- 발견: 루트 README/SDK README/개발 실행 가이드에는 설명이 있으나 `stateRefDocs`에는 DevTools 제품 가이드가 없다. 이전 Phase 7의 사이트 반영 주장은 이 누락을 포함하지 못했다.
+- 구현: [영문 페이지](../../stateRefDocs/src/pages/DevTools.tsx), [한국어 페이지](../../stateRefDocs/src/pages/DevTools_ko.tsx), [공유 예제](../../stateRefDocs/src/content/devtools-examples.ts). 시작하기 메뉴/라우트와 기존 Sync 관측 페이지를 연결하고 루트/core/SDK README에 기능·제한·체험·사이트 문서 위치를 보완했다.
+- Test Hardening: Node24.19.0/pnpm9.12.3에서 `node scripts/check-doc-examples.mjs` pass. 신규 사이트 TypeScript **3/3**과 기존 README를 합쳐 **27 blocks/18 units**를 공개 dist 타입에 컴파일했다. Vite 예제는 실제 `vite/client.d.ts`의 ImportMeta 선언을 사용한다. 기존 문서의 15개 skip은 사유와 함께 그대로 남겼다. 변경 파일 lint/Prettier와 링크·공백 검사 pass.
+- Integration Test: `pnpm build:docs` pass(사이트 TypeScript 검사 포함). 빌드된 사이트를 Chromium **154.0.8037.57**에서 열어 한·영 직접 주소, 메뉴 진입, 언어 전환 후 경로 유지, 동일한 실제 코드 예제 3개, Sync 관련 링크, 375px 화면의 가로 넘침 없음, 브라우저 오류 0을 확인했다. 런타임 변경이 없어 core/mission 성능 검사를 반복하지 않았다.
+- 경로: `/state-ref/#/guide/devtools`, `/state-ref/#/ko/guide/devtools`. 로컬 `pnpm dev:docs`의 시작하기 → DevTools에서 찾는다. root/core/SDK README는 사이트 가이드 위치를 연결한다.
+- 종료: 작업 브랜치의 문서 소스/빌드 검증 완료. 공개 사이트 배포/main 병합/npm 발행은 수행하지 않았다. `.github/workflows/deploy-docs.yml`은 main의 사이트 변경을 배포하므로 이 브랜치를 푸시하는 것만으로 공개 Pages가 갱신됐다고 주장하지 않는다.
+
+## 11. 인계 — 2026-10-26
+
+- **done:** 요구/설계→코어→recorder→Sync→앱 내 패널→자동 hardening/6종 integration→가이드·브랜치 버전 메타데이터. Node24 전환과 첫 체험용 6단계 안내/inline 관측창/실행 명령, README 및 사이트 한·영 DevTools 가이드를 구현·검증했다.
 - **next:** 사용자는 `pnpm dev:devtools`로 별빛 정비소의 안내를 따라 처음 체험한다. 이후 브랜치 리뷰 및 MANUAL_TEST_CHECKLIST의 사람 검사. 더 오래된 소비자 Node의 Svelte CJS 지원을 선언하려면 해당 버전에서 별도 검증한다. npm 발행·main 병합은 수행하지 않는다.
 - **blockers:** 현재 Node24 전체 gate의 알려진 blocker 없음. M-DT-01~08 사람 검사는 미수행이므로 사람의 출시 검토 완료라고 표시하지 않는다. 사용자 승인 대기 항목은 없다.
-- **commit:** 첫 체험 안내 변경의 부모는 `aed3845ff3ead9b1af89612748815df9ad25a039`. `git log -1 --format='%H %s' -- docs/devtools packages/devtools`로 최종 변경 commit을 확인한다. 자기 commit SHA는 추정하지 않는다.
+- **commit:** 사이트 문서 보완의 부모는 `13e620ec78ebc4ef45946be18839e436852d2246`. `git log -1 --format='%H %s' -- docs/devtools stateRefDocs`로 최종 변경 commit을 확인한다. 자기 commit SHA는 추정하지 않는다.
 - **evidence:** WALKTHROUGH_VALIDATION.json(첫 체험), NODE24_VALIDATION.json(Node24 전환), VALIDATION_RESULTS.json(이전 환경), 재현 가능한 test/bench/browser scripts, 사용 가이드.
 - **context:** ctxbin credential은 명령 환경에서만 사용했다. 코드·문서·커밋에 보관하지 않았다.

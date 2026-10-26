@@ -148,6 +148,12 @@ I would like to extend my gratitude to the following people and projects:
 
 `@stateref/devtools` adds read-only state/history/subscription inspection, Sync metadata, and an optional framework-independent browser panel. This branch prepares state-ref 3.3.0 and DevTools 0.1.0. See the [setup and cleanup guide](packages/devtools/README.md). The six framework demos enable the panel with `?devtools=1` on their development server.
 
+- **State / Timeline:** current bounded previews, before/after values, batch groups and recording gaps.
+- **Subscriptions / Sync:** read paths and observed runs, plus cache/owners/mutation metadata. Run counts are not component render counts; Sync payloads are omitted.
+- **Development only:** optional recorder/panel imports, floating or inline layout, per-store redaction, bounded history and explicit cleanup. No state editing, time travel or Redux DevTools adapter.
+
+After `pnpm build`, run **`pnpm dev:devtools`** for the six-step Starlight Garage walkthrough. The documentation site includes English and Korean pages under **Getting Started → DevTools** ([English source](stateRefDocs/src/pages/DevTools.tsx), [한국어 원문](stateRefDocs/src/pages/DevTools_ko.tsx)). These site changes are part of this unreleased branch.
+
 ## Contributing
 
 Development and verification use Node **24.19.0 LTS** and pnpm **9.12.3**. Run `nvm use` before `pnpm install --frozen-lockfile` and `pnpm gate`. See [development setup and consumer compatibility](docs/DEVELOPMENT.md).
