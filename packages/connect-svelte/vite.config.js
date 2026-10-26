@@ -7,12 +7,15 @@ import { svelteTesting } from '@testing-library/svelte/vite';
 
 export default defineConfig({
   plugins: [
-    checker({
-      typescript: true,
-      eslint: {
-        lintCommand: 'eslint "./src/**/*.{ts,tsx}"',
-      },
-    }),
+    // Checker watch workers can crash fsevents on macOS during test shutdown.
+    // Builds and the gate run the type and lint checks separately.
+    !process.env.VITEST &&
+      checker({
+        typescript: true,
+        eslint: {
+          lintCommand: 'eslint "./src/**/*.{ts,tsx}"',
+        },
+      }),
     dts({
       outputDir: ['dist'],
     }),
