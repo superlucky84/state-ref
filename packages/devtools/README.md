@@ -17,6 +17,8 @@ export const watch = devtools(createStore({ count: 0, token: 'fixture' }), {
   enabled: import.meta.env.DEV,
   hot: import.meta.hot,
   redact: [['token']],
+  // Optional initial position; saved UI choices take precedence.
+  panel: { buttonPosition: 'bottom-left' },
 });
 
 // Pass watch to your usual framework connector.
@@ -42,6 +44,14 @@ export const client = devtools(createSyncClient(), {
 - Repeated registration of one object is idempotent. Different objects with the same name stay distinct. The first registration copies its name and masks; omitted settings inherit them, and conflicting explicit settings are rejected. Root stores accept `redact`; Sync only collects metadata.
 - The first registration may set `panel: { target: element, layout: 'inline' }`. Defaults are a floating panel on the document body. Later registrations must omit panel settings or match them. Stop all automatic tools before changing the shared layout.
 - Sync is optional; no Sync runtime is imported by this entry. Existing query/mutation/connector calls and owners are unchanged. Continue using a separate client for each SSR request. For recording on the server, use the headless API below.
+
+## Move the toggle button
+
+In a floating panel, open **Settings → Toggle button position** and choose any of the four corners. After **Hide**, the toggle appears there; reopening the panel keeps its original position. Escape closes open settings first, then hides the panel on the next press.
+
+The choice is remembered in localStorage for the same origin. A saved valid choice takes precedence over the optional initial `panel: { buttonPosition: 'bottom-left' }`; otherwise the default is `'bottom-right'`. Available values are `'top-left'`, `'top-right'`, `'bottom-left'` and `'bottom-right'`. The explicit `mountPanel()` API accepts the same `buttonPosition` option and exports its `ButtonPosition` type. Automatic registrations share the first panel configuration, so repeat it consistently or omit it on later registrations.
+
+Only the corner preference is saved, never application state or history. If storage is blocked, position changes still work for the current mount. Inline panels keep their toggle inside the supplied container, hide the position setting and do not access this preference.
 
 ## Advanced: recorder without a panel
 

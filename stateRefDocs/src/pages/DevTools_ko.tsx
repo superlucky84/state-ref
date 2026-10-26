@@ -101,6 +101,22 @@ export const DevToolsKo = mount(() => {
         거절하므로 재등록 시 설정을 일관되게 유지하세요.
       </p>
 
+      <h2>접힌 버튼의 위치 바꾸기</h2>
+      <p>
+        Settings → Toggle button position에서 네 모서리 중 하나를 선택하세요. 앱
+        코드를 바꾸지 않아도 Hide 후 버튼이 선택한 위치에 나타납니다. 다시
+        열었을 때 패널의 배치는 유지됩니다. 같은 origin에서 선택을 기억하며,
+        유효한 저장값이 초기 옵션 <code>panel.buttonPosition</code>보다
+        우선합니다. 저장값과 옵션이 없으면 오른쪽 아래가 기본입니다. 옵션은
+        top-left, top-right, bottom-left, bottom-right입니다.
+      </p>
+      <p>
+        Escape는 열린 설정부터 닫습니다. localStorage가 차단돼도 현재 화면의
+        위치 변경은 동작합니다. 앱 값이나 이력은 저장하지 않고 모서리 선택만
+        저장합니다. inline 패널은 컨테이너 안에서 접고 펼치며 이 설정을
+        표시하거나 저장소에 접근하지 않습니다.
+      </p>
+
       <h2>패널 없이 기록만 사용하기</h2>
       <p>
         recorder는 DOM을 요구하지 않는 ESM 진입점입니다. Vite 개발 서버는 개발용

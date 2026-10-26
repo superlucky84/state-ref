@@ -299,11 +299,23 @@ Node24 packaging을 반복하다 기존 `fix-declarations.mjs`의 비멱등 문�
 - Integration Test C 완료: 실제 사이트 build→배포용 임시 worktree→변경 파일 복사→로컬 배포 commit 생성→정리를 통과했다. 원격 push는 하지 않았다. 실제 npm 발행·tag·main merge·공개 Pages 배포는 실행하지 않았다.
 - 종료: [배포 인계 증거](./RELEASE_HANDOFF.json)를 추가했다. 기존 AUTO/이전 JSON은 과거 검증 증거로 보존한다. RELEASING에 PR과 사용자 PC 발행 위치를 연결했다.
 
-## 14. 인계 — 2026-10-26
+## 14. 토글 버튼 위치 — 완료, 2026-10-26
 
-- **done:** 공통 watch/Sync wrapper·문서·데모와 전체 자동 검증을 `6335567`로 push하고 Draft PR #20을 만들었다. 후속 배포 script의 제한된 fetch 설정 문제를 수정해 실제 dry-run과 원격 무변경을 검증했다. git 검사를 유지한 npm dry-run과 PC 발행 절차도 준비했다.
-- **next:** 사용자가 자신의 PC에서 RELEASING의 npm 로그인→core3.3.0→DevTools0.1.0→설치 확인을 수행한다. 두 버전 확인 후 PR #20을 main으로 병합하면 문서 workflow가 실행된다. 사람의 M-DT 검사는 별도로 기록한다.
-- **blockers:** 코드/배포 준비의 알려진 blocker 없음. 실제 npm 발행은 사용자 PC의 계정 인증/권한이 필요하며 아직 미수행이다. 사람 M-DT-01~08/장시간 heap 검사는 미수행이다.
-- **commit:** 후속 변경의 부모는 `6335567b363c14e5d43d94d3186bada6790b179c`. 실제 후속 commit은 `git log -1 --format='%H %s' -- scripts/deploy-docs.mjs docs/devtools/RELEASE_HANDOFF.json`로 확인한다.
-- **evidence:** RELEASE_HANDOFF.json(현재 배포 인계), AUTO_VALIDATION.json(공통 API), 그 외 이전 JSON(당시 코드 검증). PR #20과 dry-run은 실제 발행/merge 완료를 뜻하지 않는다.
-- **context:** credential을 코드·문서·commit에 보관하지 않는다. npm 발행은 사용자가 선택한 PC에서 진행한다.
+- 기준: `3cbdeaa140fb561ab064c805b96197b64647da89`, U-DT-17~19. 원격 branch와 일치한 기준에서 문서 계약을 먼저 확정했다. registry는 core latest3.2.2/SDK404로 미발행 core3.3.0/SDK0.1.0을 유지한다. PR은 영문으로 작성한다.
+- 구현 A 완료: `PanelOptions.buttonPosition`과 공개 `ButtonPosition` 타입, floating 패널의 Settings → Toggle button position을 추가했다. 네 모서리에서 launcher를 배치하고 펼친 패널의 좌표는 유지한다. auto의 검증·복사·초기 옵션 충돌 처리에도 반영했다. inline은 컨테이너 안에 유지하고 설정을 숨기며 위치 저장소에 접근하지 않는다.
+- 기억/환경: mount에서 저장된 유효 선택→초기 옵션→bottom-right 순으로 적용한다. UI 변경 때만 localStorage에 enum 하나를 저장하며 앱 값/이력은 저장하지 않는다. getter/read/write 차단과 잘못된 기존 값은 무시하고 현재 화면 조작은 유지한다. Settings/Escape/Hide의 focus와 기존 abort 수명으로 listener를 정리한다.
+- Test Hardening B 완료: SDK **45/45 pass**, SDK source 타입·공개 strict Node16 consumer 타입·lint/Prettier pass. source 변경·이력 재등록 없음, 저장 우선순위/손상값/차단·inline 미접근·키보드·unmount 뒤 handler 해제·invalid 옵션/auto 충돌을 검증했다. SSR에서는 panel import와 등록에 hostile storage getter를 두어 접근 0회를 확인했다.
+- Integration Test C 완료: 실제 Vite/Chromium **154.0.8037.57**에서 네 모서리 좌표(16px inset), 스크롤 뒤 유지, 펼친 panel 좌표 불변, reload/명시적 초기 옵션보다 저장값 우선, 키보드-only 조작, 375px popup/launcher 가로 범위, 저장소 getter/메서드 차단 중 이동과 쓰기 이력, inline 종료를 통과했다. 데모 테마 없는 fixture의 설정/접힌 버튼 화면도 확인했다.
+- 회귀: 여섯 앱의 기존 browser와 walkthrough, auto의 실제 사본 간 중복/요청·owners 불변/HMR/GC 검사 pass. `pnpm check:examples`의 타입·production build·operation·bundle·SSR, packaging(Svelte CJS/SSR 포함), optional-peer, SDK/auto bundle pass. 여섯 production JS/CSS **35 files**에 panel/auto/walkthrough/위치 저장 key marker가 없다. core source가 그대로여서 전체 gate/성능 bench는 반복하지 않았으며 과거 전체 gate를 이번 변경의 새 실행으로 표시하지 않는다.
+- 번들: 기본 auto gzip 증분 **30/128 B**, 개발 core+recorder **9,293 B/10 KiB**, core+recorder+panel **13,780 B/30 KiB**, core+auto+panel **14,162 B/30 KiB**로 기존 cap을 유지했다. panel 갱신 p95 **18.8/100 ms**다.
+- 문서/배포 산출물: README·changelog·한영 사이트에 UI 선택/초기 옵션/저장 우선순위/inline/차단 정책을 설명했다. 사이트 build/브라우저·문서 예제 **29 blocks/20 units**(기존15 skip 유지) pass. 새 SDK 실제 pack **16 files**는 공유 JS chunk/선언을 포함하며, 기존 core tarball과 함께 Sync 없는 새 npm 소비자에서 공개 타입(ButtonPosition 포함)·SSR·production identity·headless 해제를 통과했다.
+- 종료: [실행 결과·코드/타르볼 해시](./POSITION_VALIDATION.json)를 추가했다. 이전 JSON은 당시 코드 증거로 보존한다. `?devtools=1`은 데모 조건이며 실제 앱에는 필요하지 않다. `enabled`는 등록 시점 조건이고 기존 등록 종료는 stopDevtools를 사용한다. npm 발행은 사용자 PC에서 진행한다.
+
+## 15. 인계 — 2026-10-26
+
+- **done:** 공통 API·배포 script를 포함한 기존 구현 위에 토글 위치 UI/초기 옵션/브라우저 기억을 추가하고 scoped 자동 검증·문서·pack 소비자 검사를 완료했다. 같은 feature branch에 commit/push하고 PR #20을 영문으로 갱신한다.
+- **next:** 최신 branch를 받은 뒤 `pnpm build:devtools`, `pnpm dev:devtools`로 실행한다. 기본 floating은 `http://localhost:5181/?devtools=1`의 Settings에서 체험한다. 정비소 mission의 inline 배치에서는 이 위치 설정을 표시하지 않는다. 실제 npm 발행은 사용자 PC에서 RELEASING의 core→SDK→설치 확인 후 PR main 병합/Pages 순서로 진행한다.
+- **blockers:** 이번 자동 검증의 알려진 blocker 없음. 사람 M-DT-01~08/장시간 heap 검사는 미수행이며 실제 npm 발행/사이트 공개 배포는 아직 미수행이다.
+- **commit:** 토글 위치 변경의 부모는 `3cbdeaa140fb561ab064c805b96197b64647da89`. 실제 commit은 `git log -1 --format='%H %s' -- packages/devtools/src/button-position.ts docs/devtools/POSITION_VALIDATION.json`로 확인한다.
+- **evidence:** POSITION_VALIDATION.json(현재 토글 위치), RELEASE_HANDOFF.json(이전 배포 인계), AUTO_VALIDATION.json(이전 공통 API), 그 외 이전 JSON(당시 검증). PR/dry-run은 실제 발행/merge 완료를 뜻하지 않는다.
+- **context:** PR은 영문으로 유지하고, credential은 코드·문서·commit에 보관하지 않는다. npm 로그인/발행은 사용자가 선택한 PC에서 진행한다.

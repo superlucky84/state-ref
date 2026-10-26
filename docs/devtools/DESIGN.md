@@ -210,6 +210,13 @@ const client = devtools(createSyncClient(), {
 - [x] 공개 가이드는 특정 버전의 사용법으로 정리해 출시 뒤 남을 미출시 표기를 제거한다. 실제 발행 완료 여부는 IMPLEMENT와 registry로 구분한다. 데모 명령은 현재 checkout을 사용해 브랜치 삭제에 의존하지 않는다.
 - 검증: Node24 전체 gate, 실제 pack 두 개의 export/declaration/LICENSE/peer/workspace 치환 확인과 tarball 소비자 smoke, publish dry-run, docs build 및 변경 문서 예제. 실제 registry mutation은 하지 않는다.
 
+### 토글 버튼 위치 — U-DT-18
+
+- [x] **IC-POS-01 API/배치:** `PanelOptions.buttonPosition?: ButtonPosition`과 공개 타입 `ButtonPosition`을 추가한다. 값은 `top-left`, `top-right`, `bottom-left`, `bottom-right`다. floating 패널을 접은 launcher에만 적용하며 펼친 패널은 기존 오른쪽 아래 배치를 유지한다. inline은 기존 컨테이너 안에서 접고 펼치며 위치 설정 UI를 표시하지 않고 위치 옵션을 배치에 적용하지 않는다. auto의 panel 복사·검증·초기 설정 충돌 검사에도 같은 옵션을 포함한다.
+- [x] **IC-POS-02 UI/수명:** floating 패널 header의 Settings disclosure에서 Toggle button position을 선택한다. 키보드로 조작할 수 있고 Escape는 열린 설정을 먼저 닫아 Settings로 focus를 돌린다. Hide/접기 시 설정도 닫고 이동한 launcher에 focus를 둔다. 위치 변경은 recorder/선택 source/이력을 재생성하지 않는다. listener는 기존 panel abort 수명에 포함한다.
+- [x] **IC-POS-03 기억/환경:** mount 때 유효한 localStorage 선택 → 초기 buttonPosition 옵션 → bottom-right 순서로 선택한다. 같은 origin에서 `@stateref/devtools/button-position/v1`에 네 enum 중 하나만 저장하고 앱 값·이력은 저장하지 않는다. 초기 mount는 저장하지 않으며 UI 변경 때만 기록한다. 저장소 getter/read/write 오류나 잘못된 기존 값은 무시하고 패널은 계속 동작한다. import·production·disabled·SSR에서 저장소에 접근하지 않는다. inline도 저장소에 접근하지 않는다.
+- 검증: 실제 브라우저에서 네 모서리의 launcher 좌표·375px 화면·펼친 패널 좌표 불변, UI/키보드·reload 후 기억·저장값/초기 옵션 우선순위·차단된 저장소·inline 및 unmount를 검사한다. auto 옵션 타입/검증/충돌·중복, production no-op/bundle 제외, 선택적 Sync와 기존 여섯 앱을 회귀 검증한다. 기존 core/SDK/UI gzip cap은 유지한다.
+
 ### 배포 인계 검증 — U-DT-16
 
 - [x] **IC-REL-01:** Git의 remote fetch 설정이 main/feature만 포함해도 문서 배포 스크립트가 동작해야 한다. `gh-pages`를 명시적인 원격 branch→local remote-tracking refspec으로 fetch한 뒤 기존 detached worktree 흐름을 유지한다. 앱 runtime과 발행 버전은 바꾸지 않는다.

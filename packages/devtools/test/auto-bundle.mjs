@@ -52,7 +52,7 @@ if (process.argv.includes('development')) {
       'dir'
     );
     const entry = join(directory, 'entry.ts');
-    const body = `import {createStore} from 'state-ref'; import {devtools} from '@stateref/devtools/auto'; export const watch=devtools(createStore({count:0}),{enabled:true,name:'PRODUCTION-FIXTURE'});`;
+    const body = `import {createStore} from 'state-ref'; import {devtools} from '@stateref/devtools/auto'; export const watch=devtools(createStore({count:0}),{enabled:true,name:'PRODUCTION-FIXTURE',panel:{buttonPosition:'top-left'}});`;
     writeFileSync(entry, body);
     process.env.NODE_ENV = 'production';
     const result = await viteBuild({
@@ -73,6 +73,8 @@ if (process.argv.includes('development')) {
       'createDevtools',
       'document.',
       'MutationObserver',
+      'localStorage',
+      '@stateref/devtools/button-position/v1',
     ])
       assert.ok(!code.includes(forbidden), `Production retained ${forbidden}`);
     const exported = await import(

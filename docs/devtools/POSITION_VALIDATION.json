@@ -1,0 +1,250 @@
+{
+  "recordedOn": "2026-10-26",
+  "baseCommit": "3cbdeaa140fb561ab064c805b96197b64647da89",
+  "branch": "feat/state-ref-devtools",
+  "environment": {
+    "node": "v24.19.0",
+    "pnpm": "9.12.3",
+    "browser": "154.0.8037.57"
+  },
+  "sourceSha256": {
+    "packages/devtools/src/button-position.ts": "53c45490d6a2fee7b1ed9f5b7796ae830b7d7ddbd516a545b45917bb7bf68072",
+    "packages/devtools/src/panel.ts": "715f75e5c009ca7222b6bcd2608f18de4207972a6f35b31316ab443c8d0da57b",
+    "packages/devtools/src/auto.development.ts": "174faaeb38a90b8fe7889e8f248b846adc5ed8b9496ee63e3c9a1be7e5143886",
+    "packages/devtools/src/tests/panel-position.test.ts": "41b86d0b2c4084e909419c15bff779a48fe82e37e32c9c0b566798f7540ec93a",
+    "packages/devtools/src/tests/auto.test.ts": "79bff6db6fecec90d39a8b15d4786281ea6c0f716889e7afc8477ebde3fb7522",
+    "packages/devtools/src/tests/auto.ssr.test.ts": "7d536096f35984d6cb8780f58eac16f78d40c8e1231bdd09a2310155f062e4f0",
+    "packages/devtools/test/position-browser.mjs": "b7a53e958f0b5d29b23f619a68b31af6c3da65d74dd7503ee62d45a8719270d9",
+    "packages/devtools/test/types.ts": "0d250e79e8f6e1509589998f09a523d6ca0ff5d624209304cf5b507cf6e63555",
+    "packages/devtools/test/auto-bundle.mjs": "e722ce2172e9068ee7d2f063fae97f9c8a4fc024fad3381007cdab33d673fc76",
+    "packages/devtools/README.md": "675ad9a887fa96417847cd59ab2ecde105ddfb475fa71178ecdd03da0f600513",
+    "stateRefDocs/src/content/devtools-examples.ts": "ba22cd43eb1d27234d9341dd9062924ac1cd94fbf994fef0d0ee4cd16fd7c647",
+    "stateRefDocs/src/pages/DevTools.tsx": "4475d0986434cf4103c5563d1c39b5a4b138468dc74f4a235a6d9a0a82c2aadd",
+    "stateRefDocs/src/pages/DevTools_ko.tsx": "75788bab0a6ceea5f496cfcf115625cb8f5505d3ae2f126d45a8165e1c42808f",
+    "package.json": "cc0e41e15e5470c27b7814278e1fd2c3faecf4e8bac072ad81533e438bbecd31"
+  },
+  "registryBeforePublication": [
+    {
+      "name": "state-ref",
+      "status": 200,
+      "version": "3.2.2"
+    },
+    {
+      "name": "@stateref/devtools",
+      "status": 404
+    }
+  ],
+  "versionsKept": {
+    "state-ref": "3.3.0",
+    "@stateref/devtools": "0.1.0"
+  },
+  "commands": [
+    {
+      "command": "pnpm test:devtools",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm --filter @stateref/devtools exec tsc --noEmit",
+      "exitCode": 0
+    },
+    {
+      "command": "public consumer tsc --strict --module node16 --moduleResolution node16",
+      "exitCode": 0
+    },
+    {
+      "command": "eslint changed SDK/shared bootstrap/site sources",
+      "exitCode": 0
+    },
+    {
+      "command": "Prettier changed source/test files",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm build:devtools + fix-declarations",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm test:devtools:position:browser",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm test:devtools:browser",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm test:devtools:walkthrough",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm test:devtools:auto:browser",
+      "exitCode": 0
+    },
+    {
+      "command": "SDK/auto bundle scripts",
+      "exitCode": 0
+    },
+    {
+      "command": "optional-peer.mjs without Sync",
+      "exitCode": 0
+    },
+    {
+      "command": "check-packaging.mjs",
+      "exitCode": 0
+    },
+    {
+      "command": "check-doc-examples.mjs",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm check:examples",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm build:docs",
+      "exitCode": 0
+    },
+    {
+      "command": "built documentation site browser check",
+      "exitCode": 0
+    },
+    {
+      "command": "SDK pack and isolated tarball consumer with ButtonPosition",
+      "exitCode": 0
+    }
+  ],
+  "sdkTestsPassed": 45,
+  "positionBrowser": {
+    "browser": "154.0.8037.57",
+    "results": [
+      "Four viewport corners, scroll, focus and unchanged open panel; preference survives reload and overrides initial option",
+      "Invalid saved value fallback, initial option and keyboard-only settings/Escape",
+      "375px settings and all four toggle positions stay within viewport",
+      "Blocked storage getter/read/write: movement and recording continue without browser errors",
+      "Inline toggle stays in its container; stop removes the panel"
+    ],
+    "status": "PASS"
+  },
+  "existingBrowser": {
+    "browser": "154.0.8037.57",
+    "results": [
+      {
+        "panelLatency": {
+          "samples": 21,
+          "medianMs": 16.800000000745058,
+          "p95Ms": 18.800000000745058
+        }
+      },
+      "panel: state/timeline/subscriptions/Sync, redaction/XSS, pause/clear, focus/keyboard, CSS isolation, 20 mount cycles/dispose",
+      "react: real connector application + writes + subscriptions + Sync + HMR/reload",
+      "preact: real connector application + writes + subscriptions + Sync + HMR/reload",
+      "vue: real connector application + writes + subscriptions + Sync + HMR/reload",
+      "svelte: real connector application + writes + subscriptions + Sync + HMR/reload",
+      "solid: real connector application + writes + subscriptions + Sync + HMR/reload",
+      "lithent: real connector application + writes + subscriptions + Sync + HMR/reload"
+    ]
+  },
+  "walkthrough": {
+    "browser": "154.0.8037.57",
+    "results": [
+      "react: all six stories, real writes/save/subscriptions/batch, navigation, inline/mobile, Vite reload and opt-out PASS",
+      "preact: all six stories, real writes/save/subscriptions/batch, navigation, inline/mobile, Vite reload and opt-out PASS",
+      "vue: all six stories, real writes/save/subscriptions/batch, navigation, inline/mobile, Vite reload and opt-out PASS",
+      "svelte: all six stories, real writes/save/subscriptions/batch, navigation, inline/mobile, Vite reload and opt-out PASS",
+      "solid: all six stories, real writes/save/subscriptions/batch, navigation, inline/mobile, Vite reload and opt-out PASS",
+      "lithent: all six stories, real writes/save/subscriptions/batch, navigation, inline/mobile, Vite reload and opt-out PASS"
+    ]
+  },
+  "autoBrowser": "PASS: lifecycle/cross-copy panel, unchanged owners/reads, masking and retained-HMR GC",
+  "siteBrowser": {
+    "browser": "154.0.8037.57",
+    "results": [
+      "built-site English/Korean direct routes",
+      "Getting Started sidebar entry in both languages",
+      "language switch preserves DevTools route",
+      "both pages render the same three checked code examples",
+      "Sync observation and related links",
+      "375px viewport without horizontal page overflow",
+      "no browser runtime errors"
+    ],
+    "status": "PASS"
+  },
+  "docsExamples": {
+    "compiledBlocks": 29,
+    "units": 20,
+    "existingSkips": 15
+  },
+  "bundles": {
+    "defaultAutoIncrementalGzipBytes": 30,
+    "defaultAutoIncrementalCap": 128,
+    "coreRecorderGzipBytes": 9293,
+    "coreRecorderCap": 10240,
+    "coreRecorderPanelGzipBytes": 13780,
+    "coreAutoPanelGzipBytes": 14162,
+    "panelCap": 30720
+  },
+  "productionDemos": {
+    "frameworkCount": 6,
+    "jsCssFiles": 35,
+    "markersAbsent": [
+      "@stateref/devtools/auto/v1",
+      "@stateref/devtools/button-position/v1",
+      "data-stateref-devtools",
+      "data-devtools-walkthrough"
+    ]
+  },
+  "packedConsumer": {
+    "archives": [
+      {
+        "file": "state-ref-3.3.0.tgz",
+        "sha256": "bdd9345f352f61ba18fde9ffb54fd57608caff6f33f28aeb487343bcea93d378",
+        "files": 117
+      },
+      {
+        "file": "stateref-devtools-0.1.0.tgz",
+        "sha256": "f19fdb828f40536f98a001854036008207479cbda28d47251b63f0c8ddab2b83",
+        "files": 16
+      }
+    ],
+    "installedPackages": [
+      "node_modules/@stateref/devtools",
+      "node_modules/state-ref"
+    ],
+    "checks": [
+      "all exported dist/declaration targets present",
+      "MIT licenses and public metadata",
+      "no workspace references",
+      "Sync absent",
+      "production auto identity and core writes",
+      "development SSR auto identity without inspecting targets",
+      "development headless record and detach",
+      "strict Node16 consumer types"
+    ],
+    "status": "PASS"
+  },
+  "preferences": {
+    "key": "@stateref/devtools/button-position/v1",
+    "values": [
+      "top-left",
+      "top-right",
+      "bottom-left",
+      "bottom-right"
+    ],
+    "priority": [
+      "saved valid UI choice",
+      "initial buttonPosition option",
+      "bottom-right"
+    ],
+    "writeOnlyOnUiChange": true,
+    "applicationStateOrHistoryStored": false,
+    "inlineStorageAccess": false,
+    "blockedStorage": "current mount remains usable"
+  },
+  "limitations": [
+    "Full gate and core performance bench not repeated; core runtime unchanged, previous results remain historical.",
+    "Human usability and long-running heap checks remain unperformed.",
+    "No drag movement, cross-tab synchronization or configurable open-panel docking added.",
+    "Existing registration is stopped with stopDevtools; enabled is a registration-time condition.",
+    "No npm publication, main merge or Pages deployment performed."
+  ],
+  "status": "PASS"
+}

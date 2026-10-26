@@ -193,6 +193,33 @@ describe('automatic browser registration', () => {
     target.remove();
   });
 
+  it('copies the first toggle position and rejects invalid or conflicting options', async () => {
+    const panelOptions = { buttonPosition: 'top-left' as const };
+    const watch = createStore(0);
+    devtools(watch, { panel: panelOptions });
+    // The caller may replace its own configuration after registration.
+    Object.assign(panelOptions, { buttonPosition: 'bottom-left' });
+    devtools(watch);
+    expect(() =>
+      devtools(createStore(1), {
+        panel: { buttonPosition: 'bottom-left' },
+      })
+    ).toThrow(/panel already configured/);
+    expect(() =>
+      // @ts-expect-error Reject invalid JavaScript callers before attaching.
+      devtools(createStore(2), {
+        panel: { buttonPosition: 'middle' },
+      })
+    ).toThrow(/invalid panel/);
+    await flush();
+    expect(panel.mount).toHaveBeenCalledWith(sessions[0], {
+      target: document.body,
+      layout: undefined,
+      buttonPosition: 'top-left',
+    });
+    expect(sessions[0].getSnapshot().sources).toHaveLength(1);
+  });
+
   it('cleans failed attachments and failed hot registration without retained targets', () => {
     expect(() =>
       devtools({} as ReturnType<typeof createStore<number>>, {

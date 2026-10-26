@@ -17,6 +17,8 @@ export const watch = devtools(
     enabled: import.meta.env.DEV,
     hot: import.meta.hot,
     redact: [['token']],
+    // Optional initial position; saved UI choices take precedence.
+    panel: { buttonPosition: 'bottom-left' },
   }
 );
 

@@ -152,7 +152,7 @@ Wrap a root watch or your existing Sync client with `devtools(target, { enabled:
 
 - **State / Timeline:** current bounded previews, before/after values, batch groups and recording gaps.
 - **Subscriptions / Sync:** read paths and observed runs, plus cache/owners/mutation metadata. Run counts are not component render counts; Sync payloads are omitted.
-- **Development only:** optional recorder/panel imports, floating or inline layout, per-store redaction, bounded history and explicit cleanup. No state editing, time travel or Redux DevTools adapter.
+- **Development only:** optional recorder/panel imports, floating or inline layout, movable toggle with a remembered corner, per-store redaction, bounded history and explicit cleanup. No state editing, time travel or Redux DevTools adapter.
 
 After `pnpm build`, run **`pnpm dev:devtools`** for the six-step Starlight Garage walkthrough. The documentation site includes English and Korean pages under **Getting Started → DevTools** ([English source](stateRefDocs/src/pages/DevTools.tsx), [한국어 원문](stateRefDocs/src/pages/DevTools_ko.tsx)). Maintainers can find the target versions, publication order and commands in the [release guide](docs/RELEASING.md).
 

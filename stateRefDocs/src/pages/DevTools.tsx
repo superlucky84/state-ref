@@ -106,6 +106,23 @@ export const DevTools = mount(() => {
         rejected. Keep the same settings when registering it again.
       </p>
 
+      <h2>Move the toggle button</h2>
+      <p>
+        Open Settings → Toggle button position to choose a corner without
+        editing application code. Hide places the toggle there; reopening keeps
+        the panel's original layout. The choice is remembered for the same
+        origin. A saved valid choice overrides the optional initial{' '}
+        <code>panel.buttonPosition</code>; otherwise the default is
+        bottom-right. Options are top-left, top-right, bottom-left and
+        bottom-right.
+      </p>
+      <p>
+        Escape closes open settings first. If localStorage is blocked, movement
+        still works for the current mount. Only the corner preference is saved,
+        never app values or history. Inline panels keep their toggle inside the
+        container and do not show this setting or access its storage.
+      </p>
+
       <h2>Use the recorder without a panel</h2>
       <p>
         The recorder is an ESM entry with no DOM requirement. Vite's dev server

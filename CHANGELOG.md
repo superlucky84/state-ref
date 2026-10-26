@@ -30,6 +30,10 @@
   lazily opens one shared panel. Optional HMR leases, explicit
   `stopDevtools(target?)`, SSR/disabled no-ops and an import-free production
   default cover cleanup and deployment. Sync connector calls remain unchanged.
+- Floating toggle placement in four corners through panel Settings, with a
+  remembered browser preference and optional initial `buttonPosition`.
+  Toggle placement is independent of the open panel; inline panels stay in
+  their container. Storage failures leave inspection usable.
 - First release of the optional ESM recorder, requiring state-ref `^3.3.0`.
   State, Timeline, Subscriptions and Sync views are available through the
   separate `@stateref/devtools/panel` entry, with floating and inline layouts.

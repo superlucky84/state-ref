@@ -41,7 +41,7 @@ pnpm check:examples
 pnpm build:docs
 ```
 
-`pnpm gate`에는 전체 build·타입·lint·runtime·SSR·패키징·성능/번들 한도 검사가 포함된다. build 후 declaration 경로와 bundled skills도 정리되므로 부분 build만으로 발행하지 않는다. 브라우저 검증은 `pnpm test:devtools:browser`, `pnpm test:devtools:walkthrough`, `pnpm test:devtools:auto:browser`이며 Chromium 경로가 다르면 `CHROMIUM_PATH`를 지정한다. 사람의 사용성/heap 검사는 [체크리스트](./devtools/MANUAL_TEST_CHECKLIST.md)에서 별도로 확인한다.
+`pnpm gate`에는 전체 build·타입·lint·runtime·SSR·패키징·성능/번들 한도 검사가 포함된다. build 후 declaration 경로와 bundled skills도 정리되므로 부분 build만으로 발행하지 않는다. 브라우저 검증은 `pnpm test:devtools:browser`, `pnpm test:devtools:walkthrough`, `pnpm test:devtools:auto:browser`, `pnpm test:devtools:position:browser`이며 Chromium 경로가 다르면 `CHROMIUM_PATH`를 지정한다. 사람의 사용성/heap 검사는 [체크리스트](./devtools/MANUAL_TEST_CHECKLIST.md)에서 별도로 확인한다.
 
 ## 3. npm 계정과 배포 내용 확인
 

@@ -1,6 +1,7 @@
 import { createStore } from 'state-ref';
 import { createDevtools, type DevtoolsSnapshot } from '@stateref/devtools';
 import { devtools, stopDevtools } from '@stateref/devtools/auto';
+import { mountPanel, type ButtonPosition } from '@stateref/devtools/panel';
 import { createSyncClient } from '@stateref/sync';
 
 type Same<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B
@@ -60,3 +61,11 @@ tools.resume();
 tools.clear();
 detach();
 tools.dispose();
+
+const corner: ButtonPosition = 'top-left';
+devtools(original, { panel: { buttonPosition: corner } });
+mountPanel(createDevtools(), { buttonPosition: corner });
+// @ts-expect-error Positions must name a supported corner.
+devtools(original, { panel: { buttonPosition: 'center' } });
+// @ts-expect-error The explicit panel entry has the same position contract.
+mountPanel(createDevtools(), { buttonPosition: 'bottom' });

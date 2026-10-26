@@ -2,6 +2,7 @@ import type { Watch } from 'state-ref';
 import type { InspectableSyncClient } from './sync';
 import type { Devtools } from './types';
 import type { PanelOptions } from './panel';
+import { isButtonPosition } from './button-position';
 import type {
   AutoOptions,
   AutoStoreOptions,
@@ -77,6 +78,8 @@ function settings(options: AutoStoreOptions): Settings {
       (panel.layout !== undefined &&
         panel.layout !== 'floating' &&
         panel.layout !== 'inline') ||
+      (panel.buttonPosition !== undefined &&
+        !isButtonPosition(panel.buttonPosition)) ||
       (panel.target !== undefined &&
         (!panel.target.ownerDocument?.defaultView ||
           !(
@@ -88,7 +91,11 @@ function settings(options: AutoStoreOptions): Settings {
   return {
     name: options.name,
     hot: options.hot,
-    panel: panel && { target: panel.target, layout: panel.layout },
+    panel: panel && {
+      target: panel.target,
+      layout: panel.layout,
+      buttonPosition: panel.buttonPosition,
+    },
     redact: redact.map(path => [...path]),
     maskProvided: options.redact !== undefined,
   };
@@ -199,7 +206,10 @@ function createService(doc: Host): Service {
         options.panel &&
         panel &&
         ((options.panel.target ?? doc.body) !== (panel.target ?? doc.body) ||
-          (options.panel.layout ?? 'floating') !== (panel.layout ?? 'floating'))
+          (options.panel.layout ?? 'floating') !==
+            (panel.layout ?? 'floating') ||
+          (options.panel.buttonPosition ?? 'bottom-right') !==
+            (panel.buttonPosition ?? 'bottom-right'))
       )
         throw new Error(
           '@stateref/devtools/auto: panel already configured; stop auto tools before changing it.'
