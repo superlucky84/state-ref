@@ -2,16 +2,35 @@
 
 ## Unreleased
 
-### @stateref/sync
+### Added
 
-- Add `placeholderData: keepPreviousData` to component query observers in every
+- `@stateref/sync`: add `placeholderData: keepPreviousData` to component query observers in every
   connector. A callback can inspect the previous raw data and previous/current
   query keys. The preview stays observer-local, keeps the new query pending and
   never seeds its cache or editable resource.
 - Report placeholder callback failures as `errorSource: 'placeholder'` without
-  changing the shared query's READ status. Function-valued observer placeholders
-  now use a factory (`placeholderData: () => functionValue`). Explicit handle
-  placeholders remain value-only.
+  changing the shared query's READ status.
+
+### Fixed
+
+- Clear retained observer previews after confirmed timing/retry/compatibility
+  validation failures, including failures first discovered on attachment.
+  Speculative render errors leave confirmed history intact.
+- Skip placeholder history reads when display/peek already have actual data
+  or a query error, while retaining stable pending transition snapshots.
+
+### Breaking
+
+- `@stateref/sync`: function-valued observer `placeholderData` is now invoked as
+  a callback. Wrap a function payload in a factory:
+  `placeholderData: () => functionValue`. Explicit query/infiniteQuery handles
+  keep treating functions as values.
+- `QueryDisplayState.errorSource` adds `'placeholder'`. Update exhaustive
+  switches and narrower annotations to handle the new display error source.
+- This change targets `@stateref/sync` **0.4.0**. Release preparation must also
+  extend the six connectors' current `^0.3.0` peer range to include `^0.4.0`
+  (for example `^0.3.0 || ^0.4.0`), audit other sync consumers, and publish the
+  compatible connector metadata. Package version changes belong to that release.
 
 ## state-ref 3.3.0
 

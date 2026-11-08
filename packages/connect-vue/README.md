@@ -103,6 +103,7 @@ How it behaves:
 - The query opens on attach, loads if stale and shares a READ already in flight. When the scope ends, the handle is released one macrotask later, so a route swap in one patch neither cancels nor repeats a READ. In tests with fake timers, `await vi.advanceTimersByTimeAsync(0)` before asserting that the handle is gone.
 - A component deactivated by `<KeepAlive>` stays attached, keeping its owner and any READ, until it is evicted or unmounted.
 - Use `status === 'pending'` for loading UI; the first `fetchStatus` is the cache as it is (`'idle'` before the READ starts).
+- When retaining previews, select `const isPlaceholder = account(ref => ref.isPlaceholder.value)` and use `status === 'pending' && !isPlaceholder` for the full loading screen in the template.
 - Dependent query: `queryKey: ['user', id ?? null], enabled: id != null` in the getter. `enabled: false` shows idle and owns nothing.
 - Server rendering: create `createSyncClient({ ssr: true })` per request and fill it before rendering (`await client.prefetch(options)`, or `onServerPrefetch(() => client.prefetch(options))` in `setup`), then send `client.dehydrate()`. In the browser, call `client.hydrate(snapshot)` before mounting. On the server, selections read without subscribing, attaching or READing.
 

@@ -1,6 +1,6 @@
 # IMPLEMENT — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
-- 후속 상태(2026-11-08): `keepPreviousData` 단계 9~11 구현·자동 검증 완료. 현재 인계는 IMPLEMENT의 마지막 블록을 따른다. 이전 날짜의 결과는 당시 범위를 기록한 이력이다.
+- 후속 상태(2026-11-08): `keepPreviousData` 단계 9~14 구현·자동 검증 완료. PR #21 리뷰 반영 결과는 IMPLEMENT 단계 12~14를 따른다. 현재 인계는 IMPLEMENT의 마지막 블록을 따른다. 이전 날짜의 결과는 당시 범위를 기록한 이력이다.
 - 작성일: 2026-10-08
 - 상태: 단계 0~7 완료(2026-10-09), PR #17이 main에 병합됨(`8535fb7`). main에서 분기한 `fix/issue-18-shared-sync`의 후속 단계 8도 구현·자동 검증 완료(2026-10-10~11, U-QH-15~17, Draft PR #19). 코드 커밋은 `364d1a3`·`b71b1b6`·`8558e87`이며 최신 결과는 IMPLEMENT의 단계 8 및 진행 기록을 따른다. 사람의 전반적인 사용성 평가는 미수행이고 실제 릴리스·병합은 이번 범위 밖이다.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
@@ -532,10 +532,85 @@ Files:
 - `packages/connect-vue/README.md` (modified)
 - `skills/state-ref/reference/framework-connectors.md` (modified)
 
+## 단계 12 — PR #21 호환성·이력·투영 보완: 완료
+
+Refs: R-KP-07, R-KP-08, R-KP-09, DC-KP-05, DC-KP-06, DC-KP-07, DC-KP-08, M-KP-04, M-KP-05
+
+- 진입: a8b2ecd, 작업 트리 깨끗함. 기존 전체 gate 통과와 npm 0.3.1/PR 빌드 비교 재현 결과를 기준으로 한다. 네 문서를 먼저 갱신한다.
+- [x] T-KP-07/08 회귀를 추가하고 수정 전 실패를 확인한다.
+- [x] 확정 source 검증 실패와 attach/open 실패에서 이력을 초기화한다.
+- [x] loaded/error/initialData의 불필요한 이력 읽기를 제거하고 pending 일관성을 유지한다.
+- [x] Breaking·각 README·API 설명을 보완한다. 버전은 Unreleased/0.4.0 릴리스 준비 조건으로 기록한다.
+- 종료: 새 회귀와 기존 sync/React 타입·테스트 통과.
+
+검증: T-KP-07/08 추가 뒤 수정 전 6 실패·15 통과를 확인했고, 수정 후 21/21이 통과했다. source 타입 검사는 새 내부 테스트의 generic 추론 오류를 발견해 단계 13에서 명시 타입 인자를 보완한다. 로그: `/tmp/state-ref-pr21-review-{red,green,types}.log` (실행 환경 임시 증거).
+
+Files:
+- `CHANGELOG.md` (modified)
+- `docs/sync-query-hooks/DESIGN.md` (modified)
+- `docs/sync-query-hooks/IMPLEMENT.md` (modified)
+- `docs/sync-query-hooks/MANUAL_TEST_CHECKLIST.md` (modified)
+- `docs/sync-query-hooks/REQUIREMENTS.md` (modified)
+- `packages/connect-lithent/README.md` (modified)
+- `packages/connect-preact/README.md` (modified)
+- `packages/connect-react/README.md` (modified)
+- `packages/connect-solid/README.md` (modified)
+- `packages/connect-svelte/README.md` (modified)
+- `packages/connect-vue/README.md` (modified)
+- `packages/sync/README.md` (modified)
+- `packages/sync/src/display.ts` (modified)
+- `packages/sync/src/observe.ts` (modified)
+- `packages/sync/src/peek.ts` (modified)
+- `packages/sync/src/placeholder.ts` (modified)
+- `packages/sync/src/tests/keep-previous-data.test.ts` (modified)
+- `stateRefDocs/src/pages/ApiSync.tsx` (modified)
+- `stateRefDocs/src/pages/ApiSync_ko.tsx` (modified)
+
+## 단계 13 — PR #21 Test Hardening: 완료
+
+Refs: R-KP-07, R-KP-08, DC-KP-05, DC-KP-06, M-KP-04
+
+- 진입: 단계 12 구현 완료. 기준은 T-KP-07/08과 기존 keepPreviousData/observe/peek/display suites.
+- [x] speculative source 오류는 이력을 보존하고 늦은 attach 오류는 이력을 지우는 경계를 확인한다.
+- [x] 실제 새 데이터로 복구한 뒤 다시 유지되는 동작, stable snapshot/React 중단 렌더를 확인한다.
+- 종료: 수정 전 실패/수정 후 성공 및 기존 회귀 결과를 기록한다.
+
+검증: source 타입 검사 통과. sync 전체 **372/372**, keepPreviousData **25/25** 통과. T-KP-07/08은 11개 후속 사례를 포함한다. 현재 query가 렌더 도중 바뀌면 pending preview가 갱신되는 사례, 검증 통과 후 open 자체의 실패, initialData/query error의 이력 읽기 생략도 보강했다. 기존 React StrictMode/중단 렌더 DOM **2/2**도 새 sync build로 통과했다.
+
+Files:
+- `docs/sync-query-hooks/DESIGN.md` (modified)
+- `docs/sync-query-hooks/IMPLEMENT.md` (modified)
+- `docs/sync-query-hooks/MANUAL_TEST_CHECKLIST.md` (modified)
+- `docs/sync-query-hooks/REQUIREMENTS.md` (modified)
+- `packages/sync/README.md` (modified)
+- `packages/sync/src/tests/keep-previous-data.test.ts` (modified)
+- `stateRefDocs/src/pages/ApiSync.tsx` (modified)
+- `stateRefDocs/src/pages/ApiSync_ko.tsx` (modified)
+
+## 단계 14 — PR #21 Integration Test: 완료
+
+Refs: R-KP-07, R-KP-08, R-KP-09, DC-KP-05, DC-KP-06, DC-KP-07, DC-KP-08, M-KP-04, M-KP-05
+
+- 진입: 단계 13 완료. 변경 파일의 build와 source/public types를 기준으로 전체 gate를 실행한다.
+- [x] fresh build 포함 pnpm gate로 여섯 커넥터·문서·SSR·packaging·성능을 확인한다.
+- [x] 네 문서 결과/Files/인계를 맞추고 커밋·push·PR #21 설명을 갱신한다.
+- 종료: 자동 결과와 미실행 범위가 명확하고 PR에 검토 가능한 변경이 반영된다. 사용자 요청은 단계 12~14 전체 진행이며 별도 reviewer 실행은 포함하지 않는다.
+
+검증(2026-11-08): Node 24.19.0 / pnpm 9.12.3에서 `npm_config_workspace_concurrency=1 pnpm gate` exit 0. fresh build, source/public/negative/example types, README 예제, support-table, lint, workspace **1,266 통과·기존 Lithent concurrent 전용 2 제외**, SSR **15/15**, bundle/optional peer/packaging 모두 통과했다. sync는 **372/372**(keepPreviousData 25개 포함), 기존 React StrictMode/중단 렌더 사례 **2/2**가 통과했다. 성능 **6/6**, core 최소 gzip **3,757 B ≤ 3,800 B**. 전체 로그 `/tmp/state-ref-pr21-review-gate.log`는 이 환경의 임시 근거이며 위 명령으로 재현한다.
+
+리뷰 대응: Breaking 두 건과 0.4.0/peer 배포 조건, 여섯 README의 로딩 조건, README/API 역할 분리와 disabled 차이 안내를 반영했다. source 오류 초기화 누락과 loaded/error 투영의 불필요한 이력 읽기를 수정했다. 콜백 오류 표시 정책과 명시적 핸들의 함수 payload 호환성은 유지한다. 명시적 반응형 핸들의 callback 지원은 DC-KP-08의 후속 과제이며 함수를 오인하는 일괄 경고는 넣지 않는다. 패키지 버전 올림/peer 메타데이터 변경·게시, 전체 framework version matrix, 실제 브라우저 수동 체험, 별도 reviewer 실행은 이 검증 범위가 아니다.
+
+Files:
+- `docs/sync-query-hooks/DESIGN.md` (modified)
+- `docs/sync-query-hooks/IMPLEMENT.md` (modified)
+- `docs/sync-query-hooks/MANUAL_TEST_CHECKLIST.md` (modified)
+- `docs/sync-query-hooks/REQUIREMENTS.md` (modified)
+
 ## 현재 인계 — keepPreviousData (2026-11-08)
 
-- 기능 커밋: `1682ba7b1809b57973ec812d75bf958720f0a090` (기준 main: `367f32c9b5e944b241f0ca92e96a19440d5ce2c1`), 브랜치 `feat/keep-previous-data`. 사용자 요청대로 커밋·원격 push하고 [PR #21](https://github.com/superlucky84/state-ref/pull/21)을 일반 open PR로 생성했다. 이 인계 갱신은 별도 문서 커밋으로 반영한다.
-- 완료: 네 문서 선작성 → 공통 observer/helper/콜백 타입/peek·display 구현 → 테스트 보강 → fresh build 포함 전체 gate 통과. 사용 README·여섯 커넥터·한영 API/site·AI 참고 문서·Unreleased 안내 반영.
-- API: `import { keepPreviousData } from '@stateref/sync'`; `placeholderData: keepPreviousData` 또는 `(previous, { previousQueryKey, queryKey }) => T | undefined`. 새 key의 실제 데이터 우선, pending/loaded false 유지, isPlaceholder로 표시 구분. 명시적 핸들은 값 placeholder 계약 유지.
-- 다음: PR 검토 후 필요하면 릴리스 준비. 이번 구현·자동 검증에는 차단 없음. 사람의 브라우저 체험은 MANUAL_TEST_CHECKLIST의 미확인 항목으로 남긴다. 기능 커밋 뒤 인계 문서만 갱신했으며 런타임·테스트 코드는 전체 gate를 통과한 내용 그대로다.
-- 별도 reviewer는 사용자 요청 없이 시작하지 않았다. 기존 진행 기록은 당시의 이력으로 보존한다.
+- PR: [#21](https://github.com/superlucky84/state-ref/pull/21), 브랜치 `feat/keep-previous-data`. 기능 커밋 `1682ba7b1809b57973ec812d75bf958720f0a090`, 리뷰 반영 시작 HEAD `a8b2ecd1880a7d0f4edc7b7ac97cd2eeb131c79f`.
+- 완료: 단계 9~11 기능 구현에 이어 단계 12~14 리뷰 수정과 전체 gate 통과. 잘못된 timing/retry/호환성 및 attach/open 오류에서 이력을 지우고 speculative 오류는 이력을 보존한다. loaded/initialData/query error 투영의 이력 읽기를 생략하며 pending의 최신 스냅샷 반영은 유지한다.
+- 문서: Breaking 이관법, 0.4.0 릴리스/여섯 connector peer 범위 조건, 프레임워크별 pending && !isPlaceholder, disabled 차이와 API 상세를 반영했다. 콜백 실패 정책과 명시적 핸들의 값 placeholder 계약은 유지한다.
+- 검증: fresh `pnpm gate` 전체 통과. workspace 1,266 통과·기존 2 제외, SSR 15/15, sync 372/372, 성능 6/6, core 3,757 B gzip. 상세는 단계 14.
+- 다음: 사용자 요청대로 이 문서와 함께 리뷰 변경을 commit/push하고 PR 설명을 최신 결과로 맞춘다. 이후 PR 검토 및 별도 0.4.0 릴리스 준비. 구현·자동 검증에는 차단 없음. M-KP의 사람 체험 체크는 미실행 상태를 유지한다.
+- 별도 reviewer와 PR 댓글 답변은 요청받지 않아 실행하지 않았다. 기존 진행 기록은 이력으로 보존한다.

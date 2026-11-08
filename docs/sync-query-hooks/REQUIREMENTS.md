@@ -1,6 +1,6 @@
 # REQUIREMENTS — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
-- 후속 상태(2026-11-08): `keepPreviousData` 단계 9~11 구현·자동 검증 완료. 현재 인계는 IMPLEMENT의 마지막 블록을 따른다. 이전 날짜의 결과는 당시 범위를 기록한 이력이다.
+- 후속 상태(2026-11-08): `keepPreviousData` 단계 9~14 구현·자동 검증 완료. PR #21 리뷰 반영 결과는 IMPLEMENT 단계 12~14를 따른다. 현재 인계는 IMPLEMENT의 마지막 블록을 따른다. 이전 날짜의 결과는 당시 범위를 기록한 이력이다.
 - 작성일: 2026-10-08
 - 상태: 단계 0~7 완료(2026-10-09), PR #17이 main에 병합됨(`8535fb7`). main에서 분기한 `fix/issue-18-shared-sync`의 후속 단계 8도 구현·자동 검증 완료(2026-10-10~11, U-QH-15~17, Draft PR #19). 코드 커밋은 `364d1a3`·`b71b1b6`·`8558e87`이며 최신 결과는 IMPLEMENT의 단계 8 및 진행 기록을 따른다. 사람의 전반적인 사용성 평가는 미수행이고 실제 릴리스·병합은 이번 범위 밖이다.
 - 최초 설계 기준 commit: `6e462ed` (`main`), `@stateref/sync@0.2.0`, `@stateref/connect-react@19.0.0`. 작업 브랜치 `claude/sync-query-hooks`.
@@ -139,3 +139,14 @@
 - **R-KP-04** 첫 전환 렌더의 peek와 커밋 뒤 표시가 같은 규칙을 따른다. 동일 입력의 스냅샷은 안정적이고 캐시/요청/소유권을 변경하지 않는다. 콜백 오류는 observer의 `errorSource: placeholder`로 격리하고 query READ는 계속된다. 최초 READ 오류에서는 placeholder를 제거한다.
 - **R-KP-05** 기존 값 placeholder와 명시적 query/infiniteQuery API를 유지한다. 콜백 확장은 component observer에 한정한다. observer에서 함수 자체를 데이터로 표시하려면 `placeholderData: () => functionValue`로 감싼다. 공개 타입, 사용 문서와 실제 React 전환/중단 렌더 테스트로 확인한다.
 - 범위 밖: 새 infinite hook, 캐시/SSR에 placeholder 저장, React Query식 placeholder success 상태, 배포/게시, 별도 reviewer 실행.
+
+
+## 7. PR #21 검토 반영 (2026-11-08)
+
+사용자가 리뷰 타당성 확인 뒤 수정을 진행하도록 요청했다. [리뷰 댓글](https://github.com/superlucky84/state-ref/pull/21#issuecomment-6722024736)의 필수 호환성/로딩 안내, 추가로 재현한 invalid timing option의 이력 초기화 누락, 불필요한 이력 읽기를 보완한다.
+
+- **R-KP-07** 유효하지 않은 key/enabled뿐 아니라 timing/retry/호환성 등 query 열기 검증에 실패한 확정 옵션도 이력을 비운다. 확정 뒤 실제 attach에서야 검증이 실패한 경우도 같다. speculative peek의 오류는 확정 이력을 비우지 않으며, 복구한 실제 데이터는 이후 전환에서 다시 유지할 수 있다.
+- **R-KP-08** loaded/initialData/query error 표시에 placeholder 이력이 필요하지 않으면 display/peek 투영에서 이력을 읽지 않는다. pending 전환에서는 확정 핸들의 최신 스냅샷을 확인해 같은 입력의 identity와 concurrent 일관성을 유지한다. setOptions/detach의 확정 스냅샷 저장은 유지한다.
+- **R-KP-09** CHANGELOG에 두 비호환 변경(함수 값 해석, errorSource union 확장)을 Breaking으로 표시하고 이관법을 안내한다. 여섯 커넥터 README에 각 프레임워크의 pending && !isPlaceholder 사용법을 직접 적는다. README의 구현 세부는 API 문서로 옮기고 disabled 이력 초기화 차이를 강조한다.
+- 유지: DC-KP-03의 콜백 오류 표시 정책, 명시적 핸들의 값 placeholder 정책. 함수 payload를 오인하는 일괄 경고를 추가하지 않는다. 명시적 반응형 핸들의 callback 지원은 별도 후속 범위로 기록한다.
+- 릴리스 경계: 이 변경은 sync 0.4.0 대상이다. 실제 릴리스 준비 시 여섯 커넥터의 ^0.3.0 peer 범위를 ^0.3.0 || ^0.4.0 등으로 확장하고 소비자/선택적 peer 전체를 함께 확인해야 한다. 현재 PR은 Unreleased 기능/수정이며 패키지 버전 올림·게시를 포함하지 않는다.

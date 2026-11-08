@@ -396,9 +396,11 @@ function fixedOptions<T, S>(
  */
 export function createQueryDisplay<T, S = T>(
   query: DisplaySource<T>,
-  options: QueryDisplayOptions<T, S> | (() => ProjectionOptions<T, S>) = {}
+  options:
+    | QueryDisplayOptions<T, S>
+    | ((needsPlaceholder?: boolean) => ProjectionOptions<T, S>) = {}
 ): QueryDisplayHandle<S> {
-  const readOptions =
+  const readOptions: (needsPlaceholder?: boolean) => ProjectionOptions<T, S> =
     typeof options === 'function' ? options : fixedOptions(options);
   const controllers = new Set<AbortController>();
   const statusAbort = new AbortController();
@@ -416,17 +418,19 @@ export function createQueryDisplay<T, S = T>(
    */
   const queryKey = query.queryKey;
 
-  const calculate = (value?: T): QueryDisplayState<S> =>
-    Object.freeze({
+  const calculate = (value?: T): QueryDisplayState<S> => {
+    const status = query.status.value;
+    return Object.freeze({
       ...projectDisplay(
-        query.status.value,
+        status,
         () => value ?? query.ref.value,
-        readOptions(),
+        readOptions(!status.loaded && status.status !== 'error'),
         memo
       ),
       queryKey,
       enabled: true,
     });
+  };
 
   const store = create<QueryDisplayState<S>>(calculate(), { autoSync: false });
   const rawRef = store.watch(() => displayAbort.signal);
@@ -442,7 +446,7 @@ export function createQueryDisplay<T, S = T>(
         enabled: true,
       });
     }
-    const equals = readOptions().equals ?? Object.is;
+    const equals = readOptions(false).equals ?? Object.is;
     let sameData = false;
     let comparisonError: unknown;
     let comparisonFailed = false;

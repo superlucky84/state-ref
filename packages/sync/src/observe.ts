@@ -228,12 +228,12 @@ export function createObserver<T, S = T>(
   const confirmedPeek = client.peek<T, S>(() => ({
     ...latest,
     placeholderData: undefined,
-    ...confirmedOptions(),
+    readDisplayOptions: confirmedOptions,
   }));
   const renderedPeek = client.peek<T, S>(() => ({
     ...rendered,
     placeholderData: undefined,
-    ...renderedOptions(),
+    readDisplayOptions: renderedOptions,
   }));
   const openingReason = (options: ObserveOptions<T, S>): string | null => {
     if (!markerOf(options).ok || !enabledOf(options)) return null;
@@ -279,6 +279,7 @@ export function createObserver<T, S = T>(
         client.validate(options);
       } catch (error) {
         confirmedOpeningReason = reasonOf(error);
+        previousData = undefined;
         throw error;
       }
     }
@@ -292,25 +293,27 @@ export function createObserver<T, S = T>(
   const originals = new WeakMap<object, QueryHandle<T>>();
   const displays = new WeakMap<object, QueryDisplayHandle<S>>();
   const open = (options: QueryOptions<T>): OpenedQuery<T, S> => {
-    const handle = client.open<T>(options);
-    let display: QueryDisplayHandle<S>;
+    let handle: QueryHandle<T> | undefined;
     try {
+      handle = client.open<T>(options);
       const displayOptions = placeholderOptions<T, S>(
         () => latest,
         readPrevious
       );
-      display = createQueryDisplay<T, S>(handle, displayOptions);
+      const display = createQueryDisplay<T, S>(handle, displayOptions);
+      const wrapper = releaseLater(handle, schedule);
+      originals.set(wrapper, handle);
+      displays.set(wrapper, display);
+      return Object.freeze({
+        query: wrapper as unknown as QueryHandle<T, S>,
+        display,
+      });
     } catch (error) {
-      handle.dispose();
+      confirmedOpeningReason = reasonOf(error);
+      previousData = undefined;
+      handle?.dispose();
       throw error;
     }
-    const wrapper = releaseLater(handle, schedule);
-    originals.set(wrapper, handle);
-    displays.set(wrapper, display);
-    return Object.freeze({
-      query: wrapper as unknown as QueryHandle<T, S>,
-      display,
-    });
   };
 
   // Writing a new object here is what makes the cursor resolve again.
@@ -465,9 +468,10 @@ export function createObserver<T, S = T>(
     latest = next;
     const before = markerOf(previous);
     const after = markerOf(next);
-    if (!after.ok || !enabledOf(next)) previousData = undefined;
     const previousOpeningReason = confirmedOpeningReason;
     confirmedOpeningReason = openingReason(next);
+    if (!after.ok || !enabledOf(next) || confirmedOpeningReason !== null)
+      previousData = undefined;
     if (slot && after.ok && after.hash === slot.hash) {
       slot.queryFn = next.queryFn;
       slot.retryDelay = next.retryDelay;

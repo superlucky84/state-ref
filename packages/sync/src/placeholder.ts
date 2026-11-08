@@ -32,7 +32,9 @@ type Options<T, S> = Omit<QueryDisplayOptions<T, S>, 'placeholderData'> & {
 export function placeholderOptions<T, S>(
   readOptions: () => Options<T, S>,
   readPrevious: () => PreviousQueryData<T> | undefined
-): () => ProjectionOptions<T, S> & { queryKey: QueryKey } {
+): (
+  needsPlaceholder?: boolean
+) => ProjectionOptions<T, S> & { queryKey: QueryKey } {
   let last:
     | {
         callback: PlaceholderDataFunction<T>;
@@ -41,11 +43,12 @@ export function placeholderOptions<T, S>(
         resolve: () => T | undefined;
       }
     | undefined;
-  return () => {
+  return (needsPlaceholder = true) => {
     const options = readOptions();
     const { placeholderData, ...rest } = options;
     if (typeof placeholderData !== 'function')
       return { ...rest, placeholderData: placeholderData as T | undefined };
+    if (!needsPlaceholder) return rest;
     const callback = placeholderData as PlaceholderDataFunction<T>;
     const previous = readPrevious();
     // Invalid keys are reported by the peek/cursor before any projection.

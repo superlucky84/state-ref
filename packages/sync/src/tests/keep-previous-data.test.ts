@@ -5,6 +5,10 @@ import type {
   PlaceholderDataFunction,
   QueryObserver,
 } from '../index';
+import { createQueryDisplay } from '../display';
+import { placeholderOptions } from '../placeholder';
+import { createObserver } from '../observe';
+import { internalsOf } from '../internal';
 
 type Page = { page: number; items: { name: string }[] };
 const page = (n: number): Page => ({ page: n, items: [{ name: `page ${n}` }] });
@@ -43,6 +47,175 @@ const options = (n: number, read: () => Page | Promise<Page> = () => page(n)) =>
   } satisfies ObserveOptions<Page>);
 
 describe('keepPreviousData', () => {
+  it.each([
+    ['staleTime', { staleTime: -1 }],
+    ['gcTime', { gcTime: -1 }],
+    ['retry', { retry: -1 }],
+  ] as const)(
+    'clears confirmed history after invalid %s and can retain real data again',
+    async (_, invalid) => {
+      const client = createSyncClient();
+      const observer = client.observe(options(1));
+      const ref = attach(observer);
+      await observer.controls.handle()!.load();
+      observer.setOptions({ ...options(2), ...invalid });
+      expect(ref.errorSource.value).toBe('source');
+      const next = deferred<Page>();
+      observer.setOptions(options(3, () => next.promise));
+      expect(ref.data.value).toBeUndefined();
+      expect(ref.isPlaceholder.value).toBe(false);
+      const read = observer.controls.handle()!.load();
+      next.resolve(page(3));
+      await read;
+      observer.setOptions(options(4, () => new Promise(() => {})));
+      expect(ref.data.page.value).toBe(3);
+    }
+  );
+
+  it('clears history when validation fails only when a confirmed query attaches', async () => {
+    const client = createSyncClient();
+    const observer = client.observe(options(1));
+    attach(observer);
+    await observer.controls.handle()!.load();
+    stops[stops.length - 1].abort();
+    observer.setOptions(options(2));
+    const collision = client.infiniteQuery({
+      queryKey: ['items', 2],
+      queryFn: () => page(2),
+      initialPageParam: 0,
+      getNextPageParam: () => undefined,
+      gcTime: Infinity,
+    });
+    const ref = attach(observer);
+    expect(ref.errorSource.value).toBe('source');
+    observer.setOptions(options(3, () => new Promise(() => {})));
+    expect(ref.data.value).toBeUndefined();
+    collision.dispose();
+  });
+
+  it('does not clear real history for a speculative source validation error', async () => {
+    const client = createSyncClient();
+    const observer = client.observe(options(1));
+    const ref = attach(observer);
+    await observer.controls.handle()!.load();
+    expect(
+      observer.peek({ ...options(2), staleTime: -1 }).errorSource.value
+    ).toBe('source');
+    observer.setOptions(options(3, () => new Promise(() => {})));
+    expect(ref.data.page.value).toBe(1);
+  });
+
+  it('does not read history to project or compare a loaded display', () => {
+    const client = createSyncClient();
+    const query = client.query({
+      ...options(1),
+      initialData: page(1),
+      placeholderData: undefined,
+    });
+    const previous = vi.fn(() => ({ data: page(0), queryKey: ['items', 0] }));
+    const display = createQueryDisplay<Page>(
+      query,
+      placeholderOptions<Page, Page>(() => options(1), previous)
+    );
+    expect(display.ref.data.page.value).toBe(1);
+    for (let n = 0; n < 20; n++) display.reproject();
+    expect(previous).not.toHaveBeenCalled();
+    display.dispose();
+    query.dispose();
+  });
+
+  it('does not read the confirmed handle for history during a loaded peek', () => {
+    const client = createSyncClient();
+    let reads = 0;
+    const observer = createObserver<Page>(
+      {
+        ssr: false,
+        peek: internalsOf(client).peek,
+        validate: () => {},
+        invalidate: key => client.invalidate(key),
+        open: input =>
+          new Proxy(client.query(input), {
+            get(target, key, receiver) {
+              if (key === 'ref') reads++;
+              return Reflect.get(target, key, receiver);
+            },
+          }),
+      },
+      { ...options(1), initialData: page(1) }
+    );
+    attach(observer);
+    const ref = observer.watch();
+    const root = ref.value;
+    reads = 0;
+    for (let n = 0; n < 20; n++) expect(ref.value).toBe(root);
+    expect(reads).toBe(0);
+  });
+
+  it('still refreshes a pending preview when the confirmed source changes during render', async () => {
+    const client = createSyncClient();
+    const observer = client.observe(options(1));
+    const ref = attach(observer);
+    await observer.controls.handle()!.load();
+    const next = options(2, () => new Promise(() => {}));
+    const preview = observer.peek(next);
+    expect(preview.data.page.value).toBe(1);
+    observer.controls.handle()!.ref.page.value = 10;
+    expect(preview.data.page.value).toBe(10);
+    const root = preview.value;
+    expect(preview.value).toBe(root);
+    observer.setOptions(next);
+    expect(ref.data.page.value).toBe(10);
+  });
+
+  it('clears history when opening fails after validation succeeds', () => {
+    const client = createSyncClient();
+    const observer = createObserver<Page>(
+      {
+        ssr: false,
+        peek: internalsOf(client).peek,
+        validate: () => {},
+        invalidate: key => client.invalidate(key),
+        open: input => {
+          if (input.queryKey[1] === 2) throw new Error('opening failed');
+          return client.query(input);
+        },
+      },
+      { ...options(1), initialData: page(1) }
+    );
+    const ref = attach(observer);
+    observer.setOptions(options(2));
+    expect(ref.errorSource.value).toBe('source');
+    observer.setOptions(options(3, () => new Promise(() => {})));
+    expect(ref.data.value).toBeUndefined();
+  });
+
+  it.each(['initialData', 'query error'] as const)(
+    'skips history reads for a peek with %s',
+    async kind => {
+      const client = createSyncClient();
+      const source = options(1, () => {
+        throw new Error('read failed');
+      });
+      if (kind === 'query error') await client.prefetch(source);
+      const previous = vi.fn(() => ({ data: page(0), queryKey: ['items', 0] }));
+      const displayOptions = placeholderOptions<Page, Page>(
+        () => source,
+        previous
+      );
+      const reader = internalsOf(client).peek<Page>(() => ({
+        ...source,
+        initialData: kind === 'initialData' ? page(1) : undefined,
+        placeholderData: undefined,
+        readDisplayOptions: displayOptions,
+      }));
+      expect(reader.ref.status.value).toBe(
+        kind === 'initialData' ? 'success' : 'error'
+      );
+      expect(reader.ref.isPlaceholder.value).toBe(false);
+      expect(previous).not.toHaveBeenCalled();
+    }
+  );
+
   it('keeps separate previews for observers sharing the new key and one READ', async () => {
     const client = createSyncClient();
     const left = client.observe(options(1));

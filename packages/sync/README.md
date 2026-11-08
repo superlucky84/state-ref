@@ -72,6 +72,8 @@ The second value, `q`, is the same object for the observer's life in every entry
 
 ### Keep the previous page while loading
 
+This addition is unreleased and targets `@stateref/sync` 0.4.0.
+
 Component queries accept `placeholderData: keepPreviousData`. The helper returns
 this observer's last loaded raw data while the new key has no data. The new key's
 cache or `initialData` always wins. This works in every connector's `/sync` entry.
@@ -115,8 +117,12 @@ export function ItemPages() {
 
 Unlike TanStack Query v5, a placeholder keeps `status: 'pending'` and
 `loaded: false`; `isPlaceholder` reports that there is display data. Use
-`status === 'pending' && !isPlaceholder` for a full loading screen. Placeholders
-never enter the new key's cache, editable resource, mutation submission or SSR
+`status === 'pending' && !isPlaceholder` for a full loading screen. Another
+difference is that confirming `enabled: false` clears retained history;
+re-enabling has no previous preview unless the key has actual cached data.
+Invalid confirmed options clear history as well.
+
+Placeholders never enter the new key's cache, editable resource, mutation submission or SSR
 snapshot. `q.handle()` remains the new key's handle: check its own `loaded`
 before editing. A first READ failure removes the placeholder.
 
@@ -134,17 +140,18 @@ const sameListPreview: PlaceholderDataFunction<ItemsPage> = (previous, context) 
 // useSyncQuery(client, { ...options, placeholderData: sameListPreview });
 ```
 
-The callback is pure and may run in render. Its result or error is memoized for
-the same callback, previous snapshot and key. Callback errors are local display
-errors (`errorSource: 'placeholder'`); the underlying READ continues and success
-recovers the display. Inline callbacks are allowed. History belongs to one
-observer and only records confirmed, actually loaded data, including local
-edits. Fast page changes carry the last real data; abandoned renders and late
-results do not become history. Confirming disabled or invalid options clears
-history; a new observer or SSR render does not borrow another one's history.
+Callbacks must be pure and may run during render. If one throws, this display
+shows `errorSource: 'placeholder'`; the underlying READ continues and success
+restores the data. Each component retains its own last loaded data, including
+local edits. A new component or SSR render does not borrow another one's history.
+Memoization and render consistency details are documented in the
+[observer API](https://superlucky84.github.io/state-ref/#/api/sync).
 
 The callback extension is for component observers (`ObserveOptions`). Explicit
 `client.query` and `infiniteQuery` handles still take value-only placeholders.
+Passing `keepPreviousData` to an explicit handle, including
+`client.query({ source, resolve })`, is a function payload and does not enable
+previous-data retention. Use a component `/sync` entry for callback previews.
 For function-valued observer payloads, wrap the preview in a factory:
 `placeholderData: () => functionValue`.
 
