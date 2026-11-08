@@ -534,8 +534,8 @@ Files:
 
 ## 현재 인계 — keepPreviousData (2026-11-08)
 
-- HEAD: `367f32c9b5e944b241f0ca92e96a19440d5ce2c1`, 브랜치 `feat/keep-previous-data`. 구현은 현재 작업 트리에 있으며 아직 커밋하지 않았다.
+- 기능 커밋: `1682ba7b1809b57973ec812d75bf958720f0a090` (기준 main: `367f32c9b5e944b241f0ca92e96a19440d5ce2c1`), 브랜치 `feat/keep-previous-data`. 사용자 요청대로 커밋·원격 push하고 [PR #21](https://github.com/superlucky84/state-ref/pull/21)을 일반 open PR로 생성했다. 이 인계 갱신은 별도 문서 커밋으로 반영한다.
 - 완료: 네 문서 선작성 → 공통 observer/helper/콜백 타입/peek·display 구현 → 테스트 보강 → fresh build 포함 전체 gate 통과. 사용 README·여섯 커넥터·한영 API/site·AI 참고 문서·Unreleased 안내 반영.
 - API: `import { keepPreviousData } from '@stateref/sync'`; `placeholderData: keepPreviousData` 또는 `(previous, { previousQueryKey, queryKey }) => T | undefined`. 새 key의 실제 데이터 우선, pending/loaded false 유지, isPlaceholder로 표시 구분. 명시적 핸들은 값 placeholder 계약 유지.
-- 다음: 사용자 검토 후 필요하면 커밋/PR과 릴리스 준비. 이번 구현·자동 검증에는 차단 없음. 사람의 브라우저 체험은 MANUAL_TEST_CHECKLIST의 미확인 항목으로 남긴다.
+- 다음: PR 검토 후 필요하면 릴리스 준비. 이번 구현·자동 검증에는 차단 없음. 사람의 브라우저 체험은 MANUAL_TEST_CHECKLIST의 미확인 항목으로 남긴다. 기능 커밋 뒤 인계 문서만 갱신했으며 런타임·테스트 코드는 전체 gate를 통과한 내용 그대로다.
 - 별도 reviewer는 사용자 요청 없이 시작하지 않았다. 기존 진행 기록은 당시의 이력으로 보존한다.
