@@ -60,7 +60,7 @@ export function AccountCard({ id }: { id?: number }) {
 The second value, `q`, is the same object for the observer's life in every entry. What holds for all of them:
 
 - **Lifecycle.** Rendering creates nothing. The first subscription (mount or commit) attaches: it opens the query, loads it if stale, and shares an in-flight READ with other observers of the key. When the last one ends, the handle is released after a short release schedule (one macrotask by default; Preact waits until after paint), so StrictMode and same-commit route swaps never cancel or repeat a READ. In tests with fake timers, advance them past the schedule (`await vi.advanceTimersByTimeAsync(0)` for the default) before asserting the handle is gone.
-- **Keys.** A key change shows the new key from the first render (its cached value, or pending), never the previous key's value; a late result of the previous key never shows. A key cannot contain `undefined`, so a dependent query writes `queryKey: ['user', id ?? null], enabled: id != null`. `enabled: false` shows idle with the key and owns nothing. An invalid key (such as one holding a state-ref ref instead of its `.value`) or a non-boolean `enabled` does not throw in render; it shows `status: 'error'` with `errorSource: 'source'`.
+- **Keys.** A key change shows the new key from the first render (its cached value, or pending). Previous data is only displayed when explicitly requested with `placeholderData`, as below; a late result of the previous key never replaces the new key. A key cannot contain `undefined`, so a dependent query writes `queryKey: ['user', id ?? null], enabled: id != null`. `enabled: false` shows idle with the key and owns nothing. An invalid key (such as one holding a state-ref ref instead of its `.value`) or a non-boolean `enabled` does not throw in render; it shows `status: 'error'` with `errorSource: 'source'`.
 - **Loading UI.** The first render's `fetchStatus` is the cache as it is: `'idle'` before mount even though a READ is about to start. Use `status === 'pending'` for loading UI; the server and the first client render then match.
 - **`q`.** `q.refetch()` returns `Promise<T>` and rejects with `This query observer is not attached.` before attach, while disabled and on the server. `q.invalidate()` invalidates the key and, while attached and enabled, reads it again; `client.invalidate(key)` only marks it stale. `q.handle()` returns the query's own handle, or `null` before attach, while disabled and on the server. Use it for local edits once `status.value.loaded` is true, as in the example, and as `query` in mutation `links`; never dispose it: the observer owns it.
 - **Options.** Inline `queryFn`, `retryDelay` and `initialData` literals are fine. Changing a primitive option such as `staleTime` reopens the same key without cancelling its READ; `select` and `placeholderData` changes reproject with structural sharing. A `select` that returns a `Map`, a `Set`, a class instance or a function is not structurally shared and republishes on every commit: memoize it or pass `equals`.
@@ -69,6 +69,84 @@ The second value, `q`, is the same object for the observer's life in every entry
 - **Shared bundles.** Bundles that share one client through `state-ref/shared` must ship the same `@stateref/sync` (0.3 or later); otherwise the entry throws `This sync client has no observe(); align the @stateref/sync versions of the bundles on this page.`
 
 **Writing your own hook.** The entries are built on `client.observe(options, settings?)`, which returns a low-level `QueryObserver` (`watch`, `peek`, `matches`, `setOptions`, `controls`) for people adding a hook for another framework; app code uses the entries. Rendering reads `watch()` or `peek(options)` and changes nothing, the first callback subscription attaches, and `setOptions` runs outside render (after commit, or in a reaction before render). A callback subscription with no end signal keeps the observer attached. `settings.scheduleRelease(release)` sets the release schedule. See the types in [`observe.ts`](https://github.com/superlucky84/state-ref/blob/main/packages/sync/src/observe.ts) and the React entry, [`connect-react/src/sync.ts`](https://github.com/superlucky84/state-ref/blob/main/packages/connect-react/src/sync.ts), as a reference.
+
+### Keep the previous page while loading
+
+Component queries accept `placeholderData: keepPreviousData`. The helper returns
+this observer's last loaded raw data while the new key has no data. The new key's
+cache or `initialData` always wins. This works in every connector's `/sync` entry.
+
+<!-- doc-example: continue -->
+
+```tsx
+import { useState } from 'react';
+import { keepPreviousData } from '@stateref/sync';
+
+type ItemsPage = { items: { id: number; name: string }[]; hasNextPage: boolean };
+
+async function fetchItems(page: number, signal: AbortSignal): Promise<ItemsPage> {
+  const response = await fetch(`/api/items?page=${page}`, { signal });
+  if (!response.ok) throw new Error('Could not load items');
+  return response.json();
+}
+
+export function ItemPages() {
+  const [page, setPage] = useState(1);
+  const [items] = useSyncQuery(client, {
+    queryKey: ['items', page],
+    queryFn: ({ signal }) => fetchItems(page, signal),
+    placeholderData: keepPreviousData,
+  });
+  const preview = items.isPlaceholder.value;
+  if (items.status.value === 'pending' && !preview) return <p>Loading...</p>;
+  if (items.status.value === 'error') return <p>Could not load items</p>;
+  return (
+    <section aria-busy={preview}>
+      <p>{preview ? `Loading page ${page}...` : `Page ${page}`}</p>
+      <ul style={{ opacity: preview ? 0.5 : 1 }}>
+        {(items.data.items.value ?? []).map(item => <li key={item.id}>{item.name}</li>)}
+      </ul>
+      <button disabled={page === 1 || preview} onClick={() => setPage(p => p - 1)}>Previous</button>
+      <button disabled={preview || !items.data.hasNextPage.value} onClick={() => setPage(p => p + 1)}>Next</button>
+    </section>
+  );
+}
+```
+
+Unlike TanStack Query v5, a placeholder keeps `status: 'pending'` and
+`loaded: false`; `isPlaceholder` reports that there is display data. Use
+`status === 'pending' && !isPlaceholder` for a full loading screen. Placeholders
+never enter the new key's cache, editable resource, mutation submission or SSR
+snapshot. `q.handle()` remains the new key's handle: check its own `loaded`
+before editing. A first READ failure removes the placeholder.
+
+A callback can choose which transitions to retain. It receives the previous raw
+data (before the current `select`) and readonly key context. For example, only
+keep data when the first key segment still identifies the same list:
+
+<!-- doc-example: continue -->
+
+```ts
+import type { PlaceholderDataFunction } from '@stateref/sync';
+
+const sameListPreview: PlaceholderDataFunction<ItemsPage> = (previous, context) =>
+  context.previousQueryKey?.[0] === context.queryKey[0] ? previous : undefined;
+// useSyncQuery(client, { ...options, placeholderData: sameListPreview });
+```
+
+The callback is pure and may run in render. Its result or error is memoized for
+the same callback, previous snapshot and key. Callback errors are local display
+errors (`errorSource: 'placeholder'`); the underlying READ continues and success
+recovers the display. Inline callbacks are allowed. History belongs to one
+observer and only records confirmed, actually loaded data, including local
+edits. Fast page changes carry the last real data; abandoned renders and late
+results do not become history. Confirming disabled or invalid options clears
+history; a new observer or SSR render does not borrow another one's history.
+
+The callback extension is for component observers (`ObserveOptions`). Explicit
+`client.query` and `infiniteQuery` handles still take value-only placeholders.
+For function-valued observer payloads, wrap the preview in a factory:
+`placeholderData: () => functionValue`.
 
 ## Explicit handles
 

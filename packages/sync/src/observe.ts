@@ -20,11 +20,23 @@ import { guardRef, guardedWatch } from './ref-guard';
 import { reasonOf } from './peek';
 import type { PeekOptions, PeekReader } from './peek';
 import type { QueryHandle, QueryHandleCore, QueryOptions } from './index';
+import { placeholderOptions } from './placeholder';
+import type { PlaceholderDataFunction, PreviousQueryData } from './placeholder';
+import { frozenCopy } from './tree';
+
+// Infer data from queryFn, not from a generic identity placeholder. Unlike the
+// intrinsic NoInfer this also works with the declaration builder's older TS.
+type ObserverData<T> = [T][T extends any ? 0 : never];
 
 /** One observer's options: a query, how this observer shows it, and whether it runs. */
 export type ObserveOptions<T, S = T> = QueryOptions<T> &
-  QueryDisplayOptions<T, S> &
-  Readonly<{ enabled?: boolean }>;
+  Omit<QueryDisplayOptions<T, S>, 'placeholderData'> &
+  Readonly<{
+    enabled?: boolean;
+    placeholderData?:
+      | ObserverData<T>
+      | PlaceholderDataFunction<ObserverData<T>>;
+  }>;
 
 /** Settings for whoever builds an observer hook, not for the hook's users. */
 export type ObserverSettings = Readonly<{
@@ -192,8 +204,37 @@ export function createObserver<T, S = T>(
     });
   let latest = initial;
   let rendered = initial;
-  const confirmedPeek = client.peek<T, S>(() => latest);
-  const renderedPeek = client.peek<T, S>(() => rendered);
+  let previousData: PreviousQueryData<T> | undefined;
+  const history = new WeakMap<object, PreviousQueryData<T>>();
+  const snapshot = (query: QueryHandle<T> | null) => {
+    if (!query?.status.value.loaded) return undefined;
+    const data = query.ref.value;
+    const remembered = history.get(query);
+    if (remembered && Object.is(remembered.data, data)) return remembered;
+    const next = Object.freeze({
+      data,
+      queryKey: frozenCopy(query.queryKey) as QueryKey,
+    });
+    history.set(query, next);
+    return next;
+  };
+  // A speculative read may consult the confirmed handle, never record itself.
+  const readPrevious = () => snapshot(handle()) ?? previousData;
+  const confirmedOptions = placeholderOptions<T, S>(() => latest, readPrevious);
+  const renderedOptions = placeholderOptions<T, S>(
+    () => rendered,
+    readPrevious
+  );
+  const confirmedPeek = client.peek<T, S>(() => ({
+    ...latest,
+    placeholderData: undefined,
+    ...confirmedOptions(),
+  }));
+  const renderedPeek = client.peek<T, S>(() => ({
+    ...rendered,
+    placeholderData: undefined,
+    ...renderedOptions(),
+  }));
   const openingReason = (options: ObserveOptions<T, S>): string | null => {
     if (!markerOf(options).ok || !enabledOf(options)) return null;
     try {
@@ -254,7 +295,11 @@ export function createObserver<T, S = T>(
     const handle = client.open<T>(options);
     let display: QueryDisplayHandle<S>;
     try {
-      display = createQueryDisplay<T, S>(handle, () => latest);
+      const displayOptions = placeholderOptions<T, S>(
+        () => latest,
+        readPrevious
+      );
+      display = createQueryDisplay<T, S>(handle, displayOptions);
     } catch (error) {
       handle.dispose();
       throw error;
@@ -282,6 +327,7 @@ export function createObserver<T, S = T>(
     return cursor;
   };
   const detach = () => {
+    previousData = readPrevious();
     const ending = cursor;
     cursor = null;
     ending?.dispose();
@@ -387,10 +433,10 @@ export function createObserver<T, S = T>(
     return subscribe(renew, option);
   }) as QueryDisplayWatch<QueryDisplayState<S>>;
 
-  const handle = (): QueryHandle<T> | null => {
+  function handle(): QueryHandle<T> | null {
     const wrapper = current();
     return wrapper ? originals.get(wrapper) ?? null : null;
-  };
+  }
 
   const controls: QueryObserverControls<T> = Object.freeze({
     refetch: () => {
@@ -415,9 +461,11 @@ export function createObserver<T, S = T>(
   const setOptions = (next: ObserveOptions<T, S>): boolean => {
     const previous = latest;
     if (next === previous) return false;
+    previousData = readPrevious();
     latest = next;
     const before = markerOf(previous);
     const after = markerOf(next);
+    if (!after.ok || !enabledOf(next)) previousData = undefined;
     const previousOpeningReason = confirmedOpeningReason;
     confirmedOpeningReason = openingReason(next);
     if (slot && after.ok && after.hash === slot.hash) {

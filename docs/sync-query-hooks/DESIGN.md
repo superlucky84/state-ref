@@ -1,5 +1,6 @@
 # DESIGN — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
+- 후속 상태(2026-11-08): `keepPreviousData` 단계 9~11 구현·자동 검증 완료. 현재 인계는 IMPLEMENT의 마지막 블록을 따른다. 이전 날짜의 결과는 당시 범위를 기록한 이력이다.
 - 작성일: 2026-10-08
 - 상태: 단계 0~7 완료(2026-10-09), PR #17이 main에 병합됨(`8535fb7`). main에서 분기한 `fix/issue-18-shared-sync`의 후속 단계 8도 구현·자동 검증 완료(2026-10-10~11, U-QH-15~17, Draft PR #19). 코드 커밋은 `364d1a3`·`b71b1b6`·`8558e87`이며 최신 결과는 IMPLEMENT의 단계 8 및 진행 기록을 따른다. 사람의 전반적인 사용성 평가는 미수행이고 실제 릴리스·병합은 이번 범위 밖이다.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [IMPLEMENT](./IMPLEMENT.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
@@ -343,3 +344,15 @@ type ObserverSettings = Readonly<{
 | `packages/sync` | key 식별 및 editable payload 예약 키, 현재/독립 사본 회귀 검사. query 엔진·정상 key·controls 계약 유지 |
 | `packages/connect-lithent` | sync의 안정적인 표시 ref와 회귀 검사. base index/API와 구독·SSR·concurrent 수명 유지 |
 | 예제·가이드·검증 | 공유 bundle/version E2E, favicon 응답, Lithent demo와 공개 타입/문서 예제, 영/한 가이드·CHANGELOG·skill reference |
+
+
+## 8. 이전 페이지 데이터 유지 결정 (2026-11-08)
+
+이 절은 [REQUIREMENTS](./REQUIREMENTS.md) R-KP-01~05를 구현한다. 기존 DC-QH-04의 기본 정책은 유지하고 명시적 placeholder를 예외로 허용한다.
+
+- [x] **DC-KP-01** 값과 콜백을 `ObserveOptions.placeholderData`에 통합하고 identity helper `keepPreviousData`를 내보낸다. 콜백 context에는 이전/현재 key를 제공한다. 명시적 핸들의 `QueryDisplayOptions.placeholderData`는 값으로 유지해 기존 함수 payload를 재해석하지 않는다. 검증: 공개 소비자 타입, T-KP-01/02.
+- [x] **DC-KP-02** observer가 현재 핸들의 실제 raw 데이터 스냅샷을 읽고 `setOptions`/detach에서만 이력을 확정한다. peek는 확정된 현재 핸들을 임시 참고할 수 있지만 이력을 쓰지 않는다. 데이터/키가 같은 스냅샷과 콜백/이전 스냅샷/새 키가 같은 resolver 결과(오류 포함)를 메모한다. 검증: T-KP-03/04 및 React 중단 렌더.
+- [x] **DC-KP-03** display/peek 공통 투영 단계에 내부 placeholder resolver를 추가한다. loaded 또는 query error면 호출하지 않는다. 콜백 실패는 `errorSource: placeholder`로 격리한다. 현재 select는 이전 raw T에도 적용된다. 프레임워크는 공통 observer만 사용한다. 검증: T-KP-01/02/05, 기존 display/peek suites.
+- [x] **DC-KP-04** placeholder는 새 key의 표시 값일 뿐이며 pending/loaded와 편집 핸들은 실제 query를 따른다. 새 캐시 우선, 최초 오류 제거, disabled/invalid 이력 초기화, SSR 이력 공유 금지를 계약으로 삼는다. 검증: T-KP-02/05/06.
+
+별도 `keepPreviousData: boolean`이나 `isPreviousData`를 추가하지 않는다. 기존 옵션/표시 플래그가 같은 사실을 나타내기 때문이다. 순수 콜백이어야 하며 같은 입력의 호출 횟수에 의존할 수 없다. 일반 객체/배열 스냅샷은 기존 select와 같은 읽기 전용 보호를 사용한다. readonly query의 비평범한 값은 기존 snapshot 보호 범위를 따른다.

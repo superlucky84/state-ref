@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### @stateref/sync
+
+- Add `placeholderData: keepPreviousData` to component query observers in every
+  connector. A callback can inspect the previous raw data and previous/current
+  query keys. The preview stays observer-local, keeps the new query pending and
+  never seeds its cache or editable resource.
+- Report placeholder callback failures as `errorSource: 'placeholder'` without
+  changing the shared query's READ status. Function-valued observer placeholders
+  now use a factory (`placeholderData: () => functionValue`). Explicit handle
+  placeholders remain value-only.
+
 ## state-ref 3.3.0
 
 ### Added

@@ -263,7 +263,20 @@ const phase = q.display.isPlaceholder.value ? 'placeholder' : q.display.status.v
 ): QueryObserver<T, S>
 
 type ObserveOptions<T, S = T> = QueryOptions<T> &
-  QueryDisplayOptions<T, S> & { enabled?: boolean };
+  Omit<QueryDisplayOptions<T, S>, 'placeholderData'> & {
+    enabled?: boolean;
+    placeholderData?: T | PlaceholderDataFunction<T>;
+  };
+
+type PlaceholderDataFunction<T> = (previousData: T | undefined, context: {
+  previousQueryKey: QueryKey | undefined;
+  queryKey: QueryKey;
+}) => T | undefined;
+
+// import { keepPreviousData } from '@stateref/sync';
+// placeholderData: keepPreviousData
+// remains pending / loaded false; isPlaceholder marks the display preview
+// callback failures: errorSource === 'placeholder'
 
 type ObserverSettings = {
   scheduleRelease?: (release: () => void) => void; // default: one macrotask

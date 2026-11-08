@@ -13,6 +13,7 @@ import {
   type ProjectedDisplay,
   type ProjectionMemo,
   type QueryDisplayOptions,
+  type ProjectionOptions,
   type QueryDisplayRef,
   type QueryDisplayState,
 } from './display';
@@ -38,7 +39,7 @@ export type PeekEntry<T> = {
 };
 
 /** The options a peek reads. A subset of an observer's options. */
-export type PeekOptions<T, S = T> = QueryDisplayOptions<T, S> &
+export type PeekOptions<T, S = T> = ProjectionOptions<T, S> &
   Readonly<{
     queryKey: QueryKey;
     enabled?: boolean;
@@ -77,6 +78,7 @@ type Inputs<T, S> =
       initialUpdatedAt: number | undefined;
       select: QueryDisplayOptions<T, S>['select'];
       placeholderData: T | undefined;
+      resolvePlaceholder: ProjectionOptions<T, S>['resolvePlaceholder'];
     };
 
 const sameInputs = <T, S>(a: Inputs<T, S>, b: Inputs<T, S>): boolean => {
@@ -93,7 +95,8 @@ const sameInputs = <T, S>(a: Inputs<T, S>, b: Inputs<T, S>): boolean => {
     Object.is(a.initialData, other.initialData) &&
     a.initialUpdatedAt === other.initialUpdatedAt &&
     a.select === other.select &&
-    Object.is(a.placeholderData, other.placeholderData)
+    Object.is(a.placeholderData, other.placeholderData) &&
+    a.resolvePlaceholder === other.resolvePlaceholder
   );
 };
 
@@ -219,6 +222,7 @@ export function createPeekReader<T, S = T>(
         initialUpdatedAt: options.initialUpdatedAt,
         select: options.select,
         placeholderData: options.placeholderData,
+        resolvePlaceholder: options.resolvePlaceholder,
       };
     } catch (error) {
       checked = null;
