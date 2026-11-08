@@ -62,6 +62,11 @@ import type {
 } from './infinite';
 
 export { hashQueryKey } from './key';
+export { keepPreviousData } from './placeholder';
+export type {
+  PlaceholderDataContext,
+  PlaceholderDataFunction,
+} from './placeholder';
 export { createBrowserSyncEnvironment } from './browser-environment';
 export type { BrowserSyncHost } from './browser-environment';
 export type { QueryKey } from './key';

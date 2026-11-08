@@ -1,6 +1,7 @@
 import {
   createBrowserSyncEnvironment,
   createSyncClient,
+  keepPreviousData,
   MutationRejectedError,
   openPersistedMutationQueue,
   openPersistedLinkedMutation,
@@ -680,6 +681,31 @@ void displayLeafPaths;
 async function observerTypes(journal: PersistedLinkedMutation) {
   type Account = { name: string; age: number };
   const client = createSyncClient();
+  const retained = client.observe({
+    queryKey: ['pages', 1],
+    queryFn: () => ({ name: 'Lee', age: 3 }),
+    placeholderData: keepPreviousData,
+    select: account => account.name,
+  });
+  exact<typeof retained, QueryObserver<Account, string>>(true);
+  const conditional = client.observe({
+    queryKey: ['pages', 2],
+    queryFn: () => ({ name: 'Lee', age: 3 }),
+    placeholderData: (previous, context) => {
+      exact<typeof previous, Account | undefined>(true);
+      exact<typeof context.queryKey, QueryKey>(true);
+      exact<typeof context.previousQueryKey, QueryKey | undefined>(true);
+      const bad: ObserveOptions<Account> = {
+        queryKey: ['bad'],
+        queryFn: () => ({ name: 'Lee', age: 3 }),
+        // @ts-expect-error A placeholder must have the query's raw data shape.
+        placeholderData: () => 'selected',
+      };
+      void bad;
+      return previous;
+    },
+  });
+  exact<typeof conditional, QueryObserver<Account, Account>>(true);
   const inferred = client.observe({
     queryKey: ['inferred'],
     queryFn: () => ({ name: 'Lee', age: 3 }),

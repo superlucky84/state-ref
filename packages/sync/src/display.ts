@@ -13,6 +13,10 @@ export type QueryDisplayOptions<T, S = T> = Readonly<{
   equals?: (next: S, previous: S) => boolean;
 }>;
 
+/** Internal observer options; explicit handles keep value-only placeholders. */
+export type ProjectionOptions<T, S = T> = QueryDisplayOptions<T, S> &
+  Readonly<{ resolvePlaceholder?: () => T | undefined }>;
+
 /**
  * One observer's state.
  *
@@ -25,7 +29,7 @@ export type QueryDisplayState<S> = QueryStatus &
   Readonly<{
     data: S | undefined;
     isPlaceholder: boolean;
-    errorSource: 'query' | 'select' | 'source' | null;
+    errorSource: 'query' | 'select' | 'source' | 'placeholder' | null;
     /** null while a reactive key resolves to no query. */
     queryKey: QueryKey | null;
     enabled: boolean;
@@ -187,7 +191,7 @@ export type ProjectionMemo<T, S> = {
 export function projectDisplay<T, S>(
   status: QueryStatus,
   readValue: () => T,
-  options: QueryDisplayOptions<T, S>,
+  options: ProjectionOptions<T, S>,
   memo: ProjectionMemo<T, S>
 ): ProjectedDisplay<S> {
   let data: S | undefined;
@@ -196,12 +200,26 @@ export function projectDisplay<T, S>(
   let errorSource: QueryDisplayState<S>['errorSource'] =
     status.status === 'error' ? 'query' : null;
   let isPlaceholder = false;
-  if (
-    status.loaded ||
-    (status.status !== 'error' && options.placeholderData !== undefined)
-  ) {
+  let placeholder: T | undefined;
+  if (!status.loaded && status.status !== 'error') {
+    try {
+      placeholder = options.resolvePlaceholder
+        ? options.resolvePlaceholder()
+        : options.placeholderData;
+    } catch (placeholderError) {
+      return {
+        ...status,
+        status: 'error',
+        error: placeholderError,
+        errorSource: 'placeholder',
+        data: undefined,
+        isPlaceholder: false,
+      };
+    }
+  }
+  if (status.loaded || placeholder !== undefined) {
     isPlaceholder = !status.loaded;
-    const input = status.loaded ? readValue() : options.placeholderData!;
+    const input = status.loaded ? readValue() : placeholder!;
     const select = options.select;
     const last = memo.last;
     if (
@@ -329,11 +347,12 @@ export function carryProjection<T, S>(
 ): ProjectedDisplay<S> {
   const last = memo.last;
   if (
-    next.errorSource === 'select' &&
-    previous.errorSource === 'select' &&
+    (next.errorSource === 'select' || next.errorSource === 'placeholder') &&
+    previous.errorSource === next.errorSource &&
     sameSelectError(next.error, previous.error)
   ) {
-    if (last) last.result = { ok: false, error: previous.error };
+    if (last && next.errorSource === 'select')
+      last.result = { ok: false, error: previous.error };
     return { ...next, error: previous.error };
   }
   if (next.data !== undefined && previous.data !== undefined) {
@@ -377,9 +396,11 @@ function fixedOptions<T, S>(
  */
 export function createQueryDisplay<T, S = T>(
   query: DisplaySource<T>,
-  options: QueryDisplayOptions<T, S> | (() => QueryDisplayOptions<T, S>) = {}
+  options:
+    | QueryDisplayOptions<T, S>
+    | ((needsPlaceholder?: boolean) => ProjectionOptions<T, S>) = {}
 ): QueryDisplayHandle<S> {
-  const readOptions =
+  const readOptions: (needsPlaceholder?: boolean) => ProjectionOptions<T, S> =
     typeof options === 'function' ? options : fixedOptions(options);
   const controllers = new Set<AbortController>();
   const statusAbort = new AbortController();
@@ -397,17 +418,19 @@ export function createQueryDisplay<T, S = T>(
    */
   const queryKey = query.queryKey;
 
-  const calculate = (value?: T): QueryDisplayState<S> =>
-    Object.freeze({
+  const calculate = (value?: T): QueryDisplayState<S> => {
+    const status = query.status.value;
+    return Object.freeze({
       ...projectDisplay(
-        query.status.value,
+        status,
         () => value ?? query.ref.value,
-        readOptions(),
+        readOptions(!status.loaded && status.status !== 'error'),
         memo
       ),
       queryKey,
       enabled: true,
     });
+  };
 
   const store = create<QueryDisplayState<S>>(calculate(), { autoSync: false });
   const rawRef = store.watch(() => displayAbort.signal);
@@ -423,7 +446,7 @@ export function createQueryDisplay<T, S = T>(
         enabled: true,
       });
     }
-    const equals = readOptions().equals ?? Object.is;
+    const equals = readOptions(false).equals ?? Object.is;
     let sameData = false;
     let comparisonError: unknown;
     let comparisonFailed = false;

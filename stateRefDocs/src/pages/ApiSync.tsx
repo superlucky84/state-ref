@@ -255,6 +255,31 @@ const phase = q.display.isPlaceholder.value ? 'placeholder' : q.display.status.v
         instead (<a href="#/guide/sync-query">query and resource</a>).
       </p>
 
+      <p>
+        Callback placeholders target <code>@stateref/sync</code> 0.4.0
+        (unreleased). They apply to component observers. Explicit{' '}
+        <code>{'client.query({ source, resolve })'}</code> and{' '}
+        <code>infiniteQuery</code> still accept value placeholders, including
+        function payloads; passing <code>keepPreviousData</code> there does not
+        enable retention.
+      </p>
+      <p>
+        Callbacks must be pure and may run during render. Results and errors are
+        memoized for the same callback, previous raw snapshot and target key;
+        callers must not depend on invocation counts. Only confirmed, actually
+        loaded data becomes history, including local edits. Abandoned renders,
+        placeholders and late old-key results do not become history. Confirmed
+        disabled or invalid options clear history. Rendering an invalid
+        speculative option leaves confirmed history intact.
+      </p>
+      <p>
+        A callback failure reports{' '}
+        <code>errorSource: &apos;placeholder&apos;</code>
+        on this display while the query READ continues. A successful READ
+        restores the display. This follows the existing separation of display
+        errors from query errors.
+      </p>
+
       <CodeBlock
         language="typescript"
         code={`client.observe<T, S = T>(
@@ -263,7 +288,20 @@ const phase = q.display.isPlaceholder.value ? 'placeholder' : q.display.status.v
 ): QueryObserver<T, S>
 
 type ObserveOptions<T, S = T> = QueryOptions<T> &
-  QueryDisplayOptions<T, S> & { enabled?: boolean };
+  Omit<QueryDisplayOptions<T, S>, 'placeholderData'> & {
+    enabled?: boolean;
+    placeholderData?: T | PlaceholderDataFunction<T>;
+  };
+
+type PlaceholderDataFunction<T> = (previousData: T | undefined, context: {
+  previousQueryKey: QueryKey | undefined;
+  queryKey: QueryKey;
+}) => T | undefined;
+
+// import { keepPreviousData } from '@stateref/sync';
+// placeholderData: keepPreviousData
+// remains pending / loaded false; isPlaceholder marks the display preview
+// callback failures: errorSource === 'placeholder'
 
 type ObserverSettings = {
   scheduleRelease?: (release: () => void) => void; // default: one macrotask

@@ -1,5 +1,6 @@
 # REQUIREMENTS — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
+- 후속 상태(2026-11-08): `keepPreviousData` 단계 9~14 구현·자동 검증 완료. PR #21 리뷰 반영 결과는 IMPLEMENT 단계 12~14를 따른다. 현재 인계는 IMPLEMENT의 마지막 블록을 따른다. 이전 날짜의 결과는 당시 범위를 기록한 이력이다.
 - 작성일: 2026-10-08
 - 상태: 단계 0~7 완료(2026-10-09), PR #17이 main에 병합됨(`8535fb7`). main에서 분기한 `fix/issue-18-shared-sync`의 후속 단계 8도 구현·자동 검증 완료(2026-10-10~11, U-QH-15~17, Draft PR #19). 코드 커밋은 `364d1a3`·`b71b1b6`·`8558e87`이며 최신 결과는 IMPLEMENT의 단계 8 및 진행 기록을 따른다. 사람의 전반적인 사용성 평가는 미수행이고 실제 릴리스·병합은 이번 범위 밖이다.
 - 최초 설계 기준 commit: `6e462ed` (`main`), `@stateref/sync@0.2.0`, `@stateref/connect-react@19.0.0`. 작업 브랜치 `claude/sync-query-hooks`.
@@ -34,7 +35,7 @@
 - **U-QH-02** TanStack의 `useQuery`처럼 effect가 아니라 **컴포넌트 함수 안에서 바로** 쓴다.
 - **U-QH-03** 기존 커넥터를 그대로 활용한다. 커넥터마다 새 형태의 구독 구현을 만들지 않는다.
 - **U-QH-04** 동적 key(props에서 오는 key)를 지원한다.
-- **U-QH-05** key가 바뀌면 **렌더에서 바로** 새 key의 상태를 보여 준다(새 key의 캐시가 있으면 그 값, 없으면 `pending`). 커밋 뒤에야 바뀌는 방식(이전 key 값이 한 렌더 보이는 것)은 채택하지 않는다. (대화의 "B안")
+- **U-QH-05** key가 바뀌면 **렌더에서 바로** 새 key의 상태를 보여 준다(새 key의 캐시가 있으면 그 값, 없으면 `pending`). 기본 동작은 이전 key 데이터를 표시하지 않는다. 2026-11-08의 R-KP-01은 명시적 placeholder를 선택한 경우에만 이전 데이터 표시를 허용하며, 새 key의 상태는 그대로 유지한다. 커밋 뒤에야 key가 바뀌는 방식은 채택하지 않는다. (대화의 "B안")
 - **U-QH-06** 값은 state-ref 방식대로 **끝 경로에 `.value`를 붙여** 읽고, 그 경로만 구독한다(`display.data.name.value`). `display.data.value.name`처럼 상위에서 `.value`를 꺼내는 사용을 기본 예시로 쓰지 않는다.
 - **U-QH-07** doc-driven-designer-v1 규칙으로 문서를 먼저 쓴다. 구현 전에 깊은 추론으로 재검증한다.
 
@@ -77,7 +78,7 @@
 - **R-QH-14** 구독 전 렌더 값은 React `useSyncExternalStore`의 스냅샷 계약(바뀐 게 없으면 같은 값)과 Vue 서버 렌더의 지연 읽기(`onServerPrefetch` 뒤의 캐시)를 모두 만족한다(2026-10-08 실험 E4, DC-QH-29).
 - **R-QH-15** 옵션 오류(잘못된 `queryKey` — `.value`를 빠뜨린 state-ref ref 포함 —, boolean이 아닌 `enabled`, 쿼리를 열 때 거절될 옵션)는 렌더에서 던지지 않고 `status: 'error'`, `errorSource: 'source'` 표시로 보인다(기존 반응형 key 커서와 같음, DC-QH-13).
 - **R-QH-16** `state-ref/shared`로 공유한 sync client를 `observe`가 없는 sync 사본이 만들었으면, 진입점은 버전을 맞추라는 명확한 오류로 실패한다(DC-QH-37).
-- **R-QH-17** Lithent mounter에서 `createSyncQuery(client, options | getter)`를 한 번 호출해 `[표시 ref, q]`를 얻는다. 렌더는 `account.data.name.value`로 읽고 getter는 현재 props를 읽는다. 저장한 하위 ref도 현재 key를 따라가며 `.value`를 읽은 경로만 구독한다. 새 key를 처음 표시하는 렌더에 이전 key 값이 섞이지 않는다.
+- **R-QH-17** Lithent mounter에서 `createSyncQuery(client, options | getter)`를 한 번 호출해 `[표시 ref, q]`를 얻는다. 렌더는 `account.data.name.value`로 읽고 getter는 현재 props를 읽는다. 저장한 하위 ref도 현재 key를 따라가며 `.value`를 읽은 경로만 구독한다. 기본 옵션에서는 새 key를 처음 표시하는 렌더에 이전 key 값이 섞이지 않는다. 명시적 placeholder는 R-KP-01~05를 따른다.
 - **R-QH-18** Lithent의 첫 실제 마운트 뒤 구독·load하고 언마운트에서 `AbortSignal`로 끊는다. 같은 key의 다른 명시 핸들과 관찰자는 유지된다. 같은 작업의 라우트 교체는 READ를 취소·재발행하지 않는다. 서버는 콜백 없이 읽고 owners·READ를 만들지 않는다.
 - **R-QH-19** Lithent concurrent의 버전 알림에 연결해 외부 표시 상태 변경을 렌더러가 감지하게 한다. broad 버전 구독은 렌더 알림의 경로 수집과 분리한다. 렌더러 자체의 재시도 제한(마운트·update effect가 실행된 빌드, 재시도 상한)은 유지하며 무조건적인 tearing 방지를 약속하지 않는다.
 - **R-QH-20** Lithent 설치·고정 옵션·props getter·새로고침·무효화·로컬 편집·mutation links·SSR·concurrent 선택을 README와 영어·한국어 사이트에 안내한다. 문서 예제는 실제 공개 진입점으로 타입·실행 검증한다.
@@ -126,3 +127,26 @@
 - [server-sync DESIGN](../server-sync/DESIGN.md) 6절과 [PHASE8_6](../server-sync/PHASE8_6.md)의 F2-02 행·절에 mount 재조회의 경로(관찰자 훅 구독 시 `load()`)가 기록되고, PHASE8_6 행이 `packages/sync/src/tests/observe.test.ts`를 인용한다(`pnpm gate`의 support-table 단계로 확인).
 
 - 후속 공유 sync/ref 경계는 T-QH-60~62, Lithent 직접 ref는 T-QH-51·53·55·63, 문서 추적은 T-QH-64로 확인한다. 정확한 파일·명령·실행 범위는 IMPLEMENT 단계 8과 MANUAL_TEST_CHECKLIST의 2026-10-11 기록에 있다.
+
+
+## 6. 이전 페이지 데이터 유지 (2026-11-08)
+
+사용자 요청: 앞선 대화의 `placeholderData: keepPreviousData` 제안을 doc-driven-designer-v1 문서 기반으로 구현한다. 문서 위치는 기존 `docs/sync-query-hooks/`를 유지한다. 공통 observer가 모든 커넥터를 담당하며 코어와 커넥터 런타임은 변경하지 않는다. 구현 및 검증의 전체 진행은 이번 요청으로 승인됐고 선택적인 별도 reviewer 실행은 요청받지 않았다.
+
+- **R-KP-01** `@stateref/sync`가 `keepPreviousData`를 내보낸다. `ObserveOptions.placeholderData`는 기존 값 또는 `(previousData, { previousQueryKey, queryKey }) => T | undefined` 콜백이다. `previousData`는 `select` 전의 마지막 확정 관찰 데이터다.
+- **R-KP-02** 새 key의 실제 캐시/initialData가 우선한다. 데이터가 없을 때만 placeholder를 사용한다. 기본 동작은 변경하지 않으며, placeholder 중 `status: pending`, `loaded: false`, `isPlaceholder: true`이고 key/명령/편집은 새 query에 속한다.
+- **R-KP-03** 이력은 observer별로 보관한다. 확정 옵션의 실제 로드된 데이터(로컬 편집 포함)의 읽기 전용 스냅샷만 기록한다. speculative peek, placeholder, 이전 key의 늦은 응답은 이력이 되지 않는다. 빠른 A→B→C 전환에서 B가 미로드면 A를 유지한다. disabled/invalid 확정 옵션은 이력을 비운다. SSR과 새 observer는 다른 observer의 이력을 빌리지 않는다.
+- **R-KP-04** 첫 전환 렌더의 peek와 커밋 뒤 표시가 같은 규칙을 따른다. 동일 입력의 스냅샷은 안정적이고 캐시/요청/소유권을 변경하지 않는다. 콜백 오류는 observer의 `errorSource: placeholder`로 격리하고 query READ는 계속된다. 최초 READ 오류에서는 placeholder를 제거한다.
+- **R-KP-05** 기존 값 placeholder와 명시적 query/infiniteQuery API를 유지한다. 콜백 확장은 component observer에 한정한다. observer에서 함수 자체를 데이터로 표시하려면 `placeholderData: () => functionValue`로 감싼다. 공개 타입, 사용 문서와 실제 React 전환/중단 렌더 테스트로 확인한다.
+- 범위 밖: 새 infinite hook, 캐시/SSR에 placeholder 저장, React Query식 placeholder success 상태, 배포/게시, 별도 reviewer 실행.
+
+
+## 7. PR #21 검토 반영 (2026-11-08)
+
+사용자가 리뷰 타당성 확인 뒤 수정을 진행하도록 요청했다. [리뷰 댓글](https://github.com/superlucky84/state-ref/pull/21#issuecomment-6722024736)의 필수 호환성/로딩 안내, 추가로 재현한 invalid timing option의 이력 초기화 누락, 불필요한 이력 읽기를 보완한다.
+
+- **R-KP-07** 유효하지 않은 key/enabled뿐 아니라 timing/retry/호환성 등 query 열기 검증에 실패한 확정 옵션도 이력을 비운다. 확정 뒤 실제 attach에서야 검증이 실패한 경우도 같다. speculative peek의 오류는 확정 이력을 비우지 않으며, 복구한 실제 데이터는 이후 전환에서 다시 유지할 수 있다.
+- **R-KP-08** loaded/initialData/query error 표시에 placeholder 이력이 필요하지 않으면 display/peek 투영에서 이력을 읽지 않는다. pending 전환에서는 확정 핸들의 최신 스냅샷을 확인해 같은 입력의 identity와 concurrent 일관성을 유지한다. setOptions/detach의 확정 스냅샷 저장은 유지한다.
+- **R-KP-09** CHANGELOG에 두 비호환 변경(함수 값 해석, errorSource union 확장)을 Breaking으로 표시하고 이관법을 안내한다. 여섯 커넥터 README에 각 프레임워크의 pending && !isPlaceholder 사용법을 직접 적는다. README의 구현 세부는 API 문서로 옮기고 disabled 이력 초기화 차이를 강조한다.
+- 유지: DC-KP-03의 콜백 오류 표시 정책, 명시적 핸들의 값 placeholder 정책. 함수 payload를 오인하는 일괄 경고를 추가하지 않는다. 명시적 반응형 핸들의 callback 지원은 별도 후속 범위로 기록한다.
+- 릴리스 경계: 이 변경은 sync 0.4.0 대상이다. 실제 릴리스 준비 시 여섯 커넥터의 ^0.3.0 peer 범위를 ^0.3.0 || ^0.4.0 등으로 확장하고 소비자/선택적 peer 전체를 함께 확인해야 한다. 현재 PR은 Unreleased 기능/수정이며 패키지 버전 올림·게시를 포함하지 않는다.
