@@ -608,9 +608,9 @@ Files:
 
 ## 현재 인계 — keepPreviousData (2026-11-08)
 
-- PR: [#21](https://github.com/superlucky84/state-ref/pull/21), 브랜치 `feat/keep-previous-data`. 기능 커밋 `1682ba7b1809b57973ec812d75bf958720f0a090`, 리뷰 반영 시작 HEAD `a8b2ecd1880a7d0f4edc7b7ac97cd2eeb131c79f`.
+- PR: [#21](https://github.com/superlucky84/state-ref/pull/21), 브랜치 `feat/keep-previous-data`. 기능 커밋 `1682ba7b1809b57973ec812d75bf958720f0a090`, 리뷰 반영 시작 HEAD `a8b2ecd1880a7d0f4edc7b7ac97cd2eeb131c79f`, 리뷰 수정 커밋 `cc0923cebeb00a6643bd395622b3c1ad784fd7c3`. 이 커밋 뒤에는 인계 기록만 갱신했으며 런타임·테스트 코드는 전체 gate를 통과한 내용 그대로다.
 - 완료: 단계 9~11 기능 구현에 이어 단계 12~14 리뷰 수정과 전체 gate 통과. 잘못된 timing/retry/호환성 및 attach/open 오류에서 이력을 지우고 speculative 오류는 이력을 보존한다. loaded/initialData/query error 투영의 이력 읽기를 생략하며 pending의 최신 스냅샷 반영은 유지한다.
 - 문서: Breaking 이관법, 0.4.0 릴리스/여섯 connector peer 범위 조건, 프레임워크별 pending && !isPlaceholder, disabled 차이와 API 상세를 반영했다. 콜백 실패 정책과 명시적 핸들의 값 placeholder 계약은 유지한다.
 - 검증: fresh `pnpm gate` 전체 통과. workspace 1,266 통과·기존 2 제외, SSR 15/15, sync 372/372, 성능 6/6, core 3,757 B gzip. 상세는 단계 14.
-- 다음: 사용자 요청대로 이 문서와 함께 리뷰 변경을 commit/push하고 PR 설명을 최신 결과로 맞춘다. 이후 PR 검토 및 별도 0.4.0 릴리스 준비. 구현·자동 검증에는 차단 없음. M-KP의 사람 체험 체크는 미실행 상태를 유지한다.
+- 다음: PR 검토 및 별도 0.4.0 릴리스 준비. 사용자 요청대로 리뷰 변경을 commit/push하고 PR 설명에 최신 검증 결과를 반영한다. 구현·자동 검증에는 차단 없음. M-KP의 사람 체험 체크는 미실행 상태를 유지한다.
 - 별도 reviewer와 PR 댓글 답변은 요청받지 않아 실행하지 않았다. 기존 진행 기록은 이력으로 보존한다.
