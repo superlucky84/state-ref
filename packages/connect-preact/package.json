@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@stateref/connect-preact",
-  "version": "10.5.0",
+  "version": "10.5.1",
   "private": false,
   "description": "Preact connector for state-ref",
   "packageManager": "pnpm@7.6.0",
@@ -50,7 +50,7 @@
   "peerDependencies": {
     "preact": "^10.0.0",
     "state-ref": "^3.1.0",
-    "@stateref/sync": "^0.3.0"
+    "@stateref/sync": "^0.3.0 || ^0.4.0"
   },
   "devDependencies": {
     "@stateref/sync": "workspace:^",

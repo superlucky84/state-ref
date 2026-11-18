@@ -256,7 +256,7 @@ const phase = q.display.isPlaceholder.value ? 'placeholder' : q.display.status.v
       </p>
 
       <p>
-        콜백 placeholder는 미출시 <code>@stateref/sync</code> 0.4.0 대상이며
+        콜백 placeholder는 <code>@stateref/sync</code> 0.4.0 이상에서 쓸 수 있고
         컴포넌트 관찰자에 적용됩니다. 명시적{' '}
         <code>{'client.query({ source, resolve })'}</code>와{' '}
         <code>infiniteQuery</code>는 함수도 값으로 취급하므로 여기에{' '}

@@ -614,3 +614,4 @@ Files:
 - 검증: fresh `pnpm gate` 전체 통과. workspace 1,266 통과·기존 2 제외, SSR 15/15, sync 372/372, 성능 6/6, core 3,757 B gzip. 상세는 단계 14.
 - 다음: PR 검토 및 별도 0.4.0 릴리스 준비. 사용자 요청대로 리뷰 변경을 commit/push하고 PR 설명에 최신 검증 결과를 반영한다. 구현·자동 검증에는 차단 없음. M-KP의 사람 체험 체크는 미실행 상태를 유지한다.
 - 별도 reviewer와 PR 댓글 답변은 요청받지 않아 실행하지 않았다. 기존 진행 기록은 이력으로 보존한다.
+- 2026-11-18: PR #21은 main에 병합됐다(`71bda7f`). 릴리스 준비 PR에서 sync **0.4.0**, 여섯 connector patch(React 19.1.1, Preact 10.5.1, Vue 3.5.1, Svelte 5.1.1, Solid 1.5.1, Lithent 0.2.1)와 DevTools 0.1.1로 버전을 올렸다. connector의 선택적 sync peer는 `^0.3.0 || ^0.4.0`, DevTools는 `^0.3.1 || ^0.4.0`이다. 배포는 수동 Release workflow로 한다([RELEASING](../RELEASING.md)).

@@ -72,7 +72,7 @@ The second value, `q`, is the same object for the observer's life in every entry
 
 ### Keep the previous page while loading
 
-This addition is unreleased and targets `@stateref/sync` 0.4.0.
+Available since `@stateref/sync` 0.4.0.
 
 Component queries accept `placeholderData: keepPreviousData`. The helper returns
 this observer's last loaded raw data while the new key has no data. The new key's

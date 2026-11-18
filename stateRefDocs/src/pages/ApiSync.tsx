@@ -256,8 +256,8 @@ const phase = q.display.isPlaceholder.value ? 'placeholder' : q.display.status.v
       </p>
 
       <p>
-        Callback placeholders target <code>@stateref/sync</code> 0.4.0
-        (unreleased). They apply to component observers. Explicit{' '}
+        Callback placeholders require <code>@stateref/sync</code> 0.4.0 or
+        later. They apply to component observers. Explicit{' '}
         <code>{'client.query({ source, resolve })'}</code> and{' '}
         <code>infiniteQuery</code> still accept value placeholders, including
         function payloads; passing <code>keepPreviousData</code> there does not

@@ -46,4 +46,4 @@ ESM consumers can use `import { connectSvelte } from '@stateref/connect-svelte'`
 
 ## Publishing
 
-See [RELEASING](./RELEASING.md) for the exact target versions, core → DevTools publication order, tarball checks, npm verification and documentation deployment. Contributor setup does not publish packages.
+Packages are published by the manual **Release** GitHub Actions workflow, which publishes every public package whose `package.json` version is not on npm yet. See [RELEASING](./RELEASING.md) for the one-time Trusted Publishing setup and the release steps. Contributor setup does not publish packages.

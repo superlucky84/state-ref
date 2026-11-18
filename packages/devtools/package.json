@@ -1,6 +1,6 @@
 {
   "name": "@stateref/devtools",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "publishConfig": {
     "access": "public",
@@ -48,7 +48,7 @@
   },
   "peerDependencies": {
     "state-ref": "^3.3.0",
-    "@stateref/sync": "^0.3.1"
+    "@stateref/sync": "^0.3.1 || ^0.4.0"
   },
   "devDependencies": {
     "state-ref": "workspace:*",

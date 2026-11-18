@@ -1,10 +1,10 @@
 # Changelog
 
-## Unreleased
+## @stateref/sync 0.4.0
 
 ### Added
 
-- `@stateref/sync`: add `placeholderData: keepPreviousData` to component query observers in every
+- Add `placeholderData: keepPreviousData` to component query observers in every
   connector. A callback can inspect the previous raw data and previous/current
   query keys. The preview stays observer-local, keeps the new query pending and
   never seeds its cache or editable resource.
@@ -21,16 +21,29 @@
 
 ### Breaking
 
-- `@stateref/sync`: function-valued observer `placeholderData` is now invoked as
-  a callback. Wrap a function payload in a factory:
+- Function-valued observer `placeholderData` is now invoked as a callback.
+  Wrap a function payload in a factory:
   `placeholderData: () => functionValue`. Explicit query/infiniteQuery handles
   keep treating functions as values.
 - `QueryDisplayState.errorSource` adds `'placeholder'`. Update exhaustive
   switches and narrower annotations to handle the new display error source.
-- This change targets `@stateref/sync` **0.4.0**. Release preparation must also
-  extend the six connectors' current `^0.3.0` peer range to include `^0.4.0`
-  (for example `^0.3.0 || ^0.4.0`), audit other sync consumers, and publish the
-  compatible connector metadata. Package version changes belong to that release.
+
+## @stateref/connect-react 19.1.1, @stateref/connect-preact 10.5.1, @stateref/connect-vue 3.5.1, @stateref/connect-solid 1.5.1, @stateref/connect-svelte 5.1.1, @stateref/connect-lithent 0.2.1, @stateref/devtools 0.1.1
+
+### Changed
+
+- The optional `@stateref/sync` peer also accepts 0.4
+  (`^0.3.0 || ^0.4.0`; DevTools `^0.3.1 || ^0.4.0`). Connector and DevTools
+  runtime code is unchanged. Connector READMEs show the
+  `pending && !isPlaceholder` loading check for `keepPreviousData`.
+
+## Release automation
+
+- Add the manual **Release** workflow (`.github/workflows/release.yml`). Run
+  it from the Actions tab on `main`: after `pnpm gate` it publishes, through
+  npm Trusted Publishing, every public package whose `package.json` version
+  is not on npm yet, then pushes the `name@version` tags. Setup and usage:
+  [RELEASING](docs/RELEASING.md).
 
 ## state-ref 3.3.0
 
@@ -77,7 +90,7 @@
 - No state editing, time travel, persistent history, automatic remote
   transport or Redux DevTools adapter is included.
 
-Release status and publication commands: [RELEASING](docs/RELEASING.md).
+Release record: [2026-10-26](docs/release/2026-10-26.md).
 
 ## state-ref 3.2.2
 

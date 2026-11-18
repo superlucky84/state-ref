@@ -54,7 +54,10 @@ for (const name of PACKAGES) {
   walk(manifest.exports, 'exports');
   assert.ok(seen.length > 0, `${manifest.name}: no entry paths declared`);
   if (name.startsWith('connect-')) {
-    assert.equal(manifest.peerDependencies['@stateref/sync'], '^0.3.0');
+    assert.equal(
+      manifest.peerDependencies['@stateref/sync'],
+      '^0.3.0 || ^0.4.0'
+    );
     assert.equal(
       manifest.peerDependenciesMeta['@stateref/sync'].optional,
       true

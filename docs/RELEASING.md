@@ -1,145 +1,127 @@
-# DevTools 배포 가이드
+# 배포 가이드
 
-이 문서는 배포 준비와 실행 방법을 정리한다. **아직 npm 발행·main 병합·사이트 배포를 실행하지 않았다.** 2026-10-26 조회한 registry 상태를 기준으로 하며, 실제 실행 직전에 다시 확인한다.
+npm 배포는 GitHub Actions의 **Release** workflow(`.github/workflows/release.yml`)를 손으로 실행해서 한다. 개인 PC에서 `npm publish`를 하지 않고, npm 토큰도 저장하지 않는다. 인증은 npm Trusted Publishing(OIDC)으로 한다.
 
-검토와 병합은 [PR #20](https://github.com/superlucky84/state-ref/pull/20)에서 진행한다. 작업 환경의 npm 인증과 GitHub 연결은 별개다. 현재 npm 로그인·실제 발행은 사용자 PC에서 진행하며, 아래 feature 브랜치 명령을 그대로 사용한다.
+workflow는 `pnpm gate`를 통과한 뒤 `scripts/release.mjs`를 실행한다. 스크립트가 하는 일은 다음과 같다.
 
-## 1. 이번에 발행할 패키지
+1. `packages/*` 중 private이 아닌 패키지마다 `package.json`의 버전이 npm에 있는지 조회한다. 이미 있는 버전은 건너뛴다.
+2. 남은 패키지를 의존 순서(core → sync → connector·DevTools)대로 `pnpm pack`한다. 이때 `workspace:` 범위가 실제 버전으로 바뀐다. 그 tarball을 `npm publish --provenance`로 올린다. prerelease 버전(`-`가 들어간 버전)은 `next` dist-tag, 나머지는 `latest`로 올린다.
+3. 올라간 버전마다 `name@version` annotated 태그를 만들어 push한다. 이미 원격에 같은 태그가 있으면 건드리지 않는다.
 
-| 순서 | 패키지               | npm 현재 버전 | 이번 버전   | 이유                                            |
-| ---- | -------------------- | ------------- | ----------- | ----------------------------------------------- |
-| 1    | `state-ref`          | `3.2.2`       | **`3.3.0`** | 개발용 관측 API와 조건부 core/batch 산출물 추가 |
-| 2    | `@stateref/devtools` | 없음          | **`0.1.0`** | recorder·Sync 관측·패널·공통 auto API의 첫 발행      |
+중간에 실패해도 그때까지 올라간 버전은 태그를 남기고 멈춘다. 원인을 고친 뒤 workflow를 다시 실행하면 npm에 이미 있는 버전은 건너뛰므로 실패한 패키지부터 이어서 배포된다. npm에 올라간 버전은 덮어쓸 수 없다. 배포된 내용을 고쳐야 하면 다음 patch 버전을 준비한다.
 
-두 목표 버전은 이미 package.json에 준비되어 있으므로 다시 증가시키지 않는다. DevTools의 core peer는 `^3.3.0`이고 선택적 Sync peer는 `^0.3.1`이다. **core를 먼저 발행하고 조회되는 것을 확인한 뒤 DevTools를 발행한다.**
+과거 릴리스별 기록은 [docs/release](./release/)에 있다.
 
-이번 변경에서 Sync와 connector의 source/API는 그대로다. `@stateref/sync@0.3.1`, React `19.1.0`, Preact `10.5.0`, Vue `3.5.0`, Svelte `5.1.0`, Solid `1.5.0`, Lithent `0.2.0`은 현재 버전을 유지하고 재발행하지 않는다. private인 루트·문서 사이트·예제의 버전도 올리지 않는다.
+## 1. 최초 1회 설정
 
-## 2. 배포할 브랜치 받기
+아래 명령은 저장소 루트에서 한 줄씩 실행한다. 각 명령이 성공한 것을 확인한 뒤 다음으로 넘어간다.
 
-이번 가이드는 검증한 feature 브랜치에서 npm에 발행한 뒤 main에 병합하는 순서다. 브랜치는 `feat/state-ref-devtools`다. 기존 커밋을 모두 포함한 깨끗한 checkout에서 실행한다.
+### 1-1. GitHub `npm` environment 만들기
+
+Release job은 `environment: npm`에서 돈다. npm의 Trusted Publisher도 이 environment 이름으로 등록하므로, 이 environment가 아닌 job은 배포할 수 없다.
 
 ```sh
-git fetch origin
-git switch feat/state-ref-devtools
-git pull --ff-only
-nvm install
-nvm use
-corepack enable
-corepack prepare pnpm@9.12.3 --activate
-node --version
-pnpm --version
-pnpm install --frozen-lockfile
+gh auth status
+gh api -X PUT repos/superlucky84/state-ref/environments/npm
 ```
 
-Node는 **24.19.0**, pnpm은 **9.12.3**이다. Volta 사용자는 저장소 pin을 사용해도 된다. `git status --short`에 수정 파일이 남아 있으면 먼저 변경을 정리하고 커밋·푸시한다. 아래 실제 발행 명령은 git 검사를 유지한다.
+environment를 `main` 브랜치에서만 쓸 수 있게 제한한다(선택이지만 권장).
 
 ```sh
-git status --short
-pnpm gate
-pnpm check:examples
-pnpm build:docs
+gh api -X PUT repos/superlucky84/state-ref/environments/npm -F 'deployment_branch_policy[protected_branches]=false' -F 'deployment_branch_policy[custom_branch_policies]=true'
+gh api -X POST repos/superlucky84/state-ref/environments/npm/deployment-branch-policies -f name=main -f type=branch
+gh api repos/superlucky84/state-ref/environments/npm/deployment-branch-policies --jq '.branch_policies[].name'
 ```
 
-`pnpm gate`에는 전체 build·타입·lint·runtime·SSR·패키징·성능/번들 한도 검사가 포함된다. build 후 declaration 경로와 bundled skills도 정리되므로 부분 build만으로 발행하지 않는다. 브라우저 검증은 `pnpm test:devtools:browser`, `pnpm test:devtools:walkthrough`, `pnpm test:devtools:auto:browser`, `pnpm test:devtools:position:browser`이며 Chromium 경로가 다르면 `CHROMIUM_PATH`를 지정한다. 사람의 사용성/heap 검사는 [체크리스트](./devtools/MANUAL_TEST_CHECKLIST.md)에서 별도로 확인한다.
+마지막 명령의 출력이 `main`이면 된다. 배포 직전에 한 번 더 승인하는 단계를 두려면 GitHub 저장소의 Settings → Environments → `npm` → Required reviewers에 본인을 추가한다.
 
-## 3. npm 계정과 배포 내용 확인
+### 1-2. npm Trusted Publisher 등록
 
-패키지에 발행 권한이 있는 npm 계정으로 로그인한다. 신규 scoped 패키지인 `@stateref/devtools`를 만들 권한도 필요하다.
+`npm trust`는 npm **11.15.0 이상**, 계정 2FA, 각 패키지의 쓰기 권한이 필요하다. 패키지가 npm에 이미 있어야 하는데, 아래 9개는 모두 등록되어 있다.
 
 ```sh
+npm --version
 npm login --registry https://registry.npmjs.org
 npm whoami --registry https://registry.npmjs.org
-npm view state-ref version --registry https://registry.npmjs.org
-npm view @stateref/devtools version --registry https://registry.npmjs.org
 ```
 
-DevTools가 첫 발행 전이면 마지막 조회의 E404는 예상 결과다. 다른 네트워크/권한 오류를 미등록으로 해석하지 않는다. 목표 버전이 이미 발행되어 있으면 아래 해당 발행을 반복하지 말고 5절의 버전 확인부터 수행한다.
-
-실제 업로드 없이 tarball 구성과 npm 발행 내용을 확인한다.
+패키지마다 한 줄씩 실행한다. 첫 명령에서 2FA를 요구한다. 이때 npm 웹 화면의 "5분 동안 2FA 건너뛰기"를 선택하면 나머지는 2FA 없이 이어서 실행할 수 있다.
 
 ```sh
-pnpm --filter state-ref publish --dry-run --access public --tag latest --publish-branch feat/state-ref-devtools
-pnpm --filter @stateref/devtools publish --dry-run --access public --tag latest --publish-branch feat/state-ref-devtools
+npm trust github state-ref --repo superlucky84/state-ref --file release.yml --env npm --allow-publish -y
+npm trust github @stateref/sync --repo superlucky84/state-ref --file release.yml --env npm --allow-publish -y
+npm trust github @stateref/connect-react --repo superlucky84/state-ref --file release.yml --env npm --allow-publish -y
+npm trust github @stateref/connect-preact --repo superlucky84/state-ref --file release.yml --env npm --allow-publish -y
+npm trust github @stateref/connect-vue --repo superlucky84/state-ref --file release.yml --env npm --allow-publish -y
+npm trust github @stateref/connect-svelte --repo superlucky84/state-ref --file release.yml --env npm --allow-publish -y
+npm trust github @stateref/connect-solid --repo superlucky84/state-ref --file release.yml --env npm --allow-publish -y
+npm trust github @stateref/connect-lithent --repo superlucky84/state-ref --file release.yml --env npm --allow-publish -y
+npm trust github @stateref/devtools --repo superlucky84/state-ref --file release.yml --env npm --allow-publish -y
 ```
 
-`--publish-branch`는 pnpm 9의 기본 브랜치 검사와 실제 feature 브랜치를 맞춘다. main에서 발행하기로 바꾼 경우에는 먼저 병합·검증을 완료하고 두 명령의 브랜치 값도 `main`으로 바꾼다. 실제 발행에 `--no-git-checks`나 `--force`를 붙일 필요가 없다. 두 package.json은 npm registry와 public access를 명시한다.
-
-직접 archive도 확인하려면 macOS/Linux 셸에서 다음을 실행한다. 출력한 디렉터리에 core와 DevTools tarball이 생성된다.
+등록 결과를 확인한다. 각 패키지에 `superlucky84/state-ref`, `release.yml`, `npm`이 보여야 한다.
 
 ```sh
-release_pack_dir=$(mktemp -d)
-pnpm --dir packages/state-ref pack --pack-destination "$release_pack_dir"
-pnpm --dir packages/devtools pack --pack-destination "$release_pack_dir"
-printf '%s\n' "$release_pack_dir"
-tar -tzf "$release_pack_dir/state-ref-3.3.0.tgz"
-tar -tzf "$release_pack_dir/stateref-devtools-0.1.0.tgz"
+npm trust list state-ref
+npm trust list @stateref/sync
+npm trust list @stateref/connect-react
+npm trust list @stateref/connect-preact
+npm trust list @stateref/connect-vue
+npm trust list @stateref/connect-svelte
+npm trust list @stateref/connect-solid
+npm trust list @stateref/connect-lithent
+npm trust list @stateref/devtools
 ```
 
-core에는 기본/개발 ESM·CJS, 공개 export의 선언 파일과 LICENSE가 있어야 한다. DevTools에는 recorder/panel/auto 기본·개발 ESM·선언·README·LICENSE가 있어야 한다. packed manifest의 `workspace:` 참조는 실제 버전으로 치환된다. 검증 결과는 IMPLEMENT의 배포 준비 절에 기록한다.
+npm은 패키지마다 Trusted Publisher 설정을 하나만 허용한다. 이미 설정이 있어서 등록이 실패하면 `npm trust list <패키지>`로 id를 확인하고, `npm trust revoke <패키지> --id=<id>`로 지운 뒤 다시 등록한다.
 
-## 4. npm에 순서대로 발행
+`packages/` 아래에 새 공개 패키지를 추가하면, 그 패키지의 첫 버전은 직접 배포해야 한다. `npm trust`는 이미 npm에 있는 패키지에만 설정할 수 있기 때문이다. 첫 배포 뒤 같은 형식으로 등록한다.
 
-아래는 **실제 업로드** 명령이다. `latest` tag로 정식 발행한다.
+첫 workflow 배포가 성공한 뒤에는 npm 웹의 각 패키지 Settings → Publishing access를 "Require two-factor authentication and disallow tokens"로 바꿔 둘 수 있다. Trusted Publishing은 이 설정과 상관없이 계속 동작한다.
+
+## 2. 릴리스할 때마다
+
+1. 기능 PR과 별도로, 또는 함께 배포할 패키지의 `package.json` 버전을 올린다. connector·DevTools의 `@stateref/sync` peer 범위가 새 sync 버전을 받는지 확인한다(`pnpm check:packaging`이 connector 범위를 검사한다). 그리고 `CHANGELOG.md`에 패키지별 절을 적는다.
+2. PR을 `main`에 병합한다.
+3. 배포 대상을 미리 확인한다. 아래 명령은 npm만 조회하고, 아무것도 올리지 않는다.
+
+   ```sh
+   git switch main
+   git pull --ff-only
+   pnpm install --frozen-lockfile
+   pnpm build
+   node scripts/release.mjs --dry-run
+   ```
+
+   맨 위의 `Release plan`에 `publish`로 표시된 패키지가 이번에 배포된다.
+
+4. GitHub의 Actions → **Release** → Run workflow에서 `main`을 고르고 실행한다. `dry_run`을 체크하면 CI에서 gate와 pack까지만 실행하고 아무것도 배포하지 않는다. 명령줄에서는 다음과 같이 실행한다.
+
+   ```sh
+   gh workflow run release.yml --ref main
+   gh run watch "$(gh run list --workflow release.yml --limit 1 --json databaseId --jq '.[0].databaseId')"
+   ```
+
+5. 결과를 확인한다.
+
+   ```sh
+   npm view @stateref/sync version dist-tags
+   git fetch --tags
+   git tag --sort=-creatordate | head
+   ```
+
+문서 사이트는 `main`에 `stateRefDocs/**`가 바뀌면 **Deploy docs site** workflow가 따로 배포한다. npm 배포와는 별개다.
+
+GitHub 릴리스 노트도 만들려면 태그가 생긴 뒤 CHANGELOG의 해당 절로 만든다.
 
 ```sh
-pnpm --filter state-ref publish --access public --tag latest --publish-branch feat/state-ref-devtools
-npm view state-ref@3.3.0 version --registry https://registry.npmjs.org
+section() { awk -v h="## $1" '$0==h{f=1;next} /^## /{f=0} f' CHANGELOG.md; }
+section "@stateref/sync 0.4.0" > /tmp/sync-notes.md
+gh release create "@stateref/sync@0.4.0" --verify-tag --title "@stateref/sync 0.4.0" --notes-file /tmp/sync-notes.md
 ```
 
-`3.3.0`이 확인되면 다음으로 진행한다.
+## 3. 실패했을 때
 
-```sh
-pnpm --filter @stateref/devtools publish --access public --tag latest --publish-branch feat/state-ref-devtools
-npm view @stateref/devtools@0.1.0 version --registry https://registry.npmjs.org
-```
-
-2FA를 요구하면 npm의 안내를 따르거나 해당 publish 명령에 현재 일회용 코드의 `--otp` 값을 추가한다. 코드나 토큰을 파일·문서·커밋에 보관하지 않는다.
-
-## 5. 발행 결과와 설치 확인
-
-```sh
-npm view state-ref@3.3.0 version dist-tags --registry https://registry.npmjs.org
-npm view @stateref/devtools@0.1.0 version dist-tags peerDependencies peerDependenciesMeta --registry https://registry.npmjs.org
-```
-
-별도의 빈 디렉터리에서 실제 registry 설치를 확인한다. core는 기존 CommonJS/ESM 소비자를 유지하고, DevTools는 ESM entry다. 두 패키지 외에 Sync를 설치할 필요는 없다.
-
-```sh
-release_smoke_dir=$(mktemp -d)
-cd "$release_smoke_dir"
-npm init -y
-npm install state-ref@3.3.0 @stateref/devtools@0.1.0
-node --conditions=development --input-type=module -e "import { createStore } from 'state-ref'; import { createDevtools } from '@stateref/devtools'; const watch=createStore({count:0}); const tools=createDevtools(); tools.attachStore(watch); watch().count.value=1; console.log(tools.inspectStore(tools.getSnapshot().sources[0].id).value); tools.dispose();"
-cd -
-```
-
-core가 성공하고 DevTools 발행만 실패했다면 core 버전을 다시 발행하지 않는다. DevTools의 권한/오류를 해결하고 미발행인 0.1.0부터 재개한다. 이미 npm에 등록된 동일 버전의 내용을 덮어쓸 수 없으므로, 발행된 내용에 수정이 필요할 때에만 다음 patch 버전을 준비한다.
-
-## 6. 태그와 문서 사이트 배포
-
-두 npm 버전이 확인된 뒤 저장소 루트의 같은 release commit에서 기존 monorepo 형식대로 태그를 남긴다.
-
-```sh
-git tag -a state-ref@3.3.0 -m "state-ref 3.3.0"
-git tag -a @stateref/devtools@0.1.0 -m "@stateref/devtools 0.1.0"
-git push origin state-ref@3.3.0 @stateref/devtools@0.1.0
-```
-
-같은 이름의 태그가 이미 있다면 다시 만들거나 덮어쓰지 말고 올바른 release commit을 가리키는지 확인한다.
-
-그다음 GitHub에서 `feat/state-ref-devtools`를 main으로 병합한다. main의 `stateRefDocs/**` 변경은 기존 **Deploy docs site** workflow를 실행해 `gh-pages`를 갱신한다. npm 발행만으로 사이트가 갱신되지는 않는다. npm 패키지 2개가 준비된 뒤 병합하면 가이드에서 안내한 버전을 바로 설치할 수 있다.
-
-자동 배포가 정상 완료되면 수동 명령을 추가 실행할 필요가 없다. 수동으로 다시 배포할 때만 main의 최신 커밋에서 다음을 사용한다. 배포 스크립트는 gh-pages의 fetch refspec을 명시하므로 main만 추적하는 checkout에서도 배포용 worktree를 만들 수 있다.
-
-```sh
-git switch main
-git pull --ff-only
-pnpm install --frozen-lockfile
-pnpm deploy:docs --dry-run
-pnpm deploy:docs
-```
-
-수동 스크립트는 git으로 `gh-pages`에 push하므로 해당 저장소의 push 권한이 필요하다. 최종 사이트: <https://superlucky84.github.io/state-ref/#/ko/guide/devtools> (한국어), <https://superlucky84.github.io/state-ref/#/guide/devtools> (영문).
-
-발행/배포를 실제 완료한 뒤 이 문서 첫 문단과 IMPLEMENT의 상태를 완료 사실·커밋·버전으로 갱신한다. 현재 공개 가이드는 버전 요구사항을 설명하며, 배포 준비를 발행 완료로 주장하지 않는다.
+- **gate 실패**: 아무것도 배포되지 않는다. 로그의 `GATE:` 요약에서 실패한 단계를 확인한다. `bench` 단계는 절대 시간 기준이라 CI 러너가 느리면 실패할 수 있다. 이 경우 그냥 다시 실행해 본다.
+- **`npm publish`가 E401/E403/E404로 실패**: 그 패키지의 Trusted Publisher 설정을 다시 확인한다(`npm trust list <패키지>`). 저장소, workflow 파일 이름(`release.yml`), environment(`npm`)가 정확히 같아야 한다.
+- **배포는 됐는데 태그 push가 실패**: 다음 실행에서는 그 버전을 건너뛰므로 태그가 자동으로 생기지 않는다. 배포한 커밋에서 손으로 만든다: `git tag -a "<name>@<version>" -m "<name>@<version>" <commit>` 다음 `git push origin "<name>@<version>"`.
