@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@stateref/connect-lithent",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": false,
   "description": "Lithent state and query view connectors for state-ref",
   "module": "./dist/stateref-connect-lithent.mjs",
@@ -38,7 +38,7 @@
   "peerDependencies": {
     "lithent": "^1.24.0",
     "state-ref": "^3.1.0",
-    "@stateref/sync": "^0.3.0"
+    "@stateref/sync": "^0.3.0 || ^0.4.0"
   },
   "peerDependenciesMeta": {
     "@stateref/sync": {

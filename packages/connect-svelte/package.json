@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@stateref/connect-svelte",
-  "version": "5.1.0",
+  "version": "5.1.1",
   "private": false,
   "description": "Svelte connector for state-ref",
   "packageManager": "pnpm@7.6.0",
@@ -57,7 +57,7 @@
   "peerDependencies": {
     "state-ref": "^3.1.0",
     "svelte": "^4.0.0 || ^5.0.0",
-    "@stateref/sync": "^0.3.0"
+    "@stateref/sync": "^0.3.0 || ^0.4.0"
   },
   "devDependencies": {
     "@stateref/sync": "workspace:^",

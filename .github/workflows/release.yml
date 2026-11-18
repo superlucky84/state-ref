@@ -1,0 +1,62 @@
+# Publishes the packages whose package.json version is not on npm yet.
+#
+# Run it by hand from the Actions tab on `main` after merging a version bump.
+# It runs `pnpm gate`, then `node scripts/release.mjs`, which skips versions
+# already on npm, publishes the rest in dependency order through npm Trusted
+# Publishing and pushes a `name@version` tag for each. Setup (Trusted
+# Publisher registration, the `npm` environment): docs/RELEASING.md.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Plan and pack only; publish nothing and push no tags
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Two releases racing would both see the same version as unpublished.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # The Trusted Publisher on npm is registered for this environment, so only
+    # this job can publish. Add required reviewers to it for an approval step.
+    environment: npm
+    permissions:
+      # Pushing the release tags.
+      contents: write
+      # The OIDC token npm exchanges for a short-lived publish credential.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # Reads the pnpm version from `packageManager` in package.json.
+      - uses: pnpm/action-setup@v4
+
+      # No `registry-url`: it writes an .npmrc expecting NODE_AUTH_TOKEN,
+      # and Trusted Publishing needs no token.
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm gate
+
+      - name: Identify the tagger
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Publish
+        run: node scripts/release.mjs ${{ inputs.dry_run && '--dry-run' || '' }}
