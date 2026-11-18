@@ -4,6 +4,11 @@
   "version": "0.4.0",
   "private": false,
   "description": "Optional query and editable resource package for state-ref",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/superlucky84/state-ref.git",
+    "directory": "packages/sync"
+  },
   "main": "./dist/stateref-sync.mjs",
   "types": "./dist/index.d.ts",
   "exports": {

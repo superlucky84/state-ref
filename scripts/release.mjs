@@ -100,6 +100,25 @@ if (pending.length === 0) {
   process.exit(0);
 }
 
+// npm rejects a provenance-signed publish (E422) unless `repository.url`
+// names the repository that built it. Check every package before the first
+// publish, so a dry run catches it and a real run never stops half-way on it.
+const normalizeRepo = url =>
+  String(url ?? '')
+    .replace(/^git\+/, '')
+    .replace(/\.git$/, '');
+const expectedRepo = normalizeRepo(
+  JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).repository?.url
+);
+const wrongRepo = pending.filter(
+  ({ manifest }) => normalizeRepo(manifest.repository?.url) !== expectedRepo
+);
+if (wrongRepo.length > 0)
+  throw new Error(
+    `repository.url must be ${expectedRepo} for provenance: ` +
+      wrongRepo.map(({ manifest }) => manifest.name).join(', ')
+  );
+
 if (!dryRun && inActions) {
   // Trusted Publishing needs npm 11.5.1 or later.
   const [major, minor, patch] = run('npm', ['--version'])
