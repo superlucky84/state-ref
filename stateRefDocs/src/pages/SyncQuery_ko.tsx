@@ -204,8 +204,14 @@ export const AccountCard = mount<{ id: number }>((_renew, props) => {
         </li>
         <li>
           <strong>key 변경.</strong> 새 key는 첫 렌더부터 보입니다(캐시된
-          데이터나 pending). 이전 key의 데이터는 보이지 않고, 이전 key에 늦게
-          도착한 응답도 보이지 않습니다.
+          데이터나 pending). <code>@stateref/sync</code>에서{' '}
+          <code>keepPreviousData</code>를 가져와{' '}
+          <code>placeholderData: keepPreviousData</code>를 지정하면 로딩 중 이전
+          목록을 유지합니다. 상태는 pending, <code>loaded: false</code>,{' '}
+          <code>isPlaceholder: true</code>이며 전체 로딩 화면은{' '}
+          <code>status === &apos;pending&apos; &amp;&amp; !isPlaceholder</code>로
+          판단합니다. 새 key의 캐시가 우선이고 이전 key에 늦게 도착한 응답은
+          현재 데이터를 대체하지 않습니다.
         </li>
         <li>
           <strong>의존 조회.</strong> key에는 <code>undefined</code>를 넣을 수

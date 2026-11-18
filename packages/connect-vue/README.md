@@ -99,10 +99,11 @@ const rename = (event: Event) => {
 How it behaves:
 
 - **Pass a getter to follow props or refs**; Vue tracks it and confirms new options before the next render. A plain options object is fixed for the component's life. Refs inside a plain object are not unwrapped (unlike TanStack Vue Query): read `.value` inside a getter. A ref left in a key shows `status: 'error'` with `errorSource: 'source'`, as does `undefined`.
-- A new `queryKey` shows the new key at once (its cached data, or `pending`), never the previous key's data, and a late answer for the old key never shows. Inline `queryFn` and `select` literals are fine. A `select` option that returns a Map, Set, class instance or function republishes whenever the getter reruns: memoize it or pass `equals`.
+- A new `queryKey` shows the new key at once (its cached data, or `pending`). Previous data requires explicit `placeholderData` (see [pagination](../sync/README.md#keep-the-previous-page-while-loading)); a late answer for the old key never shows. Inline `queryFn` and `select` literals are fine. A `select` option that returns a Map, Set, class instance or function republishes whenever the getter reruns: memoize it or pass `equals`.
 - The query opens on attach, loads if stale and shares a READ already in flight. When the scope ends, the handle is released one macrotask later, so a route swap in one patch neither cancels nor repeats a READ. In tests with fake timers, `await vi.advanceTimersByTimeAsync(0)` before asserting that the handle is gone.
 - A component deactivated by `<KeepAlive>` stays attached, keeping its owner and any READ, until it is evicted or unmounted.
 - Use `status === 'pending'` for loading UI; the first `fetchStatus` is the cache as it is (`'idle'` before the READ starts).
+- When retaining previews, select `const isPlaceholder = account(ref => ref.isPlaceholder.value)` and use `status === 'pending' && !isPlaceholder` for the full loading screen in the template.
 - Dependent query: `queryKey: ['user', id ?? null], enabled: id != null` in the getter. `enabled: false` shows idle and owns nothing.
 - Server rendering: create `createSyncClient({ ssr: true })` per request and fill it before rendering (`await client.prefetch(options)`, or `onServerPrefetch(() => client.prefetch(options))` in `setup`), then send `client.dehydrate()`. In the browser, call `client.hydrate(snapshot)` before mounting. On the server, selections read without subscribing, attaching or READing.
 

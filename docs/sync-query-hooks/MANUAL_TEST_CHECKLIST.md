@@ -1,5 +1,6 @@
 # MANUAL_TEST_CHECKLIST — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
+- 후속 상태(2026-11-08): `keepPreviousData` 단계 9~14 구현·자동 검증 완료. PR #21 리뷰 반영 결과는 IMPLEMENT 단계 12~14를 따른다. 현재 인계는 IMPLEMENT의 마지막 블록을 따른다. 이전 날짜의 결과는 당시 범위를 기록한 이력이다.
 - 작성일: 2026-10-08 (단계 0 재검증 결정과 교차 검토 반영)
 - 상태: **M-QH-01~07의 관찰 가능한 결과는 2026-10-09 자동 브라우저 검증 완료.** Playwright Chromium에서 별빛 정비소 65개 시나리오가 통과했다. Lithent SSR 부분은 별도 Node 렌더 매트릭스로 확인했다. 아래 사람의 사용성·재미 평가는 미수행이다.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [IMPLEMENT](./IMPLEMENT.md).
@@ -123,3 +124,28 @@ Chromium 151.0.7922.173에서 Playwright로 **8/8 통과**. 화성 산소 82, �
 - [x] U-QH-15~17·R-QH-23~27·DC-QH-47~49·T-QH-60~64가 연결된다. 네 문서의 현행 상태와 좁은 core 변경 예외, 코드 commit과 실제 검증 범위를 갱신하고 날짜가 붙은 이전 완료 기록은 보존한다.
 
 사람의 전반적인 사용성·체험 재미·실제 기기 조작감은 위의 기존 미체크 항목으로 남긴다. 이번 문서 사후 점검을 스킬 원문 전체의 절차 준수 증거로 표시하지 않는다.
+
+
+## 이전 페이지 데이터 유지 (2026-11-08)
+
+- [ ] **M-KP-01** `placeholderData: keepPreviousData`로 번호 페이지를 전환한다. 새 요청 중 이전 리스트가 남고 `isPlaceholder`로 흐림/버튼 비활성 표시를 할 수 있다. 첫 조회만 전체 로딩이며 새 데이터 도착 시 교체된다. placeholder에서도 pending/loaded false와 새 queryKey를 관찰한다.
+- [ ] **M-KP-02** context 콜백으로 같은 목록의 페이지 변경만 유지하고 검색어/계정 변경에서는 undefined를 돌려준다. 새 키의 캐시가 있으면 그 값이 우선이며 요청 실패/disabled에서 이전 목록이 사라진다. 빠르게 페이지를 넘겨도 미확정 페이지가 다음 전환의 이력이 되지 않는다.
+- [ ] **M-KP-03** React StrictMode에서 전환 중 프레임에 빈 목록/무한 렌더/렌더 중 업데이트 경고가 없고, 다른 observer와 SSR 요청의 데이터가 섞이지 않는다. 커밋되지 않은 렌더가 다른 페이지의 이전 데이터가 되지 않는다.
+
+판정: 자동 DOM/런타임 검증은 IMPLEMENT에 실행 명령과 결과로 별도 기록한다. 사람이 실제 브라우저에서 체험한 것으로 표시하지 않는다.
+
+### 2026-11-08 자동 검증 근거
+
+M-KP-01~03의 런타임/DOM 판정은 단계 11의 T-KP-01~06 및 React 통합 두 테스트로 확인했다. 신규 sync 14/14와 React DOM 2/2가 통과했고 전체 gate는 workspace 1,255 통과·기존 2 제외, SSR 15/15로 종료했다. 자동 검증은 jsdom/Node 실행이며 위 사람의 브라우저 체험 체크박스는 완료 처리하지 않는다. 상세 실행 범위와 명령은 [IMPLEMENT 단계 11](./IMPLEMENT.md#단계-11--integration-test-완료)에 있다.
+
+
+## PR #21 후속 확인 (2026-11-08)
+
+- [ ] **M-KP-04** A 조회 뒤 잘못된 staleTime/gcTime/retry를 확정하면 source 오류가 표시되고, 다음 유효한 C key가 pending일 때 A 목록은 나타나지 않는다. C가 실제 로드된 뒤 D로 가면 C 목록은 유지된다. 렌더 중 잠시 읽은 잘못된 옵션은 실제 현재 이력을 지우지 않는다.
+- [ ] **M-KP-05** 각 커넥터 README의 프레임워크별 pending && !isPlaceholder 패턴을 적용해 첫 조회와 페이지 전환의 UI 차이를 확인한다. 콜백 실패의 표시 오류와 실제 READ 상태, disabled 이력 초기화가 API 안내와 같다.
+
+자동 판정과 사람의 브라우저 체험을 구분해 IMPLEMENT 단계 12~14에 기록한다.
+
+### PR #21 후속 자동 검증 근거
+
+T-KP-07/08의 11개 후속 회귀는 단계 12의 수정 전 6 실패·15 통과에서 시작해, 단계 13의 25/25 및 sync 372/372로 검증했다. timing/retry 오류, attach 시점 호환성 오류, 검증 뒤 open 실패, speculative 오류, 복구, pending source 갱신, loaded/initialData/query error 이력 읽기 생략을 포함한다. 단계 14의 fresh gate는 workspace 1,266 통과·기존 2 제외, SSR 15/15로 종료했다. 이 결과는 Node/jsdom과 문서·타입 검사이며 M-KP-04/05의 사람 브라우저 체험으로 표시하지 않는다.

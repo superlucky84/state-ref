@@ -13,6 +13,7 @@ import {
   type ProjectedDisplay,
   type ProjectionMemo,
   type QueryDisplayOptions,
+  type ProjectionOptions,
   type QueryDisplayRef,
   type QueryDisplayState,
 } from './display';
@@ -38,7 +39,7 @@ export type PeekEntry<T> = {
 };
 
 /** The options a peek reads. A subset of an observer's options. */
-export type PeekOptions<T, S = T> = QueryDisplayOptions<T, S> &
+export type PeekOptions<T, S = T> = ProjectionOptions<T, S> &
   Readonly<{
     queryKey: QueryKey;
     enabled?: boolean;
@@ -46,6 +47,8 @@ export type PeekOptions<T, S = T> = QueryDisplayOptions<T, S> &
     initialData?: T;
     initialUpdatedAt?: number;
     retry?: number;
+    /** Only consulted once cache/initialData show that a preview is needed. */
+    readDisplayOptions?: () => ProjectionOptions<T, S>;
   }>;
 
 export type PeekReader<S> = Readonly<{
@@ -77,6 +80,7 @@ type Inputs<T, S> =
       initialUpdatedAt: number | undefined;
       select: QueryDisplayOptions<T, S>['select'];
       placeholderData: T | undefined;
+      resolvePlaceholder: ProjectionOptions<T, S>['resolvePlaceholder'];
     };
 
 const sameInputs = <T, S>(a: Inputs<T, S>, b: Inputs<T, S>): boolean => {
@@ -93,7 +97,8 @@ const sameInputs = <T, S>(a: Inputs<T, S>, b: Inputs<T, S>): boolean => {
     Object.is(a.initialData, other.initialData) &&
     a.initialUpdatedAt === other.initialUpdatedAt &&
     a.select === other.select &&
-    Object.is(a.placeholderData, other.placeholderData)
+    Object.is(a.placeholderData, other.placeholderData) &&
+    a.resolvePlaceholder === other.resolvePlaceholder
   );
 };
 
@@ -208,17 +213,23 @@ export function createPeekReader<T, S = T>(
         options.initialData !== undefined && (!entry || entry.canSeedInitial());
       check(options, entry, seeded);
       const loaded = !seeded && entry !== undefined && entry.isLoaded();
+      const status = entry?.peekStatus();
+      const displayOptions =
+        !loaded && !seeded && status?.status !== 'error'
+          ? options.readDisplayOptions?.() ?? options
+          : options;
       return {
         kind: 'enabled',
         hash,
         entry,
-        status: entry?.peekStatus(),
+        status,
         value: loaded ? entry!.peekValue() : undefined,
         seeded,
         initialData: options.initialData,
         initialUpdatedAt: options.initialUpdatedAt,
         select: options.select,
-        placeholderData: options.placeholderData,
+        placeholderData: displayOptions.placeholderData,
+        resolvePlaceholder: displayOptions.resolvePlaceholder,
       };
     } catch (error) {
       checked = null;
@@ -317,7 +328,16 @@ export function createPeekReader<T, S = T>(
       });
       read = () => protect(next.initialData as T);
     }
-    let projected = projectDisplay(status, read, options, memo);
+    let projected = projectDisplay(
+      status,
+      read,
+      {
+        ...options,
+        placeholderData: next.placeholderData,
+        resolvePlaceholder: next.resolvePlaceholder,
+      },
+      memo
+    );
     const key = keyOf(next.hash);
     const sameKey = current.queryKey === key;
     const onlyOptionsChanged =

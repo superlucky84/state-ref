@@ -137,9 +137,10 @@ It uses the store API (Svelte 4 and 5); there is no runes entry for sync queries
 How it behaves:
 
 - **Options are a plain object (fixed for the component's life) or a `Readable` options store** (`writable`, `derived`). A plain getter is not tracked. With a `writable`, `$: options.set(...)` follows props as above.
-- A new `queryKey` shows the new key at once (its cached data, or `pending`), never the previous key's data, and a late answer for the old key never shows. A `select` option that returns a Map, Set, class instance or function republishes whenever the store emits new options: memoize it or pass `equals`.
+- A new `queryKey` shows the new key at once (its cached data, or `pending`). Previous data requires explicit `placeholderData` (see [pagination](../sync/README.md#keep-the-previous-page-while-loading)); a late answer for the old key never shows. A `select` option that returns a Map, Set, class instance or function republishes whenever the store emits new options: memoize it or pass `equals`.
 - The query opens on attach, loads if stale and shares a READ already in flight. Destroying the component releases the handle one macrotask later, so a route swap neither cancels nor repeats a READ. In tests with fake timers, `await vi.advanceTimersByTimeAsync(0)` before asserting that the handle is gone.
 - Use `$status === 'pending'` for loading UI; the first `fetchStatus` is the cache as it is (`'idle'` before the READ starts).
+- When retaining previews, select `const isPlaceholder = account(ref => ref.isPlaceholder.value)` and use `$status === 'pending' && !$isPlaceholder` for a full loading screen.
 - Dependent query: `queryKey: ['user', id ?? null], enabled: id != null`. A key holding `undefined` or a state-ref ref shows `status: 'error'` with `errorSource: 'source'` instead of throwing. `enabled: false` shows idle and owns nothing.
 - **Server rendering needs `createSyncClient({ ssr: true })`, one per request.** The store API subscribes during a server render too, so with a plain client the render would open the query and start a READ. An `ssr: true` client never attaches or READs: fill it before rendering (`await client.prefetch(options)`), send `client.dehydrate()`, and call `client.hydrate(snapshot)` on the browser client before hydrating.
 

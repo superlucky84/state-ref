@@ -1,5 +1,6 @@
 # IMPLEMENT — 컴포넌트 안에서 쓰는 sync query (관찰자 훅)
 
+- 후속 상태(2026-11-08): `keepPreviousData` 단계 9~14 구현·자동 검증 완료. PR #21 리뷰 반영 결과는 IMPLEMENT 단계 12~14를 따른다. 현재 인계는 IMPLEMENT의 마지막 블록을 따른다. 이전 날짜의 결과는 당시 범위를 기록한 이력이다.
 - 작성일: 2026-10-08
 - 상태: 단계 0~7 완료(2026-10-09), PR #17이 main에 병합됨(`8535fb7`). main에서 분기한 `fix/issue-18-shared-sync`의 후속 단계 8도 구현·자동 검증 완료(2026-10-10~11, U-QH-15~17, Draft PR #19). 코드 커밋은 `364d1a3`·`b71b1b6`·`8558e87`이며 최신 결과는 IMPLEMENT의 단계 8 및 진행 기록을 따른다. 사람의 전반적인 사용성 평가는 미수행이고 실제 릴리스·병합은 이번 범위 밖이다.
 - 연계: [REQUIREMENTS](./REQUIREMENTS.md), [DESIGN](./DESIGN.md), [MANUAL_TEST_CHECKLIST](./MANUAL_TEST_CHECKLIST.md).
@@ -431,3 +432,185 @@
 - 검증: Node 24.11.1/pnpm 9.12.3의 fresh root build 뒤 gate quick **통과**, workspace **1,178 통과·2 제외**, 별도 SSR **15/15**, 공개 packaging 별도 통과. Lithent concurrent DOM **24/24**, SSR **5/5**, 성능 **6/6**, core 최소 gzip **3,754 B ≤ 3,800 B**. 세 패키지 게시 dry run과 tarball 이름·버전·workspace 치환·AI 안내문 버전/직접 ref 표기도 확인했다.
 - 실행 범위: 이번 준비는 라이브러리 런타임을 더 바꾸지 않았다. 버전 준비 전 같은 PR 리뷰에서 수행한 공유 bundle Chromium **15/15**, Lithent base/concurrent mission **16/16**과 구분한다. 전체 mission 65개나 framework version matrix를 다시 실행했다고 기록하지 않는다.
 - 상태: 준비한 변경은 `fix/issue-18-shared-sync` 브랜치에 반영한다. 실제 main 병합·npm 게시·릴리스 태그는 사용자가 배포 절차대로 수행한다. 준비 commit은 `git log -1 -- docs/release/2026-10-13.md`로 확인한다.
+
+
+## 단계 9 — 이전 페이지 데이터 유지 구현: 완료
+
+Refs: R-KP-01, R-KP-02, R-KP-03, R-KP-04, R-KP-05, DC-KP-01, DC-KP-02, DC-KP-03, DC-KP-04, M-KP-01
+
+진입: 기준 `367f32c`에서 `feat/keep-previous-data` 분기, 작업 트리 깨끗함. 문서 네 개에 먼저 계약을 기록한다. 기존 구현의 baseline은 sync observer/display/peek suites로 확인한다.
+
+- [x] 공개 helper/콜백 타입과 observer별 확정 스냅샷을 구현한다.
+- [x] display/peek의 resolver 투영과 오류 격리를 구현한다.
+- [x] T-KP-01 기본 유지/기본 비유지/새 캐시 우선과 T-KP-02 raw select/context/상태/편집 격리를 확인한다.
+- 종료: targeted tests와 공개 타입이 통과하고 사용 문서가 새 API를 설명한다.
+
+검증: 기존 observer/display/peek 108개와 구현 뒤 sync 358개 통과. 공개 타입/React DOM 검증은 현재 실행 결과를 다음 단계에서 확정한다.
+
+Files:
+- `CHANGELOG.md` (modified)
+- `docs/sync-query-hooks/DESIGN.md` (modified)
+- `docs/sync-query-hooks/IMPLEMENT.md` (modified)
+- `docs/sync-query-hooks/MANUAL_TEST_CHECKLIST.md` (modified)
+- `docs/sync-query-hooks/REQUIREMENTS.md` (modified)
+- `packages/connect-preact/README.md` (modified)
+- `packages/connect-react/README.md` (modified)
+- `packages/connect-solid/README.md` (modified)
+- `packages/connect-svelte/README.md` (modified)
+- `packages/connect-vue/README.md` (modified)
+- `packages/sync/README.md` (modified)
+- `packages/sync/src/display.ts` (modified)
+- `packages/sync/src/index.ts` (modified)
+- `packages/sync/src/observe.ts` (modified)
+- `packages/sync/src/peek.ts` (modified)
+- `packages/sync/test/types.ts` (modified)
+- `skills/state-ref/reference/framework-connectors.md` (modified)
+- `skills/state-ref/reference/server-sync.md` (modified)
+- `stateRefDocs/src/pages/ApiSync.tsx` (modified)
+- `stateRefDocs/src/pages/ApiSync_ko.tsx` (modified)
+- `stateRefDocs/src/pages/SyncQuery.tsx` (modified)
+- `stateRefDocs/src/pages/SyncQuery_ko.tsx` (modified)
+- `packages/connect-react/src/tests/react/query-previous-data.tsx` (added)
+- `packages/sync/src/placeholder.ts` (added)
+- `packages/sync/src/tests/keep-previous-data.test.ts` (added)
+
+## 단계 10 — Test Hardening: 완료
+
+Refs: R-KP-03, R-KP-04, R-KP-05, DC-KP-02, DC-KP-03, DC-KP-04, M-KP-02
+
+진입: 단계 9 구현 완료. 기준 테스트는 단계 9의 T-KP-01/02.
+
+- [x] T-KP-03 빠른 전환/늦은 응답/peek 이력 오염 방지를 확인한다.
+- [x] T-KP-04 스냅샷 안정성/읽기 전용/관찰자 분리를 확인한다.
+- [x] T-KP-05 콜백 실패/READ 실패/복구와 T-KP-06 disabled/invalid/SSR/initialData를 확인한다.
+- 종료: 회귀 테스트가 계약 위반을 잡고 기존 sync suite도 통과한다.
+
+검증: keep-previous-data 14/14 통과. 공유 READ를 쓰는 두 observer의 다른 preview, 이전 캐시 GC 후 snapshot, 구독 재마운트, placeholder 이력 제외, 같은 오류의 inline callback 재투영/복구를 포함한다. 기존 sync 358/358 결과 뒤 추가한 3개 사례는 통합 gate에서 전체와 함께 재확인한다. 공개 소비자 타입 및 실제 React DOM 2/2도 통과했다.
+
+Files:
+- `packages/sync/src/tests/keep-previous-data.test.ts` (modified)
+- `packages/sync/src/observe.ts` (modified)
+- `docs/sync-query-hooks/IMPLEMENT.md` (modified)
+
+## 단계 11 — Integration Test: 완료
+
+Refs: R-KP-01, R-KP-02, R-KP-03, R-KP-04, R-KP-05, DC-KP-01, DC-KP-02, DC-KP-03, DC-KP-04, M-KP-01, M-KP-02, M-KP-03
+
+진입: 단계 10 완료. 기준 테스트는 sync/소비자 타입과 기존 connector suites.
+
+- [x] 실제 React key 전환/StrictMode/중단 렌더에서 유지·교체·경고 없음과 다른 커넥터 회귀를 확인한다.
+- [x] 새 build 후 `pnpm gate`로 타입/문서/린트/테스트/SSR/bundle/packaging/성능을 검증한다.
+- [x] 사용 문서와 네 설계 문서의 결과/Files/현재 인계 블록을 맞춘다.
+- 종료: 실패나 미실행 범위를 명시하고 변경이 검토 가능한 상태다. 자동 결과로 사람의 수동 체험을 완료 처리하지 않는다.
+
+검증(2026-11-08): Node 24.19.0 / pnpm 9.12.3에서 `npm_config_workspace_concurrency=1 pnpm gate` exit 0. fresh build, source/consumer/negative/example types, README 예제, support table, lint, 전체 workspace tests **1,255 통과·기존 Lithent concurrent 전용 2 제외**, 별도 SSR **15/15**, bundle/optional-peer/packaging, 성능 **6/6**, core 최소 gzip **3,757 B ≤ 3,800 B** 모두 통과했다. sync는 **361/361**이며 신규 14개를 포함한다. React의 신규 StrictMode/중단 렌더 DOM 사례 2개도 전체 suite에 포함된다. 기존 observer/display/peek 108개 검증, 공개 consumer 타입, 개별 DOM 검증도 통과했다. 전체 로그는 실행 환경 `/tmp/state-ref-gate.log`에 있고 임시 증거이며 위 명령으로 재현한다.
+
+테스트 연결(모든 이름은 실제 테스트 설명):
+
+| ID | 파일과 판정 |
+|---|---|
+| T-KP-01 | `packages/sync/src/tests/keep-previous-data.test.ts`: first transition render, default/literal, cached/initial 우선 |
+| T-KP-02 | 같은 파일: raw readonly snapshot/context/current select, 새 handle serverValue 미설치 |
+| T-KP-03 | 같은 파일: rapid switches/late old-key changes, cached speculative render 이력 제외 |
+| T-KP-04 | 같은 파일: same-input snapshot identity, separate previews/shared READ, old cache GC/subscription remount |
+| T-KP-05 | 같은 파일: callback error/READ error, equivalent inline callback error와 복구 |
+| T-KP-06 | 같은 파일: disabled/invalid/SSR 분리, synthetic placeholder 이력 제외, function-valued payload factory |
+| React 통합 | `packages/connect-react/src/tests/react/query-previous-data.tsx`: StrictMode 모든 전환 프레임 유지와 Suspense 중단 렌더의 캐시 데이터 이력 오염 방지 |
+
+이번 자동 검증은 jsdom/Node 및 gate의 패키징 실행이다. 실제 브라우저에서의 새 페이지네이션 체험, 전체 프레임워크 버전 matrix, 별도 reviewer 실행, 릴리스·게시를 수행했다고 기록하지 않는다. 커넥터 런타임은 수정하지 않았으며 여섯 커넥터의 기본 버전 회귀는 전체 suite로 확인했다.
+
+Files:
+- `docs/sync-query-hooks/REQUIREMENTS.md` (modified)
+- `docs/sync-query-hooks/DESIGN.md` (modified)
+- `docs/sync-query-hooks/IMPLEMENT.md` (modified)
+- `docs/sync-query-hooks/MANUAL_TEST_CHECKLIST.md` (modified)
+- `packages/connect-lithent/README.md` (modified)
+- `packages/connect-preact/README.md` (modified)
+- `packages/connect-react/README.md` (modified)
+- `packages/connect-solid/README.md` (modified)
+- `packages/connect-svelte/README.md` (modified)
+- `packages/connect-vue/README.md` (modified)
+- `skills/state-ref/reference/framework-connectors.md` (modified)
+
+## 단계 12 — PR #21 호환성·이력·투영 보완: 완료
+
+Refs: R-KP-07, R-KP-08, R-KP-09, DC-KP-05, DC-KP-06, DC-KP-07, DC-KP-08, M-KP-04, M-KP-05
+
+- 진입: a8b2ecd, 작업 트리 깨끗함. 기존 전체 gate 통과와 npm 0.3.1/PR 빌드 비교 재현 결과를 기준으로 한다. 네 문서를 먼저 갱신한다.
+- [x] T-KP-07/08 회귀를 추가하고 수정 전 실패를 확인한다.
+- [x] 확정 source 검증 실패와 attach/open 실패에서 이력을 초기화한다.
+- [x] loaded/error/initialData의 불필요한 이력 읽기를 제거하고 pending 일관성을 유지한다.
+- [x] Breaking·각 README·API 설명을 보완한다. 버전은 Unreleased/0.4.0 릴리스 준비 조건으로 기록한다.
+- 종료: 새 회귀와 기존 sync/React 타입·테스트 통과.
+
+검증: T-KP-07/08 추가 뒤 수정 전 6 실패·15 통과를 확인했고, 수정 후 21/21이 통과했다. source 타입 검사는 새 내부 테스트의 generic 추론 오류를 발견해 단계 13에서 명시 타입 인자를 보완한다. 로그: `/tmp/state-ref-pr21-review-{red,green,types}.log` (실행 환경 임시 증거).
+
+Files:
+- `CHANGELOG.md` (modified)
+- `docs/sync-query-hooks/DESIGN.md` (modified)
+- `docs/sync-query-hooks/IMPLEMENT.md` (modified)
+- `docs/sync-query-hooks/MANUAL_TEST_CHECKLIST.md` (modified)
+- `docs/sync-query-hooks/REQUIREMENTS.md` (modified)
+- `packages/connect-lithent/README.md` (modified)
+- `packages/connect-preact/README.md` (modified)
+- `packages/connect-react/README.md` (modified)
+- `packages/connect-solid/README.md` (modified)
+- `packages/connect-svelte/README.md` (modified)
+- `packages/connect-vue/README.md` (modified)
+- `packages/sync/README.md` (modified)
+- `packages/sync/src/display.ts` (modified)
+- `packages/sync/src/observe.ts` (modified)
+- `packages/sync/src/peek.ts` (modified)
+- `packages/sync/src/placeholder.ts` (modified)
+- `packages/sync/src/tests/keep-previous-data.test.ts` (modified)
+- `stateRefDocs/src/pages/ApiSync.tsx` (modified)
+- `stateRefDocs/src/pages/ApiSync_ko.tsx` (modified)
+
+## 단계 13 — PR #21 Test Hardening: 완료
+
+Refs: R-KP-07, R-KP-08, DC-KP-05, DC-KP-06, M-KP-04
+
+- 진입: 단계 12 구현 완료. 기준은 T-KP-07/08과 기존 keepPreviousData/observe/peek/display suites.
+- [x] speculative source 오류는 이력을 보존하고 늦은 attach 오류는 이력을 지우는 경계를 확인한다.
+- [x] 실제 새 데이터로 복구한 뒤 다시 유지되는 동작, stable snapshot/React 중단 렌더를 확인한다.
+- 종료: 수정 전 실패/수정 후 성공 및 기존 회귀 결과를 기록한다.
+
+검증: source 타입 검사 통과. sync 전체 **372/372**, keepPreviousData **25/25** 통과. T-KP-07/08은 11개 후속 사례를 포함한다. 현재 query가 렌더 도중 바뀌면 pending preview가 갱신되는 사례, 검증 통과 후 open 자체의 실패, initialData/query error의 이력 읽기 생략도 보강했다. 기존 React StrictMode/중단 렌더 DOM **2/2**도 새 sync build로 통과했다.
+
+Files:
+- `docs/sync-query-hooks/DESIGN.md` (modified)
+- `docs/sync-query-hooks/IMPLEMENT.md` (modified)
+- `docs/sync-query-hooks/MANUAL_TEST_CHECKLIST.md` (modified)
+- `docs/sync-query-hooks/REQUIREMENTS.md` (modified)
+- `packages/sync/README.md` (modified)
+- `packages/sync/src/tests/keep-previous-data.test.ts` (modified)
+- `stateRefDocs/src/pages/ApiSync.tsx` (modified)
+- `stateRefDocs/src/pages/ApiSync_ko.tsx` (modified)
+
+## 단계 14 — PR #21 Integration Test: 완료
+
+Refs: R-KP-07, R-KP-08, R-KP-09, DC-KP-05, DC-KP-06, DC-KP-07, DC-KP-08, M-KP-04, M-KP-05
+
+- 진입: 단계 13 완료. 변경 파일의 build와 source/public types를 기준으로 전체 gate를 실행한다.
+- [x] fresh build 포함 pnpm gate로 여섯 커넥터·문서·SSR·packaging·성능을 확인한다.
+- [x] 네 문서 결과/Files/인계를 맞추고 커밋·push·PR #21 설명을 갱신한다.
+- 종료: 자동 결과와 미실행 범위가 명확하고 PR에 검토 가능한 변경이 반영된다. 사용자 요청은 단계 12~14 전체 진행이며 별도 reviewer 실행은 포함하지 않는다.
+
+검증(2026-11-08): Node 24.19.0 / pnpm 9.12.3에서 `npm_config_workspace_concurrency=1 pnpm gate` exit 0. fresh build, source/public/negative/example types, README 예제, support-table, lint, workspace **1,266 통과·기존 Lithent concurrent 전용 2 제외**, SSR **15/15**, bundle/optional peer/packaging 모두 통과했다. sync는 **372/372**(keepPreviousData 25개 포함), 기존 React StrictMode/중단 렌더 사례 **2/2**가 통과했다. 성능 **6/6**, core 최소 gzip **3,757 B ≤ 3,800 B**. 전체 로그 `/tmp/state-ref-pr21-review-gate.log`는 이 환경의 임시 근거이며 위 명령으로 재현한다.
+
+리뷰 대응: Breaking 두 건과 0.4.0/peer 배포 조건, 여섯 README의 로딩 조건, README/API 역할 분리와 disabled 차이 안내를 반영했다. source 오류 초기화 누락과 loaded/error 투영의 불필요한 이력 읽기를 수정했다. 콜백 오류 표시 정책과 명시적 핸들의 함수 payload 호환성은 유지한다. 명시적 반응형 핸들의 callback 지원은 DC-KP-08의 후속 과제이며 함수를 오인하는 일괄 경고는 넣지 않는다. 패키지 버전 올림/peer 메타데이터 변경·게시, 전체 framework version matrix, 실제 브라우저 수동 체험, 별도 reviewer 실행은 이 검증 범위가 아니다.
+
+Files:
+- `docs/sync-query-hooks/DESIGN.md` (modified)
+- `docs/sync-query-hooks/IMPLEMENT.md` (modified)
+- `docs/sync-query-hooks/MANUAL_TEST_CHECKLIST.md` (modified)
+- `docs/sync-query-hooks/REQUIREMENTS.md` (modified)
+
+## 현재 인계 — keepPreviousData (2026-11-08)
+
+- PR: [#21](https://github.com/superlucky84/state-ref/pull/21), 브랜치 `feat/keep-previous-data`. 기능 커밋 `1682ba7b1809b57973ec812d75bf958720f0a090`, 리뷰 반영 시작 HEAD `a8b2ecd1880a7d0f4edc7b7ac97cd2eeb131c79f`, 리뷰 수정 커밋 `cc0923cebeb00a6643bd395622b3c1ad784fd7c3`. 이 커밋 뒤에는 인계 기록만 갱신했으며 런타임·테스트 코드는 전체 gate를 통과한 내용 그대로다.
+- 완료: 단계 9~11 기능 구현에 이어 단계 12~14 리뷰 수정과 전체 gate 통과. 잘못된 timing/retry/호환성 및 attach/open 오류에서 이력을 지우고 speculative 오류는 이력을 보존한다. loaded/initialData/query error 투영의 이력 읽기를 생략하며 pending의 최신 스냅샷 반영은 유지한다.
+- 문서: Breaking 이관법, 0.4.0 릴리스/여섯 connector peer 범위 조건, 프레임워크별 pending && !isPlaceholder, disabled 차이와 API 상세를 반영했다. 콜백 실패 정책과 명시적 핸들의 값 placeholder 계약은 유지한다.
+- 검증: fresh `pnpm gate` 전체 통과. workspace 1,266 통과·기존 2 제외, SSR 15/15, sync 372/372, 성능 6/6, core 3,757 B gzip. 상세는 단계 14.
+- 다음: PR 검토 및 별도 0.4.0 릴리스 준비. 사용자 요청대로 리뷰 변경을 commit/push하고 PR 설명에 최신 검증 결과를 반영한다. 구현·자동 검증에는 차단 없음. M-KP의 사람 체험 체크는 미실행 상태를 유지한다.
+- 별도 reviewer와 PR 댓글 답변은 요청받지 않아 실행하지 않았다. 기존 진행 기록은 이력으로 보존한다.

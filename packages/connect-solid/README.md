@@ -110,9 +110,10 @@ function AccountCard(props: { id: number }) {
 How it behaves:
 
 - **Pass an accessor to follow props or signals**; new options are confirmed synchronously, before computations that read the display run. A plain options object is fixed for the component's life.
-- A new `queryKey` shows the new key at once (its cached data, or `pending`), never the previous key's data, and a late answer for the old key never shows. Inline `queryFn` and `select` literals are fine. A `select` option that returns a Map, Set, class instance or function republishes whenever the accessor reruns: memoize it or pass `equals`.
+- A new `queryKey` shows the new key at once (its cached data, or `pending`). Previous data requires explicit `placeholderData` (see [pagination](../sync/README.md#keep-the-previous-page-while-loading)); a late answer for the old key never shows. Inline `queryFn` and `select` literals are fine. A `select` option that returns a Map, Set, class instance or function republishes whenever the accessor reruns: memoize it or pass `equals`.
 - The query opens on attach, loads if stale and shares a READ already in flight. Disposing the owner releases the handle one macrotask later, so a route swap neither cancels nor repeats a READ. In tests with fake timers, `await vi.advanceTimersByTimeAsync(0)` before asserting that the handle is gone.
 - Use `status() === 'pending'` for loading UI; the first `fetchStatus` is the cache as it is (`'idle'` before the READ starts).
+- When retaining previews, select `const isPlaceholder = account(ref => ref.isPlaceholder.value)` and use `status() === 'pending' && !isPlaceholder()` for a full loading screen.
 - Dependent query: `queryKey: ['user', id ?? null], enabled: id != null` in the accessor. A key holding `undefined` or a state-ref ref shows `status: 'error'` with `errorSource: 'source'` instead of throwing. `enabled: false` shows idle and owns nothing.
 - Server rendering: create `createSyncClient({ ssr: true })` per request, `await client.prefetch(options)` before rendering, and send `client.dehydrate()`. In the browser, call `client.hydrate(snapshot)` before hydrating. On the server, selections read without subscribing, attaching or READing.
 

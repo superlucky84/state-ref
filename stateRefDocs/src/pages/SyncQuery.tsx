@@ -207,8 +207,14 @@ export const AccountCard = mount<{ id: number }>((_renew, props) => {
         </li>
         <li>
           <strong>Key changes.</strong> A new key shows from the first render
-          (its cached data, or pending), never the previous key&apos;s data, and
-          a late answer for the old key never shows.
+          (its cached data, or pending). Set{' '}
+          <code>placeholderData: keepPreviousData</code> (import from{' '}
+          <code>@stateref/sync</code>) to retain the previous list while loading.
+          It remains pending with <code>loaded: false</code> and{' '}
+          <code>isPlaceholder: true</code>; use{' '}
+          <code>status === &apos;pending&apos; &amp;&amp; !isPlaceholder</code>{' '}
+          for a full loading screen. The new key&apos;s cache wins, and a late
+          answer for the old key never replaces it.
         </li>
         <li>
           <strong>Dependent queries.</strong> A key cannot hold{' '}

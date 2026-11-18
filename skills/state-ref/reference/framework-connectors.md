@@ -182,9 +182,16 @@ Must-know rules:
 - Tests: assert release only after that schedule. With fake timers,
   `await vi.advanceTimersByTimeAsync(0)` first (Preact releases after the next
   frame or a 200 ms fallback timer: advance past 200 ms, or `waitFor`).
-- A new key shows from the first render (cached data or `pending`), never the
-  previous key's data. React/Preact render once more after the change commits.
-- Loading UI: `status === 'pending'`. The first render's `fetchStatus` is the
+- A new key shows from the first render (cached data or `pending`). To display
+  previous data explicitly, import `keepPreviousData` from `@stateref/sync` and
+  set `placeholderData: keepPreviousData`. It remains `pending`, `loaded: false`,
+  `isPlaceholder: true`; use `pending && !isPlaceholder` for a full loading UI.
+  A callback `(previous, { previousQueryKey, queryKey }) => previous` can restrict
+  retention. It receives raw data before select. Disabled/invalid options clear
+  observer history; callback errors show `errorSource: 'placeholder'`.
+  React/Preact render once more after the change commits.
+- Loading UI: `status === 'pending'` for a plain query, or
+  `status === 'pending' && !isPlaceholder` when keeping previews. The first render's `fetchStatus` is the
   cache as it is (`'idle'` before the READ starts).
 - Dependent query: `queryKey: ['user', id ?? null], enabled: id != null`.
   `undefined` or a state-ref ref in a key, or a non-boolean `enabled`, does not

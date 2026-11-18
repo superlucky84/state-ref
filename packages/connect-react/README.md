@@ -119,10 +119,11 @@ function AccountCard({ id }: { id: number }) {
 How it behaves:
 
 - Pass the options object on every render. Inline `queryFn` and `select` literals are fine; changing `staleTime` or `refetchInterval` reopens the same key without cancelling its READ. A `select` that returns a Map, Set, class instance or function republishes on every commit: memoize it or pass `equals`.
-- A new `queryKey` shows the new key from the first render (its cached data, or `pending`), never the previous key's data, and a late answer for the old key never shows. One more render after the change commits collects the new key's paths.
+- A new `queryKey` shows the new key from the first render (its cached data, or `pending`). Previous data requires explicit `placeholderData` (see [pagination](../sync/README.md#keep-the-previous-page-while-loading)); a late answer for the old key never shows. One more render after the change commits collects the new key's paths.
 - Rendering creates nothing. The commit attaches: it opens the query, loads it if stale and shares a READ already in flight. The last unmount releases the handle one macrotask later, so `<StrictMode>` and a route swap in one commit neither cancel nor repeat a READ. In tests with fake timers, `await vi.advanceTimersByTimeAsync(0)` before asserting that the handle is gone.
 - `<Activity mode="hidden">` releases the query while hidden; showing it again reads only a stale key.
 - Use `status.value === 'pending'` for loading UI. The first render's `fetchStatus` is the cache as it is (`'idle'` before the READ starts), so the server and the first client render match.
+- With `placeholderData: keepPreviousData`, use `account.status.value === 'pending' && !account.isPlaceholder.value` for a full loading screen so the previous list stays visible.
 - Dependent query: `queryKey: ['user', id ?? null], enabled: id != null`. A key holding `undefined` or a state-ref ref does not throw in render; it shows `status: 'error'` with `errorSource: 'source'`. `enabled: false` shows idle and owns nothing.
 - The client is fixed for the component's lifetime. Passing another one throws `This query observer is bound to another client.`; to switch clients, remount the component (for example with a new `key` prop).
 - Server rendering: create `createSyncClient({ ssr: true })` per request, `await client.prefetch(options)`, render, and send `client.dehydrate()`. In the browser, call `client.hydrate(snapshot)` before `hydrateRoot`. The hook never attaches or READs on the server.

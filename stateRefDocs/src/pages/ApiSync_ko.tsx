@@ -255,6 +255,29 @@ const phase = q.display.isPlaceholder.value ? 'placeholder' : q.display.status.v
         <a href="#/ko/guide/sync-query">query와 resource</a>를 보세요.
       </p>
 
+      <p>
+        콜백 placeholder는 미출시 <code>@stateref/sync</code> 0.4.0 대상이며
+        컴포넌트 관찰자에 적용됩니다. 명시적{' '}
+        <code>{'client.query({ source, resolve })'}</code>와{' '}
+        <code>infiniteQuery</code>는 함수도 값으로 취급하므로 여기에{' '}
+        <code>keepPreviousData</code>를 넘겨도 이전 데이터 유지가 켜지지
+        않습니다.
+      </p>
+      <p>
+        콜백은 순수해야 하며 렌더 중에도 실행될 수 있습니다. 같은 콜백·이전 raw
+        스냅샷·새 key의 결과와 오류는 메모되며 호출 횟수에 의존하면 안 됩니다.
+        확정해서 관찰한 실제 데이터만 이력이 되고 로컬 편집도 포함됩니다. 중단된
+        렌더, placeholder, 이전 key의 늦은 결과는 이력이 되지 않습니다.
+        비활성화나 잘못된 옵션을 확정하면 이력을 비웁니다. 렌더 중 임시로 읽은
+        잘못된 옵션은 확정 이력을 지우지 않습니다.
+      </p>
+      <p>
+        콜백 실패는 해당 표시의{' '}
+        <code>errorSource: &apos;placeholder&apos;</code>로 보고하며 query
+        READ는 계속됩니다. READ가 성공하면 표시도 복구됩니다. 기존의 표시 오류와
+        query 오류를 분리하는 정책을 따릅니다.
+      </p>
+
       <CodeBlock
         language="typescript"
         code={`client.observe<T, S = T>(
@@ -263,7 +286,20 @@ const phase = q.display.isPlaceholder.value ? 'placeholder' : q.display.status.v
 ): QueryObserver<T, S>
 
 type ObserveOptions<T, S = T> = QueryOptions<T> &
-  QueryDisplayOptions<T, S> & { enabled?: boolean };
+  Omit<QueryDisplayOptions<T, S>, 'placeholderData'> & {
+    enabled?: boolean;
+    placeholderData?: T | PlaceholderDataFunction<T>;
+  };
+
+type PlaceholderDataFunction<T> = (previousData: T | undefined, context: {
+  previousQueryKey: QueryKey | undefined;
+  queryKey: QueryKey;
+}) => T | undefined;
+
+// import { keepPreviousData } from '@stateref/sync';
+// placeholderData: keepPreviousData
+// remains pending / loaded false; isPlaceholder marks the display preview
+// callback failures: errorSource === 'placeholder'
 
 type ObserverSettings = {
   scheduleRelease?: (release: () => void) => void; // default: one macrotask

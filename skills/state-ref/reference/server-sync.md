@@ -77,6 +77,10 @@ account.dispose(); // release this handle
   where `resolve` returns options or `null`. Check `display.enabled` before
   touching `ref`; with no active key, `ref`/`status` throw
   `This query has no active key.`
+- Component pagination: `placeholderData: keepPreviousData` (import from
+  `@stateref/sync`). Keep loaded previous raw data as a display preview; the new
+  query remains pending/loaded false. Use `isPlaceholder` to keep the list visible.
+  Explicit handles still take value-only placeholders.
 - Per-observer view: `select` / `placeholderData` produce `query.display` /
   `query.watchDisplay` (readonly). Use them with `connect*View`.
 - Lists that grow: `client.infiniteQuery({ queryKey, queryFn, initialPageParam,
