@@ -112,13 +112,26 @@ npm은 패키지마다 Trusted Publisher 설정을 하나만 허용한다. 이�
 
 문서 사이트는 `main`에 `stateRefDocs/**`가 바뀌면 **Deploy docs site** workflow가 따로 배포한다. npm 배포와는 별개다.
 
-GitHub 릴리스 노트도 만들려면 태그가 생긴 뒤 CHANGELOG의 해당 절로 만든다.
+GitHub 릴리스 노트도 만들려면 태그가 생긴 뒤 CHANGELOG의 해당 절로 만든다. 릴리스 노트는 영문으로 쓰고, 릴리스 하나에 태그 하나를 쓴다. 제목은 `<패키지> <버전>` 형식이다.
+
+GitHub의 **Latest** 표시는 저장소 전체에서 릴리스 하나에만 붙는다. 저장소 첫 화면과 `/releases/latest`가 이 릴리스를 가리킨다. 이 표시는 코어 `state-ref`의 최신 릴리스에만 붙인다.
+
+- `state-ref` 릴리스는 기본값 그대로 만든다(Latest가 된다).
+- 그 외 `@stateref/*` 릴리스는 모두 `--latest=false`로 만든다. 빠뜨리면 마지막에 만든 connector·sync 릴리스가 저장소의 대표 릴리스로 보인다.
 
 ```sh
 section() { awk -v h="## $1" '$0==h{f=1;next} /^## /{f=0} f' CHANGELOG.md; }
+
+# 코어: Latest
+section "state-ref 3.3.0" > /tmp/core-notes.md
+gh release create "state-ref@3.3.0" --verify-tag --title "state-ref 3.3.0" --notes-file /tmp/core-notes.md
+
+# 그 외 패키지: Latest 아님
 section "@stateref/sync 0.4.0" > /tmp/sync-notes.md
-gh release create "@stateref/sync@0.4.0" --verify-tag --title "@stateref/sync 0.4.0" --notes-file /tmp/sync-notes.md
+gh release create "@stateref/sync@0.4.0" --verify-tag --latest=false --title "@stateref/sync 0.4.0" --notes-file /tmp/sync-notes.md
 ```
+
+Latest가 잘못 붙었으면 `gh release edit "state-ref@<최신 버전>" --latest`로 코어 릴리스에 다시 붙인다.
 
 ## 3. 실패했을 때
 
