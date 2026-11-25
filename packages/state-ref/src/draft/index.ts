@@ -110,7 +110,11 @@ function guardedWatch<T>(
     if (!renew) return guard(fallback);
 
     let record = renewCache.get(renew);
-    if (!record || record.controller.signal.aborted) {
+    if (
+      !record ||
+      record.controller.signal.aborted ||
+      option?.cache === false
+    ) {
       const controller = new AbortController();
       controllers.add(controller);
       controller.signal.addEventListener(
@@ -119,11 +123,17 @@ function guardedWatch<T>(
         { once: true }
       );
       const wrapped: Renew<StateRefStore<T>> = (ref, isFirst) => {
-        const result = renew(guard(ref), isFirst);
+        let result: ReturnType<Renew<StateRefStore<T>>>;
+        try {
+          result = renew(guard(ref), isFirst);
+        } catch (error) {
+          if (isFirst) controller.abort();
+          throw error;
+        }
         if (isFirst) {
           if (result instanceof AbortSignal) {
             if (result.aborted) {
-              queueMicrotask(() => controller.abort());
+              controller.abort();
             } else {
               result.addEventListener('abort', () => controller.abort(), {
                 once: true,
@@ -136,7 +146,7 @@ function guardedWatch<T>(
         return result;
       };
       record = { controller, wrapped };
-      renewCache.set(renew, record);
+      if (option?.cache !== false) renewCache.set(renew, record);
     }
     return guard(
       rawWatch(

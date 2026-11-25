@@ -22,12 +22,16 @@ export function batch<T>(callback: () => T): T {
 
 function runScope<T>(callback: () => T): T {
   depth += 1;
+  let primaryFailed = false;
   try {
     const result = callback();
     if (result && typeof (result as any).then === 'function') {
       throw new TypeError('state-ref: batch callback must be synchronous.');
     }
     return result;
+  } catch (error) {
+    primaryFailed = true;
+    throw error;
   } finally {
     depth -= 1;
     if (depth === 0) {
@@ -36,12 +40,48 @@ function runScope<T>(callback: () => T): T {
       pending = new Map();
       finalizers = new Set();
 
+      let writeError: unknown;
+      let hasWriteError = false;
       try {
         writes.forEach((nodes, subscriptions) => {
           runBatch(subscriptions, undefined, undefined, nodes);
         });
-      } finally {
-        callbacks.forEach(settle => settle());
+      } catch (error) {
+        writeError = error;
+        hasWriteError = true;
+      }
+
+      const finalizerErrors: unknown[] = [];
+      callbacks.forEach(settle => {
+        try {
+          settle();
+        } catch (error) {
+          finalizerErrors.push(error);
+        }
+      });
+
+      if (primaryFailed || hasWriteError) {
+        if (finalizerErrors.length > 0) {
+          console.error(
+            new AggregateError(
+              finalizerErrors,
+              `state-ref/batch: ${finalizerErrors.length} error(s) thrown in batch finalizers.`
+            )
+          );
+        }
+        if (hasWriteError) {
+          // eslint-disable-next-line no-unsafe-finally
+          throw writeError;
+        }
+      } else if (finalizerErrors.length === 1) {
+        // eslint-disable-next-line no-unsafe-finally
+        throw finalizerErrors[0];
+      } else if (finalizerErrors.length > 1) {
+        // eslint-disable-next-line no-unsafe-finally
+        throw new AggregateError(
+          finalizerErrors,
+          `state-ref/batch: ${finalizerErrors.length} error(s) thrown in batch finalizers.`
+        );
       }
     }
   }

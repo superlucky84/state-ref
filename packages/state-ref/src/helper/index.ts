@@ -195,6 +195,18 @@ function cloneValue<T>(value: T, seen: WeakMap<object, unknown>): T {
 
   return cloned as T;
 }
+const abortAll = (controllers: AbortController[]) =>
+  controllers.forEach(controller => controller.abort());
+
+function setupOrAbort<T>(controllers: AbortController[], init: () => T): T {
+  try {
+    return init();
+  } catch (error) {
+    abortAll(controllers);
+    throw error;
+  }
+}
+
 /**
  * Combines multiple state watchers to produce a derived (computed) value,
  * and invokes the provided callback whenever the computed value changes.
@@ -228,7 +240,7 @@ function relayTeardown(
   controllers: AbortController[],
   isFirst: boolean
 ) {
-  const stop = () => controllers.forEach(controller => controller.abort());
+  const stop = () => abortAll(controllers);
 
   if (isFirst) {
     if (result instanceof AbortSignal) {
@@ -310,53 +322,55 @@ export function createComputed<W extends readonly Watch<any>[], R>(
     };
     Object.defineProperty(proxy, REF_IDENTITY, { value: true });
 
-    watches.forEach((watch, index) => {
-      if (!computedCallback) {
-        (refs as any)[index] = watch();
-        return;
-      }
-      watch((ref, isFirst) => {
-        (refs as any)[index] = ref;
-
-        /**
-         * During setup the other refs are not in place yet, so the derived
-         * value cannot be computed here - it is computed once below, after
-         * every source is wired. The controller handed back is what makes the
-         * user's teardown reachable (see relayTeardown).
-         */
-        if (isFirst) {
-          return controllers[index].signal;
-        }
-
-        const next = callback(refs);
-
-        if (equals(next, result)) {
+    return setupOrAbort(controllers, () => {
+      watches.forEach((watch, index) => {
+        if (!computedCallback) {
+          (refs as any)[index] = watch();
           return;
         }
+        watch((ref, isFirst) => {
+          (refs as any)[index] = ref;
 
-        result = next;
+          /**
+           * During setup the other refs are not in place yet, so the derived
+           * value cannot be computed here - it is computed once below, after
+           * every source is wired. The controller handed back is what makes the
+           * user's teardown reachable (see relayTeardown).
+           */
+          if (isFirst) {
+            return controllers[index].signal;
+          }
 
-        return relayTeardown(
-          computedCallback(proxy, false),
-          controllers,
-          false
-        );
+          const next = callback(refs);
+
+          if (equals(next, result)) {
+            return;
+          }
+
+          result = next;
+
+          return relayTeardown(
+            computedCallback(proxy, false),
+            controllers,
+            false
+          );
+        });
       });
+
+      /**
+       * Reading through `refs` collects against each source's real subscription,
+       * because a proxy carries the run it belongs to - it does not matter that
+       * this happens outside a run.
+       */
+      if (!computedCallback) read = memoRefs(refs, callback, equals);
+      result = read ? read() : callback(refs);
+
+      if (computedCallback) {
+        relayTeardown(computedCallback(proxy, true), controllers, true);
+      }
+
+      return proxy;
     });
-
-    /**
-     * Reading through `refs` collects against each source's real subscription,
-     * because a proxy carries the run it belongs to - it does not matter that
-     * this happens outside a run.
-     */
-    if (!computedCallback) read = memoRefs(refs, callback, equals);
-    result = read ? read() : callback(refs);
-
-    if (computedCallback) {
-      relayTeardown(computedCallback(proxy, true), controllers, true);
-    }
-
-    return proxy;
   };
 }
 
@@ -414,38 +428,40 @@ export function combineWatch<W extends readonly Watch<any>[]>(
       },
     });
 
-    watches.forEach((watch, i) => {
-      const index = i as keyof RefsTuple;
-      if (!callback) {
-        refs[index] = watch(undefined, userOption) as RefsTuple[number];
-        return;
-      }
-      watch((ref, isFirst) => {
-        refs[index] = ref as RefsTuple[number];
-
-        /**
-         * The user callback cannot run here on a first pass: the other refs
-         * are not wired yet, so the paths it reads would be collected against
-         * proxies that are about to be replaced. It runs once below instead,
-         * which is why teardown has to be relayed through a controller of ours
-         * rather than returned to the core (see relayTeardown).
-         */
-        if (isFirst) {
-          return controllers[i].signal;
+    return setupOrAbort(controllers, () => {
+      watches.forEach((watch, i) => {
+        const index = i as keyof RefsTuple;
+        if (!callback) {
+          refs[index] = watch(undefined, userOption) as RefsTuple[number];
+          return;
         }
+        watch((ref, isFirst) => {
+          refs[index] = ref as RefsTuple[number];
 
-        return relayTeardown(
-          callback(combinedStore, false),
-          controllers,
-          false
-        );
-      }, userOption);
+          /**
+           * The user callback cannot run here on a first pass: the other refs
+           * are not wired yet, so the paths it reads would be collected against
+           * proxies that are about to be replaced. It runs once below instead,
+           * which is why teardown has to be relayed through a controller of ours
+           * rather than returned to the core (see relayTeardown).
+           */
+          if (isFirst) {
+            return controllers[i].signal;
+          }
+
+          return relayTeardown(
+            callback(combinedStore, false),
+            controllers,
+            false
+          );
+        }, userOption);
+      });
+
+      if (callback) {
+        relayTeardown(callback(combinedStore, true), controllers, true);
+      }
+
+      return combinedStore;
     });
-
-    if (callback) {
-      relayTeardown(callback(combinedStore, true), controllers, true);
-    }
-
-    return combinedStore;
   };
 }

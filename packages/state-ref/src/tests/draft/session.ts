@@ -431,5 +431,59 @@ if (import.meta.vitest) {
       expect(draft.isDirty()).toBe(false);
       draft.discard();
     });
+
+    it('keeps { cache: false } subscriptions independent and clean (RQ-IMP-07)', () => {
+      const source = createStore({ city: '서울' })();
+      const draft = createDraft(source);
+      const controllers = [new AbortController(), new AbortController()];
+      let index = 0;
+      const calls: number[] = [];
+
+      const renew = (ref: typeof draft.ref, isFirst: boolean) => {
+        calls.push(ref.city.value.length);
+        if (isFirst) return controllers[index++].signal;
+        return undefined;
+      };
+
+      draft.watch(renew, { cache: false });
+      draft.watch(renew, { cache: false });
+
+      calls.length = 0;
+      controllers[0].abort();
+      draft.ref.city.value = '부산';
+      // Only the first uncached subscription was aborted; the second stays alive.
+      expect(calls).toHaveLength(1);
+
+      // A subsequent cached call gets its own slot rather than reusing an uncached one.
+      controllers.push(new AbortController());
+      const cachedRef = draft.watch(renew);
+      expect(draft.watch(renew)).toBe(cachedRef);
+
+      calls.length = 0;
+      draft.ref.city.value = '대전';
+      expect(calls).toHaveLength(2);
+      draft.discard();
+    });
+
+    it('stops synchronously when draft.watch receives an already-aborted signal (RQ-IMP-01/07)', () => {
+      const source = createStore({ city: '서울' })();
+      const draft = createDraft(source);
+      let calls = 0;
+
+      draft.watch((ref, isFirst) => {
+        calls += 1;
+        void ref.city.value;
+        if (isFirst) {
+          const ac = new AbortController();
+          ac.abort();
+          return ac.signal;
+        }
+        return undefined;
+      });
+
+      draft.ref.city.value = '부산';
+      expect(calls).toBe(1);
+      draft.discard();
+    });
   });
 }

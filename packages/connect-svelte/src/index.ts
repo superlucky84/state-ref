@@ -75,31 +75,99 @@ function copied<V>(value: V): V {
 }
 
 /**
- * Structural equality for the plain data a store holds. The write-back uses it
- * to tell Svelte handing a value back unchanged from a real write: Svelte
+ * Structural equality for the values `cloneDeep` supports. The write-back uses
+ * it to tell Svelte handing a value back unchanged from a real write: Svelte
  * queues a `set` made while it is notifying, so a flag raised around the
  * connector's own delivery is already down by the time that delivery reaches
  * the write-back, and an identity test cannot work either - `$store.x = y`
  * mutates the very copy the connector delivered.
+ *
+ * `sameData(x, cloneDeep(x))` must stay true for every supported type (Date,
+ * RegExp, Map, Set, symbol keys, circular graphs), otherwise the initial
+ * `writable` delivery triggers a write-back loop.
  */
-function sameData(a: unknown, b: unknown): boolean {
+function sameData(
+  a: unknown,
+  b: unknown,
+  seen?: WeakMap<object, WeakSet<object>>
+): boolean {
   if (Object.is(a, b)) return true;
   if (
     a === null ||
     b === null ||
     typeof a !== 'object' ||
-    typeof b !== 'object' ||
-    Array.isArray(a) !== Array.isArray(b)
-  )
+    typeof b !== 'object'
+  ) {
     return false;
-  const left = a as Record<string, unknown>;
-  const right = b as Record<string, unknown>;
-  const keys = Object.keys(left);
-  if (keys.length !== Object.keys(right).length) return false;
-  return keys.every(
+  }
+  if (a instanceof Date || b instanceof Date) {
+    return (
+      a instanceof Date &&
+      b instanceof Date &&
+      Object.is(a.getTime(), b.getTime())
+    );
+  }
+  if (a instanceof RegExp || b instanceof RegExp) {
+    return (
+      a instanceof RegExp &&
+      b instanceof RegExp &&
+      a.source === b.source &&
+      a.flags === b.flags &&
+      a.lastIndex === b.lastIndex
+    );
+  }
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+
+  const pairs = seen ?? new WeakMap<object, WeakSet<object>>();
+  let matched = pairs.get(a);
+  if (matched?.has(b)) return true;
+  if (!matched) pairs.set(a, (matched = new WeakSet()));
+  matched.add(b);
+
+  if (a instanceof Map || b instanceof Map) {
+    if (!(a instanceof Map && b instanceof Map) || a.size !== b.size) {
+      return false;
+    }
+    const leftEntries = [...a.entries()];
+    const rightEntries = [...b.entries()];
+    for (let i = 0; i < leftEntries.length; i += 1) {
+      if (
+        !sameData(leftEntries[i][0], rightEntries[i][0], pairs) ||
+        !sameData(leftEntries[i][1], rightEntries[i][1], pairs)
+      ) {
+        return false;
+      }
+    }
+    return true;
+  }
+  if (a instanceof Set || b instanceof Set) {
+    if (!(a instanceof Set && b instanceof Set) || a.size !== b.size) {
+      return false;
+    }
+    const leftValues = [...a.values()];
+    const rightValues = [...b.values()];
+    for (let i = 0; i < leftValues.length; i += 1) {
+      if (!sameData(leftValues[i], rightValues[i], pairs)) return false;
+    }
+    return true;
+  }
+  if (Array.isArray(a) && a.length !== (b as unknown[]).length) {
+    return false;
+  }
+
+  const left = a as Record<PropertyKey, unknown>;
+  const right = b as Record<PropertyKey, unknown>;
+  const keysA = Reflect.ownKeys(left).filter(
+    key => Object.getOwnPropertyDescriptor(left, key)?.enumerable
+  );
+  const keysB = Reflect.ownKeys(right).filter(
+    key => Object.getOwnPropertyDescriptor(right, key)?.enumerable
+  );
+  if (keysA.length !== keysB.length) return false;
+  return keysA.every(
     key =>
-      Object.prototype.hasOwnProperty.call(right, key) &&
-      sameData(left[key], right[key])
+      Object.getOwnPropertyDescriptor(right, key)?.enumerable === true &&
+      sameData(left[key], right[key], pairs)
   );
 }
 

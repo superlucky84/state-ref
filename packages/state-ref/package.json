@@ -79,6 +79,12 @@
   "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
+      "plugin": [
+        "dist/plugin/index.d.ts"
+      ],
+      "draft": [
+        "dist/draft/index.d.ts"
+      ],
       "batch": [
         "dist/batch/index.d.ts"
       ],

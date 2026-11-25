@@ -350,5 +350,84 @@ if (import.meta.vitest) {
       expect(() => provideShared('late', { query: () => 1 })).not.toThrow();
       expect(error).toHaveBeenCalledTimes(1);
     });
+
+    it('evicts cached callbacks after return false, abort, or first-run throw (RQ-IMP-04)', () => {
+      // 1) Already-provided store: return false -> re-subscribe
+      const watch = provideShared('counter', createStore({ count: 0 }));
+      const shared = sharedWatch<{ count: number }>('counter');
+      const seen: number[] = [];
+      const onChange = (ref: ReturnType<typeof shared>, isFirst: boolean) => {
+        if (isProvided(ref)) seen.push(ref.count.value);
+        return isFirst ? undefined : false;
+      };
+
+      shared(onChange);
+      watch().count.value = 1; // ends via return false
+      watch().count.value = 2; // ignored
+      expect(seen).toEqual([0, 1]);
+
+      shared(onChange); // must re-subscribe instead of returning a dead ref
+      watch().count.value = 3;
+      expect(seen).toEqual([0, 1, 2, 3]);
+
+      // 2) Already-provided store: AbortSignal -> re-subscribe
+      let controller = new AbortController();
+      const abortSeen: number[] = [];
+      const onAbortable = (
+        ref: ReturnType<typeof shared>,
+        isFirst: boolean
+      ) => {
+        if (isProvided(ref)) abortSeen.push(ref.count.value);
+        return isFirst ? controller.signal : undefined;
+      };
+      shared(onAbortable);
+      controller.abort();
+      watch().count.value = 4;
+      expect(abortSeen).toEqual([3]);
+
+      controller = new AbortController();
+      shared(onAbortable);
+      watch().count.value = 5;
+      expect(abortSeen).toEqual([3, 4, 5]);
+
+      // 3) Pending store: first-run throw -> does not poison cache
+      const pending = sharedWatch<{ count: number }>('later');
+      let shouldThrow = true;
+      const pendingSeen: number[] = [];
+      const onPending = (ref: ReturnType<typeof pending>) => {
+        if (shouldThrow) {
+          shouldThrow = false;
+          throw new Error('pending boom');
+        }
+        if (isProvided(ref)) pendingSeen.push(ref.count.value);
+      };
+      expect(() => pending(onPending)).toThrow('pending boom');
+      pending(onPending);
+      provideShared('later', createStore({ count: 10 }));
+      expect(pendingSeen).toEqual([10]);
+
+      // 4) Pending store: already-aborted signal -> does not poison cache
+      const pendingAborted = sharedWatch<{ count: number }>('later-aborted');
+      let abortFirst = true;
+      const abortedSeen: number[] = [];
+      const onPendingAbort = (
+        ref: ReturnType<typeof pendingAborted>,
+        isFirst: boolean
+      ) => {
+        if (isFirst && abortFirst) {
+          abortFirst = false;
+          const ac = new AbortController();
+          ac.abort();
+          return ac.signal;
+        }
+        if (isProvided(ref)) abortedSeen.push(ref.count.value);
+        return undefined;
+      };
+      pendingAborted(onPendingAbort);
+      expect(pendingShared()).toEqual([]);
+      pendingAborted(onPendingAbort);
+      provideShared('later-aborted', createStore({ count: 42 }));
+      expect(abortedSeen).toEqual([42]);
+    });
   });
 }
