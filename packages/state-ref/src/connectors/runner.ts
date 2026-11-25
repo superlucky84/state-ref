@@ -1,10 +1,4 @@
-import type {
-  Run,
-  RunInfo,
-  Renew,
-  StateRefStore,
-  StoreRenderList,
-} from '@/types';
+import type { Run, RunInfo, StoreRenderList } from '@/types';
 import type { PathNode } from '@/path';
 import { forEachAffected, pathToString } from '@/path';
 import { endRun } from './collector';
@@ -38,10 +32,18 @@ function reportPassErrors(errors: unknown[]) {
   );
 }
 
+type EvictableRun = NonNullable<Run> & { _?: () => void };
+
 /**
  * Drops a subscription and the marks it left on the path tree.
  */
 export function removeRun(storeRenderList: StoreRenderList<any>, run: Run) {
+  if (run && (run as EvictableRun)._) {
+    const evict = (run as EvictableRun)._!;
+    (run as EvictableRun)._ = undefined;
+    evict();
+  }
+
   const subList = storeRenderList.get(run);
 
   if (subList) {
@@ -130,7 +132,7 @@ export function runner(
     try {
       const nextValue = item.getNextValue();
 
-      if (item.value !== nextValue) {
+      if (!Object.is(item.value, nextValue)) {
         runableRenewList.add(run);
         item.value = nextValue;
         if (__STATE_REF_DEVTOOLS__)
@@ -226,20 +228,25 @@ if (__STATE_REF_DEVTOOLS__)
     end: endDiagnosticBatch,
   };
 
-export function firstRunner<V>(
+export function firstRunner(
   run: Run,
   storeRenderList: StoreRenderList<any>,
-  cacheMap: WeakMap<Renew<StateRefStore<V>>, StateRefStore<V>>,
-  renew: Renew<StateRefStore<V>>
+  onRemove?: () => void
 ) {
+  const drop = () => removeRun(storeRenderList, run);
+  if (onRemove) (run as EvictableRun)._ = onRemove;
   if (__STATE_REF_DEVTOOLS__)
     diagnosticRun(storeRenderList, undefined, run, true);
-  const renewResult = run!(true);
+  let renewResult: ReturnType<NonNullable<Run>>;
+  try {
+    renewResult = run!(true);
+  } catch (error) {
+    drop();
+    throw error;
+  }
 
   if (renewResult instanceof AbortSignal) {
-    renewResult.addEventListener('abort', () => {
-      cacheMap.delete(renew);
-      removeRun(storeRenderList, run);
-    });
+    if (renewResult.aborted) drop();
+    else renewResult.addEventListener('abort', drop);
   }
 }

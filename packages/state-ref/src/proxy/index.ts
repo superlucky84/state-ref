@@ -191,14 +191,11 @@ export function makeProxy<S extends WithRoot, T extends object>(
         if (prop === Symbol.iterator) {
           return function* () {
             const iterableValue = lensValue.get(rootValue);
-            if (
-              !iterableValue ||
-              typeof (iterableValue as any)[Symbol.iterator] !== 'function'
-            ) {
-              return;
-            }
-            for (const index of (iterableValue as unknown as any[]).keys()) {
-              yield childProxy(String(index));
+            if (run) void (childProxy('length') as any).value;
+            if (Array.isArray(iterableValue)) {
+              for (let index = 0; index < iterableValue.length; index += 1) {
+                yield childProxy(String(index));
+              }
             }
           };
         }
@@ -275,7 +272,7 @@ export function makeProxy<S extends WithRoot, T extends object>(
         } else {
           const before = lensValue.get(rootValue);
 
-          if (value === before) return true;
+          if (Object.is(value, before)) return true;
 
           const newTree = lensValue.set(value)(rootValue);
 

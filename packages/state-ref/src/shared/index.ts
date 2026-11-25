@@ -428,6 +428,9 @@ export function sharedWatch(name: string): SharedWatch<any, any> {
     let found: { ref: any; entry: Entry } | null = null;
     const ref = sharedRef(name, () => found);
     if (cache) cached.set(renew, ref);
+    const evict = () => {
+      if (cache && cached.get(renew) === ref) cached.delete(renew);
+    };
 
     // Follows the store's watch with the user's callback seeing `ref`. The
     // core registers a signal only from a first run and understands only
@@ -437,11 +440,27 @@ export function sharedWatch(name: string): SharedWatch<any, any> {
       let dropped = false;
       source(entry)((real, isFirst) => {
         found = { ref: real, entry };
-        if (isFirst && asFirst) return renew(ref, true);
+        if (isFirst && asFirst) {
+          let result: ReturnType<Renew<any>>;
+          try {
+            result = renew(ref, true);
+          } catch (error) {
+            evict();
+            throw error;
+          }
+          if (result instanceof AbortSignal) {
+            if (result.aborted) evict();
+            else result.addEventListener('abort', evict, { once: true });
+          }
+          return result;
+        }
         if (ended.aborted) return isFirst ? ended : false;
 
         const result = renew(ref, false);
-        if (!isFirst) return result;
+        if (!isFirst) {
+          if (result === false) evict();
+          return result;
+        }
         dropped = result === false;
         return ended;
       });
@@ -457,9 +476,19 @@ export function sharedWatch(name: string): SharedWatch<any, any> {
     // Not provided: the subscriber has its first run now, with a pending ref,
     // and the store's arrival is its next one.
     const controller = new AbortController();
-    const first = renew(ref, true);
+    controller.signal.addEventListener('abort', evict, { once: true });
+    let first: ReturnType<Renew<any>>;
+    try {
+      first = renew(ref, true);
+    } catch (error) {
+      evict();
+      throw error;
+    }
     if (first instanceof AbortSignal) {
-      if (first.aborted) return ref;
+      if (first.aborted) {
+        evict();
+        return ref;
+      }
       first.addEventListener('abort', () => controller.abort(), {
         once: true,
       });

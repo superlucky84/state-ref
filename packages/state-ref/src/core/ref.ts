@@ -98,17 +98,23 @@ export function makeReference<V>({
   );
 
   /**
-   * It is initialized only once per subscription and collects the 'abort' signal.
-   */
-  if (renew) firstRunner(run, storeRenderList, cacheMap, renew);
-
-  /**
-   * Only a cached subscription may claim the cache slot. `cache: false` asks
-   * for a subscription of its own, so letting it write here handed the next
-   * `watch(renew)` a reference belonging to one of those extra subscriptions.
+   * Only a cached subscription may claim the cache slot. Setting it before
+   * `firstRunner` lets `removeRun` evict it uniformly if the first run throws
+   * or returns an already-aborted signal.
    */
   if (cache && renew) {
     cacheMap.set(renew, ref.value!.root);
+  }
+
+  /**
+   * It is initialized only once per subscription and collects the 'abort' signal.
+   */
+  if (renew) {
+    firstRunner(
+      run,
+      storeRenderList,
+      cache ? () => cacheMap.delete(renew) : undefined
+    );
   }
 
   return ref.value!.root;

@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "state-ref",
-  "version": "3.3.0",
+  "version": "3.3.1",
   "private": false,
   "publishConfig": {
     "access": "public",
@@ -79,6 +79,12 @@
   "types": "./dist/index.d.ts",
   "typesVersions": {
     "*": {
+      "plugin": [
+        "dist/plugin/index.d.ts"
+      ],
+      "draft": [
+        "dist/draft/index.d.ts"
+      ],
       "batch": [
         "dist/batch/index.d.ts"
       ],

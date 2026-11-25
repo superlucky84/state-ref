@@ -32,7 +32,7 @@ export function lens<T extends object>(
 }
 
 export class Lens<Root extends object, Focus = Root> {
-  private sceneList: (string | number | symbol)[];
+  private declare sceneList: (string | number | symbol)[];
   constructor(sceneList: (string | number | symbol)[]) {
     this.sceneList = sceneList;
   }
