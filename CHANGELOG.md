@@ -1,5 +1,45 @@
 # Changelog
 
+## state-ref 3.3.1
+
+### Fixed
+
+- Track the array `length` node when iterating a subscribed proxy via
+  `Symbol.iterator` (`for..of` / spread), so appending to an empty or existing
+  array wakes subscribers while preserving per-element granularity and zero
+  node allocation for unbound iteration. Guard non-array values with
+  `Array.isArray` so iterating strings, `Set`, or `Map` no longer throws.
+- Immediately unsubscribe when a subscription's first run returns an
+  already-aborted `AbortSignal`, avoiding leaked subscriptions and same-turn
+  notifications.
+- Evict `cacheMap` entries on every subscription termination path (`return false`,
+  `AbortSignal`, already-aborted signal, or first-run throw) so the same
+  callback can re-subscribe cleanly without stale-signal or uncached
+  interference. Registering the cache slot before the first run also returns
+  the in-progress ref on re-entrant `watch(fn)` calls instead of recursing.
+- Roll back subscriptions registered before a first-run exception in core
+  `watch`, `createComputed`, and `combineWatch`.
+- Evict `sharedWatch`'s callback cache on teardown (`AbortSignal` /
+  `return false`) and first-run exceptions (`state-ref/shared`).
+- Honor `{ cache: false }` and synchronous abort for already-aborted signals in
+  `draft.watch` (`state-ref/draft`).
+- Use `Object.is` in core setter and runner equality checks so `NaN` writes do
+  not cause spurious notifications.
+- Isolate exceptions across `batch()` finalizers so remaining finalizers still
+  run without masking the primary callback or flush error (`state-ref/batch`).
+- Add missing `draft` and `plugin` entries to `typesVersions` for
+  `moduleResolution: node` consumers.
+
+## @stateref/connect-svelte 5.1.2
+
+### Fixed
+
+- Extend `sameData` in `connectSvelte` to compare `Date` (including Invalid
+  Date), `RegExp`, `Map`, `Set`, enumerable symbol keys, array `length`, and
+  circular references. Built-in values and symbol-keyed objects now propagate
+  writes instead of being silently treated as unchanged, while preserving
+  `sameData(x, cloneDeep(x)) === true` to prevent write-back loops.
+
 ## @stateref/sync 0.4.0
 
 ### Added
